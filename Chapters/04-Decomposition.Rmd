@@ -1,13 +1,14 @@
 # Time series decomposition and ETS taxonomy {#tsDecomposition}
 
-A very important topic that we need to discuss before we move to the state space models, ETS, ARIMA and other things, is the time series decomposition because it lies in the core of ETS models.
+## Time series components
+A very important topic that we need to discuss before we move to the state space models, ETS, ARIMA and other things, is the time series decomposition and the related to it ETS taxonomy because it lies in the core of ETS models.
 
-The main idea behind the decomposition is that any time series can contain several unobservable components, such as:
+The main idea behind this is that any time series can contain several unobservable components, such as:
 
-1. Level of the series,
-2. Growth of the series,
-3. Seasonality,
-4. Error.
+1. Level of the series - the average value for specific period of time,
+2. Growth of the series - the average increase or decrease of the value over a period of time,
+3. Seasonality - a pattern, which is observed from year to year (e.g. growth in sales of lager beer in Summer),
+4. Error - an unexplainable white noise.
 
 Depending on a textbook or on a paper you are dealing with, you might have different names for these components. For example, in classical decomposition [@Persons1919] it is assumed that (1) and (2) represent a specific component called "trend", so the typical model contains error, trend and seasonality. There are modifications of this, which also contain cyclical component. When it comes to ETS, the growth component (2) is called "trend", so the model consists of the four components. We will use the ETS notations in this textbook. According to it, the components can interact with each other differently: either via addition or multiplication. The pure additive model in this case can be summarised as:
 \begin{equation}
@@ -21,31 +22,70 @@ where $l_{t-1}$ is the level, $b_{t-1}$ is the trend, $s_{t-m}$ is the seasonal 
 \end{equation}
 where $\varepsilon_t$ is the error term that has mean of one. The interpretation of the model \@ref(eq:PureAdditive) is that the different components add up to each other, so, for example, the sales in January typically increase by the amount $s_{t-m}$, and that there is still some randomness that is not taken into account in the model. The pure additive models can be applied for the data that can have positive, negative and zero values. In case of the model \@ref(eq:PureMultiplicative), the interpretation is similar, but the sales change by $(s_{t-m}-1) \text{%}$ from the baseline. These models only work with the data with positive values. Although they should also work on data with purely negative values as well, this is less often met in practice.
 
-There are many different techniques on how to extract the components from time series, the most popular of which is classical decomposition, which aims at smoothing each unobserved components in the data. An example of this is the `decompose()` function from `stats` package. Here is an example with pure multiplicative model and `AirPassengers` data in R:
-```{r decomposeAirPassengers}
-ourDecomposition <- decompose(AirPassengers, type="multiplicative")
-plot(ourDecomposition)
-```
-
-Note that the trend component in `decompose()` function is in fact $l_{t-1}+b_{t-1}$. If the decomposition is done correctly, then different components can then be forecasted and mixed in order to obtain the point forecasts.
-
 It is also possible to define mixed models, for example, when trend is additive, but the other components are multiplicative:
 \begin{equation}
     y_t = (l_{t-1} + b_{t-1}) s_{t-m} \varepsilon_t ,
     (\#eq:MixedAdditiveTrend)
 \end{equation}
-these models work well in practice, when the data has high values, far from zero. In the other cases, they might produce contradicting results: e.g., generate negative values on positive data.
+these models work well in practice, when the data has high values, far from zero, but in the other cases they might produce contradicting results: e.g., generate negative values on positive data. So, the conventional decomposition techniques only consider the pure models.
 
+
+## Classical Seasonal Decomposition
+One of the classical textbook methods for decomposing the time series into unobservable components is called "Classical Seasonal Decomposition" [@Persons1919]. It is done using centred moving averages and is focused on approximation, not on forecasting. The idea of the method can be summarised in the following way:
+
+1. Decide, which of the models to use based on the type of seasonality in the data: additive \@ref(eq:PureAdditive) or multiplicative \@ref(eq:PureMultiplicative)
+2. Smooth the data using centred moving average of the order equal to the periodicity of the data $m$. If $m$ is the odd number then the formula is the following:
+\begin{equation}
+    d_t = \frac{1}{m}\sum_{i=-(m-1)/2}^{(m-1)/2} y_{t+i},
+    (\#eq:CMAOdd)
+\end{equation}
+which means that, for example, the value on Thursday is the average of values from Monday to Sunday. If $m$ is the even number, then a different weighting scheme is typically used, involving the inclusion of additional value:
+\begin{equation}
+    d_t = \frac{1}{m}\left(\frac{1}{2}\left(y_{t+(m-1)/2}+y_{t-(m-1)/2}\right) + \sum_{i=-(m-2)/2}^{(m-2)/2} y_{t+i}\right),
+    (\#eq:CMAEven)
+\end{equation}
+which means, for example, that we take a half of December of the previous year and half of December of this year in order to calculate the centred moving average in June.
+The resulting series corresponds to the deseasonalised data. Indeed, when we, for instance, take an average values of the sales in a year, we automatically remove the potential seasonality, which can be observed individually in each month. 
+3. De-trend the data:
+- For the additive decomposition this is done using: ${y^\prime}_t = y_t - d_t$;
+- For the multiplicative one, it is: ${y^\prime}_t = \frac{y_t}{d_t}$;
+4. If the data is seasonal, then the average value for each period is calculated based on the de-trended series. e.g. we produce average seasonal indices for each January, February, etc. This will give us the set of seasonal indices $s_t$;
+5. Calculate the residuals based on what you assume in the model:
+- additive seasonality: $e_t = y_t - d_t - s_t$;
+- multiplicative seasonality: $e_t = \frac{y_t}{d_t s_t}$;
+- no seasonality: $e_t = {y^\prime}_t$.
+
+Note that the functions in R typically allow selecting between additive and multiplicative seasonality only, there is no option for "none", so inevitably you will get the value of $s_t$ in the output, even if the data is not seasonal. Also, notice that the classical decomposition assumes that there is $d_t$ - deseasonalised series, but it does not make any further split of this variable into level $l_t$ and trend $b_t$.
+
+An example of the classical decomposition in R is the `decompose()` function from `stats` package. Here is an example with pure multiplicative model and `AirPassengers`:
+```{r decomposeAirPassengers}
+ourDecomposition <- decompose(AirPassengers, type="multiplicative")
+plot(ourDecomposition)
+```
+
+We can see that the function has smoothed the original series and produced the seasonal indices. We can also notice that the error term still contains some seasonal elements, which is a downside of such a simple decomposition procedure. Note again that the trend component in `decompose()` function is in fact $d_t = l_{t}+b_{t}$.
+
+Here is an example of decomposition on the non-seasonal data (we use pure additive model in this example):
+```{r decomposeRandomNoise}
+y <- ts(c(1:100)+rnorm(100,0,10),frequency=12)
+ourDecomposition <- decompose(y, type="additive")
+plot(ourDecomposition)
+```
+
+As you can see, the original data has no seasonality in it, but the decomposition assumes that there is one and proceeds with the default approach, returning the seasonal component.
+
+
+## ETS taxonomy
 Based on the type of error, trend and seasonality, [@Pegels1969] proposed a taxonomy, which was then developed further by [@Hyndman2002] and refined by [@Hyndman2008b]. According to this taxonomy, error, trend and seasonality can be:
 
-1. Error: either "Additive", or "Multiplicative";
-2. Trend: either "None", or "Additive", or "Additive damped", or "Multiplicative", or "Multiplicative damped";
-3. Seasonality: either "None", or "Additive", or "Multiplicative".
+1. Error: either "Additive" (A), or "Multiplicative" (M);
+2. Trend: either "None" (N), or "Additive" (A), or "Additive damped" (Ad), or "Multiplicative" (M), or "Multiplicative damped" (Md);
+3. Seasonality: either "None" (N), or "Additive" (A), or "Multiplicative" (M).
 
 So, the ETS stands for "Error-Trend-Seasonality" and defines how specifically the components interact with each other. According to this taxonomy, the model \@ref(eq:PureAdditive) is ETS(A,A,A), while the model \@ref(eq:PureMultiplicative) is ETS(M,M,M), and \@ref(eq:MixedAdditiveTrend) is ETS(M,A,M).
 
 The main advantage of ETS taxonomy is that the components have clear interpretation, and that it is flexible, allowing to have 30 models with different types of error, trend and seasonality. The figure below shows examples of different time series with deterministic (they do not change over time) level, trend and seasonality, based on how they interact in the model. The first one shows the additive error case:
-```{r echo=FALSE}
+```{r echo=FALSE, warning=FALSE}
 modelsList <- c("ANN","AAN","AAdN","AMN","AMdN","ANA","AAA","AAdA","AMA","AMdA","ANM","AAM","AAdM","AMM","AMdM",
                 "MNN","MAN","MAdN","MMN","MMdN","MNA","MAA","MAdA","MMA","MMdA","MNM","MAM","MAdM","MMM","MMdM")
 level <- 500
@@ -74,8 +114,8 @@ for(i in 1:length(modelsList)){
   meanValue <- switch(substr(modelsList[i],1,1),
                       "A"=0,
                       "M"=1)
-  generatedData[[i]] <- sim.es(modelsList[i], obs=36, frequency=4, persistence=0, phi=phi,
-                               initial=initial, initialSeason=initialSeason, mean=meanValue, sd=sdValue)$data
+  generatedData[[i]] <- smooth::sim.es(modelsList[i], obs=36, frequency=4, persistence=0, phi=phi,
+                                       initial=initial, initialSeason=initialSeason, mean=meanValue, sd=sdValue)$data
 }
 
 # Prepare the canvas
@@ -95,14 +135,15 @@ for(i in 1:15){
 }
 ```
 
-The things to note:
+Things to note from this plot:
 
-1. When the seasonality is multiplicative, then its amplitude increases with the increase of the level of the data. The amplitude of seasonality does not change for the additive seasonal models. e.g. compare the ETS(A,A,A) with ETS(A,A,M): the distance between the highest and the lowest points for the form  in the first year is roughly the same as in the last year. In case of ETS(A,A,M), the distance increases with the increase of level;
-2. When the trend is multiplicative, it corresponds to the exponential growh / decay. So, in this situation we say that there is a roughly 5% growth in the data;
-3. The damped trend models slow down both additive and multiplicative trends.
+1. When the seasonality is multiplicative, its amplitude increases with the increase of the level of the data. The amplitude of seasonality does not change for the additive seasonal models. e.g. compare the ETS(A,A,A) with ETS(A,A,M): the distance between the highest and the lowest points for the former in the first year is roughly the same as in the last year. In the case of ETS(A,A,M), the distance increases with the increase of level;
+2. When the trend is multiplicative, it corresponds to the exponential growh / decay. So, in this situation with ETS(A,M,N) we say that there is a roughly 5% growth in the data;
+3. The damped trend models slow down both additive and multiplicative trends;
+4. It is practically impossible to distinguish the additive and multiplicative seasonality if the average of the data is the same - this becomes apparent on the example of ETS(A,N,A) and ETS(A,N,M).
 
-And here are the similar plots for the multiplicative error models:
-```{r echo=FALSE}
+And here is a similar plot for the multiplicative error models:
+```{r echo=FALSE, warning=FALSE}
 # Prepare the canvas
 par(mfcol=c(5,3),mar=c(2,3,2,1))
 # The matrix that corresponds to the i
@@ -120,6 +161,6 @@ for(i in 16:30){
 }
 ```
 
-They show roughly the same picture, the main difference being that the variance of the error increases with the increase of the level of the data - this becomes clearer on ETS(M,A,N) and ETS(M,M,N) data. This effect is called heteroscedasticity in statistics, and [@Hyndman2008b] argue that the main benefit of the multiplicative error models is in being able to capture this feature.
+They show roughly the same picture as the additive case, with the main difference being that the variance of the error increases with the increase of the average value of the data - this becomes clearer on ETS(M,A,N) and ETS(M,M,N) data. This effect is called heteroscedasticity in statistics, and [@Hyndman2008b] argue that the main benefit of the multiplicative error models is in being able to capture this feature.
 
 In the next several chapters we will discuss the basic ETS models from this taxonomy.
