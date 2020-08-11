@@ -34,7 +34,7 @@ these models work well in practice, when the data has high values, far from zero
 One of the classical textbook methods for decomposing the time series into unobservable components is called "Classical Seasonal Decomposition" [@Persons1919]. It is done using centred moving averages and is focused on approximation, not on forecasting. The idea of the method can be summarised in the following way:
 
 1. Decide, which of the models to use based on the type of seasonality in the data: additive \@ref(eq:PureAdditive) or multiplicative \@ref(eq:PureMultiplicative)
-2. Smooth the data using centred moving average of the order equal to the periodicity of the data $m$. If $m$ is the odd number then the formula is the following:
+2. Smooth the data using centred moving average (CMA) of the order equal to the periodicity of the data $m$. If $m$ is the odd number then the formula is the following:
 \begin{equation}
     d_t = \frac{1}{m}\sum_{i=-(m-1)/2}^{(m-1)/2} y_{t+i},
     (\#eq:CMAOdd)
@@ -45,7 +45,11 @@ which means that, for example, the value on Thursday is the average of values fr
     (\#eq:CMAEven)
 \end{equation}
 which means, for example, that we take a half of December of the previous year and half of December of this year in order to calculate the centred moving average in June.
-The resulting series corresponds to the deseasonalised data. Indeed, when we, for instance, take an average values of the sales in a year, we automatically remove the potential seasonality, which can be observed individually in each month. 
+
+The resulting series corresponds to the deseasonalised data. Indeed, when we, for instance, take an average values of the sales in a year, we automatically remove the potential seasonality, which can be observed individually in each month. A drawback from using CMA is that this way we inevitably loose $\frac{m}{2}$ observations from the head and from the tail of the series.
+
+In R, `ma()` function from `forecast` package implements CMA.
+
 3. De-trend the data:
 - For the additive decomposition this is done using: ${y^\prime}_t = y_t - d_t$;
 - For the multiplicative one, it is: ${y^\prime}_t = \frac{y_t}{d_t}$;
@@ -63,9 +67,9 @@ ourDecomposition <- decompose(AirPassengers, type="multiplicative")
 plot(ourDecomposition)
 ```
 
-We can see that the function has smoothed the original series and produced the seasonal indices. We can also notice that the error term still contains some seasonal elements, which is a downside of such a simple decomposition procedure. Note again that the trend component in `decompose()` function is in fact $d_t = l_{t}+b_{t}$.
+We can see that the function has smoothed the original series and produced the seasonal indices. We can also notice that the error term still contains some seasonal elements, which is a downside of such a simple decomposition procedure. However, the lack of precision in this method is compensated by the simplicity and speed of calculation. Note again that the trend component in `decompose()` function is in fact $d_t = l_{t}+b_{t}$.
 
-Here is an example of decomposition on the non-seasonal data (we use pure additive model in this example):
+And here is an example of decomposition of the non-seasonal data (we assume pure additive model in this example):
 ```{r decomposeRandomNoise}
 y <- ts(c(1:100)+rnorm(100,0,10),frequency=12)
 ourDecomposition <- decompose(y, type="additive")
@@ -73,6 +77,13 @@ plot(ourDecomposition)
 ```
 
 As you can see, the original data has no seasonality in it, but the decomposition assumes that there is one and proceeds with the default approach, returning the seasonal component.
+
+There are other decomposition techniques and R functions that do a similar split into Error-Trend-Seasonal components with different assumptions, here are some of them:
+
+- `decomp()` function from `tsutils` package does classical decomposition and fills in the tail and head of the smoothed trend with forecasts from exponential smoothing;
+- `stl()` function from `stats` uses a different approach - seasonal decomposition by LOESS. It is an iterative algorithm that smoothes the states and allows them evolving over time. So, for example, the seasonal component in STL can change;
+- `mstl()` from `forecast` package does the STL for data with several seasonalities;
+- `msdecompose()` from `smooth` does a classical decomposition for multiple seasonal series.
 
 
 ## ETS taxonomy
@@ -85,7 +96,7 @@ Based on the type of error, trend and seasonality, [@Pegels1969] proposed a taxo
 So, the ETS stands for "Error-Trend-Seasonality" and defines how specifically the components interact with each other. According to this taxonomy, the model \@ref(eq:PureAdditive) is ETS(A,A,A), while the model \@ref(eq:PureMultiplicative) is ETS(M,M,M), and \@ref(eq:MixedAdditiveTrend) is ETS(M,A,M).
 
 The main advantage of ETS taxonomy is that the components have clear interpretation, and that it is flexible, allowing to have 30 models with different types of error, trend and seasonality. The figure below shows examples of different time series with deterministic (they do not change over time) level, trend and seasonality, based on how they interact in the model. The first one shows the additive error case:
-```{r echo=FALSE, warning=FALSE}
+```{r echo=FALSE, warning=FALSE, message=FALSE}
 modelsList <- c("ANN","AAN","AAdN","AMN","AMdN","ANA","AAA","AAdA","AMA","AMdA","ANM","AAM","AAdM","AMM","AMdM",
                 "MNN","MAN","MAdN","MMN","MMdN","MNA","MAA","MAdA","MMA","MMdA","MNM","MAM","MAdM","MMM","MMdM")
 level <- 500
