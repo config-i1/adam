@@ -1,12 +1,101 @@
-# Exponential smoothing method and ETS
+# Exponential smoothing methods and ETS
 
+## Simple Exponential Smoothing
 We start our discussion of exponential smoothing with the original Simple Exponential Smoothing (SES) forecasting method, which was formulated by [@Brown1956]:
 \begin{equation}
-  \hat{y}_{t+1} = \alpha {y}_{t} + (1 - \alpha) \hat{y}_{t},
+  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 - \hat{\alpha}) \hat{y}_{t},
   (\#eq:BrownMethod)
 \end{equation}
-where $\alpha$ is the smoothing parameter, defined by analyst and which is typically restricted with (0, 1) region (this region is actually arbitrary and we will see later what is the correct one). This is one of the simplest forecasting method, and the smoothing parameter in it is typically interpretted as a weight between the actual value and the one-step-ahead predicted one. It is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ in order to apply \@ref(eq:BrownMethod) to the existing data.
+where $\hat{\alpha}$ is the smoothing parameter, defined by analyst and which is typically restricted with (0, 1) region (this region is actually arbitrary and we will see later what is the correct one). This is one of the simplest forecasting methods, and the smoothing parameter in it is typically interpretted as a weight between the actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value $\hat{y}_{t}$ and the new information is neglected. When it is close to one, then mainly the actual value ${y}_{t}$ is taken into account. By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
+
+Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ in order to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the sttate of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function. Typically [MSE](#errorMeasures) is used as one, minimising the one step ahead forecast error.
+
+Here is an example of how this method works on different time series. We start with generating a stationary series and using `es()` function from `smooth` package. Although it implements the ETS model, we will see later the connection between SES and ETS(A,N,N). We start with the stationary time series and $\hat{\alpha}=0$:
+```{r SESExample1}
+y <- rnorm(100,100,10)
+ourModel <- es(y, model="ANN", h=10, persistence=0)
+plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+```
+
+The SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Here is an example:
+
+```{r SESExample2}
+y <- c(rnorm(50,100,10),rnorm(50,130,10))
+ourModel <- es(y, model="ANN", h=10, persistence=0.1)
+plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+```
+
+With $\hat{\alpha}=0.1$, it manages to get to the new level, but now the method starts adapting to noise a little bit - it follows the peaks and troughs and repeats them, but with much smaller magnitude. If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise:
+```{r echo=FALSE}
+par(mfcol=c(3,1))
+ourModel <- es(y, model="ANN", h=10, persistence=0.2)
+plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+ourModel <- es(y, model="ANN", h=10, persistence=0.3)
+plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+ourModel <- es(y, model="ANN", h=10, persistence=0.5)
+plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+```
+
+If we set $\hat{\alpha}=1$, we will end up with Naive forecasting method, which is not appropriate for our example:
+```{r echo=FALSE}
+par(mfcol=c(1,1))
+ourModel <- es(y, model="ANN", h=10, persistence=1)
+plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+```
+
+So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE:
+```{r SESExample3}
+ourModel <- es(y, model="ANN", h=10, loss="MSE")
+plot(ourModel, 7, main=paste0("SES with alpha=",round(ourModel$persistence,3)))
+```
+
+This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$, but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting.
+
+An alternative form of SES is known as error correction form and involves some simple permutations, taking that $e_t=y_t-\hat{y}_t$ is the one step ahead forecast error:
+\begin{equation}
+  \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
+  (\#eq:SESErrorCorrection)
+\end{equation}
+In this form, the smoothing parameter $\hat{\alpha}$ regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.
+
+As you see, this is a very simple method. It is easy to explain it to practitioners and it is very easy to implement in practice. However, this is just a [forecasting method](#intro), so it just gives a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.
+
+## ETS(A,N,N) and ETS(M,N,N) - local level models
+
+There have been several tries to develop statistical models, underlying SES, and we know now that it has underlying ARIMA(0,1,1), local level MSOE (Multiple Source of Error) model [@Muth1960] and SSOE (Single Source of Error) model [@Snyder1985]. According to [@Hyndman2002], the ETS(A,N,N) model also underlies the SES method. It can be formulated in the following way:
+\begin{equation}
+  \beging{matrix*}[l]
+    y_{t} = l_{t-1} + \epsilon_t \\
+    l_t = l_{t-1} + \alpha \epsilon_t
+  \end{matrix*} ,
+  (\#eq:ETSANN)
+\end{equation}
+where, as we know from [the previous section](#tsComponents), $l_t$ is the level of the data, $\epsilon_t$ is the error term and $\alpha$ is the smoothing parameter. Note that we use $\alpha$ without the "hat" symbol, which implies that there is a "true" value of the parameter (which could be obtained if we had all the data in the world or just knew it for some reason). It is easy to show that ETS(A,N,N) underlies SES. In order to see this, we need to take move towards estimation phase and use $\hat{l}_{t-1}=l_{t-1}$ and move to estimates $\hat{\alpha}$ and $e_t$ (the estimate of the error term $\epsilon_t$):
+\begin{equation}
+  \beging{matrix*}[l]
+    y_{t} = \hat{l}_{t-1} + e_t \\
+    \hat{l}_t = \hat{l}_{t-1} + \hat{\alpha} e_t
+  \end{matrix*} ,
+  (\#eq:ETSANNEstimation)
+\end{equation}
+and also take that $\hat{y}_t=l_{t-1}$:
+\begin{equation}
+  \beging{matrix*}[l]
+    y_{t} = \hat{y}_{t} + e_t \\
+    \hat{y}_{t} = \hat{y}_{t-1} + \hat{\alpha} e_{t-1}
+  \end{matrix*} .
+  (\#eq:ETSANNEstimation3)
+\end{equation}
+Inserting the second equation in the first one and substituting $y_t$ with $\hat{y}_t+e_t$ we get:
+\begin{equation}
+    \hat{y}_t+e_t = \hat{y}_{t-1} + \hat{\alpha} e_{t-1} + e_t ,
+  (\#eq:ETSANNEstimation4)
+\end{equation}
+cancelling out $e_t$ and shifting everything by one step ahead, we obtain the error correction form \@ref(eq:SESErrorCorrection) of SES.
+
+But now, the main benefit of having the model \@ref(eq:ETSANN) instead of just the method \@ref(eq:SESErrorCorrection) is in having a flexible framework, which allows adding other components, selecting the most appropriate ones, estimating parameters in a [consistent](#intro) way, producing prediction intervals etc.
 
 
+## Additional information
 
-If you are interested in more details about the exponential smoothing and its history, the reviews [@Gardner1985] and [@Gardner2006] summmarise the progress in the area up until 1985 and then 2006.
+If you want to know more about the history of exponential smoothing, how it was developed and what papers contributed towards the development of the field, then the reviews of [@Gardner1985] and [@Gardner2006] are the great places to start with. They summmarise all the progress in the area of exponential smoothing up until 1985 and then until 2006.
