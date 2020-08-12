@@ -100,12 +100,10 @@ x <- vector("list",6)
 initial <- 1000
 meanValue <- 0
 sdValue <- 20
-x[[1]] <- sim.es("ANN", 120, 1, 12, persistence=0.1, initial=initial, mean=meanValue, sd=sdValue)
-x[[2]] <- sim.es("ANN", 120, 1, 12, persistence=0.3, initial=initial, mean=meanValue, sd=sdValue)
-x[[3]] <- sim.es("ANN", 120, 1, 12, persistence=0.5, initial=initial, mean=meanValue, sd=sdValue)
-x[[4]] <- sim.es("ANN", 120, 1, 12, persistence=0.75, initial=initial, mean=meanValue, sd=sdValue)
-x[[5]] <- sim.es("ANN", 120, 1, 12, persistence=1, initial=initial, mean=meanValue, sd=sdValue)
-x[[6]] <- sim.es("ANN", 120, 1, 12, persistence=1.5, initial=initial, mean=meanValue, sd=sdValue)
+alphas <- c(0.1,0.3,0.5,0.75,1,1.5)
+for(i in 1:length(alphas)){
+  x[[i]] <- sim.es("ANN", 120, 1, 12, persistence=alphas[i], initial=initial, mean=meanValue, sd=sdValue)
+}
 
 par(mfcol=c(3,2))
 for(i in 1:6){
@@ -120,12 +118,24 @@ When it comes to the application of this model to the data, the point forecast c
     \mu_{y,t+h|t} = l_{t} ,
   (\#eq:ETSANNForecast)
 \end{equation}
-this holds because it is assumed that $\text{E}(\epsilon_t)=0$, which implies that the conditional h steps ahead expectation of the level in the model is $\text{E}(l_{t+h}|t)=l_t+\alpha\sum_{j=1}^{h-1}\epsilon_{t+j} = l_t$.
+this holds because it is [assumed](#assumptions) that $\text{E}(\epsilon_t)=0$, which implies that the conditional h steps ahead expectation of the level in the model is $\text{E}(l_{t+h}|t)=l_t+\alpha\sum_{j=1}^{h-1}\epsilon_{t+j} = l_t$.
 
+Here is an example with automatic parameter estimation in ETS(A,N,N) using `es()` function from `smooth` package:
+```{r ETSANNExample}
+x <- sim.es("ANN", 120, 1, 12, persistence=0.3, initial=1000)
+ourModel <- es(x$data, "ANN", h=12, interval=TRUE, holdout=TRUE, silent=FALSE)
+ourModel
+```
+
+As we see, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected, because we deal with an in-sample estimation. Also, notice that with such a high smoothing parameter, the prediction interval is widening with the increase of the forecast horizon. If the smoothing parameter would be lower, then the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with $\alpha=0.01$:
+```{r ETSANNExamplealpha0.1}
+ourModel <- es(x$data, "ANN", h=12, interval=TRUE, holdout=TRUE, silent=FALSE, persistence=0.01)
+```
+In this case, the prediction interval is wider than needed and the forecast is biased - the model does not keep up to the fast changing time series. So, it is important to correctly estimate the smoothing parameters not only to approximate the data, but also to produce less biased point forecast and more appropriate prediction interval.
 
 
 ## Other exponential smoothing methods and ETS
-There are other exponential smoothing, which include more components, as discussed in [the previous section](#tsComponents). This includes but is not restricted with: Holt's [@Holt2004b] (originally proposed in 1957), Holt-Winter's [@Winters1960], multiplicative trend [@Pegels1969], Damped trend (originally proposed by @Roberts1982 and then picked up by @Gardner1985a), Damped trend Holt-Winters [@Gardner1989] and damped multiplicative trend methods [@Taylor2003]. We will not disuss them here one by one, as we will not use them further in this textbook. More importantly, all of them have underlying ETS models, so we should focus on them instead.
+There are other exponential smoothing, which include more components, as discussed in [the previous section](#tsComponents). This includes but is not restricted with: Holt's [@Holt2004b] (originally proposed in 1957), Holt-Winter's [@Winters1960], multiplicative trend [@Pegels1969], Damped trend (originally proposed by @Roberts1982 and then picked up by @Gardner1985a), Damped trend Holt-Winters [@Gardner1989] and damped multiplicative trend methods [@Taylor2003]. We will not disuss them here one by one, as we will not use them further in this textbook. More importantly, all of them have underlying ETS models, so we will focus on them instead.
 
 We already understand that there can be different components in time series and that they can interact with each other either in an additive or a multiplicative way, which gives us the aforementioned taxonomy. The equations discussed in [the previous section](#tsComponents) represent so called "measurement" or "observation" equations of the ETS models. But we should also reflect the potential change in components over time, in a similar manner done in the second equation of \@ref(eq:ETSANN). Here are several examples of ETS models with several components.
 
@@ -144,8 +154,6 @@ where $\beta$ is the smoothing parameter for the trend component. It has a simil
 Here is an example of the data that corresponds to the ETS(A,A,N) model:
 ```{r}
 x <- sim.es("AAN", 120, 1, 12, persistence=c(0.3,0.1), initial=c(1000,20), mean=0, sd=20)
-
-par(mfcol=c(1,1))
 plot(x)
 ```
 
