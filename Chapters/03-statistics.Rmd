@@ -5,19 +5,122 @@ Before we move to the dicussion of ETS, ARIMA and ADAM, it makes sense to discus
 ## Properties of estimators {#estimatesProperties}
 Before moving forward and discussing distributions and models, it is also quite important to make sure that we understand what **bias**, **efficiency** and **consistency** of estimates of parameters mean. Although there are strict statistical definitions of the aforementioned terms (you can easily find them in Wikipedia or anywhere else), I do not want to copy-paste them here, because there are only a couple of important points worth mentioning in our context.
 
+### Bias
 **Bias** refers to the expected difference between the estimated value of parameter (on a specific sample) and the "true" one (in the true model). Having unbiased estimates of parameters is important because they should lead to more accurate forecasts (at least in theory). For example, if the estimated parameter is equal to zero, while in fact it should be 0.5, then the model would not take the provided information into account correctly and as a result will produce less accurate point forecasts and incorrect prediction intervals. In inventory context this may mean that we constantly order 100 units less than needed only because the parameter is lower than it should be.
 
+The classical example of bias in statistics is the estimation of variance in sample. The following formula gives biased estimate of variance in sample:
+\begin{equation}
+    s^2 = \frac{1}{T} \sum_{j=1}^T \left( y_t - \bar{y} \right)^2,
+    (\#eq:varianceBiased)
+\end{equation}
+where $T$ is the sample size and $\bar{y} = \frac{1}{T} \sum_{j=1}^T y_t$ is the mean of the data. There is a lot of proofs in the literature of this issue (even @WikipediaVarianceBias2020 has one), we will not spend time on that. Instead, we will see this effect in the following simple simulation experiment:
+```{r}
+mu <- 100
+sigma <- 10
+nIterations <- 1000
+varianceValues <- vector("numeric",nIterations)
+varianceValuesBiased <- vector("numeric",nIterations)
+x <- rnorm(1000,mu,sigma)
+for(i in 1:nIterations){
+    varianceValuesBiased[i] <- mean((x[1:i]-mean(x[1:i]))^2)
+    varianceValues[i] <- var(x[1:i])
+}
+```
+This way we have generated 1000 samples, increasing the number of observations 10 times on each iteration. We have calculated standard deviation (square root of variance) using the formula \@ref(eq:varianceBiased) for each step. Now we can plot it in order to see how it worked out:
+```{r eval=FALSE}
+plot(10+1:nIterations,varianceValuesBiased, type="l", xlab="Sample size",ylab="Variance values")
+lines(10+1:nIterations,varianceValues, col="blue")
+abline(h=sigma^2, col="red")
+legend("bottomright", legend=c("Biased","Unbiased","Truth"), col=c("black","blue","red"), lwd=1)
+```
+![](../Figures/03-statistics-bias.png)
+
+Every run of this experiment will produce different plots, but typically what we will see is that, the biased estimate of variance (the black line) will be slightly below the unbiased one (the blue line) on small samples, and will converge to it assymptotically (with the increase of the sample size). In the example above, the black line is below the blue one all the time until the sample size becomes big enough that the difference between the two becomes negligible. This is the graphical presentation of the bias in the estimator.
+
+
+### Efficiency
 **Efficiency** means, if the sample size increases, then the estimated parameters will not change substantially, they will vary in a narrow range (variance of estimates will be small). In the case with inefficient estimates the increase of sample size from 50 to 51 observations may lead to the change of a parameter from 0.1 to, let’s say, 10. This is bad because the values of parameters usually influence both point forecasts and prediction intervals. As a result the inventory decision may differ radically from day to day. For example, we may decide that we urgently need 1000 units of product on Monday, and order it just to realise on Tuesday that we only need 100. Obviously this is an exaggeration, but no one wants to deal with such an erratically behaving model, so we need to have efficient estimates of parameters.
 
+Another classical example of not efficient estimator is the median, when used on the data that follows normal distribution. Here is a simple experiment demonstrating the idea:
+```{r}
+mu <- 100
+sigma <- 10
+nIterations <- 1000
+meanValues <- vector("numeric",nIterations)
+medianValues <- vector("numeric",nIterations)
+x <- rnorm(100000,mu,sigma)
+for(i in 1:nIterations){
+    meanValues[i] <- mean(x[1:(i*100)])
+    medianValues[i] <- median(x[1:(i*100)])
+}
+```
+
+In order to establish the efficiency of the estimators, we will take their variances and look at the ratio of mean over median. If both are equally efficient, then this ratio will be equal to one. If the mean is more efficient than the median, then the ratio will be less than one:
+
+```{r eval=FALSE}
+variancesRatios <- vector("numeric",nIterations-1)
+for(i in 2:nIterations){
+    variancesRatios[i-1] <- var(meanValues[1:i]) / var(medianValues[1:i])
+}
+plot(10+2:nIterations*100,variancesRatios, type="l", xlab="Sample size",ylab="Relative efficiency", ylim=range(c(1,variancesRatios)))
+abline(h=1, col="red")
+```
+![](../Figures/03-statistics-efficiency.png)
+
+What we should typically see on this graph, is that the back like should be below the red one, indicating that the variance of mean is lower than the variance of the median. This means that mean is more efficient estimator of the true location of the distribution $\mu$ than the median. In fact, it is easy to proove that asymptotically the mean will be 1.57 times more efficient than median [@WikipediaMedianEfficiency2020] (so, the line should converge to approximately 0.64).
+
+
+### Consistency
 **Consistency** means that our estimates of parameters will get closer to the stable values (true value in the population) with the increase of the sample size. This is important because in the opposite case estimates of parameters will diverge and become less and less realistic. This once again influences both point forecasts and prediction intervals, which will be less meaningful than they should have been. In a way consistency means that with the increase of the sample size the parameters will become more efficient and less biased. This in turn means that the more observations we have, the better.
+
+An example of inconsistent estimator is Chebyshev (or max norm) metric. It is formulated the following way:
+\begin{equation}
+    \text{LMax} = \max \left(|y_1-\hat{y}|, |y_2-\hat{y}|, \dots, |y_T-\hat{y}| \right).
+    (\#eq:chebyshevNorm)
+\end{equation}
+Minimising this norm, we can get an estimate $\hat{y}$ of the location parameter $\mu$. The simulation experiment becomes a bit more tricky in this situation, but here is the code to generate the estimates of the location parameter:
+```{r eval=FALSE}
+LMax <- function(x){
+    estimator <- function(par){
+        return(max(abs(x-par)));
+    }
+    
+    return(optim(mean(x), fn=estimator, method="Brent", lower=min(x), upper=max(x)));
+}
+
+mu <- 100
+sigma <- 10
+nIterations <- 1000
+x <- rnorm(10000, mu, sigma)
+LMaxEstimates <- vector("numeric", nIterations)
+for(i in 1:nIterations){
+    LMaxEstimates[i] <- LMax(x[1:(i*10)])$par;
+}
+```
+
+And here how the estimate looks with the increase of sample size:
+```{r eval=FALSE}
+plot(1:nIterations*10, LMaxEstimates, type="l", xlab="Sample size",ylab="Estimator of mu")
+abline(h=mu, col="red")
+```
+![](../Figures/03-statistics-consistency.png)
+
+While in the example with bias we could see that the lines converge to the red line (the true value) with the increase of the sample size, the Chebyshev metric example shows that the line does not approach the true one, even when the sample size is 10000 observations. The conclusion is that when Chebyshev metric is used, it produces inconsistent estimates of parameters.
+
 
 ```{block, type="remark"}
 There is a prejudice in the world of practitioners that the situation in the market changes so fast that the old observations become useless very fast. As a result many companies just through away the old data. Although, in general the statement about the market changes is true, the forecasters tend to work with the models that take this into account (e.g. Exponential smoothing, ARIMA, discussed in this book). These models adapt to the potential changes. So, we may benefit from the old data because it allows us getting more consistent estimates of parameters. Just keep in mind, that you can always remove the annoying bits of data but you can never un-throw away the data.
 ```
 
-Another important aspect to cover is what the term **asymptotic** means in our context. Here and after in this book, when this word is used, we refer to an unrealistic hypothetical situation of having all the data in the multiverse, where the time index $t \rightarrow \infty$. While this is impossible, the idea is useful, because asymptotic behaviour of estimators and models is helpful on large samples of data.
 
-Finally, we will use different estimation techniques throughout this book, one of the main of which is **Maximum Likelihood Estimate** (MLE). We will not go into explanation of what specifically this is at this stage, but a rough understanding should suffice. In case of MLE, we assume that a variable follows a parametric distribution and that the parameters of the model that we use can be optimised in order to maximise the respective probability density function. The main advantages of MLE is that it gives consistent, asymptotically efficient and normal estimates of parameters and allows doing model selection via information criteria.
+### Asymptotic normality
+Finally, **asymptotic normality** is not critical, but in many cases is a desired, useful property of estimates. What it tells us is that the distribution of the estimate of parameter will be well behaved with a specific mean (typically equal to $\mu$) and a fixed variance. Some of the statistical tests and mathematical derivations rely on this assumption. For example, when one conducts a significance test for parameters of model, this assumption is implied in the process. If the distribution is not normal, then the confidence intervals constructed for the parameters will be wrong together with the respective t- and p- values.
+
+
+### Asymptotics and Likelihood
+Another important aspect to cover is what the term **asymptotic**, which we have already used, means in our context. Here and after in this book, when this word is used, we refer to an unrealistic hypothetical situation of having all the data in the multiverse, where the time index $t \rightarrow \infty$. While this is impossible in practice, the idea is useful, because asymptotic behaviour of estimators and models is helpful on large samples of data. Besides, even if we deal with small samples, it is good to know what to expect to happen if the sample size increases.
+
+Finally, we will use different estimation techniques throughout this book, one of the main of which is **Maximum Likelihood Estimate** (MLE). We will not go into explanation of what specifically this is at this stage, but a rough understanding should suffice. In case of MLE, we assume that a variable follows some distribution and that the parameters of the model that we use can be optimised in order to maximise the respective probability density function. The main advantages of MLE is that it gives *consistent*, asymptotically *efficient* and normal estimates of parameters and allows doing model selection via information criteria.
 
 
 ## Typical assumptions of statistical models {#assumptions}
