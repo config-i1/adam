@@ -295,7 +295,7 @@ The point forecasts produced from this model do not correspond to the conditiona
 
 
 ## ETS models in the taxonomy
-I hope that it becomes clearer to the reader how the ETS framework is built upon the idea of [time series decomposition](#tsComponents). By introducing different components and defining their types and by adding the equations for their update, we can construct models that would work better on the time series at hands. Given different types of components and their interactions, we end up with 30 models in the taxonomy. Tables \@ref(tab:ETSAdditiveError) and \@ref(ETSMultiplicativeError) summarise all 30 ETS models, together with the point forecasts produced by them. **Note that not all the point forecasts correspond to the conditional expectations**. This issue applies to the models with multiplicative trend and / or multiplicative seasonality. In these cases, the conditional expectation might not have an analytical form, so when working with these models, simulations need to be used.
+I hope that it becomes clearer to the reader how the ETS framework is built upon the idea of [time series decomposition](#tsComponents). By introducing different components and defining their types and by adding the equations for their update, we can construct models that would work better on the time series at hands. Given different types of components and their interactions, we end up with 30 models in the taxonomy. Tables \@ref(tab:ETSAdditiveError) and \@ref(ETSMultiplicativeError) summarise all 30 ETS models, together with the point forecasts produced by them. In case of the additive error models, the point forecasts correspond to the expectations only, when the expectation of the error term is zero: $\text{E}(\epsilon_t)=0$, while in case of the multiplicative one the condition is typically that $\text{E}(1+\epsilon_t)=1$. However, **note that not all the point forecasts correspond to the conditional expectations**. This issue applies to the models with multiplicative trend and / or multiplicative seasonality. This is because SSOE models assume that different states are correlated (they have the same source of error) and as a result multiple steps ahead values of states introduce products of error terms. So, the conditional expectations in these cases might not have an analytical forms, and when working with these models, simulations might be required.
 
 ```{r ETSAdditiveError, echo=FALSE}
 # T="N"
@@ -425,6 +425,132 @@ kable_styling(kableTable, font_size=12, protect_latex=TRUE)
 ```
 
 
+```{r ETSMultiplicativeError, echo=FALSE}
+# T="N"
+etsAdditiveTable <- c("$\\begin{split}
+      &y_{t} = l_{t-1}(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1}(1 + \\alpha \\epsilon_t) \\\\
+      &\\hat{y}_{t+h} = l_{t} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} + \\alpha (l_{t-1} + s_{t-m})\\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma (l_{t-1} + s_{t-m})\\epsilon_t \\\\
+      &\\hat{y}_{t+h} = l_{t} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = l_{t-1} s_{t-m}(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1}(1 + \\alpha \\frac{\\epsilon_t}{s_{t-m}}) \\\\
+      &s_t = s_{t-m}(1 + \\gamma \\frac{\\epsilon_t}{l_{t-1}}) \\\\
+      &\\hat{y}_{t+h} = l_{t} s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
+    \\end{split}$",
+# T="A"
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} + b_{t-1})(1 + \\epsilon_t) \\\\
+      &l_t = (l_{t-1} + b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1} + \\beta (l_{t-1} + b_{t-1}) \\epsilon_t \\\\
+      &\\hat{y}_{t+h} = l_{t} + h b_t \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} + b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} + b_{t-1} + \\alpha (l_{t-1} + b_{t-1} + s_{t-m}) \\epsilon_t \\\\
+      &b_t = b_{t-1} + \\beta (l_{t-1} + b_{t-1} + s_{t-m}) \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma (l_{t-1} + b_{t-1} + s_{t-m}) \\epsilon_t \\\\
+      &\\hat{y}_{t+h} = l_{t} + h b_{t-1} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} + b_{t-1}) s_{t-m}(1 + \\epsilon_t) \\\\
+      &l_t = (l_{t-1} + b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1} + \\beta (l_{t-1} + b_{t-1}) \\epsilon_t \\\\
+      &s_t = s_{t-m} (1 + \\gamma \\epsilon_t) \\\\
+      &\\hat{y}_{t+h} = \\left(l_{t} + h b_{t-1}\\right) s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
+    \\end{split}$",
+# T="Ad"
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} + \\phi b_{t-1})(1 + \\epsilon_t) \\\\
+      &l_t = (l_{t-1} + \\phi b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
+      &b_t = \\phi b_{t-1} + \\beta (l_{t-1} + \\phi b_{t-1}) \\epsilon_t \\\\
+      &\\hat{y}_{t+h} = l_{t} + \\sum_{j=1}^h \\phi^j b_t \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} + \\phi b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha (l_{t-1} + \\phi b_{t-1} + s_{t-m}) \\epsilon_t \\\\
+      &b_t = \\phi b_{t-1} + \\beta (l_{t-1} + \\phi b_{t-1} + s_{t-m}) \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma (l_{t-1} + \\phi b_{t-1} + s_{t-m}) \\epsilon_t \\\\
+      &\\hat{y}_{t+h} = l_{t} + \\sum_{j=1}^h \\phi^j b_{t-1} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m}(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} + \\phi b_{t-1} (1 + \\alpha \\epsilon_t) \\\\
+      &b_t = \\phi b_{t-1} + \\beta (l_{t-1} + \\phi b_{t-1}) \\epsilon_t \\\\
+      &s_t = s_{t-m}(1 + \\gamma \\epsilon_t) \\\\
+      &\\hat{y}_{t+h} = \\left(l_{t} + \\sum_{j=1}^h \\phi^j b_t \\right) s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
+    \\end{split}$",
+# T="M"
+    "$\\begin{split}
+      &y_{t} = l_{t-1} b_{t-1} (1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1} (1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1} (1 + \\beta \\epsilon_t) \\\\
+      &\\hat{y}_{t+h} = l_{t} b_t^h \\\\
+      &\\mu_{y,t+h|t} \\text{- no closed form}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} b_{t-1} + s_{t-m}) + \\epsilon_t \\\\
+      &l_t = l_{t-1} b_{t-1} + \\alpha (l_{t-1} b_{t-1} + s_{t-m}) \\epsilon_t \\\\
+      &b_t = b_{t-1} + \\beta \\frac{l_{t-1} b_{t-1} + s_{t-m}}{l_{t-1}} \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma (l_{t-1} b_{t-1} + s_{t-m}) \\epsilon_t \\\\
+      &\\hat{y}_{t+h} = l_{t} b_{t-1}^h + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} \\text{- no closed form}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = l_{t-1} b_{t-1} s_{t-m}(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1} (1 + \\alpha \\frac{\\epsilon_t}{s_{t-m}}) \\\\
+      &b_t = b_{t-1} (1 + \\beta \\frac{\\epsilon_t}{l_{t-1}s_{t-m}}) \\\\
+      &s_t = s_{t-m} (1 + \\gamma \\frac{\\epsilon_t}{l_{t-1} b_{t-1}}) \\\\
+      &\\hat{y}_{t+h} = l_{t} b_{t-1}^h s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} \\text{- no closed form}
+    \\end{split}$",
+# T="Md"
+    "$\\begin{split}
+      &y_{t} = l_{t-1} b_{t-1}^\\phi (1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi (1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1}^\\phi (1 + \\beta \\epsilon_t) \\\\
+      &\\hat{y}_{t+h} = l_{t} b_t^{\\sum_{j=1}^h \\phi^j} \\\\
+      &\\mu_{y,t+h|t} \\text{- no closed form}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = (l_{t-1} b_{t-1}^\\phi + s_{t-m}) + \\epsilon_t \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha (l_{t-1} b_{t-1}^\\phi + s_{t-m}) \\epsilon_t \\\\
+      &b_t = b_{t-1}^\\phi + \\beta \\frac{l_{t-1} b_{t-1}^\\phi + s_{t-m}}{l_{t-1}} \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma (l_{t-1} b_{t-1}^\\phi + s_{t-m}) \\epsilon_t \\\\
+      &\\hat{y}_{t+h} = l_{t} b_{t-1}^{\\sum_{j=1}^h \\phi^j} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} \\text{- no closed form}
+    \\end{split}$",
+    "$\\begin{split}
+      &y_{t} = l_{t-1} b_{t-1}^\\phi s_{t-m}(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi (1 + \\alpha \\frac{\\epsilon_t}{s_{t-m}}) \\\\
+      &b_t = b_{t-1}^\\phi (1 + \\beta \\frac{\\epsilon_t}{l_{t-1}s_{t-m}}) \\\\
+      &s_t = s_{t-m} (1 + \\gamma \\frac{\\epsilon_t}{l_{t-1} b_{t-1}}) \\\\
+      &\\hat{y}_{t+h} = l_{t} b_{t-1}^{\\sum_{j=1}^h \\phi^j} s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} \\text{- no closed form}
+    \\end{split}$")
+etsAdditiveTable <- matrix(etsAdditiveTable, 5, 3, byrow=TRUE,
+                           dimnames=list(c("**No trend**","**Additive trend**","**Additive damped trend**",
+                                           "**Multiplicative trend**","**Multiplicative damped trend**"),
+                                         c("N","A","M")))
+kableTable <- kableExtra::kable(etsAdditiveTable, escape=FALSE, caption="Multiplicative error ETS models",
+                                col.names=c("Nonseasonal","Additive seasonality","Multiplicative seasonality"))
+kable_styling(kableTable, font_size=12, protect_latex=TRUE)
+```
 
 ## ETS assumptions
 
