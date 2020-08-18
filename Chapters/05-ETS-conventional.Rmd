@@ -121,7 +121,7 @@ This simple simulation shows that the higher $\alpha$ is, the higher variability
 
 When it comes to the application of this model to the data, the point forecast corresponds to the conditional h steps ahead mean and is equal to the last observed level:
 \begin{equation}
-    \mu_{y,t+h|t} = l_{t} ,
+    \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} ,
   (\#eq:ETSANNForecast)
 \end{equation}
 this holds because it is [assumed](#assumptions) that $\text{E}(\epsilon_t)=0$, which implies that the conditional h steps ahead expectation of the level in the model is $\text{E}(l_{t+h}|t)=l_t+\alpha\sum_{j=1}^{h-1}\epsilon_{t+j} = l_t$.
@@ -156,26 +156,44 @@ where $(1+\epsilon_t)$ corresponds to the $\varepsilon_t$ discussed in [the prev
   \end{split} ,
   (\#eq:ETSMNNEstimation)
 \end{equation}
-where $\hat{y}_t = \hat{l}_{t-1}$ and $e_t=\frac{y_t - \hat{y}_t}{\hat{y}_t}$. Substituting these values in \@ref{eq:ETSMNNEstimation} we obtain:
+where $\hat{y}_t = \hat{l}_{t-1}$ and $e_t=\frac{y_t - \hat{y}_t}{\hat{y}_t}$. Substituting these values in \@ref(eq:ETSMNNEstimation) we obtain:
 \begin{equation}
   \begin{split}
     y_{t} &= \hat{y}_t (1 + e_t) \\
-    \hat{y}_{t+1} &= \hat{y}_t (1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t})
+    \hat{y}_{t+1} &= \hat{y}_t \left(1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t} \right)
   \end{split} .
   (\#eq:ETSMNNEstimation2)
 \end{equation}
 Substituting $y_t$ with $\hat{y}_t(1+e_t)$, shifting the indices one step ahead and inserting the second equation to the first one, we get:
 \begin{equation}
-    \hat{y}_{t+1} = \hat{y}_t (1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t}).
+    \hat{y}_{t+1} = \hat{y}_t \left(1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t} \right).
   (\#eq:ETSMNNEstimation3)
 \end{equation}
-Finally, opening the brackets, we get the SES in the form similar to \@ref{eq:SESErrorCorrection}:
+Finally, opening the brackets, we get the SES in the form similar to \@ref(eq:SESErrorCorrection):
 \begin{equation}
     \hat{y}_{t+1} = \hat{y}_t + \hat{\alpha} (y_t - \hat{y}_t).
   (\#eq:ETSMNNEstimation4)
 \end{equation}
 
-This example demonstratesonce again the difference between the forecasting method and the forecasting model. When we use SES, we ignore the distributional assumptions, which restricts the usage of the method.
+This example demonstratesonce again the difference between the forecasting method and the forecasting model. When we use SES, we ignore the distributional assumptions, which restricts the usage of the method. The main features of ETS(M,N,N) model in comparison with ETS(A,N,N) are:
+
+1. The variance of the actual values in ETS(M,N,N) increases with the increase of the level $l_{t}$. This allows modelling heteroscedasticity situation in the data;
+2. If $(1+\epsilon_t)$ is always positive, then the ETS(M,N,N) model will always produce only positive forecasts (both point and interval). This makes this model applicable to the data with low level;
+
+An alternative to \@ref(eq:ETSMNN) would be the model \@ref(eq:ETSANN) applied to the data in logarithms (assuming that the data we work with is always positive). However, the ETS(M,N,N) does not rely on exponentiation of the values, making it safe in cases, when very high values are produced by the model (e.g. `exp(1000)` returns infinity in R).
+
+Finally, the point forecast of ETS(M,N,N) corresponds to the conditional h steps ahead mean and is equal to the last observed level, but only if $\text{E}(1+\epsilon_t)=1$:
+\begin{equation}
+    \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} .
+  (\#eq:ETSMNNForecast)
+\end{equation}
+
+And here is an example with the ETS(M,N,N) data, which is very similar to the ETS(A,N,N) one:
+```{r ETSMNNExample}
+x <- sim.es("MNN", 120, 1, 12, persistence=0.3, initial=1000)
+ourModel <- es(x$data, "MNN", h=12, interval=TRUE, holdout=TRUE, silent=FALSE)
+ourModel
+```
 
 
 ## Sevaral examples of exponential smoothing methods and ETS
@@ -205,7 +223,7 @@ As you might notice, the trend is not deterministic in this model: both the inte
 
 The point forecast h steps ahead from this model is a straight line with a slope $b_t$:
 \begin{equation}
-    \mu_{y,t+h|t} = l_{t} + h b_t.
+    \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} + h b_t.
   (\#eq:ETSAANForecast)
 \end{equation}
 This becomes apparent if one takes the conditional expectations E$(l_{t+h}|t)$ and E$(b_{t+h}|t)$ in the second and third equations of \@ref(eq:ETSAAN). Graphically it will look like this:
@@ -238,7 +256,7 @@ plot(x)
 
 The point forecast from this model is a bit more complicated:
 \begin{equation}
-    \mu_{y,t+h|t} = l_{t} + \sum_{j=1}^h \phi^j b_t.
+    \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} + \sum_{j=1}^h \phi^j b_t.
   (\#eq:ETSAANForecast)
 \end{equation}
 It corresponds to the slowing down trajectory:
@@ -266,7 +284,7 @@ plot(x)
 
 Finally, the point forecast from this model are based on the ETS(A,A,N):
 \begin{equation}
-    \hat{y}_{t+h|t} = (l_{t} + h b_t) s_{t+h-m\lceil\frac{h}{m}\rceil},
+    \hat{y}_{t+h} = (l_{t} + h b_t) s_{t+h-m\lceil\frac{h}{m}\rceil},
   (\#eq:ETSAANForecast)
 \end{equation}
 where $\lceil\frac{h}{m}\rceil$ is the rounded up value of the fraction in the brackets.
@@ -279,39 +297,36 @@ The point forecasts produced from this model do not correspond to the conditiona
 ## ETS models in the taxonomy
 I hope that it becomes clearer to the reader how the ETS framework is built upon the idea of [time series decomposition](#tsComponents). By introducing different components and defining their types and by adding the equations for their update, we can construct models that would work better on the time series at hands. Given different types of components and their interactions, we end up with 30 models in the taxonomy. Tables ??? and ??? summarise all 30 ETS models, together with the point forecasts produced by them. **Note that not all the point forecasts correspond to the conditional expectations**. This issue applies to the models with multiplicative trend and / or multiplicative seasonality. In these cases, the conditional expectation might not have an analytical form, so when working with these models, simulations need to be used.
 
-\begin{table}
-  \begin{tabular}{l c c c}
-        &  S="N" & S="A" & S="M"
-  \toprule
-  T="N" &
-  \begin{equation}
-    \begin{split}
-      y_{t} &= l_{t-1} + \epsilon_t \\
-      l_t &= l_{t-1} + \alpha \epsilon_t \\
-      \hat{y}_{t+h} = l_{t} \\
-      \mu_{y,t+h|t} = \hat{y}_{t+h}
-    \end{split}
-  \end{equation} &
-  \begin{equation}
-    \begin{split}
-      y_{t} &= l_{t-1} + s_{t-m} + \epsilon_t \\
-      l_t &= l_{t-1} + \alpha \epsilon_t \\
-      s_t &= s_{t-m} + \gamma \epsilon_t \\
-      \hat{y}_{t+h} = l_{t} + s_{t+h-m\lceil\frac{h}{m}\rceil} \\
-      \mu_{y,t+h|t} = \hat{y}_{t+h}
-    \end{split}
-  \end{equation} &
-  \begin{equation}
-    \begin{split}
-      y_{t} &= l_{t-1} s_{t-m} + \epsilon_t \\
-      l_t &= l_{t-1} + \alpha \frac{\epsilon_t}{s_{t-m}} \\
-      s_t &= s_{t-m} + \gamma \frac{\epsilon_t}{l_{t-1}} \\
-      \hat{y}_{t+h} = l_{t} + s_{t+h-m\lceil\frac{h}{m}\rceil} \\
-      \mu_{y,t+h|t} = \hat{y}_{t+h} \text{ only for } h \leq m
-    \end{split}
-  \end{equation}
-  \end{tabular}
-\end{table}
+---------------------------
+| | S="N" | S="A" | S="M" |
+---------------------------
+T="N" |
+\begin{equation}
+  \begin{split}
+    y_{t} &= l_{t-1} + \epsilon_t \\
+    l_t &= l_{t-1} + \alpha \epsilon_t \\
+    \hat{y}_{t+h} = l_{t} \\
+    \mu_{y,t+h|t} = \hat{y}_{t+h}
+  \end{split}
+\end{equation} |
+\begin{equation}
+  \begin{split}
+    y_{t} &= l_{t-1} + s_{t-m} + \epsilon_t \\
+    l_t &= l_{t-1} + \alpha \epsilon_t \\
+    s_t &= s_{t-m} + \gamma \epsilon_t \\
+    \hat{y}_{t+h} = l_{t} + s_{t+h-m\lceil\frac{h}{m}\rceil} \\
+    \mu_{y,t+h|t} = \hat{y}_{t+h}
+  \end{split}
+\end{equation} |
+\begin{equation}
+  \begin{split}
+    y_{t} &= l_{t-1} s_{t-m} + \epsilon_t \\
+    l_t &= l_{t-1} + \alpha \frac{\epsilon_t}{s_{t-m}} \\
+    s_t &= s_{t-m} + \gamma \frac{\epsilon_t}{l_{t-1}} \\
+    \hat{y}_{t+h} = l_{t} + s_{t+h-m\lceil\frac{h}{m}\rceil} \\
+    \mu_{y,t+h|t} = \hat{y}_{t+h} \text{ only for } h \leq m
+  \end{split}
+\end{equation} |
 
 
 ## ETS assumptions
