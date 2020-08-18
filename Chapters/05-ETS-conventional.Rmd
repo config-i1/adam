@@ -65,7 +65,8 @@ In this form, the smoothing parameter $\hat{\alpha}$ regulates how much the mode
 
 As you see, this is a very simple method. It is easy to explain it to practitioners and it is very easy to implement in practice. However, this is just a [forecasting method](#intro), so it just gives a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.
 
-## SES and ETS(A,N,N)
+## SES and ETS
+### ETS(A,N,N)
 There have been several tries to develop statistical models, underlying SES, and we know now that it has underlying ARIMA(0,1,1), local level MSOE (Multiple Source of Error) model [@Muth1960] and SSOE (Single Source of Error) model [@Snyder1985]. According to [@Hyndman2002], the ETS(A,N,N) model also underlies the SES method. It can be formulated in the following way:
 \begin{equation}
   \begin{split}
@@ -88,12 +89,12 @@ and also take that $\hat{y}_t=l_{t-1}$:
     y_{t} &= \hat{y}_{t} + e_t \\
     \hat{y}_{t} &= \hat{y}_{t-1} + \hat{\alpha} e_{t-1}
   \end{split} .
-  (\#eq:ETSANNEstimation3)
+  (\#eq:ETSANNEstimation2)
 \end{equation}
 Inserting the second equation in the first one and substituting $y_t$ with $\hat{y}_t+e_t$ we get:
 \begin{equation}
     \hat{y}_t+e_t = \hat{y}_{t-1} + \hat{\alpha} e_{t-1} + e_t ,
-  (\#eq:ETSANNEstimation4)
+  (\#eq:ETSANNEstimation3)
 \end{equation}
 cancelling out $e_t$ and shifting everything by one step ahead, we obtain the error correction form \@ref(eq:SESErrorCorrection) of SES.
 
@@ -138,8 +139,46 @@ ourModel <- es(x$data, "ANN", h=12, interval=TRUE, holdout=TRUE, silent=FALSE, p
 ```
 In this case, the prediction interval is wider than needed and the forecast is biased - the model does not keep up to the fast changing time series. So, it is important to correctly estimate the smoothing parameters not only to approximate the data, but also to produce less biased point forecast and more appropriate prediction interval.
 
+### ETS(M,N,N)
+@Hyndman2008b also demonstrate that there is another ETS model, underlying SES. It is the model with multiplicative error, which is formulated in the following way:
+\begin{equation}
+  \begin{split}
+    y_{t} &= l_{t-1}(1 + \epsilon_t) \\
+    l_t &= l_{t-1}(1 + \alpha \epsilon_t)
+  \end{split} ,
+  (\#eq:ETSMNN)
+\end{equation}
+where $(1+\epsilon_t)$ corresponds to the $\varepsilon_t$ discussed in [the previous section](#tsComponents). In order to see the connection of this model with SES, we need to revert to the estimation of the model on the data again:
+\begin{equation}
+  \begin{split}
+    y_{t} &= \hat{l}_{t-1}(1 + e_t) \\
+    \hat{l}_t &= \hat{l}_{t-1}(1 + \hat{\alpha} e_t)
+  \end{split} ,
+  (\#eq:ETSMNNEstimation)
+\end{equation}
+where $\hat{y}_t = \hat{l}_{t-1}$ and $e_t=\frac{y_t - \hat{y}_t}{\hat{y}_t}$. Substituting these values in \@ref{eq:ETSMNNEstimation} we obtain:
+\begin{equation}
+  \begin{split}
+    y_{t} &= \hat{y}_t (1 + e_t) \\
+    \hat{y}_{t+1} &= \hat{y}_t (1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t})
+  \end{split} .
+  (\#eq:ETSMNNEstimation2)
+\end{equation}
+Substituting $y_t$ with $\hat{y}_t(1+e_t)$, shifting the indices one step ahead and inserting the second equation to the first one, we get:
+\begin{equation}
+    \hat{y}_{t+1} = \hat{y}_t (1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t}).
+  (\#eq:ETSMNNEstimation3)
+\end{equation}
+Finally, opening the brackets, we get the SES in the form similar to \@ref{eq:SESErrorCorrection}:
+\begin{equation}
+    \hat{y}_{t+1} = \hat{y}_t + \hat{\alpha} (y_t - \hat{y}_t).
+  (\#eq:ETSMNNEstimation4)
+\end{equation}
 
-## Other exponential smoothing methods and ETS
+This example demonstratesonce again the difference between the forecasting method and the forecasting model. When we use SES, we ignore the distributional assumptions, which restricts the usage of the method.
+
+
+## Sevaral examples of exponential smoothing methods and ETS
 There are other exponential smoothing, which include more components, as discussed in [the previous section](#tsComponents). This includes but is not restricted with: Holt's [@Holt2004b] (originally proposed in 1957), Holt-Winter's [@Winters1960], multiplicative trend [@Pegels1969], Damped trend (originally proposed by @Roberts1982 and then picked up by @Gardner1985a), Damped trend Holt-Winters [@Gardner1989] and damped multiplicative trend methods [@Taylor2003]. We will not disuss them here one by one, as we will not use them further in this textbook. More importantly, all of them have underlying ETS models, so we will focus on them instead.
 
 We already understand that there can be different components in time series and that they can interact with each other either in an additive or a multiplicative way, which gives us the aforementioned taxonomy. The equations discussed in [the previous section](#tsComponents) represent so called "measurement" or "observation" equations of the ETS models. But we should also reflect the potential change in components over time, in a similar manner done in the second equation of \@ref(eq:ETSANN). Here are several examples of ETS models with several components.
@@ -169,7 +208,17 @@ The point forecast h steps ahead from this model is a straight line with a slope
     \mu_{y,t+h|t} = l_{t} + h b_t.
   (\#eq:ETSAANForecast)
 \end{equation}
-This becomes apparent if one takes the conditional expectations E$(l_{t+h}|t)$ and E$(b_{t+h}|t)$ in the second and third equations of \@ref(eq:ETSAAN).
+This becomes apparent if one takes the conditional expectations E$(l_{t+h}|t)$ and E$(b_{t+h}|t)$ in the second and third equations of \@ref(eq:ETSAAN). Graphically it will look like this:
+```{r}
+esModel <- es(x, h=10, silent=FALSE)
+```
+
+If you want to experiment with the model and see how its parameters influence the fit and forecast, you can use the following R code:
+```{r eval=FALSE}
+esModel <- es(x$data, h=10, silent=FALSE, persistence=c(0.2,0.1))
+```
+where `persistence` is the vector of smoothing parameters (first $\alpha$, then $\beta$).
+
 
 ### ETS(A,Ad,N)
 This is the model that underlies Damped trend method [@Roberts1982]:
@@ -181,11 +230,89 @@ This is the model that underlies Damped trend method [@Roberts1982]:
   \end{split} ,
   (\#eq:ETSAAdN)
 \end{equation}
-where $\phi$ is the dampening parameter, typically lying between 0 and 1. If it is equal to zero, then the model \@ref(eq:ETSAAdN) reduces to \@ref(eq:ETSANN). If it is equal to one, then it becomes equivalent to \@ref(eq:ETSAAN). The dampening parameter slows down the trend, making it non-linear. The point forecast from this model is a bit more complicated:
+where $\phi$ is the dampening parameter, typically lying between 0 and 1. If it is equal to zero, then the model \@ref(eq:ETSAAdN) reduces to \@ref(eq:ETSANN). If it is equal to one, then it becomes equivalent to \@ref(eq:ETSAAN). The dampening parameter slows down the trend, making it non-linear. The typical data that corresponds to ETS(A,Ad,N) is:
+```{r}
+x <- sim.es("AAdN", 120, 1, 12, persistence=c(0.3,0.1), initial=c(1000,20), phi=0.95, mean=0, sd=20)
+plot(x)
+```
+
+The point forecast from this model is a bit more complicated:
 \begin{equation}
     \mu_{y,t+h|t} = l_{t} + \sum_{j=1}^h \phi^j b_t.
   (\#eq:ETSAANForecast)
 \end{equation}
+It corresponds to the slowing down trajectory:
+```{r}
+esModel <- es(x, h=10, silent=FALSE)
+```
 
-### ETS(A,A,A)
+
+### ETS(A,A,M)
+Finaly, this is an exotic model with additive error and trend, but multiplicative seasonality. Still, we list it here, because it underlies the Holt-Winters method [@Winters1960]:
+\begin{equation}
+  \begin{split}
+    y_{t} &= (l_{t-1} + b_{t-1}) s_{t-m} + \epsilon_t \\
+    l_t &= l_{t-1} + b_{t-1} + \alpha \frac{\epsilon_t}{s_{t-m}} \\
+    b_t &= b_{t-1} + \beta \frac{\epsilon_t}{s_{t-m}} \\
+    s_t &= s_{t-m} + \gamma \frac{\epsilon_t}{l_{t-1}+b_{t-1}}
+  \end{split} ,
+  (\#eq:ETSAAM)
+\end{equation}
+where $s_t$ is the seasonal component and $\gamma$ is its smoothing parameter. This is one of the potentially unstable models, which due to the mix of components might produce unreasonable forecasts. Still, it might work on the strictly positive high level data. Here how the data for this model can look like:
+```{r}
+x <- sim.es("AAM", 120, 1, 4, persistence=c(0.3,0.1), initial=c(1000,20), initialSeason=c(0.9,1.1,0.8,1.2), mean=0, sd=20)
+plot(x)
+```
+
+Finally, the point forecast from this model are based on the ETS(A,A,N):
+\begin{equation}
+    \hat{y}_{t+h|t} = (l_{t} + h b_t) s_{t+h-m\lceil\frac{h}{m}\rceil},
+  (\#eq:ETSAANForecast)
+\end{equation}
+where $\lceil\frac{h}{m}\rceil$ is the rounded up value of the fraction in the brackets.
+
+```{block, type="remark"}
+The point forecasts produced from this model do not correspond to the conditional expectations. This will be discussed in the next chapters.
+```
+
+
+## ETS models in the taxonomy
+I hope that it becomes clearer to the reader how the ETS framework is built upon the idea of [time series decomposition](#tsComponents). By introducing different components and defining their types and by adding the equations for their update, we can construct models that would work better on the time series at hands. Given different types of components and their interactions, we end up with 30 models in the taxonomy. Tables ??? and ??? summarise all 30 ETS models, together with the point forecasts produced by them. **Note that not all the point forecasts correspond to the conditional expectations**. This issue applies to the models with multiplicative trend and / or multiplicative seasonality. In these cases, the conditional expectation might not have an analytical form, so when working with these models, simulations need to be used.
+
+\begin{table}
+  \begin{tabular}{l c c c}
+        &  S="N" & S="A" & S="M"
+  \toprule
+  T="N" &
+  \begin{equation}
+    \begin{split}
+      y_{t} &= l_{t-1} + \epsilon_t \\
+      l_t &= l_{t-1} + \alpha \epsilon_t \\
+      \hat{y}_{t+h} = l_{t} \\
+      \mu_{y,t+h|t} = \hat{y}_{t+h}
+    \end{split}
+  \end{equation} &
+  \begin{equation}
+    \begin{split}
+      y_{t} &= l_{t-1} + s_{t-m} + \epsilon_t \\
+      l_t &= l_{t-1} + \alpha \epsilon_t \\
+      s_t &= s_{t-m} + \gamma \epsilon_t \\
+      \hat{y}_{t+h} = l_{t} + s_{t+h-m\lceil\frac{h}{m}\rceil} \\
+      \mu_{y,t+h|t} = \hat{y}_{t+h}
+    \end{split}
+  \end{equation} &
+  \begin{equation}
+    \begin{split}
+      y_{t} &= l_{t-1} s_{t-m} + \epsilon_t \\
+      l_t &= l_{t-1} + \alpha \frac{\epsilon_t}{s_{t-m}} \\
+      s_t &= s_{t-m} + \gamma \frac{\epsilon_t}{l_{t-1}} \\
+      \hat{y}_{t+h} = l_{t} + s_{t+h-m\lceil\frac{h}{m}\rceil} \\
+      \mu_{y,t+h|t} = \hat{y}_{t+h} \text{ only for } h \leq m
+    \end{split}
+  \end{equation}
+  \end{tabular}
+\end{table}
+
+
+## ETS assumptions
 
