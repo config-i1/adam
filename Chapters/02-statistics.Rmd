@@ -44,7 +44,7 @@ Every run of this experiment will produce different plots, but typically what we
 ### Efficiency
 **Efficiency** means, if the sample size increases, then the estimated parameters will not change substantially, they will vary in a narrow range (variance of estimates will be small). In the case with inefficient estimates the increase of sample size from 50 to 51 observations may lead to the change of a parameter from 0.1 to, let’s say, 10. This is bad because the values of parameters usually influence both point forecasts and prediction intervals. As a result the inventory decision may differ radically from day to day. For example, we may decide that we urgently need 1000 units of product on Monday, and order it just to realise on Tuesday that we only need 100. Obviously this is an exaggeration, but no one wants to deal with such an erratically behaving model, so we need to have efficient estimates of parameters.
 
-Another classical example of not efficient estimator is the median, when used on the data that follows normal distribution. Here is a simple experiment demonstrating the idea:
+Another classical example of not efficient estimator is the median, when used on the data that follows Normal distribution. Here is a simple experiment demonstrating the idea:
 ```{r}
 mu <- 100
 sigma <- 10
@@ -123,7 +123,7 @@ There is a prejudice in the world of practitioners that the situation in the mar
 
 
 ### Asymptotic normality
-Finally, **asymptotic normality** is not critical, but in many cases is a desired, useful property of estimates. What it tells us is that the distribution of the estimate of parameter will be well behaved with a specific mean (typically equal to $\mu$) and a fixed variance. Some of the statistical tests and mathematical derivations rely on this assumption. For example, when one conducts a significance test for parameters of model, this assumption is implied in the process. If the distribution is not normal, then the confidence intervals constructed for the parameters will be wrong together with the respective t- and p- values.
+Finally, **asymptotic normality** is not critical, but in many cases is a desired, useful property of estimates. What it tells us is that the distribution of the estimate of parameter will be well behaved with a specific mean (typically equal to $\mu$) and a fixed variance. Some of the statistical tests and mathematical derivations rely on this assumption. For example, when one conducts a significance test for parameters of model, this assumption is implied in the process. If the distribution is not Normal, then the confidence intervals constructed for the parameters will be wrong together with the respective t- and p- values.
 
 
 ### Asymptotics and Likelihood {#asymptoticsAndLikelihood}
@@ -199,7 +199,7 @@ Now that we have a basic understanding of these statistical terms, we can move t
 There are several probability distributions that will be helpful in the further chapters of this textbook. Here, I want to briefly discuss those of them that will be used. While this might not seem important at this point, we might refer to this section of the textbook in the next chapters.
 
 ### Normal distribution
-Every statistical textbook has normal distribution. It is that one famous bell-curved distribution that every statistician likes because it is easy to work with and it is an asymptotic distribution for many other well-behaved distributions in some conditions (so called "Central Limit Theorem"). Here is the probability density function (PDF) of this distribution:
+Every statistical textbook has Normal distribution. It is that one famous bell-curved distribution that every statistician likes because it is easy to work with and it is an asymptotic distribution for many other well-behaved distributions in some conditions (so called "Central Limit Theorem"). Here is the probability density function (PDF) of this distribution:
 \begin{equation}
     f(y_t) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} \right) ,
     (\#eq:Normal)
@@ -209,7 +209,7 @@ where $y_t$ is the value of the response variable, $\mu_t$ is the mean on observ
     \hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^T \left(y_t - \mu_t \right)^2 ,
     (\#eq:sigmaNormal)
 \end{equation}
-which coincides with Mean Squared Error (MSE), discussed in the [section 1](#errorMeasures).
+where $T$ is the sample size. \@ref(eq:sigmaNormal) coincides with Mean Squared Error (MSE), discussed in the [section 1](#errorMeasures).
 
 And here how this distribution looks:
 
@@ -219,11 +219,25 @@ abline(v=0, col="red")
 text(0.5,0.05,TeX("$\\mu =0$"))
 ```
 
-What we typically assume in the basic time series models is that a variable is random and follows normal distribution, meaning that there is a central tendency (in our case - the mean $mu$), around which the concentration of values is the highest and there are other potential cases, but their probability of appearance reduces proportionally to the distance from the centre.
+What we typically assume in the basic time series models is that a variable is random and follows Normal distribution, meaning that there is a central tendency (in our case - the mean $mu$), around which the concentration of values is the highest and there are other potential cases, but their probability of appearance reduces proportionally to the distance from the centre.
 
-The normal distribution has skewness of zero and kurtosis of 3 (and excess kurtosis, being kurtosis minus three, of 0).
+The Normal distribution has skewness of zero and kurtosis of 3 (and excess kurtosis, being kurtosis minus three, of 0).
 
-Additionally, if normal distribution is used for the maximum likelihood estimation of a model, it gives the same parameters as the minimisation of MSE would give.
+Additionally, if Normal distribution is used for the maximum likelihood estimation of a model, it gives the same parameters as the minimisation of MSE would give.
+
+The log-likelihood based on the Normal distribution is derived by taking the sum of logarithms of the PDF of Normal distribution \@ref(eq:Normal):
+\begin{equation}
+    \ell(\mathbf{Y}| \theta, \sigma^2) = - \frac{T}{2} \log \left(2 \pi \sigma^2\right) - \sum_{t=1}^T \frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} ,
+    (\#eq:NormalLogLik)
+\end{equation}
+where $\theta$ is the vector of all the estimated parameters in the model, and $\log$ is the natural logarithm. If one takes the derivative of @\ref(eq:NormalLogLik) with respect to $\sigma^2$, then the formula \@ref(eq:sigmaNormal) is obtained. Another useful thing to note is the concentrated log-likelihood, which is obtained by inserting the estimated variance \@ref(eq:sigmaNormal) in \@ref(eq:NormalLogLik):
+\begin{equation}
+    \ell(\mathbf{Y}| \theta, \hat{\sigma}^2) = - \frac{T}{2} \log \left( 2 \pi e \hat{\sigma}^2 \right) ,
+    (\#eq:NormalLogLikConcentrated)
+\end{equation}
+where $e$ is the Euler's constant. The concentrated log-likelihood is handy, when estimating the model and calculating [information criteria](#modelSelection). Sometimes, statisticians drop the $2 \pi e$ part from the \@ref(eq:NormalLogLikConcentrated), because it does not affect any inferences, as long as one works only with Normal distribution (for example, this is what is done in `ets()` function from `forecast` package in R). However, it is not advised to do, because this makes the comparison with other distributions impossible.
+
+Normal distribution is available in `stats` package with `dnorm()`, `qnorm()`, `pnorm()` and `rnorm()` functions.
 
 
 ### Laplace distribution
@@ -246,7 +260,9 @@ plot(seq(-3,3,0.01),dlaplace(seq(-3,3,0.01)),type="l",ylab="Density",xlab="x",ma
 abline(v=0, col="red")
 ```
 
-Similar to the normal distribution, the skewness of Laplace is equal to zero. However, it has fatter tails - its kurtosis is equal to 6 instead of 3.
+Similar to the Normal distribution, the skewness of Laplace is equal to zero. However, it has fatter tails - its kurtosis is equal to 6 instead of 3.
+
+
 
 The `dlaplace`, `qlaplace`, `plaplace` and `rlaplace` functions from `greybox` package implement different sides of Laplace distribution in R.
 
@@ -273,7 +289,7 @@ The `ds`, `qs`, `ps` and `rs` from `greybox` package implement the density, quan
 
 
 ### Generalised Normal distribution
-Generalised Normal ($\mathcal{GN}$) distribution (as the name says) is a generalisation for normal distribution, which also includes Laplace and S as special cases [@Nadarajah2005]. There are two versions of this distribution: one with a shape and another with a skewness parameter. We are mainly interested in the first one, which has the following PDF:
+Generalised Normal ($\mathcal{GN}$) distribution (as the name says) is a generalisation for Normal distribution, which also includes Laplace and S as special cases [@Nadarajah2005]. There are two versions of this distribution: one with a shape and another with a skewness parameter. We are mainly interested in the first one, which has the following PDF:
 \begin{equation}
     f(y_t) = \frac{\lambda}{2 s \Gamma(\lambda^{-1})} \exp \left( -\left(\frac{|y_t - \mu_t|}{s}\right)^{\lambda} \right),
     (\#eq:GND)
@@ -437,7 +453,7 @@ where $k_j$ is the number of all estimated parameters in the model $j$ (this typ
 
 After that, there have been proposed different other criteria, motivated by similar ideas, among which it is worth mentioning:
 
-- AICc [@Sugiura1978], which is a sample corrected version of AIC (taking number of observations into account) for normal and related distributions:
+- AICc [@Sugiura1978], which is a sample corrected version of AIC (taking number of observations into account) for Normal and related distributions:
 \begin{equation}
     \text{AICc}_j = 2 \frac{T}{T-k_j-1} k_j - 2 \ell_j
     (\#eq:AICc),
@@ -460,7 +476,7 @@ In general, it is recommended to use the sample-corrected versions of criteria (
 
 A thing to note is that the approach relies on asymptotic properties of estimators and in fact assumes that the parameters estimation method used in the process, guarantees that the likelihood functions of the models are maximised. In fact, it relies on [asymptotic](#asymptoticsAndLikelihood) behaviour of parameters, so it is not very important to get to the maximum of the likelihood in sample. However, it is more important to use an estimation method that will guarantee consistent maximisation of the likelihood.
 
-Summarising, the idea of model selection via information criteria is to form a pool of competing models, construct them, calculate likelihood function, based on them - an information criterion, and finally, select the model that has the lowest value. This approach is relatively fast (in contrast comparison with cross-validation, judgmental selection or meta learning) and has good theory behind it. It can also be shown that in case of normal distribution, the selection for time series models based on AIC is asymptotically equivalent to the selection based on [leave-one-out cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)#Leave-one-out_cross-validation) with MSE. This becomes relatively straightforward, if we recall that typically time series models rely on one step ahead errors $(e_t = y_t - \mu_{t|t-1})$ and that the maximum of the likelihood of normal distribution gives the same estimates as the minimum of MSE.
+Summarising, the idea of model selection via information criteria is to form a pool of competing models, construct them, calculate likelihood function, based on them - an information criterion, and finally, select the model that has the lowest value. This approach is relatively fast (in contrast comparison with cross-validation, judgmental selection or meta learning) and has good theory behind it. It can also be shown that in case of Normal distribution, the selection for time series models based on AIC is asymptotically equivalent to the selection based on [leave-one-out cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)#Leave-one-out_cross-validation) with MSE. This becomes relatively straightforward, if we recall that typically time series models rely on one step ahead errors $(e_t = y_t - \mu_{t|t-1})$ and that the maximum of the likelihood of Normal distribution gives the same estimates as the minimum of MSE.
 
 As for the disadvantages of the approach, as mentioned above, it relies on the in-sample value of the likelihood, based on one step ahead error, and does not guarantee that the selected model will perform well for the holdout for multiple steps ahead. Using the cross-validation or [rolling origin](#rollingOrigin) for the full horizon could be a better option if you suspect that information criteria do not work. Furthermore, any criterion is random on its own, and will change with the change of the sample size. This means that there is a model selection uncertainty and that the best model might change with the new observations. In order to address this issue, combination of models can be used instead, which allows mitigating this uncertainty.
 
@@ -468,10 +484,10 @@ As for the disadvantages of the approach, as mentioned above, it relies on the i
 ### Calculating number of parameters in models
 When doing model selection and calculating different statistics, it is important to know how many parameters were estimated in the model. While this might seems like a trivial question for some, it has several caveats. Interestingly, this is not discussed in detail by many authors.
 
-When it comes to the calculation of information criteria, the general idea is to calculate the number of **all the independent estimated parameters** $k$. This typically includes all the initial components and all the coefficients of the model, together with the scale, shape and shift parameters of the assumed distribution (e.g. variance in the normal distribution).
+When it comes to the calculation of information criteria, the general idea is to calculate the number of **all the independent estimated parameters** $k$. This typically includes all the initial components and all the coefficients of the model, together with the scale, shape and shift parameters of the assumed distribution (e.g. variance in the Normal distribution).
 
 ```{example}
-In a simple regression model with intercept: $y_t = b_0 + b_1 x_t + e_t$ - assuming normal distribution for $e_t$, using the MLE will result in $k=3$: the two parameters of the model ($b_0$ and $b_1$) and the variance of the error term $\sigma^2$.
+In a simple regression model with intercept: $y_t = b_0 + b_1 x_t + e_t$ - assuming Normal distribution for $e_t$, using the MLE will result in $k=3$: the two parameters of the model ($b_0$ and $b_1$) and the variance of the error term $\sigma^2$.
 ```
 
 If likelihood is not used, then the number of parameters might be different. For example, if we estimate the model via the minimisation of MSE (similar to OLS), then the number of all estimated parameters does not include the variance anymore - it is obtained as a by product of the estimation. This is because the likelihood needs to have all the parameters of distribution in order to maximise it, but with MSE, we just minimise the mean of squared errors, and the variance of the distribution is obtained automatically. While the values of parameters might be the same, the logic is slightly different.
@@ -480,7 +496,7 @@ If likelihood is not used, then the number of parameters might be different. For
 This means that for the same simple linear regression, the number of estimated parameters is equal to 2.
 ```
 
-Note that typically, the scale, shape and shift parameters that maximise the likelihood are biased and do not coincide with the ones typically used in the OLS. For example, in case of normal distribuiton, OLS estimate of variance has $T-k$ in the denominator, while the likelihood one has just $T$.
+Note that typically, the scale, shape and shift parameters that maximise the likelihood are biased and do not coincide with the ones typically used in the OLS. For example, in case of Normal distribuiton, OLS estimate of variance has $T-k$ in the denominator, while the likelihood one has just $T$.
 
 In addition, all the restrictions on the parameters can reduce the number of estimated parameters, when they get to the boundary values.
 
