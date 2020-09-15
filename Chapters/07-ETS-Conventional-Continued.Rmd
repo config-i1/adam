@@ -1,0 +1,90 @@
+# Important properties of conventional ETS
+
+Here we continue the discussion of the conventional ETS model, discussing more advanced aspects of it.
+
+
+## ETS assumptions, estimation and selection
+There are several assumptions that need to hold for the conventional ETS models in order for them to be used in practice appropriately. Some of them have already been discussed in [one of the previous sections](#assumptions), and we will not discuss them here again. What is important in our context is that the conventional ETS assumes that the error term $\epsilon_t$ follows normal distribution with zero mean and variance $\sigma^2$. As discussed [earlier](#distributions), normal distribution is defined for positive, negative and zero values. This is not a big deal for additive models, which assume that the actual value can be anything. And it is not an issue for the multiplicative models, when we deal with high level positive data (e.g. thousands of units): the variance of the error term will be small enough for the $\epsilon_t$ not to become less than minus one. However, if the level of the data is low, then the variance of the error term can be large enough for the normally distributed error to cover negative values, less than minus one. This implies that the error term $1+\epsilon_t$ can become negative, and the model will break. This is a potential flaw in the conventional ETS model with the multiplicative error term. So, what the conventional multiplicative error ETS model assumes in fact is that **the data we work with is strictly positive and has high level values**.
+
+Based on the assumption of normality of error term, the ETS model can be estimated via the maximisation of likelihood, which is equivalent to the minimisation of the mean squared forecast error $e_t$. Note that in order to apply the ETS models to the data, we also need to know the initial values of components, $\hat{l}_0, \hat{b}_0, \hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}$. The conventional approach is to estimate these values together with the smoothing parameters during the maximisation of likelihood. As a result, the optimisation might involve a large number of parameters. In addition, the variance of the error term is considered as an additional parameter in the maximum likelihood estimation, so the number of parameters for different models is (here "*" stands for any type):
+
+1. ETS(\*,N,N) - 3 parameters: $\hat{l}_0$, $\hat{\alpha}$ and $\hat{\sigma}^2$;
+2. ETS(\*,\*,N) - 5 parameters: $\hat{l}_0$, $\hat{b}_0$, $\hat{\alpha}$, $\hat{\beta}$ and $\hat{\sigma}^2$;
+3. ETS(\*,\*d,N) - 6 parameters: $\hat{l}_0$, $\hat{b}_0$, $\hat{\alpha}$, $\hat{\beta}$, $\hat{\phi}$ and $\hat{\sigma}^2$;
+4. ETS(\*,N,\*) - 3+m-1 parameters: $\hat{l}_0$, $\hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}$, $\hat{\alpha}$, $\hat{\gamma}$ and $\hat{\sigma}^2$;
+5. ETS(\*,\*,\*) - 5+m-1 parameters: $\hat{l}_0$, $\hat{b}_0$, $\hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}$, $\hat{\alpha}$, $\hat{\beta}$, $\hat{\gamma}$ and $\hat{\sigma}^2$;
+6. ETS(\*,\*d,\*) - 6+m-1 parameters: $\hat{l}_0$, $\hat{b}_0$, $\hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}$, $\hat{\alpha}$, $\hat{\beta}$, $\hat{\gamma}$, $\hat{\phi}$ and $\hat{\sigma}^2$.
+
+Note that in case of seasonal models we typically make sure that the initial seasonality indices are normalised, so we only need to estimate $m-1$ of them, the last one is calculated based on the linear combination of the others.
+
+Finally, when it comes to the selection of the most appropriate model, the conventional approach involves the application of all models to the data and then selecting the most appropriate of them based on [an information cretiria](#modelSelection). In case of the conventional ETS model, this relies on the likelihood value of normal distribution, used in the estimation of the model.
+
+
+## State space form of ETS
+One of the main advantages of the ETS model is its state space form, which gives it the flexibility. We would need to revert to linear algebra in this section in order to understand how any ETS model can be presented in a compact state space form.
+
+@Hyndman2008b use the following general formulation of the model with the first equation called "measurement equation" and the second one "transition equation":
+\begin{equation}
+  \begin{aligned}
+  {y}_{t} = w(\mathbf{v}_{t-1}) + r(\mathbf{v}_{t-1}) \epsilon_t \\
+  \mathbf{v}_{t} = f(\mathbf{v}_{t-1}) + g(\mathbf{v}_{t-1}) \epsilon_t
+  \end{aligned},
+  (\#eq:ETSConventionalStateSpace)
+\end{equation}
+where $\mathbf{v}_t$ is the state vector, containing the components of series (level, trend and seasonal), $w(\cdot)$ is the measurement,$r(\cdot)$ is the error, $f(\cdot)$ is the transition and $g(\cdot)$ is the persistence functions. Depending on the types of components these functions can have different values:
+
+1. Depending on the types of trend and seasonality $w(v_{t-1})$ will be equal either to the addition or multiplication of components. The special cases were presented in tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) in the [ETS Taxonomy section](#ETSTaxonomyMaths). For example, in case of ETS(M,M,M) it is: $w(v_{t-1}) = l_{t-1} b_{t-1} s_{t-m}$;
+2. If the error is additive, then $r(v_{t-1})=1$, otherwise (in case of multiplicative error) it is $r(v_{t-1})=w(v_{t-1})$;
+3. The transition function will produce values depending on the types of trend and seasonality and will correspond to the first parts in the tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) of the transition equations (dropping the error term). This function records how components interact with each other and how they change from one observation to another (thus the term "transition"). An example is the ETS(M,M,M) model, for which the transition function will produce three values: $l_{t-1}b_{t-1}$, $b_{t-1}$ and $s_{t-m}$ respectively for the level, trend and seasonal components. So, the second equation in (\#eq:ETSConventionalStateSpace) if we drop the persistence function $g(\cdot)$ and the error term for a moment, in this case will be:
+\begin{equation}
+  \begin{aligned}
+  {l}_{t} = l_{t-1}b_{t-1} \\
+  b_t = b_{t-1} \\
+  s_t = s_{t-m}
+  \end{aligned},
+  (\#eq:ETSMMMTransitionFunction)
+\end{equation}
+4. Finally, the persistence function will differ from one model to another, but in some special cases it can either be: $g(v_{t-1})=\mathbf{g}$, if the error term is additive and $g(v_{t-1})=f(v_{t-1})\mathbf{g}$ if it is multiplicative. $\mathbf{g}$ is the vector of smoothing parameters, called in the ETS context the "persistence vector". An example of persistence function is the ETS(M,M,M) model, for which it is: $l_{t-1}b_{t-1}\alpha$, $b_{t-1}\beta$ and $s_{t-m}\gamma$ respectively for the level, trend and seasonal components. Uniting this with the transition function (3) we get the equation from the table \@ref(tab:ETSMultiplicativeError):
+\begin{equation}
+  \begin{aligned}
+  {l}_{t} = l_{t-1}b_{t-1} (1+\alpha\epsilon_t)\\
+  b_t = b_{t-1} (1+\beta\epsilon_t)\\
+  s_t = s_{t-m} (1+\gamma\epsilon_t)
+  \end{aligned},
+  (\#eq:ETSMMMTransitionEquation)
+\end{equation}
+
+The compact form \@ref(eq:ETSConventionalStateSpace) is thus comfortable to work with and underlies all the 30 ETS models discussed in the sections [5.1](#ETSTaxonomy) and [5.2](#ETSTaxonomyMaths). Unfortunately, they cannot be used directly for the derivation of conditional values, so they are needed just for the general understanding of ETS.
+
+Several special cases of ETS models and the respective values for the functions will be discussed later in the next chapters in the context of ADAM ETS. The most useful and important cases are pure additive and pure multiplicative ETS models, which then can be formulated via the form that allows deriving conditional expectation and variance.
+
+
+## Parameters bounds
+While, it is accepted by many practitioners and academics that the smoothing parameters of ETS models should lie between zero and one, this is not entirely true for the models. There are, in fact, several possible restrictions on smoothing parameters, and it is worth discussing them separately:
+
+1. Classical or conventional bounds are $\alpha, \beta, \gamma \in (0,1)$. The idea behind them originates from the [exponential smoothing methods](#SES), where it is logical to restrict the bounds with this region, because then the smoothing parameters regulate, what weight the actual value $y_t$ will have and what weight will be asigned to the predicted one $\hat{y}_t$. @Hyndman2008b showed that this condition is sometimes too loose and in other cases is too restrictive to some ETS models. @Brenner1968 was one of the first to show that the bounds are wider than this region for many exponential smoothing methods. Still, the conventional restriction is the most often used, just because it is nice to work with.
+
+2. Usual or traditional bounds are those that satisfy the set of the following equations:
+\begin{equation}
+  \begin{aligned}
+  \alpha \in [0, 1)\\
+  \beta \in [0, \alpha) \\
+  \gamma \in [0, 1-\alpha)
+  \end{aligned},
+  (\#eq:ETSUsualBounds)
+\end{equation}
+This set of restrictions guarantees that the weights [decline over time exponentially](#whyExponential) and the ETS models have the property of "averaging" the values over time. In the lower boundary condition, the components of the model become deterministic and we can say that they are calculated as the simple averages of the values over time.
+
+3. "Admissible" bounds, satisfying stability condition. The idea here is that the most recent observation should have higher weight than the older ones, which is regulated via the smoothing parameters. However, in this case we do not impose the restriction of [exponential decay](whyExponential) of weights over time on the models, so they can oscilate or decay harmonially, as long as their absolute values decrease over time. The condition is more complicated mathematically than the previous two and will be discussed later in the textbook for the [pure additive models](#ADAMETSPureAdditive), but here are several examples for bounds, satisfying this condition:
+
+- ETS(A,N,N): $\alpha \in (0, 2)$;
+- ETS(A,A,N): $\alpha \in (0, 2); \beta \in (0, 4-2\alpha)$;
+- ETS(A,N,A): $\alpha \in \left(\frac{-2}{m-1}, 2-\gamma\right); \gamma \in (\max(-m\alpha, 0), 2-\alpha)$;
+
+As you see, the admissible bounds are much wider than the conventional and usual ones. In fact, smoothing parameters can become either negative or greater than one in some cases for some models. Furthermore, the admissible bounds correspond to the parameters restrictions for ARIMA models, underlying some of pure additive ETS models. In a way, they are more natural for the ETS models, because they follow from the formulation and arise naturally. However, their usage in practice has been met with mixed success, with only handful of papers using them instead of (1) or (2) (e.g. @Gardner2008 mention that they appear in some cases and @Snyder2017 use them in their model).
+
+In the R code, the admissible bounds are calculated based on the discount matrix, which will be discussed in the context of [pure additive ADAM ETS models](#ADAMETSPureAdditive) in the next chapter.
+
+
+## Prediction intervals construction
+
