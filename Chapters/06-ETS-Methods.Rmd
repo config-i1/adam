@@ -5,7 +5,7 @@ In this chapter, we discuss the most popular exponential smoothing methods and t
 The reader interested in the topic of the history of exponential smoothing, how it was developed and what papers contributed towards the development of the field, can refer to the reviews of [@Gardner1985] and [@Gardner2006]. They summmarise all the progress in the area of exponential smoothing up until 1985 and then until 2006.
 
 
-## Simple Exponential Smoothing
+## Simple Exponential Smoothing {#SES}
 We start our discussion of exponential smoothing with the original Simple Exponential Smoothing (SES) forecasting method, which was formulated by [@Brown1956]:
 \begin{equation}
   \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 - \hat{\alpha}) \hat{y}_{t},
@@ -15,6 +15,7 @@ where $\hat{\alpha}$ is the smoothing parameter, defined by analyst and which is
 
 Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ in order to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the sttate of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function. Typically [MSE](#errorMeasures) is used as one, minimising the one step ahead forecast error.
 
+### Examples of application
 Here is an example of how this method works on different time series. We start with generating a stationary series and using `es()` function from `smooth` package. Although it implements the ETS model, we will see later the connection between SES and ETS(A,N,N). We start with the stationary time series and $\hat{\alpha}=0$:
 ```{r SESExample1}
 y <- rnorm(100,100,10)
@@ -56,7 +57,32 @@ plot(ourModel, 7, main=paste0("SES with alpha=",round(ourModel$persistence,3)))
 
 This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$, but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting.
 
-An alternative form of SES is known as error correction form and involves some simple permutations, taking that $e_t=y_t-\hat{y}_t$ is the one step ahead forecast error:
+
+### Why "exponential"? {#whyExponential}
+Now, **why is it called "exponential"**? Because the same method can be represented in a different form, if we substitute $\hat{y}_{t}$ in right hand side \@ref(eq:BrownMethod) by the formula for the previous step:
+\begin{equation}
+  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
+  (\#eq:BrownMethodExponential1)
+\end{equation}
+By repeating this procedure for each $\hat{y}_{t-1}$, $\hat{y}_{t-2}$ etc, we will obtain a different form of the method:
+\begin{equation}
+  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots + (1 -\hat{\alpha})^t \hat{y}_1 
+  (\#eq:BrownMethodExponential2)
+\end{equation}
+or equivalently:
+\begin{equation}
+  \hat{y}_{t+1} = \hat{\alpha} \sum_{j=0}^{t-1} (1 -\hat{\alpha})^j {y}_{t-j} + (1 -\hat{\alpha})^t \hat{y}_1 .
+  (\#eq:BrownMethodExponential3)
+\end{equation}
+Now each actual observation has a weight infront of it. For the most recent observation it is $\hat{\alpha}$, for the previous one it is $\hat{\alpha} (1 -\hat{\alpha})$, then $\hat{\alpha} (1 -\hat{\alpha})^2$ etc. These form the geometric series or an exponential curve. Here, for example, how it looks, when $\hat{\alpha} =0.25$ for a sample of 30 observations:
+```{r}
+plot(0.25*(1-0.25)^c(0:30), type="b", xlab="Time lags", ylab="Weights")
+```
+
+This explains the name "exponential". The term "smoothing" comes from the idea that the parameter $\hat{\alpha}$ should be selected so that the method smoothes the original time series.
+
+### Error correction form of SES
+Finally, an alternative form of SES is known as error correction form and involves some simple permutations, taking that $e_t=y_t-\hat{y}_t$ is the one step ahead forecast error:
 \begin{equation}
   \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
   (\#eq:SESErrorCorrection)
@@ -64,6 +90,7 @@ An alternative form of SES is known as error correction form and involves some s
 In this form, the smoothing parameter $\hat{\alpha}$ regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.
 
 As you see, this is a very simple method. It is easy to explain it to practitioners and it is very easy to implement in practice. However, this is just a [forecasting method](#intro), so it just gives a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.
+
 
 ## SES and ETS
 ### ETS(A,N,N)
