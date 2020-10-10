@@ -201,7 +201,7 @@ In addition, the following more exotic options for the additive error models are
 1. Log Normal: $\left(1+\frac{\epsilon_t}{\mu_t} \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$.
 Here $\mu_t = \mathbf{w}' \mathbf{v}_{t-\mathbf{l}}$, $\sigma^2$ is the variance of the error term in logarithms and the $-\frac{\sigma^2}{2}$ appears due to the restriction $\text{E}(\epsilon_t)=0$.
 2. Inverse Gaussian: $\left(1+\frac{\epsilon_t}{\mu_t} \right) \sim \text{log}\mathcal{IG}(1, s)$;
-
+  
 The possibility of using these distributions arrises from a reformulation of the original pure additive model \@ref(eq:ETSADAMStateSpacePureAdditive) into:
 \begin{equation}
   \begin{aligned}
@@ -211,6 +211,50 @@ The possibility of using these distributions arrises from a reformulation of the
   (\#eq:ETSADAMStateSpacePureAdditiveReformulated)
 \end{equation}
 The connection between the two formulations becomes apparent, when opening the brackets in the measurement equation of \@ref(eq:ETSADAMStateSpacePureAdditiveReformulated). Note that in this case the model assumes that the data is strictly positive and while it might be possible to fit the model on the data with negative values, the calculation of the scale and the likelihood might become impossible. Using alternative losses (e.g. MSE) is a possible solution in this case.
+
+### Examples of application
+#### Non-seasonal data
+In order to see how the pure additive ADAM ETS works, we will try it out using `adam()` function from `smooth` package for R on Box-Jenkins sales data. We start with plotting the data:
+
+```{r}
+plot(BJsales)
+```
+
+The series seem to exhibit trend, so we will apply ETS(A,A,N) model:
+```{r}
+adamModel <- adam(BJsales, "AAN")
+adamModel
+```
+
+The output of the model summarises, which specific model was estimated, assuming what distribution, how it was estimated, what are the values of smoothing parameters, the sample size, degrees of freedom and also produces [information criteria](#modelSelection). We can compare this model with the ETS(A,N,N) in order to see, which of them performs better in terms of information criteria (e.g. in terms of AICc):
+```{r}
+adam(BJsales, "ANN")
+```
+In this situation the information criteria for ETS(A,N,N) are higher than for ETS(A,A,N), so we should use the latter for forecasting purposes. We can produced point forecasts and prediction interval (in this example we will constract 90% and 95% ones) and plot them:
+```{r}
+plot(forecast(adamModel,h=10,interval="parametric",level=c(0.9,0.95)))
+```
+
+Notice that the smoothing parameters of ETS(A,A,N) are very high, with $\alpha=1$. This might mean that the maximum of the likelihood is achieved in the *admissible* bounds. We can try it out and see what happens:
+```{r}
+adamModel <- adam(BJsales, "AAN", bounds="admissible")
+adamModel
+plot(forecast(adamModel,h=10,interval="parametric",level=c(0.9,0.95)))
+```
+
+Both smoothing parameters are now higher, which implies that the uncertainty about the future values of states is higher as well, which is then reflected in the slightly wider prediction interval. Although the values are larger than one, the model is still stable
+
+#### Seasonal data
+Now we will check what happens in the case of seasonal data. We use `AirPassengers`, which actually has multiplicative seasonality, but for purposes of demonstration we will see what happens, when we use the wrong model. We will withhold 12 observations to look closer at the performance of the ETS(A,A,A) model in this case:
+```{r}
+adamModel <- adam(AirPassengers, "AAA", lags=12, h=12, holdout=TRUE)
+adamModel
+```
+The lags parameter in this specific case is not necessary, because the function will get the frequency from the `ts` object automatically. If we were to provide a vector of values, we would need to specify the correct lag. Note that `1` (lag for level and trend) is not important either - the function will always use it anyway.
+
+Because we used `holdout` parameter, the function now also reports the errors for the point forecasts on that part of data. This can be useful, when you want to compare the performance of several models on a time series. 
+
+
 
 
 ## ADAM: Pure multiplicative ETS
