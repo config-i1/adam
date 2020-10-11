@@ -49,7 +49,7 @@ Just to compare, the conventinal ETS(A,A,A), formulated according to \@ref(eq:ET
 where $\mathbf{I}_{m-1}$ is the identity matrix of the size $(m-1) \times (m-1)$ and $\mathbf{0}_{m-1}$ is the vector of zeroes of size $m-1$. The model \@ref(eq:ETSADAMStateSpacePureAdditive) is more parsimonious and simplifies some of the calculations, making it realistic, for example, to apply models to data with large frequency $m$ (e.g. 24, 48, 52, 365).
 
 
-### Recursive relation
+### Recursive relation {#adamETSPureAdditiveRecursive}
 A useful thing that can be derived from the pure additive model \@ref(eq:ETSADAMStateSpacePureAdditive) is the recursive value, which can be used in several important aspects. First, when we produce forecast for $h$ steps ahead, it is important to understand what the actual value $h$ steps ahead might be, given all the information we have on the observation $t$:
 \begin{equation}
   \begin{aligned}
@@ -99,7 +99,7 @@ which is the recursion obtained by @Hyndman2008b.
 Now, why is the recursion \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) important? This is because we can take the expectation and variance of \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) conditional on the values of the state vector $\mathbf{v}_{t}$ on the observation $t$ (assuming that the error term is homoscedastic, uncorrelated and has the expectation of zero) in order to get:
 \begin{equation}
   \begin{aligned}
-    \mu_{t+h} = \text{E}(y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
+    \mu_{y,t+h} = \text{E}(y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
     \text{V}(y_{t+h}|t) = & \left( \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \sigma^2
   \end{aligned}.
   (\#eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVariance)
@@ -124,7 +124,7 @@ For example, for the ETS(A,N,N) model, discussed above, we get:
 or by substituting $\mathbf{F}=1$, $\mathbf{w}=1$, $\mathbf{g}=\alpha$ and $\mathbf{v}_t=l_t$:
 \begin{equation}
   \begin{aligned}
-    \mu_{t+h} = \text{E}(y_{t+h}|t) = & l_{t} \\
+    \mu_{y,t+h} = \text{E}(y_{t+h}|t) = & l_{t} \\
     \text{V}(y_{t+h}|t) = & \left((h-1) \alpha^2 + 1 \right) \sigma^2
   \end{aligned},
   (\#eq:ETSADAMStateSpaceAANRecursionMeanAndVariance)
@@ -198,9 +198,9 @@ The estimation of pure additive ETS models can be done via the maximisation of t
 
 In addition, the following more exotic options for the additive error models are available in ADAM ETS:
 
-1. Log Normal: $\left(1+\frac{\epsilon_t}{\mu_t} \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$.
-Here $\mu_t = \mathbf{w}' \mathbf{v}_{t-\mathbf{l}}$, $\sigma^2$ is the variance of the error term in logarithms and the $-\frac{\sigma^2}{2}$ appears due to the restriction $\text{E}(\epsilon_t)=0$.
-2. Inverse Gaussian: $\left(1+\frac{\epsilon_t}{\mu_t} \right) \sim \text{log}\mathcal{IG}(1, s)$;
+1. Log Normal: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$.
+Here $\mu_{y,t} = \mathbf{w}' \mathbf{v}_{t-\mathbf{l}}$, $\sigma^2$ is the variance of the error term in logarithms and the $-\frac{\sigma^2}{2}$ appears due to the restriction $\text{E}(\epsilon_t)=0$.
+2. Inverse Gaussian: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \text{log}\mathcal{IG}(1, s)$;
   
 The possibility of using these distributions arrises from a reformulation of the original pure additive model \@ref(eq:ETSADAMStateSpacePureAdditive) into:
 \begin{equation}
@@ -211,6 +211,7 @@ The possibility of using these distributions arrises from a reformulation of the
   (\#eq:ETSADAMStateSpacePureAdditiveReformulated)
 \end{equation}
 The connection between the two formulations becomes apparent, when opening the brackets in the measurement equation of \@ref(eq:ETSADAMStateSpacePureAdditiveReformulated). Note that in this case the model assumes that the data is strictly positive and while it might be possible to fit the model on the data with negative values, the calculation of the scale and the likelihood might become impossible. Using alternative losses (e.g. MSE) is a possible solution in this case.
+
 
 ### Examples of application
 #### Non-seasonal data
@@ -329,13 +330,74 @@ An interesting observation is that the model \@ref(eq:ETSADAMMMMLogs) will produ
 In many cases the smoothing parameters for the pure additive models will be small enough for this limit to hold, so the two models will become equivalent.
 
 
-### Local level model, ETS(M,N,N)
-Another model that underlies the SES method is ETS(M,N,N), which is formulated as:
+### Recursive relation {#adamETSPuremultiplicativeRecursive}
+Similarly to [how it was done for the pure additive model](#adamETSPureAdditiveRecursive), we can show what the recursive relation will look like for the pure multiplicative model (the logic here is the same, the main difference is in working with logarithms instead of the original values):
 \begin{equation}
-  \begin{split}
-    y_{t} &= l_{t-1}(1 + \epsilon_t) \\
-    l_t &= l_{t-1} (1 + \alpha \epsilon_t)
-  \end{split} .
-  (\#eq:ETSMNN)
+  \begin{aligned}
+    \log y_{t+h} = & \mathbf{w}_{m_1}' \mathbf{F}_{m_1}^{\lceil\frac{h}{m_1}\rceil-1} \log \mathbf{v}_{t} + \mathbf{w}_{m_1}' \sum_{j=1}^{\lceil\frac{h}{m_1}\rceil-1} \mathbf{F}_{m_1}^{j-1} \log \left(\mathbf{1}_k + \mathbf{g}_{m_1} \epsilon_{t+m_1\lceil\frac{h}{m_1}\rceil-j}\right) + \\
+    & \mathbf{w}_{m_2}' \mathbf{F}_{m_2}^{\lceil\frac{h}{m_2}\rceil-1} \log \mathbf{v}_{t} + \mathbf{w}_{m_2}' \sum_{j=1}^{\lceil\frac{h}{m_2}\rceil-1} \mathbf{F}_{m_2}^{j-1} \log \left(\mathbf{1}_k + \mathbf{g}_{m_2} \epsilon_{t+m_2\lceil\frac{h}{m_2}\rceil-j}\right) + \\
+    & \dots \\
+    & \mathbf{w}_{m_d}' \mathbf{F}_{m_d}^{\lceil\frac{h}{m_d}\rceil-1} \log \mathbf{v}_{t} + \mathbf{w}_{m_d}' \sum_{j=1}^{\lceil\frac{h}{m_d}\rceil-1} \mathbf{F}_{m_d}^{j-1} \log \left(\mathbf{1}_k + \mathbf{g}_{m_d} \epsilon_{t+m_d\lceil\frac{h}{m_d}\rceil-j}\right) + \\
+    & \log \left(1 + \epsilon_{t+h}\right)
+  \end{aligned}.
+  (\#eq:ETSADAMStateSpacePureMultiplicativeRecursion)
 \end{equation}
-Note that in this model it is typically assumed that the mean of error term $\epsilon_t$ is equal to zero. The model has similar properties to \@ref(eq:ETSANN), but will have increasing variability with the increase of level due to the multiplication in the formula. The smoothing parameter
+In order to see how this recursion works, we can take the example of ETS(M,N,N), for which $m_1=1$ and all the other frequencies are equal to zero:
+\begin{equation}
+    y_{t+h} = \exp\left(\mathbf{w}_{1}' \mathbf{F}_{1}^{h-1} \log\mathbf{v}_{t} + \mathbf{w}_{1}' \sum_{j=1}^{h-1} \mathbf{F}_{1}^{j-1} \log \left(\mathbf{1}_k + \mathbf{g}_{1} \epsilon_{t+h-j}\right) +\log \left(1 + \epsilon_{t+h}\right)\right) ,
+  (\#eq:ETSMNNADAMStateSpacePureMultiplicativeRecursion01)
+\end{equation}
+or after inserting $\mathbf{w}_{1}=1$, $\mathbf{F}_{1}=1$, $\mathbf{v}_{t}=l_t$, $\mathbf{g}_{1}=\alpha$ and $\mathbf{1}_k=1$:
+\begin{equation}
+    y_{t+h} = l_t \prod_{j=1}^{h-1} \left(1 + \alpha \epsilon_{t+h-j}\right) \left(1 + \epsilon_{t+h}\right)\right) .
+  (\#eq:ETSMNNADAMStateSpacePureMultiplicativeRecursion02)
+\end{equation}
+
+This recursion is useful in order to understand how the states evolve over time, but in general it cannot be used for the calculation of moments, as the one for [the pure additive ADAM ETS](#adamETSPureAdditiveRecursive).
+
+
+### The problem with moments in pure multiplicative ADAM ETS
+The recursion \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion) obtained in the previous subsection shows how the logarithms of states are influenced by the previous values. While it is possible to calculate the expectation of the logarithm of the variable $y_{t+h}$, in general this does not allow deriving the expectation of the variable in the original scale. This is because of the convolution of terms $\log(\mathbf{1}_k + \mathbf{g} \epsilon_{t+j})$ for different $j$. In order to better understand this issue, we consider this element for the ETS(M,N,N) model:
+\begin{equation}
+    \log(1+\alpha\epsilon_t) = \log(1-\alpha + \alpha(1+\epsilon_t)).
+  (\#eq:ETSMNNADAMPersistenceIssue)
+\end{equation}
+Whatever we assume about the distribution of the variable $(1+\epsilon_t)$, the distribution of \@ref(eq:ETSMNNADAMPersistenceIssue) will be more complicated than needed. For example, if we assume that $(1+\epsilon_t)\sim\text{log}\mathcal{N}(0,\sigma^2)$, then the distribution of \@ref(eq:ETSMNNADAMPersistenceIssue) is something like exp three-parameter log normal distribution (@Sangal1970). The convolution of \@ref(eq:ETSMNNADAMPersistenceIssue) for different $t$ does not follow a known distribution, so it is not possible to calculate the conditional expectation and variance based on \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion). Similar issues arrise if we assume any other distribution. The problem is worsened in case of multiplicative trend and / or multiplicative seasonality models, because then the recursion \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion) contains several errors on the same observation (e.g. $\log(1+\alpha\epsilon_t)$ and $\log(1+\beta\epsilon_t)$).
+
+The only way to derive the conditional expectation and variance for the pure multiplicative models is to use the formalue in the [ETS Taxonomy](#ETSTaxonomyMaths) and manually derive the values in the original scale. This works well only for the ETS(M,N,N) model, for which it is possible to take conditional expectation and variance of the recursion \@ref(eq:ETSMNNADAMStateSpacePureMultiplicativeRecursion02) in order to obtain:
+\begin{equation}
+    \begin{aligned}
+	    \mu_{y,t+h} = \text{E}(y_{t+h}|t) = & l_{t} \\
+	    \text{V}(y_{t+h}|t) = & l_{t}^2 \left(  \left(1+ \alpha^2 \sigma^2 \right)^{h-1} (1 + \sigma^2) - 1 \right),
+	\end{aligned}
+	(\#eq:ETSMNNADAMConditionalValues)
+\end{equation}
+where $\sigma^2$ is the variance of the error term. For the other models, the conditional moments do not have a general closed forms because of the product of $\log(1+\alpha\epsilon_t)$, $\log(1+\beta\epsilon_t)$ and $\log(1+\gamma\epsilon_t)$. It is still possible to derive the moments for special cases of $h$, but this is a tedious process. In order to see that, we demonstrate here how the recursion looks for ETS(M,Md,M) model:
+\begin{equation}
+	\begin{aligned}
+	    & y_{t+h} = l_{t+h-1} b_{t+h-1}^\phi s_{t+h-m} \left(1 + \epsilon_{t+h} \right) = \\
+	    & l_{t} b_{t}^{\sum_{j=1}^h{\phi^j}} s_{t+h-m\lceil\frac{h}{m}\rceil} \prod_{j=1}^{h-1} \left( (1 + \alpha \epsilon_{t+j}) \prod_{i=1}^{j} (1 + \beta \epsilon_{t+i})^{\phi^{j-i}} \right) \prod_{j=1}^{\lceil\frac{h}{m}\rceil} \left(1 + \gamma \epsilon_{t+j}\right) \left(1 + \epsilon_{t+h} \right) .
+	\end{aligned}
+	(\#eq:ETSMMdMADAMRecursion)
+\end{equation}
+In general the conditional expectation of the recursion \@ref(eq:ETSMMdMADAMRecursion) does not have a simple form, because of the difficulties in calculating the expectation of $(1 + \alpha \epsilon_{t+j})(1 + \beta \epsilon_{t+i})^{\phi^{j-i}}(1 + \gamma \epsilon_{t+j})$. In a simple example of $h=2$ and $m>h$ the conditional expectation can be simplified to:
+\begin{equation}
+	\mu_{y,t+2} = l_{t} b_{t}^{\phi+\phi^2} \left(1 + \alpha \beta \sigma^2 \right),
+	(\#eq:ETSMMdMADAMRecursionHorizon2)
+\end{equation}
+introducing the second moment, the variance of the error term $\sigma^2$. The case of $h=3$ implies the appearance of the third moment, the $h=4$ - the fourth etc. This is the reason, why there are no closed forms for the conditional moments for the pure multiplicative models with trend and / or seasonality. In some special cases, when smoothing parameters and the variance of error term are low, it is possible to use approximate formulae proposed by @Hyndman2008b, and in a special case, when all smoothing parameters are equal to zero or when $h=1$, it is also possible to use the point forecast formulae from the [ETS Taxonomy](#ETSTaxonomyMaths). But in general, the best thing that can be done in this case is the simulation of possible paths and then calculation of mean and variance based on them. In general, it can be shown that:
+\begin{equation}
+    \check{y}_{t+h} \leq \hat{y}_{t+h} \leq \mu_{y,t+h} ,
+    (\#eq:ETSADAMpointValueInequality)
+\end{equation}
+where $\mu_{y,t+h}$ is the conditional h steps ahead expectation, $\check{y}_{t+h}$ is the conditional h steps ahead geometric expectation and $\hat{y}_{t+h}$ is the [point forecast](#ETSTaxonomyMaths) (@Svetunkov2020ETS).
+
+
+### Stability and forecastability conditions
+
+
+### Distributional assumptions in pure additive ETS
+
+
+### Examples of application
+
