@@ -145,9 +145,49 @@ Finally, the admissible bounds might still make sense for the pure multiplicativ
 
 
 ## Distributional assumptions in pure multiplicative ETS
-The conventional assumption for the error term in ETS is that $\epsilon_t\sim\mathcal{N}(0,\sigma^2)$, which guarantees that the conditional expectation of the model will be equal to the point forecasts, when the trend and seasonal components are not multiplicative. In generl, ETS in this case works well in many cases, mainly when the data is strictly positive and the level of series is high (e.g. thousands of units). However, when dealing with lower level data, this assumption might become unhelpful, because the models may start generating non-positive values, which contradicts the idea of pur multiplicative ETS models. @Akram2009 studied the ETS models with multiplicative error and suggested that applying ETS on data in logarithms is a better approach than just using ETS(M,Y,Y) models (here "Y" stands for non-additive components). However, this approach sidesteps the ETS taxonomy, creating a new group of models. And alternative (also discussed in @Akram2009) is to assume that the error term $1+\epsilon_t$ follows some positive distribution. The authors mentioned log Normal, truncated and Gamma distributions, but never explored them further.
+The conventional assumption for the error term in ETS is that $\epsilon_t\sim\mathcal{N}(0,\sigma^2)$, which guarantees that the conditional expectation of the model will be equal to the point forecasts, when the trend and seasonal components are not multiplicative. In general, ETS works well in many cases with this assumption, mainly when the data is strictly positive and the level of series is high (e.g. thousands of units). However, when dealing with lower level data, this assumption might become unhelpful, because the models may start generating non-positive values, which contradicts the idea of pure multiplicative ETS models. @Akram2009 studied the ETS models with multiplicative error and suggested that applying ETS on data in logarithms is a better approach than just using ETS(M,Y,Y) models (here "Y" stands for non-additive components). However, this approach sidesteps the ETS taxonomy, creating a new group of models. An alternative (also discussed in @Akram2009) is to assume that the error term $1+\epsilon_t$ follows some distribution for positive data. The authors mentioned log Normal, truncated and Gamma distributions, but never explored them further.
 
-@Svetunkov2020ETS discussed several options for the distribution of the $1+\epsilon_t$ in ETS and came to conclusion that the most suitable distribution in this case is the [Inverse Gaussian](#IGDistribution). Having said that, other distributions for positive data can be applied as well, but their usage might become complicated, because they need to meet condition $\text{E}(1+\epsilon_t)=1$ in order for the expectation to coincide with the point forecasts for models with non-multiplicative trend and seasonality. For example, if the error term follows log Normal distribution, then this restriction implies that the location of the distribution should be non-zero: $1+\epsilon_t\sim\text{log}\mathcal{N}\left(-\frac{\sigma^2}{2},\sigma^2\right)$.
+@Svetunkov2020ETS discussed several options for the distribution of the $1+\epsilon_t$ in ETS and came to conclusion that the most suitable distribution in this case is the [Inverse Gaussian](#IGDistribution). Having said that, other distributions for positive data can be applied as well, but their usage might become complicated, because they need to meet condition $\text{E}(1+\epsilon_t)=1$ in order for the expectation to coincide with the point forecasts for models with non-multiplicative trend and seasonality. For example, if the error term follows log Normal distribution, then this restriction implies that the location of the distribution should be non-zero: $1+\epsilon_t\sim\text{log}\mathcal{N}\left(-\frac{\sigma^2}{2},\sigma^2\right)$. Based on that the following distributions are supported by ADAM:
+
+1. Inverse Gaussian: $\left(1+\epsilon_t \right) \sim \mathcal{IG}(1, s)$;
+2. Log Normal: $\left(1+\epsilon_t \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$.
+
+The MLE of $s$ in $\mathcal{IG}$ is straightforward and is:
+\begin{equation}
+	\hat{s} = \frac{1}{T} \sum_{t=1}^{T} \frac{e_{t}^2}{1+e_t} ,
+	(\#eq:ETSMultiplicativeErrorMLESigmaIG)
+\end{equation}
+where $e_t$ is the estimate of the error term $\epsilon_t$. However, when it comes to the MLE of scale parameter for the log Normal distribution with the aforementioned restrictions, it is more complicated and is (@Svetunkov2020ETS):
+\begin{equation}
+	\hat{\sigma}^2 = 2\left(1-\sqrt{ 1-\frac{1}{T} \sum_{t=1}^{T} \log^2(1+\epsilon_{t})}\right).
+	(\#eq:ETSMultiplicativeErrorMLESigmaLogN)
+\end{equation}
+
+Even if we assume that we deal with strictly positive high level data and that $\epsilon_t$ can be non-positive, it is not necessary to limit the distribution with Normal only. The following distributions can be applied as well:
+1. Normal: $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$;
+2. Laplace: $\epsilon_t \sim \mathcal{Laplace}(0, s)$;
+3. S: $\epsilon_t \sim \mathcal{S}(0, s)$;
+4. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$;
+5. Logistic: $\epsilon_t \sim \mathcal{N}(0, s)$;
+6. Student's t: $\epsilon_t \sim \mathcal{t}(\nu)$;
+7. Asymmetric Laplace: $\epsilon_t \sim \mathcal{ALaplace}(0, s, \alpha)$
+
+Note that the MLE of scale parameters for these distributions will be calculated differently than in the case of pure additive models. For example, for the normal distribution it is:
+\begin{equation}
+	\hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T \frac{y_t-\hat{\mu}_t}{\hat{\mu}_t} ,
+	(\#eq:ETSMultiplicativeErrorMLESigmaNormal)
+\end{equation}
+where the main difference from the additive error case arises from the measurement equation of the multiplicative error models:
+\begin{equation}
+	y_t = \mu_t (1+\epsilon_t),
+	(\#eq:ETSMultiplicativeErrorMeasurement)
+\end{equation}
+implying that 
+\begin{equation}
+	e_t = \frac{y_t-\hat{\mu}_t}{\hat{\mu}_t},
+	(\#eq:ETSMultiplicativeErrorFormula)
+\end{equation}
+
 
 
 ## Examples of application
