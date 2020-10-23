@@ -214,7 +214,7 @@ The possibility of using these distributions arrises from a reformulation of the
 The connection between the two formulations becomes apparent, when opening the brackets in the measurement equation of \@ref(eq:ETSADAMStateSpacePureAdditiveReformulated). Note that in this case the model assumes that the data is strictly positive and while it might be possible to fit the model on the data with negative values, the calculation of the scale and the likelihood might become impossible. Using alternative losses (e.g. MSE) is a possible solution in this case.
 
 
-## Examples of application
+## Examples of application {#ADAMETSPureAdditiveExamples}
 ### Non-seasonal data
 In order to see how the pure additive ADAM ETS works, we will try it out using `adam()` function from `smooth` package for R on Box-Jenkins sales data. We start with plotting the data:
 
@@ -234,14 +234,14 @@ adam(BJsales, "ANN")
 ```
 In this situation the information criteria for ETS(A,N,N) are higher than for ETS(A,A,N), so we should use the latter for forecasting purposes. We can produced point forecasts and prediction interval (in this example we will constract 90% and 95% ones) and plot them:
 ```{r}
-plot(forecast(adamModel,h=10,interval="parametric",level=c(0.9,0.95)))
+plot(forecast(adamModel,h=10,interval="prediction",level=c(0.9,0.95)))
 ```
 
 Notice that the smoothing parameters of ETS(A,A,N) are very high, with $\alpha=1$. This might mean that the maximum of the likelihood is achieved in the *admissible* bounds. We can try it out and see what happens:
 ```{r}
 adamModel <- adam(BJsales, "AAN", bounds="admissible")
 adamModel
-plot(forecast(adamModel,h=10,interval="parametric",level=c(0.9,0.95)))
+plot(forecast(adamModel,h=10,interval="prediction",level=c(0.9,0.95)))
 ```
 
 Both smoothing parameters are now higher, which implies that the uncertainty about the future values of states is higher as well, which is then reflected in the slightly wider prediction interval. Although the values are larger than one, the model is still stable. In order to see that we can calculate the discount matrix using the objects returned by the function:
@@ -255,26 +255,35 @@ If we want to test ADAM ETS with another distribution, it can be done using the 
 ```{r}
 adamModel <- adam(BJsales, "AAN", distribution="dgnorm")
 print(adamModel,digits=3)
-plot(forecast(adamModel,h=10,interval="parametric"))
+plot(forecast(adamModel,h=10,interval="prediction"))
 ```
 
 The prediction interval in this case is slightly weider than in the previous one, because $\mathcal{GN}$ distribution with $\beta=$ `r round(adamModel$other$beta,2)` has fatter tails than the normal distribution.
 
 
-### Seasonal data
+### Seasonal data {#ADAMETSPureAdditiveExamplesETSAAA}
 Now we will check what happens in the case of seasonal data. We use `AirPassengers`, which actually has multiplicative seasonality, but for purposes of demonstration we will see what happens, when we use the wrong model. We will withhold 12 observations to look closer at the performance of the ETS(A,A,A) model in this case:
 ```{r}
 adamModel <- adam(AirPassengers, "AAA", lags=12, h=12, holdout=TRUE)
-adamModel
 ```
 
 ```{block, type="remark"}
 The `lags` parameter in this specific case is not necessary, because the function will get the frequency from the `ts` object automatically. If we were to provide a vector of values instead of the `ts` object, we would need to specify the correct lag. Note that `1` (lag for level and trend) is not important either - the function will always use it anyway.
 ```
 
+```{block, type="remark"}
+In some cases, the optimiser might converge to the local minimum, so if you find the results unsatisfactory, it might make sense to reestimate the model tuning the parameters of the optimiser. Here is an example (we increase the number of iterations in the optimisation and set new starting values for the smoothing parameters):
+```
+
+```{r}
+adamModel$B[1:3] <- c(0.2,0.1,0.3)
+adamModel <- adam(AirPassengers, "AAA", lags=12, h=12, holdout=TRUE, B=adamModel$B, maxeval=1000)
+adamModel
+```
+
 Notice that because we fit the additive seasonal model to the data with multiplicative seasonality, the smoothing parameter $\gamma$ has become quite big - the seasonal component needs to be updated in order to keep up for the changing seasonal profile. In addition, because we used `holdout` parameter, the function now also reports the errors for the point forecasts on that test part of data. This can be useful, when you want to compare the performance of several models on a time series. Here how the forecast from ETS(A,A,A) looks on this data:
 ```{r}
-plot(forecast(adamModel,h=12,interval="parametric"))
+plot(forecast(adamModel,h=12,interval="prediction"))
 ```
 
 While the fit to the data is far from perfect, due to a pure coincidence the point forecast from this model is quite decent.
