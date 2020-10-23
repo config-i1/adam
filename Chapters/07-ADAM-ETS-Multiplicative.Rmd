@@ -190,5 +190,70 @@ implying that
 \end{equation}
 The estimates of scale can then be used in the estimation phase, when parameters are optimised via the maximisation of respective log-likelihood function.
 
-## Examples of application
 
+## Examples of application
+### Non-seasonal data
+We continue our examples with the same Box-Jenkins sales case by fitting the ETS(M,M,N) model, but this time with a holdout of 10 observations:
+```{r}
+adamModel <- adam(BJsales, "MMN", h=10, holdout=TRUE)
+adamModel
+plot(adamModel,7)
+```
+
+Note that the function produces the point forecast in this case, which is not equivalent to the conditional expectation! Also, the default distribution for the multiplicative erro models is $\mathcal{IG}$. Similarly, to how it was done in the [previous chapter](#ADAMETSPureAdditiveExamples), the output gives a general summary for the model. We can compare this model with the ETS(A,A,N) via information criteria if we want. For example, here are the AICc for the two models:
+```{r}
+# ETS(M,M,N)
+AICc(adamModel)
+# ETS(A,A,N)
+AICc(adam(BJsales, "AAN", h=10, holdout=TRUE))
+```
+The comparison is fair, because both models were estimated via likelihood and both likelihoods are formulated correctly, without omitting any terms (e.g. `ets()` from `forecast` package omits the $-\frac{T}{2} \log\left(2\pi e \frac{1}{T}\right)$ for convenience, which makes it incomparable with other models). In this example, it seems tha the pure additive model is more suitable for the data than the pure multiplicative one. Still, if we want to produce forecasts from the model, we can do it, using the same command as in the previous chapter:
+```{r}
+plot(forecast(adamModel,h=10,interval="prediction",level=0.95))
+```
+
+Note that, when we ask for "prediction" intervals, the `forecast()` function will automatically decide what to use: in case of pure additive model it will use analytical solutions, while in the other cases, it will use simulations. The point forecast obtained from forecast function corresponds to the conditional expectation and is calculated based on the simulations. This also means that it will differ slightly from one run of the function to another (reflecting the uncertainty in the error term), but the difference should be negligible.
+
+We can also compare the performance of ETS(M,M,N) with $\mathcal{IG}$ distribution and the conventional ETS(M,M,N), assuming normality:
+```{r}
+adamModelNormal <- adam(BJsales, "MMN", h=10, holdout=TRUE, distribution="dnorm")
+adamModelNormal
+```
+which are quite similar on this specific example.
+
+
+### Seasonal data
+The `AirPassengers` data used in the [previous chapter](#ADAMETSPureAdditiveExamples) has (as we discussed) multiplicative seasonality. So, the ETS(M,M,M) model might be more suitable than the pure additive one that we used previously:
+```{r}
+adamModel <- adam(AirPassengers, "MMM", h=12, holdout=TRUE, silent=FALSE)
+adamModel
+```
+
+Notice that the smoothing parameter $\gamma=0$ in this case, which reflects the idea that we deal with the data with multiplicative seasonality and apply the correct model. Comparing the information criteria (e.g. AICc) with [the ETS(A,A,A)](#ADAMETSPureAdditiveExamplesETSAAA), this model does a better job at fitting the data. The conditional expectation and prediction interval from this model are better as well:
+```{r}
+adamForecast <- forecast(adamModel,h=12,interval="prediction")
+plot(adamForecast)
+```
+
+If we want to calculate the error measures based on the conditional expectation, we can use the `measures()` function from `greybox` package in the following way:
+```{r}
+measures(adamModel$holdout,adamForecast$mean,actuals(adamModel))
+```
+And the plot of the time series decomposition according to ETS(M,M,M) is:
+```{r}
+plot(adamModel,12)
+```
+
+It shows that the residuals are more random for the model than for the ETS(A,A,A), but there still might be some structure left. The autocorrelation and partial autocorrelation functions might help in understanding this better:
+```{r}
+par(mfcol=c(1,2))
+plot(adamModel,10:11)
+```
+
+The plot shows that there is still some correlation left in the residuals, which could be either due to pure randomness or due to the imperfect estimation of the model. Tuning the parameters of the optimiser or selecting a different model might solve the problem.
+
+Finally, just as an example, we can also fit the most complicated pure multiplicative model, ETS(M,Md,M):
+```{r}
+adam(AirPassengers, "MMdM", h=12, holdout=TRUE, silent=FALSE)
+```
+which does not seem to be better than ETS(M,M,M) on this specific time series.
