@@ -8,7 +8,7 @@
 4. MMN; MMdN; MMM; MMdM;
 5. ANM; AAM; AAdM; MMA; MMdA; AMN; AMdN; AMA; AMdA; AMM; AMdM
 
-The `ets()` model from `forecast` package supports only the Classes 1 - 4. The Class 5 models are not included in the function mainly because they have infinite variances, when the data has low values. Indeed, when the level in one of these models becomes close to zero, there is an increased chance of breaking the model due to the appearance of negative values (think of ETS(A,A,M) model, which might have a negative trend, leading to negative values, which are then multiplied by the seasonal indices). That is why in practice these models should only be used, when the level of the series is high. Furthermore, some of the models from the Class 5 are very difficult to estimate and are very sensitive to the smoothing parameters values. All of this gives a rationale for restricting the pool of models to the 19 from classes 1 - 4.
+The `ets()` model from `forecast` package supports only the Classes 1 - 4. The Class 5 models are not included in the function mainly because they have infinite variances, specifically on long horizons and when the data has low values. Indeed, when the level in one of these models becomes close to zero, there is an increased chance of breaking the model due to the appearance of negative values (think of ETS(A,A,M) model, which might have a negative trend, leading to negative values, which are then multiplied by the positive seasonal indices). That is why in practice these models should only be used, when the level of the series is high. Furthermore, some of the models from the Class 5 are very difficult to estimate and are very sensitive to the smoothing parameters values. All of this gives a rationale for restricting the pool of models to the 19 from classes 1 - 4.
 
 @Hyndman2008b demonstrate that models from the class 2 have closed forms of conditional expectation and variance, with the former corresponding to the point forecasts. However, the conditional distribution from these models is not Gaussian, so there are no formulae for the prediction intervals from these models. Yes, in some cases Normal distribution might be a fine approximation for the real one, but in general simulations should be preferred.
 
@@ -27,7 +27,22 @@ The main idea behind the split to (3) and (4) is because the presence of multipl
 
 `adam()` function supports all 30 ETS models, but you should keep in mind the limitations of some of them discussed in this section.
 
-## Non-multiplicative trend mixed models
 
-## Multiplicative trend mixed models
+## Mixed models with non-multiplicative trend
+In this class of models, there are two subclasses: one with non-multiplicative seasonal component (MAN, MAdN, MNA, MAA, MAdA) and another one with the multiplicative one (MAM; MAdM; ANM; AAM; AAdM). The conditional mean for the former models coincides with the point forecasts, while the conditional variance can be calculated using the following recursive formula [@Hyndman2008b]:
+\begin{equation}
+	& \text{V}(y_{t+h}|t) = (1+\sigma^2) xi_h - \mu_{t+h|t}^2 \\
+	& \text{where } \xi_{1} = \mu_{t+1|t}^2 \text{ and } \xi_h = \mu_{t+h|t}^2 + \sigma^2 \sum_{j=1}^h-1 c_{j}^2 xi_{h-j} ,
+	(\#eq:ETSADAMMixedModels3.1Variance)
+\end{equation}
+where $\sigma^2$ is the variance of the error term. As for the second subgroup, the conditional mean corresponds to the point forecasts, when the forecast horizon is less than or equal to the seasonal frequency of the component (i.e. $h\leq m$), and there is a cumbersome formula for calculating the conditional mean to some of models in this subgroup for the $h>m$. When it comes to the conditional variance, there exists the formula for some of models in the second subgroup, but they are cumbersome as well. The interested reader is directed to @Hyndman2008b, page 85.
+
+When it comes to the parameters bounds for the models in this group, the first subgroup of models should have [similar bounds to the ones for the respective additive error](#stabilityConditionAdditiveError) models (because both underly the same exponential smoothing methods), but with additional restrictions, comming from [the multiplicative error](#stabilityConditionMultiplicativeError).
+
+1. The *traditional bounds* (aka "usual") should work fine for these models for the same reasons they work for the pure additive models, although they might be too restrictive in some cases;
+2. The *admissible bounds* for smoothing parameters for the models in this group might be too wide and violate the condition of $(1+ \alpha \epsilon_t)>0, (1+ \beta \epsilon_t)>0, (1+ \gamma \epsilon_t)>0$, which is important in order not to break the models.
+
+The second subgroup is more challenging in terms of parameters bounds because of the multiplication of states by the seasonal components. 
+
+## Mixed models with multiplicative trend
 
