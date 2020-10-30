@@ -514,17 +514,24 @@ where $T$ is the sample size.
 
 - BICc [@McQuarrie1999] - the sample-corrected version of BIC, relying on the assumption of normality:
 \begin{equation}
-    \text{BICc}_j = \frac{\log T}{T-k_j-1} k_j - 2 \ell_j
+    \text{BICc}_j = \frac{\log (T)}{T-k_j-1} k_j - 2 \ell_j
     (\#eq:BICc).
 \end{equation}
 
 In general, it is recommended to use the sample-corrected versions of criteria (AICc, BICc) and use the others in cases of large samples (thousands of observations), where the effect of number of observations on criteria becomes negligible. The main issue is that the corrected versions of information criteria for the non-normal distributions need to be derived separately and will differ from \@ref(eq:AICc) and \@ref(eq:BICc). Still, @Burnham2004 recommend using formulae \@ref(eq:AICc) and \@ref(eq:BICc) in cases of small samples, even if the distribution of variable does not follow the normal one and the correct formulae are not known. The motivation for this is that the corrected versions still take sample size into account, correcting the sample bias in criteria to some extent.
 
-A thing to note is that the approach relies on asymptotic properties of estimators and in fact assumes that the parameters estimation method used in the process, guarantees that the likelihood functions of the models are maximised. In fact, it relies on [asymptotic](#asymptoticsAndLikelihood) behaviour of parameters, so it is not very important to get to the maximum of the likelihood in sample. However, it is more important to use an estimation method that will guarantee consistent maximisation of the likelihood.
+A thing to note is that the approach relies on asymptotic properties of estimators and assumes that the estimation method used in the process, guarantees that the likelihood functions of the models are maximised. In fact, it relies on [asymptotic](#asymptoticsAndLikelihood) behaviour of parameters, so it is not very important whether the maximum of the likelihood in sample is reached or not or whether the final solution is near the maximum. If the sample size changes, the parameters guaranteeing the maximum will change as well, so we cannot get the point correctly in sample anyway. However, it is much more important to use an estimation method that will guarantee consistent maximisation of the likelihood. This implies that we might select wrong models in some cases in sample, but that is okay, because if we use the adequate approach for estimation and selection, with the increase of the sample size, we will select the correct model more often than the incorrect one. While the "increase of sample size" might seem as an unrealistic idea in some real life cases, keep in mind that this might mean not just the increase of $T$, but also the increase of the number of series under consideration. So, for example, the approach should select the correct model on average, when you test it on a sample of 10,000 SKUs.
 
-Summarising, the idea of model selection via information criteria is to form a pool of competing models, construct them, calculate likelihood function, based on them - an information criterion, and finally, select the model that has the lowest value. This approach is relatively fast (in contrast comparison with cross-validation, judgmental selection or meta learning) and has good theory behind it. It can also be shown that in case of Normal distribution, the selection for time series models based on AIC is asymptotically equivalent to the selection based on [leave-one-out cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)#Leave-one-out_cross-validation) with MSE. This becomes relatively straightforward, if we recall that typically time series models rely on one step ahead errors $(e_t = y_t - \mu_{t|t-1})$ and that the maximum of the likelihood of Normal distribution gives the same estimates as the minimum of MSE.
+Summarising, the idea of model selection via information criteria is to:
 
-As for the disadvantages of the approach, as mentioned above, it relies on the in-sample value of the likelihood, based on one step ahead error, and does not guarantee that the selected model will perform well for the holdout for multiple steps ahead. Using the cross-validation or [rolling origin](#rollingOrigin) for the full horizon could be a better option if you suspect that information criteria do not work. Furthermore, any criterion is random on its own, and will change with the change of the sample size. This means that there is a model selection uncertainty and that the best model might change with the new observations. In order to address this issue, combination of models can be used instead, which allows mitigating this uncertainty.
+1. form a pool of competing models,
+2. construct them,
+3. calculate likelihood functions,
+4. based on them -- information criteria,
+5. and finally, select the model that has the lowest value.
+This approach is relatively fast (in comparison with cross-validation, judgmental selection or meta learning) and has good theory behind it. It can also be shown that in case of Normal distribution, the selection for time series models based on AIC is asymptotically equivalent to the selection based on [leave-one-out cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)#Leave-one-out_cross-validation) with MSE. This becomes relatively straightforward, if we recall that typically time series models rely on one step ahead errors $(e_t = y_t - \mu_{t|t-1})$ and that the maximum of the likelihood of Normal distribution gives the same estimates as the minimum of MSE.
+
+As for the disadvantages of the approach, as mentioned above, it relies on the in-sample value of the likelihood, based on one step ahead error, and does not guarantee that the selected model will perform well for the holdout for multiple steps ahead. Using the cross-validation or [rolling origin](#rollingOrigin) for the full horizon could give better results if you suspect that information criteria do not work. Furthermore, any criterion is random on its own, and will change with the change of the sample size. This means that there is a model selection uncertainty and that the best model might change with the new observations. In order to address this issue, combination of models can be used, which allows mitigating this uncertainty.
 
 
 ### Calculating number of parameters in models
@@ -533,29 +540,29 @@ When doing model selection and calculating different statistics, it is important
 When it comes to the calculation of information criteria, the general idea is to calculate the number of **all the independent estimated parameters** $k$. This typically includes all the initial components and all the coefficients of the model, together with the scale, shape and shift parameters of the assumed distribution (e.g. variance in the Normal distribution).
 
 ```{example}
-In a simple regression model with intercept: $y_t = b_0 + b_1 x_t + e_t$ - assuming Normal distribution for $e_t$, using the MLE will result in $k=3$: the two parameters of the model ($b_0$ and $b_1$) and the variance of the error term $\sigma^2$.
+In a simple regression model: $y_t = \beta_0 + \beta_1 x_t + \epsilon_t$ - assuming Normal distribution for $\epsilon_t$, using the MLE will result in the estimation of $k=3$: the two parameters of the model ($\beta_0$ and $\beta_1$) and the variance of the error term $\sigma^2$.
 ```
 
 If likelihood is not used, then the number of parameters might be different. For example, if we estimate the model via the minimisation of MSE (similar to OLS), then the number of all estimated parameters does not include the variance anymore - it is obtained as a by product of the estimation. This is because the likelihood needs to have all the parameters of distribution in order to maximise it, but with MSE, we just minimise the mean of squared errors, and the variance of the distribution is obtained automatically. While the values of parameters might be the same, the logic is slightly different.
 
 ```{example}
-This means that for the same simple linear regression, the number of estimated parameters is equal to 2.
+This means that for the same simple linear regression, the number of estimated parameters is equal to 2: estimates of $\beta_0$ and $\beta_1$.
 ```
-
-Note that typically, the scale, shape and shift parameters that maximise the likelihood are biased and do not coincide with the ones typically used in the OLS. For example, in case of Normal distribuiton, OLS estimate of variance has $T-k$ in the denominator, while the likelihood one has just $T$.
 
 In addition, all the restrictions on the parameters can reduce the number of estimated parameters, when they get to the boundary values.
 
 ```{example}
-If we know that the parameter $b_1$ lies between 0 and 1, and in the estimation process it gets to the value of 1 (due to how the optimiser works), it can be considered as a restriction $b_1=1$. So, when estimated via the minimum of MSE with the restriction, this means that $k=1$.
+If we know that the parameter $\beta_1$ lies between 0 and 1, and in the estimation process it gets to the value of 1 (due to how the optimiser works), it can be considered as a restriction $\beta_1=1$. So, when estimated via the minimum of MSE with this restriction, this would imply that $k=1$.
 ```
 
-In general, if a parameter is provided in the model, then it does not count towards the number of all estimated parameters. So, setting $b_1=1$ acts exactly in this fashion.
+In general, if a parameter is provided in the model, then it does not count towards the number of all estimated parameters. So, setting $b_1=1$ acts in the same fashion.
 
 Finally, if a parameter is just a function of another one, then it does not count towards the $k$ as well.
 
 ```{example}
-If know that in the same simple linear regression $b_1 = \frac{b_0}{\sigma^2}$, then the number of all the estimated parameter via the maximum of likelihood is 2: $b_0$ and $\sigma^2$.
+If we know that in the same simple linear regression $\beta_1 = \frac{\beta_0}{\sigma^2}$, then the number of all the estimated parameter via the maximum likelihood is 2: $\beta_0$ and $\sigma^2$.
 ```
 
 We will come back to the number of parameters later in this textbook, when we discuss specific models.
+
+A final note: typically, the scale, shape and shift parameters that maximise the likelihood are biased and do not coincide with the ones used in the OLS. For example, in case of Normal distribuiton, OLS estimate of variance has $T-k$ in the denominator, while the likelihood one has just $T$. This needs to be taken into account, when the variance is used for inference of forecasting.
