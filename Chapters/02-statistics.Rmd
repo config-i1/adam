@@ -9,7 +9,7 @@ Before moving forward and discussing distributions and models, it is also quite 
 
 The classical example of bias in statistics is the estimation of variance in sample. The following formula gives biased estimate of variance in sample:
 \begin{equation}
-    s^2 = \frac{1}{T} \sum_{j=1}^T \left( y_t - \bar{y} \right)^2,
+    \text{V}(y) = \frac{1}{T} \sum_{j=1}^T \left( y_t - \bar{y} \right)^2,
     (\#eq:varianceBiased)
 \end{equation}
 where $T$ is the sample size and $\bar{y} = \frac{1}{T} \sum_{j=1}^T y_t$ is the mean of the data. There is a lot of proofs in the literature of this issue (even @WikipediaVarianceBias2020 has one), we will not spend time on that. Instead, we will see this effect in the following simple simulation experiment:
@@ -17,28 +17,36 @@ where $T$ is the sample size and $\bar{y} = \frac{1}{T} \sum_{j=1}^T y_t$ is the
 mu <- 100
 sigma <- 10
 nIterations <- 1000
-varianceValues <- vector("numeric",nIterations)
-varianceValuesBiased <- vector("numeric",nIterations)
-x <- rnorm(1000,mu,sigma)
-for(i in 1:nIterations){
-    varianceValuesBiased[i] <- mean((x[1:i]-mean(x[1:i]))^2)
-    varianceValues[i] <- var(x[1:i])
+# Generate data from normal distribution, 10,000 observations
+y <- rnorm(10000,mu,sigma)
+# This is the function, which will calculate the two variances
+varFunction <- function(y){
+   return(c(var(y), mean((y-mean(y))^2)))
 }
+# Calculate biased and unbiased variances for the sample of 30 observations,
+# repeat nIterations times
+varValues <- replicate(nIterations, varFunction(sample(y,30)))
 ```
-This way we have generated 1000 samples, increasing the number of observations 10 times on each iteration. We have calculated standard deviation (square root of variance) using the formula \@ref(eq:varianceBiased) for each step. Now we can plot it in order to see how it worked out:
-```{r eval=FALSE}
-plot(10+1:nIterations,varianceValuesBiased, type="l", xlab="Sample size",ylab="Variance values")
-lines(10+1:nIterations,varianceValues, col="blue")
-abline(h=sigma^2, col="red")
-legend("bottomright", legend=c("Biased","Unbiased","Truth"), col=c("black","blue","red"), lwd=1)
+This way we have generated 1000 samples with 30 observations and calculated variances using the formulae \@ref(eq:varianceBiased) and the corrected one for each step. Now we can plot it in order to see how it worked out:
+```{r fig.cap="Histograms for biased and unbiased estimates of variance"}
+par(mfcol=c(1,2))
+# Histogram of unbiased estimate
+hist(varValues[1,], xlab="V(y)", ylab="y", main="Unbiased estimate of V(y)")
+abline(v=mean(varValues[1,]), col="red")
+legend("topright",legend=TeX(paste0("E$\\left(V(y)\\right)$=",round(mean(varValues[1,]),2))),lwd=1,col="red")
+
+# Histogram of the biased estimate
+hist(varValues[2,], xlab="V(y)", ylab="y", main="Biased estimate of V(y)")
+abline(v=mean(varValues[2,]), col="red")
+legend("topright",legend=TeX(paste0("E$\\left(V(y)\\right)$=",round(mean(varValues[2,]),2))),lwd=1,col="red")
 ```
 
-```{r statsBias, fig.cap="An example with biased estimator", echo=FALSE}
-knitr::include_graphics("images/03-statistics-bias.png")
-```
-
-
-Every run of this experiment will produce different plots, but typically what we will see is that, the biased estimate of variance (the black line) will be slightly below the unbiased one (the blue line) on small samples, and will converge to it assymptotically (with the increase of the sample size). In the example above, the black line is below the blue one all the time until the sample size becomes big enough that the difference between the two becomes negligible. This is the graphical presentation of the bias in the estimator.
+Every run of this experiment will produce different plots, but typically what we will see is that, the biased estimate of variance (the histogram on the right hand side of the plot) will have lower mean than the unbiased one. This is the graphical example of the effect of not taking the number of estimated parameters into account. The correct formula for the unbiased estimate of variance is:
+\begin{equation}
+    s^2 = \frac{1}{T-k} \sum_{j=1}^T \left( y_t - \bar{y} \right)^2,
+    (\#eq:varianceUnBiased)
+\end{equation}
+where $k$ is the number of all independent estimated parameters. In this simple example $k=1$, because we only estimate mean (the variance is based on it). Analysing the formulae \@ref(eq:varianceBiased) and \@ref(eq:varianceUnBiased), we can say that with the increase of the sample size, the bias will disappear and the two formulae will give almost the same results: when the sample size $T$ becomes big enough, the difference between the two becomes negligible. This is the graphical presentation of the bias in the estimator.
 
 
 ### Efficiency
@@ -51,26 +59,23 @@ sigma <- 10
 nIterations <- 1000
 meanValues <- vector("numeric",nIterations)
 medianValues <- vector("numeric",nIterations)
-x <- rnorm(100000,mu,sigma)
+y <- rnorm(100000,mu,sigma)
 for(i in 1:nIterations){
-    meanValues[i] <- mean(x[1:(i*100)])
-    medianValues[i] <- median(x[1:(i*100)])
+    meanValues[i] <- mean(y[1:(i*100)])
+    medianValues[i] <- median(y[1:(i*100)])
 }
 ```
 
 In order to establish the efficiency of the estimators, we will take their variances and look at the ratio of mean over median. If both are equally efficient, then this ratio will be equal to one. If the mean is more efficient than the median, then the ratio will be less than one:
 
-```{r eval=FALSE}
+```{r fig.cap="An example with inefficient estimator"}
 variancesRatios <- vector("numeric",nIterations-1)
 for(i in 2:nIterations){
     variancesRatios[i-1] <- var(meanValues[1:i]) / var(medianValues[1:i])
 }
+options(scipen=6)
 plot(10+2:nIterations*100,variancesRatios, type="l", xlab="Sample size",ylab="Relative efficiency", ylim=range(c(1,variancesRatios)))
 abline(h=1, col="red")
-```
-
-```{r statsEfficiecny, fig.cap="An example with inefficient estimator", echo=FALSE}
-knitr::include_graphics("images/03-statistics-efficiency.png")
 ```
 
 What we should typically see on this graph, is that the back like should be below the red one, indicating that the variance of mean is lower than the variance of the median. This means that mean is more efficient estimator of the true location of the distribution $\mu$ than the median. In fact, it is easy to proove that asymptotically the mean will be 1.57 times more efficient than median [@WikipediaMedianEfficiency2020] (so, the line should converge to approximately 0.64).
@@ -86,27 +91,27 @@ An example of inconsistent estimator is Chebyshev (or max norm) metric. It is fo
 \end{equation}
 Minimising this norm, we can get an estimate $\hat{y}$ of the location parameter $\mu$. The simulation experiment becomes a bit more tricky in this situation, but here is the code to generate the estimates of the location parameter:
 ```{r eval=FALSE}
-LMax <- function(x){
+LMax <- function(y){
     estimator <- function(par){
-        return(max(abs(x-par)));
+        return(max(abs(y-par)));
     }
     
-    return(optim(mean(x), fn=estimator, method="Brent", lower=min(x), upper=max(x)));
+    return(optim(mean(y), fn=estimator, method="Brent", lower=min(y), upper=max(y)));
 }
 
 mu <- 100
 sigma <- 10
 nIterations <- 1000
-x <- rnorm(10000, mu, sigma)
+y <- rnorm(10000, mu, sigma)
 LMaxEstimates <- vector("numeric", nIterations)
 for(i in 1:nIterations){
-    LMaxEstimates[i] <- LMax(x[1:(i*10)])$par;
+    LMaxEstimates[i] <- LMax(y[1:(i*10)])$par;
 }
 ```
 
 And here how the estimate looks with the increase of sample size:
 ```{r eval=FALSE}
-plot(1:nIterations*10, LMaxEstimates, type="l", xlab="Sample size",ylab="Estimator of mu")
+plot(1:nIterations*10, LMaxEstimates, type="l", xlab="Sample size",ylab=TeX("Estimate of $\\mu$"))
 abline(h=mu, col="red")
 ```
 
@@ -228,7 +233,7 @@ where $T$ is the sample size. \@ref(eq:sigmaNormal) coincides with Mean Squared 
 And here how this distribution looks:
 
 ```{r dnormPlot, echo=FALSE}
-plot(seq(-3,3,0.1),dnorm(seq(-3,3,0.1)),type="l",ylab="Density",xlab="x",main="PDF of Normal distribution")
+plot(seq(-3,3,0.1),dnorm(seq(-3,3,0.1)),type="l",ylab="Density",xlab="y",main="PDF of Normal distribution")
 abline(v=0, col="red")
 text(0.5,0.05,TeX("$\\mu =0$"))
 ```
@@ -270,7 +275,7 @@ where $s$ is the scale parameter, which, when estimated using likelihood, is equ
 It has the following shape:
 
 ```{r dlaplacePlot, echo=FALSE}
-plot(seq(-3,3,0.01),dlaplace(seq(-3,3,0.01)),type="l",ylab="Density",xlab="x",main="PDF of Laplace distribution")
+plot(seq(-3,3,0.01),dlaplace(seq(-3,3,0.01)),type="l",ylab="Density",xlab="y",main="PDF of Laplace distribution")
 abline(v=0, col="red")
 ```
 
@@ -299,7 +304,7 @@ where $s$ is the scale parameter. If estimated via maximum likelihood, the scale
 which corresponds to the minimisation of a half of "Mean Root Absolute Error" or "Half Absolute Moment" (HAM). This is a more exotic type of scale, but the main benefit of this distribution is sever heavy tails - it has kurtosis of 25.2. It might be useful in cases of randomly occurring incidents and extreme values (Black Swans?).
 
 ```{r dsPlot, echo=FALSE}
-plot(seq(-3,3,0.01),ds(seq(-3,3,0.01)),type="l",ylab="Density",xlab="x",main="PDF of S distribution")
+plot(seq(-3,3,0.01),ds(seq(-3,3,0.01)),type="l",ylab="Density",xlab="y",main="PDF of S distribution")
 abline(v=0, col="red")
 ```
 
@@ -332,7 +337,7 @@ Note that the estimation of $\beta$ is a difficult task, especially, when it is 
 Depending on the value of $\beta$, the distribution can have different shapes:
 
 ```{r dgnormPlot, echo=FALSE}
-plot(seq(-3,3,0.01),dgnorm(seq(-3,3,0.01),0,1,0.5),type="l",ylab="Density",xlab="x",main="PDF of Generalised Normal distribution",
+plot(seq(-3,3,0.01),dgnorm(seq(-3,3,0.01),0,1,0.5),type="l",ylab="Density",xlab="y",main="PDF of Generalised Normal distribution",
      ylim=c(0,0.6))
 lines(seq(-3,3,0.01),dgnorm(seq(-3,3,0.01),0,1,1),col="darkblue")
 lines(seq(-3,3,0.01),dgnorm(seq(-3,3,0.01),0,1,2),col="darkred")
@@ -370,7 +375,7 @@ Thus maximising the likelihood \@ref(eq:ALaplace) is equivalent to estimating th
 Depending on the value of $\alpha$, the distribution can have different shapes:
 
 ```{r dALaplacePlot, echo=FALSE}
-plot(seq(-3,3,0.01),dalaplace(seq(-3,3,0.01),0,1,0.5),type="l",ylab="Density",xlab="x",main="PDF of Asymmetric Laplace distribution",
+plot(seq(-3,3,0.01),dalaplace(seq(-3,3,0.01),0,1,0.5),type="l",ylab="Density",xlab="y",main="PDF of Asymmetric Laplace distribution",
      ylim=c(0,0.6))
 lines(seq(-3,3,0.01),dalaplace(seq(-3,3,0.01),0,1,0.2),col="darkblue")
 lines(seq(-3,3,0.01),dalaplace(seq(-3,3,0.01),0,1,0.8),col="darkred")
@@ -423,7 +428,7 @@ This distribution becomes very useful for multiplicative models, where it is exp
 
 Here is how the PDF of $\mathcal{IG}(1,s)$ looks for different values of the dispersion $s$:
 ```{r dIGPlot, echo=FALSE}
-plot(seq(0,6,0.01),dinvgauss(seq(0,6,0.01),1,dispersion=10),type="l",ylab="Density",xlab="x",main="PDF of Inverse Gaussian distribution")
+plot(seq(0,6,0.01),dinvgauss(seq(0,6,0.01),1,dispersion=10),type="l",ylab="Density",xlab="y",main="PDF of Inverse Gaussian distribution")
 lines(seq(0,6,0.01),dinvgauss(seq(0,6,0.01),1,dispersion=1),col="darkblue")
 lines(seq(0,6,0.01),dinvgauss(seq(0,6,0.01),1,dispersion=0.1),col="darkred")
 abline(v=1, col="red")
