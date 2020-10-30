@@ -56,29 +56,31 @@ where $k$ is the number of all independent estimated parameters. In this simple 
 **Efficiency** means, if the sample size increases, then the estimated parameters will not change substantially, they will vary in a narrow range (variance of estimates will be small). In the case with inefficient estimates the increase of sample size from 50 to 51 observations may lead to the change of a parameter from 0.1 to, let’s say, 10. This is bad because the values of parameters usually influence both point forecasts and prediction intervals. As a result the inventory decision may differ radically from day to day. For example, we may decide that we urgently need 1000 units of product on Monday, and order it just to realise on Tuesday that we only need 100. Obviously this is an exaggeration, but no one wants to deal with such an erratically behaving model, so we need to have efficient estimates of parameters.
 
 Another classical example of not efficient estimator is the median, when used on the data that follows Normal distribution. Here is a simple experiment demonstrating the idea:
-```{r}
+```{r eval=FALSE}
 mu <- 100
 sigma <- 10
-nIterations <- 1000
-meanValues <- vector("numeric",nIterations)
-medianValues <- vector("numeric",nIterations)
+nIterations <- 500
+obs <- 100
+meanValues <- vector("numeric",obs)
+medianValues <- vector("numeric",obs)
 y <- rnorm(100000,mu,sigma)
-for(i in 1:nIterations){
-    meanValues[i] <- mean(y[1:(i*100)])
-    medianValues[i] <- median(y[1:(i*100)])
+for(i in 1:obs){
+    ySample <- replicate(nIterations,sample(y,i*100))
+    meanValues[i] <- var(apply(ySample,2,mean))
+    medianValues[i] <- var(apply(ySample,2,median))
 }
 ```
 
 In order to establish the efficiency of the estimators, we will take their variances and look at the ratio of mean over median. If both are equally efficient, then this ratio will be equal to one. If the mean is more efficient than the median, then the ratio will be less than one:
 
-```{r fig.cap="An example with inefficient estimator"}
-variancesRatios <- vector("numeric",nIterations-1)
-for(i in 2:nIterations){
-    variancesRatios[i-1] <- var(meanValues[1:i]) / var(medianValues[1:i])
-}
+```{r eval=FALSE}
 options(scipen=6)
-plot(10+2:nIterations*100,variancesRatios, type="l", xlab="Sample size",ylab="Relative efficiency", ylim=range(c(1,variancesRatios)))
+plot(1:100*100,meanValues/medianValues, type="l", xlab="Sample size",ylab="Relative efficiency", ylim=range(c(1,variancesRatios)))
 abline(h=1, col="red")
+```
+
+```{r statsEfficiecny, fig.cap="An example with inefficient estimator", echo=FALSE}
+knitr::include_graphics("images/03-statistics-efficiency.png")
 ```
 
 What we should typically see on this graph, is that the black line should be below the red one, indicating that the variance of mean is lower than the variance of the median. This means that mean is more efficient estimator of the true location of the distribution $\mu$ than the median. In fact, it is easy to proove that asymptotically the mean will be 1.57 times more efficient than median [@WikipediaMedianEfficiency2020] (so, the line should converge approximately to the value of 0.64).
