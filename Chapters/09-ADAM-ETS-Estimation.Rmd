@@ -35,3 +35,60 @@ All of these aspects will be covered in this chapter.
 
 ## Maximum Likelihood Estimation (MLE) {#ADAMETSEstimationLikelihood}
 
+The maximum likelihood estimation (MLE) of the ADAM ETS model relies on the distributional assumptions of each specific model and might differ from model to another. There are several options for the `distribution` supported by `adam()` function in smooth package, here we will briefly discuss how the estimation is done for each one of them. We start with the additive error models, for which the assumptions, log-likelihoods and MLE of scales are provided in the table \@ref(additiveErrorLikelihoods). The likelihoods are derived based on the probability density functions, discussed in [the chapter 2](#distributions), by taking logarithms of the product of pdfs. For example, this is what we get for the normal distribution:
+\begin{equation}
+  \begin{aligned}
+    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \prod_{t=1}^T \left(\frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} \right)\right) \\
+    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \frac{1}{\left(\sqrt{2 \pi \sigma^2}\right)^T} \exp \left( \sum_{t=1}^T -\frac{e_t^2}{2 \sigma^2} \right) \\
+    \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \log \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) \\
+    \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = -\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{e_t^2}{\sigma^2}
+  \end{aligned}.
+  (\#eq:ETSADAMNormalDistributionExample)
+\end{equation}
+As for the scale, it is obtained by solving the equation after taking derivative of the log-likelihood \@ref(eq:ETSADAMNormalDistributionExample) with respect to $\sigma^2$ and setting it equal to zero. We don't discuss the concentrated log-likelihoods (obtained after inserting the estimated scale in the respective log-likelihood function), because they are not useful in understanding how the model is estimated, but knowing how to calculate scale helps, because it simplifies the model estimation process.
+
+
+```{r additiveErrorLikelihoods}
+# Assumption | log-likelihood \ell(\boldsymbol{\theta}, {\sigma}_\epsilon^2 | \textbf{Y}) | Scale
+# Normal distribution
+distributionsTable <- c("$\\epsilon_t \\sim \\mathcal{N}(0, \\sigma^2)$",
+                        "-\\frac{T}{2} \\log(2 \\pi \\sigma^2) -\\frac{1}{2} \\sum_{t=1}^T \\frac{\\epsilon_t^2}{\\sigma^2}",
+                        "\\hat{\\sigma}^2 = \\frac{1}{T} \\sum_{t=1}^T e_t^2",
+# Laplace distribution
+                        "$\\epsilon_t \\sim \\mathcal{Laplace}(0, s)$",
+                        "-T \\log(2 s) -\\sum_{t=1}^T \\frac{|\\epsilon_t|}{s}",
+                        "\\hat{s} = \\frac{1}{T} \\sum_{t=1}^T |e_t|",
+# S distribution
+                        "$\\epsilon_t \\sim \\mathcal{S}(0, s)$",
+                        "-T \\log(4 s^2) -\\sum_{t=1}^T \\frac{\\sqrt{|\\epsilon_t|}}{s}",
+                        "\\hat{s} = \\frac{1}{2T} \\sum_{t=1}^T \\sqrt{|e_t|}",
+# GN distribution
+                        "$\\epsilon_t \\sim \\mathcal{GN}(0, s, \\beta)$",
+                        "T\\log\\beta -T \\log(2 s \\Gamma\\left(\\beta^{-1}\\right)) - \\sum_{t=1}^T \\frac{\\left|\\epsilon_t\\right|^\\beta}{s}",
+                        "\\hat{s} = \\sqrt[^{\\beta}]{\\frac{\\beta}{T} \\sum_{t=1}^T\\left| e_t \\right|^{\\beta}}",
+# Asymmetric Laplace distribution
+                        "$\\epsilon_t \\sim \\mathcal{ALaplace}(0, s, \\alpha)$",
+                        "T\\log\\left(\\alpha(1-\\alpha)\\right) -T \\log(s) -\\sum_{t=1}^T \\frac{\\epsilon_t (\\alpha - I(\\epsilon_t \\leq 0))}{s}",
+                        "\\hat{s} = \\frac{1}{T} \\sum_{t=1}^T e_t(\\alpha -I(e_t \\leq 0))",
+# IG distribution
+                        "$\\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}} \\right) \\sim \\mathcal{IG}(1, s)$",
+                        "-\\frac{T}{2} \\log \\left(2 \\pi s \\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}}\\right)^3 \\right) -\\frac{1}{2s} \\sum_{t=1}^{T} \\frac{\\frac{\\epsilon_t}{\\mu_{y,t}}^2}{\\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}}\\right)}",
+                        "\\hat{\\sigma}^2 = \\frac{1}{T} \\sum_{t=1}^{T} \\frac{e_t^2}{\\hat{\\mu}_{y,t} y_t}",
+# logN distribution
+                        "$\\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}} \\right) \\sim \\text{log}\\mathcal{N}\\left(-\\frac{\\sigma^2}{2}, \\sigma^2\\right)$",
+                        "-\\frac{T}{2} \\log \\left(2 \\pi \\sigma^2\\right) -\\frac{1}{2\\sigma^2} \\sum_{t=1}^{T} \\left(\\log \\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}}\\right)+\\frac{\\sigma^2}{2}\\right)^2 -\\sum_{t=1}^T \\log y_t",
+                        "\\hat{\\sigma}^2 = 2\\left(1-\\sqrt{ 1-\\frac{1}{T} \\sum_{t=1}^{T} \\log^2\\left(1+\\frac{e_t}{\\mu_{y,t}}\\right)\\right)"
+                        )
+distributionsTable <- matrix(distributionsTable, 7, 3, byrow=TRUE,
+                           dimnames=list(c("**Normal**","**Laplace**","**S**",
+                                           "**Generalised Normal**","**Asymmetric Laplace**",
+                                           "**Inverse Gaussian**","**Log Normal**"),
+                                         c("**Assumption**","**log-likelihood**","**MLE of scale**")))
+kableTable <- kableExtra::kable(distributionsTable, escape=FALSE, caption="Likelihood approach for additive error models",
+                                col.names=c("Assumption","log-likelihood","MLE of scale"))
+kableExtra::kable_styling(kableTable, font_size=12, protect_latex=TRUE)
+```
+
+Other distributions can be used in ADAM ETS as well (for example, Logistic distribution or Student's t), but we do not discuss them here.
+
+
