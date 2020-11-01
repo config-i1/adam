@@ -35,7 +35,7 @@ All of these aspects will be covered in this chapter.
 
 ## Maximum Likelihood Estimation (MLE) {#ADAMETSEstimationLikelihood}
 
-The maximum likelihood estimation (MLE) of the ADAM ETS model relies on the distributional assumptions of each specific model and might differ from model to another. There are several options for the `distribution` supported by `adam()` function in smooth package, here we will briefly discuss how the estimation is done for each one of them. We start with the additive error models, for which the assumptions, log-likelihoods and MLE of scales are provided in the table \@ref(tab:additiveErrorLikelihoods). The likelihoods are derived based on the probability density functions, discussed in [the chapter 2](#distributions), by taking logarithms of the product of pdfs for all in sample observations. For example, this is what we get for the normal distribution:
+The maximum likelihood estimation (MLE) of the ADAM ETS model relies on the distributional assumptions of each specific model and might differ from model to another. There are several options for the `distribution` supported by `adam()` function in smooth package, here we will briefly discuss how the estimation is done for each one of them. We start with the additive error models, for which the assumptions, log-likelihoods and MLE of scales are provided in Table \@ref(tab:additiveErrorLikelihoods). The likelihoods are derived based on the probability density functions, discussed in [the chapter 2](#distributions), by taking logarithms of the product of pdfs for all in sample observations. For example, this is what we get for the normal distribution:
 \begin{equation}
   \begin{aligned}
     \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \prod_{t=1}^T \left(\frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} \right)\right) \\
@@ -43,9 +43,9 @@ The maximum likelihood estimation (MLE) of the ADAM ETS model relies on the dist
     \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \log \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) \\
     \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & -\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}
   \end{aligned}.
-  (\#eq:ETSADAMNormalDistributionExample)
+  (\#eq:ETSADAMNormalDistributionExample01)
 \end{equation}
-As for the scale, it is obtained by solving the equation after taking derivative of the log-likelihood \@ref(eq:ETSADAMNormalDistributionExample) with respect to $\sigma^2$ and setting it equal to zero. We don't discuss the concentrated log-likelihoods (obtained after inserting the estimated scale in the respective log-likelihood function), because they are not useful in understanding how the model is estimated, but knowing how to calculate scale helps, because it simplifies the model estimation process.
+As for the scale, it is obtained by solving the equation after taking derivative of the log-likelihood \@ref(eq:ETSADAMNormalDistributionExample01) with respect to $\sigma^2$ and setting it equal to zero. We don't discuss the concentrated log-likelihoods (obtained after inserting the estimated scale in the respective log-likelihood function), because they are not useful in understanding how the model is estimated, but knowing how to calculate scale helps, because it simplifies the model estimation process.
 
 
 ```{r echo=FALSE}
@@ -75,7 +75,7 @@ distributionsTable <- c("$\\epsilon_t \\sim \\mathcal{N}(0, \\sigma^2)$",
 # IG distribution
                         "$1+\\frac{\\epsilon_t}{\\mu_{y,t}} \\sim \\mathcal{IG}(1, s)$",
                         "$\\begin{split} &-\\frac{T}{2} \\log \\left(2 \\pi s \\left(\\frac{y_t}{\\mu_{y,t}}\\right)^3 \\right) -\\\\
-                                         &\\frac{1}{2s} \\sum_{t=1}^{T} \\frac{\\epsilon_t^2}{\\mu_{y,t}y_t}\\end{split}$",
+                                         &\\frac{3}{2}\\sum_{t=1}^T \\log y_t -\\frac{1}{2s} \\sum_{t=1}^{T} \\frac{\\epsilon_t^2}{\\mu_{y,t}y_t}\\end{split}$",
                         "$\\hat{s} = \\frac{1}{T} \\sum_{t=1}^{T} \\frac{e_t^2}{\\hat{\\mu}_{y,t} y_t}$",
 # logN distribution
                         "$1+\\frac{\\epsilon_t}{\\mu_{y,t}} \\sim \\text{log}\\mathcal{N}\\left(-\\frac{\\sigma^2}{2}, \\sigma^2\\right)$",
@@ -94,6 +94,96 @@ kableTable <- kableExtra::kable(distributionsTable, escape=FALSE, caption="Likel
 kableExtra::kable_styling(kableTable, font_size=12, protect_latex=TRUE)
 ```
 
-Other distributions can be used in ADAM ETS as well (for example, Logistic distribution or Student's t), but we do not discuss them here. Note that for the additive error models $y_t = \mu_{y,t}+\epsilon_t$, thus some formulae in \@ref(tab:additiveErrorLikelihoods) are simplified.
+Other distributions can be used in ADAM ETS as well (for example, Logistic distribution or Student's t), but we do not discuss them here. Note that for the additive error models $y_t = \mu_{y,t}+\epsilon_t$, thus some formulae in Table \@ref(tab:additiveErrorLikelihoods) are simplified. In all of the cases in \@ref(tab:additiveErrorLikelihoods) the assumptions imply that the actual value follows the same distribution, but with a different location and / or scale. For example, for the Normal distribution we have:
+\begin{equation}
+  \begin{aligned}
+    & \epsilon_t \sim \mathcal{N}(0, \sigma^2) \\
+    & \text{or}
+    & y_t = \mu_{y,t}+\epsilon_t \sim \mathcal{N}(\mu_{y,t}, \sigma^2)
+  \end{aligned}.
+  (\#eq:ETSADAMNormalDistributionExample02)
+\end{equation}
 
+When it comes to the multiplicative error models, the likelihoods become slightly different. For example, when we assume that $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$ in the multiplicative error model, this implies that:
+\begin{equation}
+  \begin{aligned}
+    & \epsilon_t \sim \mathcal{N}(0, \sigma^2) \\
+    & \text{or}
+    & y_t = \mu_{y,t}(1+\epsilon_t) \sim \mathcal{N}(\mu_{y,t}, \mu_{y,t}^2 \sigma^2)
+  \end{aligned}.
+  (\#eq:ETSADAMNormalDistributionExample03)
+\end{equation}
+As a result the log-likelihoods would have the $\mu_{y,t}$ part in the formulae. Similar logic is applicable to $\mathcal{Laplace}$, $\mathcal{S}$, $\mathcal{GN}$ and $\mathcal{ALaplace}$ distributions. When it comes to the $\mathcal{IG}$ and log$\mathcal{N}$, the assumptions are imposed on the $1+\epsilon_t$ part of the model, and the respective likelihoods do not involve the expectation $\mu_{y,t}$.
 
+All the likelihoods for the multiplicative error models are summarised in Table \@ref(tab:multiplicativeErrorLikelihoods).
+
+```{r echo=FALSE}
+# Assumption | log-likelihood \ell(\boldsymbol{\theta}, {\sigma}_\epsilon^2 | \textbf{Y}) | Scale
+# Normal distribution
+distributionsTable <- c("$\\epsilon_t \\sim \\mathcal{N}(0, \\sigma^2)$",
+                        "$\\begin{split} &-\\frac{T}{2} \\log(2 \\pi \\sigma^2) -\\frac{1}{2} \\sum_{t=1}^T \\frac{\\epsilon_t^2}{\\sigma^2} -\\\\
+                                         &\\sum_{t=1}^T \\log |\\mu_{y,t}|\\end{split}$",
+                        "$\\hat{\\sigma}^2 = \\frac{1}{T} \\sum_{t=1}^T e_t^2$",
+# Laplace distribution
+                        "$\\epsilon_t \\sim \\mathcal{Laplace}(0, s)$",
+                        "$\\begin{split} &-T \\log(2 s) -\\sum_{t=1}^T \\frac{|\\epsilon_t|}{s} -\\\\
+                                         &\\sum_{t=1}^T \\log \\mu_{y,t}\\end{split}$",
+                        "$\\hat{s} = \\frac{1}{T} \\sum_{t=1}^T |e_t|$",
+# S distribution
+                        "$\\epsilon_t \\sim \\mathcal{S}(0, s)$",
+                        "$\\begin{split} &-T \\log(4 s^2) -\\sum_{t=1}^T \\frac{\\sqrt{|\\epsilon_t|}}{s} -\\\\
+                                         &\\sum_{t=1}^T \\log \\mu_{y,t}\\end{split}$",
+                        "$\\hat{s} = \\frac{1}{2T} \\sum_{t=1}^T \\sqrt{|e_t|}$",
+# GN distribution
+                        "$\\epsilon_t \\sim \\mathcal{GN}(0, s, \\beta)$",
+                        "$\\begin{split} &T\\log\\beta -T \\log(2 s \\Gamma\\left(\\beta^{-1}\\right)) -\\\\
+                                         &\\sum_{t=1}^T \\frac{\\left|\\epsilon_t\\right|^\\beta}{s} -\\sum_{t=1}^T \\log \\mu_{y,t}\\end{split}$",
+                        "$\\hat{s} = \\sqrt[^{\\beta}]{\\frac{\\beta}{T} \\sum_{t=1}^T\\left| e_t \\right|^{\\beta}}$",
+# Asymmetric Laplace distribution
+                        "$\\epsilon_t \\sim \\mathcal{ALaplace}(0, s, \\alpha)$",
+                        "$\\begin{split} &T\\log\\left(\\alpha(1-\\alpha)\\right) -T \\log(s) -\\\\
+                                         &\\sum_{t=1}^T \\frac{\\epsilon_t (\\alpha - I(\\epsilon_t \\leq 0))}{s} -\\sum_{t=1}^T \\log \\mu_{y,t}\\end{split}$",
+                        "$\\hat{s} = \\frac{1}{T} \\sum_{t=1}^T e_t(\\alpha -I(e_t \\leq 0))$",
+# IG distribution
+                        "$1+\\epsilon_t \\sim \\mathcal{IG}(1, s)$",
+                        "$\\begin{split} &-\\frac{T}{2} \\log \\left(2 \\pi s \\left(1+\\epsilon_{t}\\right)^3 \\right) -\\\\
+                                         &\\frac{3}{2}\\sum_{t=1}^T \\log y_t -\\frac{1}{2s} \\sum_{t=1}^{T} \\frac{\\epsilon_t^2}{1+\\epsilon_t}\\end{split}$",
+                        "$\\hat{s} = \\frac{1}{T} \\sum_{t=1}^{T} \\frac{e_t^2}{1+e_t}$",
+# logN distribution
+                        "$1+\\epsilon_t \\sim \\text{log}\\mathcal{N}\\left(-\\frac{\\sigma^2}{2}, \\sigma^2\\right)$",
+                        "$\\begin{split} &-\\frac{T}{2} \\log \\left(2 \\pi \\sigma^2\\right) -\\\\
+                                         &\\frac{1}{2\\sigma^2} \\sum_{t=1}^{T} \\left(\\log \\left(1+\\epsilon_t\\right)+\\frac{\\sigma^2}{2}\\right)^2 -\\\\
+                                         &\\sum_{t=1}^T \\log y_t \\end{split}$",
+                        "$\\hat{\\sigma}^2 = 2\\left(1-\\sqrt{ 1-\\frac{1}{T} \\sum_{t=1}^{T} \\log^2\\left(1+e_t\\right)}\\right)$"
+                        )
+distributionsTable <- matrix(distributionsTable, 7, 3, byrow=TRUE,
+                           dimnames=list(c("**Normal**","**Laplace**","**S**",
+                                           "**Generalised Normal**","**Asymmetric Laplace**",
+                                           "**Inverse Gaussian**","**Log Normal**"),
+                                         c("**Assumption**","**log-likelihood**","**MLE of scale**")))
+kableTable <- kableExtra::kable(distributionsTable, escape=FALSE, caption="Likelihood approach for multiplicative error models",
+                                col.names=c("Assumption","log-likelihood","MLE of scale"), label="multiplicativeErrorLikelihoods")
+kableExtra::kable_styling(kableTable, font_size=12, protect_latex=TRUE)
+```
+
+When it comes to practicalities, in `adam()` function, in the optimiser, on each iteration, after fitting the model the scales from Tables \@ref(tab:additiveErrorLikelihoods) and \@ref(tab:multiplicativeErrorLikelihoods) are calculated and then used in the log-likelihoods based on the respective distribution functions, for additive error models:
+
+1. $\mathcal{N}$ - `dnorm(x=actuals, mean=fitted, sd=scale,  log=TRUE)` from `stats` package;
+2. $\mathcal{Laplace}$ - `dlaplace(q=actuals, mu=fitted, scale=scale, log=TRUE)` from `greybox` package;
+3. $\mathcal{S}$ - `ds(q=actuals, mu=fitted, scale=scale, log=TRUE)` from `greybox` package;
+4. $\mathcal{GN}$ - `dgnorm(x=actuals, mu=fitted, alpha=scale, beta=beta, log=TRUE)` implemented internally based on `gnorm` package (the version on CRAN is outdated);
+5. $\mathcal{ALaplace}$ - `dalaplace(q=actuals, mu=fitted, scale=scale,  alpha=alpha, log=TRUE)` from `greybox` package;
+6. $\mathcal{IG}$ - `dinvgauss(x=actuals, mean=fitted, dispersion=scale/fitted, log=TRUE)` from `statmod` package;
+7. log$\mathcal{N}$ - `dlnorm(x=actuals, meanlog=fitted-scale^2/2, sdlog=scale, log=TRUE)` from `stats` package;
+
+and for multiplicative error models:
+
+1. $\mathcal{N}$ - `dnorm(x=actuals, mean=fitted, sd=scale*fitted,  log=TRUE)` from `stats` package;
+2. $\mathcal{Laplace}$ - `dlaplace(q=actuals, mu=fitted, scale=scale*fitted, log=TRUE)` from `greybox` package;
+3. $\mathcal{S}$ - `ds(q=actuals, mu=fitted, scale=scale*sqrt(fitted), log=TRUE)` from `greybox` package;
+4. $\mathcal{GN}$ - `dgnorm(x=actuals, mu=fitted, alpha=scale*fitted^beta, beta=beta, log=TRUE)` implemented internally based on `gnorm` package (the version on CRAN is outdated);
+5. $\mathcal{ALaplace}$ - `dalaplace(q=actuals, mu=fitted, scale=scale*fitted,  alpha=alpha, log=TRUE)` from `greybox` package;
+6. $\mathcal{IG}$ - `dinvgauss(x=actuals, mean=fitted, dispersion=scale/fitted, log=TRUE)` from `statmod` package;
+7. log$\mathcal{N}$ - `dlnorm(x=actuals, meanlog=fitted-scale^2/2, sdlog=scale, log=TRUE)` from `stats` package.
+
+Note that in case of $\mathcal{GN}$ and $\mathcal{ALaplace}$, additional parameters (namely $\beta$ and $\alpha$) are needed. If the user does not provide them, then they are estimated together with the other parameters via the maximisation of respective likelihoods.
