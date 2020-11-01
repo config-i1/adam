@@ -39,9 +39,9 @@ The maximum likelihood estimation (MLE) of the ADAM ETS model relies on the dist
 \begin{equation}
   \begin{aligned}
     \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \prod_{t=1}^T \left(\frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} \right)\right) \\
-    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \frac{1}{\left(\sqrt{2 \pi \sigma^2}\right)^T} \exp \left( \sum_{t=1}^T -\frac{e_t^2}{2 \sigma^2} \right) \\
+    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \frac{1}{\left(\sqrt{2 \pi \sigma^2}\right)^T} \exp \left( \sum_{t=1}^T -\frac{\\epsilon_t^2}{2 \sigma^2} \right) \\
     \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \log \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) \\
-    \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & -\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{e_t^2}{\sigma^2}
+    \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & -\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{\\epsilon_t^2}{\sigma^2}
   \end{aligned}.
   (\#eq:ETSADAMNormalDistributionExample)
 \end{equation}
@@ -68,16 +68,19 @@ distributionsTable <- c("$\\epsilon_t \\sim \\mathcal{N}(0, \\sigma^2)$",
                         "$\\hat{s} = \\sqrt[^{\\beta}]{\\frac{\\beta}{T} \\sum_{t=1}^T\\left| e_t \\right|^{\\beta}}$",
 # Asymmetric Laplace distribution
                         "$\\epsilon_t \\sim \\mathcal{ALaplace}(0, s, \\alpha)$",
-                        "$T\\log\\left(\\alpha(1-\\alpha)\\right) -T \\log(s) -\\sum_{t=1}^T \\frac{\\epsilon_t (\\alpha - I(\\epsilon_t \\leq 0))}{s}$",
+                        "$\\begin{split} &T\\log\\left(\\alpha(1-\\alpha)\\right) -T \\log(s) -\\\\
+                                         &\\sum_{t=1}^T \\frac{\\epsilon_t (\\alpha - I(\\epsilon_t \\leq 0))}{s} \\end{split}$",
                         "$\\hat{s} = \\frac{1}{T} \\sum_{t=1}^T e_t(\\alpha -I(e_t \\leq 0))$",
 # IG distribution
                         "$\\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}} \\right) \\sim \\mathcal{IG}(1, s)$",
-                        "$-\\frac{T}{2} \\log \\left(2 \\pi s \\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}}\\right)^3 \\right) -\\frac{1}{2s} \\sum_{t=1}^{T} \\frac{\\frac{\\epsilon_t}{\\mu_{y,t}}^2}{\\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}}\\right)}$",
-                        "$\\hat{\\sigma}^2 = \\frac{1}{T} \\sum_{t=1}^{T} \\frac{e_t^2}{\\hat{\\mu}_{y,t} y_t}$",
+                        "$-\\frac{T}{2} \\log \\left(2 \\pi s \\left(\\frac{y_t}{\\mu_{y,t}}\\right)^3 \\right) -\\frac{1}{2s} \\sum_{t=1}^{T} \\frac{\\epsilon_t^2}{\\mu_{y,t}y_t}$",
+                        "$\\hat{s} = \\frac{1}{T} \\sum_{t=1}^{T} \\frac{e_t^2}{\\hat{\\mu}_{y,t} y_t}$",
 # logN distribution
                         "$\\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}} \\right) \\sim \\text{log}\\mathcal{N}\\left(-\\frac{\\sigma^2}{2}, \\sigma^2\\right)$",
-                        "$-\\frac{T}{2} \\log \\left(2 \\pi \\sigma^2\\right) -\\frac{1}{2\\sigma^2} \\sum_{t=1}^{T} \\left(\\log \\left(1+\\frac{\\epsilon_t}{\\mu_{y,t}}\\right)+\\frac{\\sigma^2}{2}\\right)^2 -\\sum_{t=1}^T \\log y_t$",
-                        "$\\hat{\\sigma}^2 = 2\\left(1-\\sqrt{ 1-\\frac{1}{T} \\sum_{t=1}^{T} \\log^2\\left(1+\\frac{e_t}{\\hat{\\mu}_{y,t}}\\right)}\\right)$"
+                        "$\\begin{split} &-\\frac{T}{2} \\log \\left(2 \\pi \\sigma^2\\right) -\\\\
+                                         &\\frac{1}{2\\sigma^2} \\sum_{t=1}^{T} \\left(\\log \\left(\\frac{y_t}{\\mu_{y,t}}\\right)+\\frac{\\sigma^2}{2}\\right)^2 -\\\\
+                                         &\\sum_{t=1}^T \\log y_t \\end{split}$",
+                        "$\\hat{\\sigma}^2 = 2\\left(1-\\sqrt{ 1-\\frac{1}{T} \\sum_{t=1}^{T} \\log^2\\left(\\frac{y_t}{\\hat{\\mu}_{y,t}}\\right)}\\right)$"
                         )
 distributionsTable <- matrix(distributionsTable, 7, 3, byrow=TRUE,
                            dimnames=list(c("**Normal**","**Laplace**","**S**",
@@ -89,6 +92,6 @@ kableTable <- kableExtra::kable(distributionsTable, escape=FALSE, caption="Likel
 kableExtra::kable_styling(kableTable, font_size=12, protect_latex=TRUE)
 ```
 
-Other distributions can be used in ADAM ETS as well (for example, Logistic distribution or Student's t), but we do not discuss them here.
+Other distributions can be used in ADAM ETS as well (for example, Logistic distribution or Student's t), but we do not discuss them here. Note that for the additive error models $y_t = \mu_{y,t}+\epsilon_t$, thus some formulae in \@ref(additiveErrorLikelihoods) are simplified.
 
 
