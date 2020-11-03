@@ -261,7 +261,7 @@ All of these tricks make sure that different components shrink towards zero, not
 
 Note that both LASSO and RIDGE are experimental options. If you have better ideas of how to implement them, send me a message, I will improve the mechanism in `adam()`.
 
-### Custom losses and distributions
+### Custom losses
 It is also theoretically possible to use other non-standard loss functions. `adam()` function allows doing that via the parameter `loss`. For example, we could estimate an ETS(A,A,N) model on the `BJsales` data using an absolute cubic loss (note that the parameters `actual`, `fitted` and `B` are compulsory for the function):
 ```{r eval=FALSE}
 lossFunction <- function(actual, fitted, B){
@@ -277,17 +277,22 @@ This way, one can use more advanced estimators, such as, for example, M-estimato
 ```{r}
 adamModel <- vector("list",6)
 names(adamModel) <- c("likelihood","MSE", "MAE", "HAM", "LASSO", "Huber")
-adamModel[[1]] <- adam(AirPassengers, "MAM", distribution="dinvgauss", h=12, holdout=TRUE, loss="likelihood")
-adamModel[[2]] <- adam(AirPassengers, "MAM", distribution="dinvgauss", h=12, holdout=TRUE, loss="MSE")
-adamModel[[3]] <- adam(AirPassengers, "MAM", distribution="dinvgauss", h=12, holdout=TRUE, loss="MAE")
-adamModel[[4]] <- adam(AirPassengers, "MAM", distribution="dinvgauss", h=12, holdout=TRUE, loss="HAM")
+adamModel[[1]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
+                       h=12, holdout=TRUE, loss="likelihood")
+adamModel[[2]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
+                       h=12, holdout=TRUE, loss="MSE")
+adamModel[[3]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
+                       h=12, holdout=TRUE, loss="MAE")
+adamModel[[4]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
+                       h=12, holdout=TRUE, loss="HAM")
 ```
 
 In these three cases the models, assuming the same distribution for the error term are estimated using MSE, MAE and HAM. Their smoothing parameters should differ, with MSE producing fitted values closer to the mean, MAE - closer to the median and HAM - closer to the mode (but not exactly the mode) of the distribution.
 
 In addition, we introduce ADAM ETS(M,A,M) estimated using LASSO with arbitrarily selected $\lambda=0.1$:
 ```{r}
-adamModel[[5]] <- adam(AirPassengers, "MAM", distribution="dinvgauss", h=12, holdout=TRUE, loss="LASSO", lambda=0.1)
+adamModel[[5]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
+                       h=12, holdout=TRUE, loss="LASSO", lambda=0.1)
 ```
 And, finally, we estimate the same model using a custom loss, which in this case is Huber loss with the threshold of 1.345:
 ```{r}
@@ -296,7 +301,8 @@ lossFunction <- function(actual, fitted, B){
   errors <- actual-fitted;
   return(sum(errors[errors<=1.345]^2) + sum(abs(errors)[errors>1.345]));
 }
-adamModel[[6]] <- adam(AirPassengers, "MAM", distribution="dinvgauss", h=12, holdout=TRUE, loss=lossFunction)
+adamModel[[6]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
+                       h=12, holdout=TRUE, loss=lossFunction)
 ```
 
 Now we can compare the performance of the six models. First, we can compare the smoothing parameters:
@@ -315,7 +321,7 @@ round(sapply(adamModel,"[[","accuracy"),3)[c("ME","MAE","MSE"),]
 
 And we can also produce forecasts from them and plot those forecasts for the visual inspection:
 ```{r}
-par(mfcol=c(2,3))
+par(mfcol=c(3,2))
 adamModelForecasts <- lapply(adamModel,forecast, h=10, interval="prediction")
 for(i in 1:6){plot(adamModelForecasts[[i]], main=names(adamModel)[i])}
 ```
