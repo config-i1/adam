@@ -68,8 +68,43 @@ As a result, when comparing different forecasting methods, it makes sense calcul
 Finally, when aggregating performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors - this way you will know, which of the methods fails seriously, and which does a consistently good job.
 
 
-## Measuring uncertainty
-While point forecasts are useful, prediction intervals are important in many areas of application as well. They allow getting an understanding about the uncertainty around the point forecasts and thus allow making less risky decisions. 
+## Measuring uncertainty {#uncertainty}
+While point forecasts are useful in order to understand what to expect on average, prediction intervals are important in many areas of application in order to understand, what to expect in $1-\alpha$ percent of cases. They allow getting an understanding about the uncertainty around the point forecasts and thus allow making less risky decisions. In a way, if you do not have prediction intervals, then you cannot assess the uncertainty about the future outcomes adequately. If you cannot say that with the confidence level of 95% our sales next week will be between 1,000 and 1,200 units, then you cannot say anything useful about the future sales, because, as we probably understand from the [previous discussion](#intro), the point forecasts represent only mean values and typically will not be equal to the actual observations from the holdout sample. Hopefully, all of this explains why the prediction intervals are needed in forecasting. 
+
+In order to asses the performance of constructed prediction intervals, there exist different measures, here are the most popular of them:
+
+1. Coverage, showing the percentage of observations lying inside the interval:
+\begin{equation}
+    \mathrm{coverage} = \frac{1}{h} \sum_{j=1}^h \left( \mathbb{1}(y_{t+j} < l_{t+j}) \times \mathbb{1}(y_{t+j} > u_{t+j}) \right),
+    (\#eq:coverage)
+\end{equation}
+where $l_{t+j}$ is the lower bound and $u_{t+j}$ is the upper bound of the interval and $\mathbb{1}(\cdot)$ is the indicator function, returning one, when the condition is true and zero otherwise. Ideally, the coverage should be equal to the confidence level of the interval, but in reality, this can only be observed [asymptotically](#estimatesProperties), as the sample size increases due to the inheritted randomness of any sample estimates of parameters;
+2. Range, showing the width of the prediction interval:
+\begin{equation}
+    \mathrm{range} = \frac{1}{h} \sum_{j=1}^h (u_{t+j} -l_{t+j});
+    (\#eq:range)
+\end{equation}
+3. Mean Interval Score [@Gneiting2007], which shows a combination of the previous two:
+\begin{equation}
+    \begin{aligned}
+    \mathrm{MIS} = & \frac{1}{h} \sum_{j=1}^h \left( (u_{t+j} -l_{t+j}) + \frac{2}{\alpha} (l_{t+j} -y_{t+j}) \mathbb{1}(y_{t+j} < l_{t+j}) \right. \\
+    & \left. + \frac{2}{\alpha} (y_{t+j} -u_{t+j}) \mathbb{1}(y_{t+j} > u_{t+j}) \right) ,
+    \end{aligned}
+    (\#eq:MIS),
+\end{equation}
+where $\alpha$ is the significance level. If the actual values lie outside of the interval, they get penalised with a ratio of \(\frac{2}{\alpha}\), proportional to the distance from the interval bound. At the same time the width of the interval positively influences the value of the measure: the wider the interval is, the higher the score becomes. The idealistic model with MIS$=0$ should have all the actual values in the holdout lying on the bounds of the interval and \(u_{t+j}=l_{t+j}\), implying that the bounds coincide with each other and that there is no uncertainty about the futur (which is not possible in the real life).
+4. Pinball loss [@Koenker1978], which measures the accuracy of models in terms of specific quantiles (this is usually applied to different quantiles produced from the model, not just to the lower and upper bounds of 95% interval):
+\begin{equation}
+    \mathrm{pinball} = (1 -\alpha) \sum_{y_{t+j} < q_{t+j}, j=1,\dots,h } |y_{t+j} -q_{t+j}| + \alpha \sum_{y_{t+j} \geq q_{t+j} , j=1,\dots,h } |y_{t+j} -q_{t+j}|,
+    (\#eq:pinball)
+\end{equation}
+where $q_{t+j}$ is the value of the specific quantile of the distribution. What pinball shows, is how well we capture the specific quantile in the data. The lower the value of pinball is, the closer the bound is to the specific quantile of the holdout distribution. If the pinball is equal to zero, then we have done the perfect job in hitting that specific quantile. The main issue with pinball loss is that it is very difficult to assess the quantiles correctly on small samples. For example, in order to get a better idea of how the 0.975 quantile performs, we would need to have at least 40 observations, so that 39 of them would be expected to lie below this bound (\(\frac{39}{40} = 0.975\)). In fact, the quantiles are not always uniquely defined [see, for example, @Taylor2020], which makes the measurement difficult.
+
+Similar to the pinball function, it is possible to propose the expectile-based score, but while it has nice statistical properties [@Taylor2020], it is more difficult to interpret.
+
+Range, MIS and pinball discussed above are unit-dependent. In order to be able to aggregate them over several time serie, they need to be scaled (as we did with MAE and RMSE in [previous section](#errorMeasures)) either via division by the in-sample mean or in-sample mean absolute differences in order to obtain the scaled counterparts of the measures, or via the division by the values from the benchmark model in order to obtain the relative one.
+
+If you are interested in an overall performance of the model, then MIS provides this information. However, it does not show what specifically happens inside and is difficult to interpret. Coverage and range are easiere to interpret, but they only give an information about the specific prediction interval and they typically show a trade-off information (e.g. do you want to cover more or do you want to have a narrower interval?). Academics prefer the pinball for the purposes of uncertainty assessment, as it shows a more detailed information about the predictive distribution from each model, but, while it is easier to interpret than MIS, it is still not as straightforward as coverage and range. So, the selection of the measure, again, depends on your specific situaiton and on the understanding of statistics by decision makers.
 
 
 ## Rolling origin {#rollingOrigin}
@@ -159,6 +194,6 @@ In this example the forecasts from different origins are close to each other. Th
 The rolling origin function from `greybox` package also allows working with explanatory variables and returning prediction intervals, if needed. Some further examples are discussed in the vignette of the package: `vignette("ro","greybox")`.
 
 
-## Statistical tests
+## Statistical tests {#statisticalTests}
 
 
