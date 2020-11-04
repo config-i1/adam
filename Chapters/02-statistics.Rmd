@@ -227,12 +227,12 @@ There are several probability distributions that will be helpful in the further 
 ### Normal distribution
 Every statistical textbook has Normal distribution. It is that one famous bell-curved distribution that every statistician likes because it is easy to work with and it is an asymptotic distribution for many other well-behaved distributions in some conditions (so called "Central Limit Theorem"). Here is the probability density function (PDF) of this distribution:
 \begin{equation}
-    f(y_t) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} \right) ,
+    f(y_t) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_{y,t} \right)^2}{2 \sigma^2} \right) ,
     (\#eq:Normal)
 \end{equation}
-where $y_t$ is the value of the response variable, $\mu_t$ is the mean on observation $t$ and $\sigma^2$ is the variance of the error term. The maximum likelihood estimate of $\sigma^2$ is:
+where $y_t$ is the value of the response variable, $\mu_{y,t}=\mu_{y,t|t-1}$ is the one step ahead conditional expectation on observation $t$, given the information on $t-1$ and $\sigma^2$ is the variance of the error term. The maximum likelihood estimate of $\sigma^2$ is:
 \begin{equation}
-    \hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^T \left(y_t - \mu_t \right)^2 ,
+    \hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^T \left(y_t - \mu_{y,t} \right)^2 ,
     (\#eq:sigmaNormal)
 \end{equation}
 where $T$ is the sample size. \@ref(eq:sigmaNormal) coincides with Mean Squared Error (MSE), discussed in the [section 1](#errorMeasures).
@@ -253,7 +253,7 @@ Additionally, if Normal distribution is used for the maximum likelihood estimati
 
 The log-likelihood based on the Normal distribution is derived by taking the sum of logarithms of the PDF of Normal distribution \@ref(eq:Normal):
 \begin{equation}
-    \ell(\mathbf{Y}| \theta, \sigma^2) = - \frac{T}{2} \log \left(2 \pi \sigma^2\right) - \sum_{t=1}^T \frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} ,
+    \ell(\mathbf{Y}| \theta, \sigma^2) = - \frac{T}{2} \log \left(2 \pi \sigma^2\right) - \sum_{t=1}^T \frac{\left(y_t - \mu_{y,t} \right)^2}{2 \sigma^2} ,
     (\#eq:NormalLogLik)
 \end{equation}
 where $\theta$ is the vector of all the estimated parameters in the model, and $\log$ is the natural logarithm. If one takes the derivative of @\ref(eq:NormalLogLik) with respect to $\sigma^2$, then the formula \@ref(eq:sigmaNormal) is obtained. Another useful thing to note is the concentrated log-likelihood, which is obtained by inserting the estimated variance \@ref(eq:sigmaNormal) in \@ref(eq:NormalLogLik):
@@ -270,12 +270,12 @@ Normal distribution is available in `stats` package with `dnorm()`, `qnorm()`, `
 A more exotic distribution is Laplace, which has some similarities with Normal, but has higher excess. It has the following PDF:
 
 \begin{equation}
-    f(y_t) = \frac{1}{2 s} \exp \left( -\frac{\left| y_t - \mu_t \right|}{s} \right) ,
+    f(y_t) = \frac{1}{2 s} \exp \left( -\frac{\left| y_t - \mu_{y,t} \right|}{s} \right) ,
     (\#eq:Laplace)
 \end{equation}
 where $s$ is the scale parameter, which, when estimated using likelihood, is equal to the Mean Absolute Error ([MAE](#errorMeasures)):
 \begin{equation}
-    \hat{s} = \frac{1}{T} \sum_{t=1}^T \left| y_t - \mu_t \right| .
+    \hat{s} = \frac{1}{T} \sum_{t=1}^T \left| y_t - \mu_{y,t} \right| .
     (\#eq:sLaplace)
 \end{equation}
 
@@ -300,12 +300,12 @@ The `dlaplace`, `qlaplace`, `plaplace` and `rlaplace` functions from `greybox` p
 ### S distribution
 This is something relatively new, but not ground braking. I have derived S distribution few years ago, but have never written a paper on that. It has the following density function (it is as a special case of [Generalised Normal distribution](distributionsGeneralisedNormal), when $\beta=0.5$):
 \begin{equation}
-    f(y_t) = \frac{1}{4 s^2} \exp \left( -\frac{\sqrt{|y_t - \mu_t|}}{s} \right) ,
+    f(y_t) = \frac{1}{4 s^2} \exp \left( -\frac{\sqrt{|y_t - \mu_{y,t}|}}{s} \right) ,
     (\#eq:S)
 \end{equation}
 where $s$ is the scale parameter. If estimated via maximum likelihood, the scale parameter is equal to:
 \begin{equation}
-    \hat{s} = \frac{1}{2T} \sum_{t=1}^T \sqrt{\left| y_t - \mu_t \right|} ,
+    \hat{s} = \frac{1}{2T} \sum_{t=1}^T \sqrt{\left| y_t - \mu_{y,t} \right|} ,
     (\#eq:sS)
 \end{equation}
 which corresponds to the minimisation of a half of "Mean Root Absolute Error" or "Half Absolute Moment" (HAM). This is a more exotic type of scale, but the main benefit of this distribution is sever heavy tails - it has kurtosis of 25.2. It might be useful in cases of randomly occurring incidents and extreme values (Black Swans?).
@@ -327,17 +327,17 @@ The `ds`, `qs`, `ps` and `rs` from `greybox` package implement the density, quan
 ### Generalised Normal distribution {#distributionsGeneralisedNormal}
 Generalised Normal ($\mathcal{GN}$) distribution (as the name says) is a generalisation for Normal distribution, which also includes Laplace and S as special cases [@Nadarajah2005]. There are two versions of this distribution: one with a shape and another with a skewness parameter. We are mainly interested in the first one, which has the following PDF:
 \begin{equation}
-    f(y_t) = \frac{\beta}{2 s \Gamma(\beta^{-1})} \exp \left( -\left(\frac{|y_t - \mu_t|}{s}\right)^{\beta} \right),
+    f(y_t) = \frac{\beta}{2 s \Gamma(\beta^{-1})} \exp \left( -\left(\frac{|y_t - \mu_{y,t}|}{s}\right)^{\beta} \right),
     (\#eq:GND)
 \end{equation}
 where $\beta$ is the shape parameter, and $s$ is the scale of the distribution, which, when estimated via MLE, is equal to:
 \begin{equation}
-    \hat{s} = \sqrt[^{\beta}]{\frac{\beta}{T} \sum_{t=1}^T\left| y_t - \mu_t \right|^{\beta}},
+    \hat{s} = \sqrt[^{\beta}]{\frac{\beta}{T} \sum_{t=1}^T\left| y_t - \mu_{y,t} \right|^{\beta}},
     (\#eq:sGND)
 \end{equation}
 which has MSE, MAE and HAM as special cases, when $\beta$ is equal to 2, 1 and 0.5 respectively. The parameter $\beta$ influences the kurtosis directly, it can be calculated for each special case as $\frac{\Gamma(5/\beta)\Gamma(1/\beta)}{\Gamma(3/\beta)^2}$. The higher $\beta$ is, the lower the kurtosis is.
 
-The advantage of $\mathcal{GN}$ distribution is it's flexibility. In theory, it is possible to model extremely rare events with this distribution, if the shape parameter $\beta$ is fractional and close to zero. Alternatively, when $\beta \rightarrow \infty$, the distribution converges point-wise to the uniform distribution on $(\mu_t - s, \mu_t + s)$.
+The advantage of $\mathcal{GN}$ distribution is it's flexibility. In theory, it is possible to model extremely rare events with this distribution, if the shape parameter $\beta$ is fractional and close to zero. Alternatively, when $\beta \rightarrow \infty$, the distribution converges point-wise to the uniform distribution on $(\mu_{y,t} - s, \mu_{y,t} + s)$.
 
 Note that the estimation of $\beta$ is a difficult task, especially, when it is less than 2 - the MLE of it looses properties of consistency and asymptotic normality.
 
@@ -367,14 +367,14 @@ The working functions for the Generalised Normal are implemented in the `gnorm` 
 
 ### Asymmetric Laplace distribution
 
-Asymmetric Laplace distribution ($\mathcal{AL}$) can be considered as a two Laplace distributions with different parameters $s$ for left and right sides from the location $\mu_t$. There are several ways to summarise the probability density function, the neater one relies on the asymmetry parameter $\alpha$ [@Yu2005]:
+Asymmetric Laplace distribution ($\mathcal{AL}$) can be considered as a two Laplace distributions with different parameters $s$ for left and right sides from the location $\mu_{y,t}$. There are several ways to summarise the probability density function, the neater one relies on the asymmetry parameter $\alpha$ [@Yu2005]:
 \begin{equation}
-    f(y_t) = \frac{\alpha (1- \alpha)}{s} \exp \left( -\frac{y_t - \mu_t}{s} (\alpha - I(y_t \leq \mu_t)) \right) ,
+    f(y_t) = \frac{\alpha (1- \alpha)}{s} \exp \left( -\frac{y_t - \mu_{y,t}}{s} (\alpha - I(y_t \leq \mu_{y,t})) \right) ,
     (\#eq:ALaplace)
 \end{equation}
-where $s$ is the scale parameter, $\alpha$ is the skewness parameter and $I(y_t \leq \mu_t)$ is the indicator function, which is equal to one, when the condition is satisfied and to zero otherwise. The scale parameter $s$ estimated using likelihood is equal to the quantile loss:
+where $s$ is the scale parameter, $\alpha$ is the skewness parameter and $I(y_t \leq \mu_{y,t})$ is the indicator function, which is equal to one, when the condition is satisfied and to zero otherwise. The scale parameter $s$ estimated using likelihood is equal to the quantile loss:
 \begin{equation}
-    \hat{s} = \frac{1}{T} \sum_{t=1}^T \left(y_t - \mu_t \right)(\alpha - I(y_t \leq \mu_t)) .
+    \hat{s} = \frac{1}{T} \sum_{t=1}^T \left(y_t - \mu_{y,t} \right)(\alpha - I(y_t \leq \mu_{y,t})) .
     (\#eq:sALaplace)
 \end{equation}
 Thus maximising the likelihood \@ref(eq:ALaplace) is equivalent to estimating the model via the minimisation of $\alpha$ quantile, making this equivalent to quantile regression approach. So quantile regression models assume indirectly that the error term in the model is $\epsilon_t \sim \mathcal{AL}(0, s, \alpha)$ [@Geraci2007].
@@ -409,15 +409,15 @@ In addition, it is possible to derive the log-versions of the Normal, \mathcal{L
     f_{log}(\log(y_t)) = \frac{1}{y_t} f(\log y_t).
     (\#eq:logDistribution)
 \end{equation}
-They are defined for positive values only and will have different right tail, depending on the location, scale and shape parameters. $\exp(\mu_t)$ in this case represents the geometric mean (and median) of distribution rather than the arithmetic one. The conditional expectation in these distributions is typically higher than $\exp(\mu_t)$ and depends on the value of the scale parameter. It is known for log$\mathcal{N}$, but does not have a simple form for the other distributions.
+They are defined for positive values only and will have different right tail, depending on the location, scale and shape parameters. $\exp(\mu_{y,t})$ in this case represents the geometric mean (and median) of distribution rather than the arithmetic one. The conditional expectation in these distributions is typically higher than $\exp(\mu_{y,t})$ and depends on the value of the scale parameter. It is known for log$\mathcal{N}$, but does not have a simple form for the other distributions.
 
 
 ### Inverse Gaussian distribution {#IGDistribution}
 
-An exotic distribution that will be useful for what comes in this textbook is the Inverse Gaussian ($\mathcal{IG}$), which is parameterised using mean value $\mu_t$ and either the dispersion parameter $s$ or the scale $\lambda$ and is defined for positive values only. This distribution is useful because it is scalable and has some similarities with the Normal one. In our case, the important property is the following:
+An exotic distribution that will be useful for what comes in this textbook is the Inverse Gaussian ($\mathcal{IG}$), which is parameterised using mean value $\mu_{y,t}$ and either the dispersion parameter $s$ or the scale $\lambda$ and is defined for positive values only. This distribution is useful because it is scalable and has some similarities with the Normal one. In our case, the important property is the following:
 \begin{equation}
     \text{if } (1+\epsilon_t) \sim \mathcal{IG}(1, s) \text{, then }
-    y_t = \mu_t \times (1+\epsilon_t) \sim \mathcal{IG}\left(\mu_t, \frac{s}{\mu_t} \right),
+    y_t = \mu_{y,t} \times (1+\epsilon_t) \sim \mathcal{IG}\left(\mu_{y,t}, \frac{s}{\mu_{y,t}} \right),
     (\#eq:InverseGaussianModel)
 \end{equation}
 implying that the dispersion of the model changes together with the expectation. The PDF of the distribution of $1+\epsilon_t$ is:
