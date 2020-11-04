@@ -225,8 +225,8 @@ The main difference between using these losses and maximising respective likelih
 
 Having said that, the assumed distribution does not necessarily depend on the used loss and vice versa. For example, we can assume that the actuals follow Inverse Gaussian distribution, but estimate the model using MAE. The estimates of parameters might not be as efficient as in the case of MLE, but it is still possible to do. The error term, which is minimised in respective losses depends on the error type:
 
-- Additive error: $e_t = y_t - \mu_{y,t}$;
-- Multiplicative error: $e_t = \frac{y_t - \mu_{y,t}}{\mu_{y,t}}$.
+- Additive error: $e_t = y_t - \hat{\mu}_{y,t}$;
+- Multiplicative error: $e_t = \frac{y_t - \hat{\mu}_{y,t}}{\hat{\mu}_{y,t}}$.
 
 This follows directly from the respective ETS models.
 
@@ -236,7 +236,7 @@ Along with the discussed MSE and MAE, there is also HAM - "Half Absolute Moment"
   \mathrm{HAM} = \frac{1}{T} \sum_{j=1}^T \sqrt{\left|e_t\right|},
   (\#eq:HAM)
 \end{equation}
-the minimum of which corresponds to the maximum of the likelihood of [S distribution](#distributions). The idea of this estimator is to minimise the errors that happen very often, close to the estimate. It will typically ignore the outliers and focus on the values that happen most often. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution. I donot have a proof of this property, but it becomes apparent, given that the square root in \@ref(eq:HAM) would reduce the influence of all values lying above 1 and increase the values of everything that lies between (0, 1) (e.g. $\sqrt{0.16}=0.4$).
+the minimum of which corresponds to the maximum of the likelihood of [S distribution](#distributions). The idea of this estimator is to minimise the errors that happen very often, close to the estimate. It will typically ignore the outliers and focus on the values that happen most often. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution. I donot have a proof of this property, but it becomes apparent, given that the square root in \@ref(eq:HAM) would reduce the influence of all values lying above 1 and increase the values of everything that lies between (0, 1) (e.g. $\sqrt{0.16}=0.4$, but $\sqrt{16}=4$).
 
 Similar to HAM, one can calculate other fractional losses, which would be even less sensitive to outliers and more focused on the frequently appearing values, e.g. by using the $\sqrt[^\alpha]{\left|e_t\right|}$ with $\alpha>1$.
 
@@ -244,17 +244,17 @@ Similar to HAM, one can calculate other fractional losses, which would be even l
 While this is not a well studied approach yet, it is possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation of ETS models [@James2017 give a good overview of these losses with examples in R], which can be formulated as (at least this is how it is formualted in ADAM ETS):
 \begin{equation}
   \begin{aligned}
-    \mathrm{LASSO} = &(1-\lambda) \frac{1}{T} \sum_{j=1}^T e_t^2 + \lambda \sum |\theta| \\
-    \mathrm{RIDGE} = &(1-\lambda) \frac{1}{T} \sum_{j=1}^T e_t^2 + \lambda \sum \theta^2,
+    \mathrm{LASSO} = &(1-\lambda) \frac{1}{T} \sum_{j=1}^T e_t^2 + \lambda \sum |\hat{\theta}| \\
+    \mathrm{RIDGE} = &(1-\lambda) \frac{1}{T} \sum_{j=1}^T e_t^2 + \lambda \sum \hat{\theta}^2,
   \end{aligned}
   (\#eq:Regularisation)
 \end{equation}
 where $\theta$ is the vector of all parameters in the model and $\lambda$ is the regularisation parameter. The idea of these losses is in shrinkage of parameters. If $\lambda=0$, then the losses become equivalent to the MSE, when $\lambda=1$, the optimiser would minimise the values of parameters, ignoring the MSE part. In the context of ETS, it makes sense to shrink everything but the initial level. In order for different components to shrink with a similar speed, they need to be normalised, so here are some tricks used in ADAM ETS:
 
 1. The smoothing parameters are left intact, because they typicall lie between 0 and 1, where 0 means that the respective states are not updated over time;
-2. The initial level is normalised using the formula: $l_0' = \frac{l_0 - \bar{y}_m}{\hat{\sigma}_{y,m}}$, where $\bar{y}_m$ is the mean and $\hat{\sigma}_{y,m}$ is the standard deviation of the first $m$ actual observations, where $m$ is the highest frequency of the data (if $m=1$, then both values are taken based on the first two observations). Shrinking it to zero implies that it becomes equivalent to the mean of the first $m$ observations;
-3. If the trend is *additive*, then the initial trend component is scaled using: $b_0' = \frac{b_0}{\hat{\sigma}_{y,m}}$, making sure that it shrinks towards zero (no trend). In case of the *multiplicative* trend, this becomes: $b_0' = \log{b_0}$ , making it shrink towards 1 in the original scale (again, no trend case);
-4. If the seasonal component is *additive*, then the normalisation similar to the one in trend is done for every seasonal index: $s_i' = \frac{s_i}{\hat{\sigma}_{y,m}}$, making sure that they shrink towards zero. If the seasonal component is *multiplicative*, then the logarithm of components is taken: $s_i' = \log{s_i}$, making sure that they shrink towards 1 in the original scale.
+2. The initial level is normalised using the formula: $\hat{l}_0' = \frac{\hat{l}_0 - \bar{y}_m}{\hat{\sigma}_{y,m}}$, where $\bar{y}_m$ is the mean and $\hat{\sigma}_{y,m}$ is the standard deviation of the first $m$ actual observations, where $m$ is the highest frequency of the data (if $m=1$, then both values are taken based on the first two observations). Shrinking it to zero implies that it becomes equivalent to the mean of the first $m$ observations;
+3. If the trend is *additive*, then the initial trend component is scaled using: $\hat{b}_0' = \frac{\hat{b}_0}{\hat{\sigma}_{y,m}}$, making sure that it shrinks towards zero (no trend). In case of the *multiplicative* trend, this becomes: $\hat{b}_0' = \log{\hat{b}_0}$ , making it shrink towards 1 in the original scale (again, no trend case);
+4. If the seasonal component is *additive*, then the normalisation similar to the one in trend is done for every seasonal index: $\hat{s}_i' = \frac{\hat{s}_i}{\hat{\sigma}_{y,m}}$, making sure that they shrink towards zero. If the seasonal component is *multiplicative*, then the logarithm of components is taken: $\hat{s}_i' = \log{\hat{s}_i}$, making sure that they shrink towards 1 in the original scale.
 5. If there are explanatory variables and the error term of the model is *additive*, then the respective parameters are divided by the standard deviations of the respective variables. In case of *multiplicative* error term, nothing is done, because the parameters in this case would typically be close to zero anyway (see a chapter on the ADAM ETSX).
 
 All of these tricks make sure that different components shrink towards zero, not breaking the model. As a result, one can potentially use the model with trend and seasonality and use regularisation in order to shrink the unnecessary parameters towards zero. The `adam()` function does not select the most appropriate $\lambda$ and will set it equal to zero if it is not provided by the user.
@@ -270,7 +270,7 @@ lossFunction <- function(actual, fitted, B){
 adam(BJsales, "AAN", loss=lossFunction, h=10, holdout=TRUE)
 ```
 
-This way, one can use more advanced estimators, such as, for example, M-estimators [@Barrow2020].
+where `actual` is the vector of actual values $y_t$, `fitted` is the estimate of the one step ahead conditional mean $\hat{\mu}_{y,t}$ and $B$ is the vector of all estimated parameters, $\hat{\theta}$. This way, one can use more advanced estimators, such as, for example, M-estimators [@Barrow2020].
 
 ### Examples in R
 `adam()` has two parameters, one regulating the assumed `distribution`, and another one, regulating how the model will be estimated, what `loss` will be used for these purposes. Here are examples with combinations of different losses and an assumed Inverse Gaussian distribution for ETS(M,A,M) on `AirPassengers` data. We start with MSE, MAE and HAM:
