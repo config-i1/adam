@@ -15,29 +15,55 @@ There are different error measures that can be used in this case, the selection 
 
 The very basic error measures are Root Mean Squared Error (RMSE):
 \begin{equation}
-    \text{RMSE} = \sqrt{\frac{1}{h} \sum_{j=1}^h \left( y_{t+j} - \hat{y}_{t+j} \right)^2 },
+    \mathrm{RMSE} = \sqrt{\frac{1}{h} \sum_{j=1}^h \left( y_{t+j} - \hat{y}_{t+j} \right)^2 },
     (\#eq:RMSE)
 \end{equation}
 and Mean Absolute Error (MAE):
 \begin{equation}
-    \text{MAE} = \frac{1}{h} \sum_{j=1}^h \left| y_{t+j} - \hat{y}_{t+j} \right| ,
+    \mathrm{MAE} = \frac{1}{h} \sum_{j=1}^h \left| y_{t+j} - \hat{y}_{t+j} \right| ,
     (\#eq:MAE)
 \end{equation}
 where $y_{t+j}$ is the actual value $j$ steps ahead from the holdout, $\hat{y}_{t+j}$ is the $j$ steps ahead point forecast (conditional expectation of the model) and $h$ is the forecast horizon. As you see, these error measures aggregate the performance of competing forecasting methods across the forecasting horizon, averaging out the specific performances on each $j$. If this information needs to be retained, then the summation can be dropped to obtain just "SE" and "AE".
 
-It is well-known [see, for example, @Kolassa2016] that RMSE is minimised by the mean value of a distribution, and MAE is minimised by the median. So, when selecting between the two, you should consider this property.
+It is well-known [see, for example, @Kolassa2016] that **RMSE is minimised by the mean value** of a distribution, and **MAE is minimised by the median**. So, when selecting between the two, you should consider this property. This mean, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand.
 
 The main advantage of these error measures is that they are very simple and have a clear interprertation: they show the average distance from the point forecasts to the actual values. They are perfect if you work with only one time series. However, they are not suitable, when you have several time series and want to see the performance of methods across them. This is mainly because they are scale dependent and contain specific units: if you measures sales of bananas in pounds, then MAE and RMSE will show the error in pounds. And, as we know, you should not add up pounds of bananas with pounds of apples - the result might not make sense.
 
 In order to tackle this issue, different error scaling techniques have been proposed over the years, resulting in a zoo of error measures:
 
-1. MAPE - Mean Absolute Percentage Error;
-2. MASE - Mean Absolute Scaled Error [@Hyndman2006];
-3. rMAE - Relative Mean Absolute Error [@Davydenko2013];
-4. sMAE - scaled Mean Absolute Error [@Petropoulos2015];
+1. MAPE - Mean Absolute Percentage Error:
+\begin{equation}
+    \mathrm{MAPE} = \frac{1}{h} \sum_{j=1}^h \frac{y_{t+j} - \hat{y}_{t+j}}{y_{t+j}},
+    (\#eq:MAPE)
+\end{equation}
+2. MASE - Mean Absolute Scaled Error [@Hyndman2006]:
+\begin{equation}
+    \mathrm{MASE} = \frac{1}{h} \sum_{j=1}^h \frac{|y_{t+j} - \hat{y}_{t+j}|}{\bar{\Delta}_y},
+    (\#eq:MASE)
+\end{equation}
+where $\bar{\Delta}_y = \frac{1}{t-1}\sum_{j=2}^t |\Delta_{y,j}|$ is the mean absolute value of the first differences $\Delta_{y,j}=y_j-y_{j-1}$ of the in-sample data;
+3. rMAE - Relative Mean Absolute Error [@Davydenko2013]:
+\begin{equation}
+    \mathrm{rMAE} = \frac{\mathrm{MAE}_a}{\mathrm{MAE}_b},
+    (\#eq:rMAE)
+\end{equation}
+where $\mathrm{MAE}_a$ is the mean absolute error of the model under consideration and $\mathrm{MAE}_b$ is the MAE of the benchmark model;
+4. sMAE - scaled Mean Absolute Error [@Petropoulos2015]:
+\begin{equation}
+    \mathrm{sMAE} = \frac{\mathrm{MAE}}{\bar{y}},
+    (\#eq:sMAE)
+\end{equation}
+where $\bar{y}$ is the mean of the in-sample data.
 5. and others.
 
-They have their own advantages and disadvantages, and we will not discuss them here. It should suffice to say that the selection of error measure should be dictated by the needs of the forecaster. If you want a robust measure that works consistently, but do not care about the interpretation, then go with MASE. If you want an interpretation, then either go with rMAE, or sMAE. And you typically should avoid MAPE and other Percentage Error measures, because they are highly influenced by the actual values you have in the holdout. Furthermore, similarly to the measures above, one can propose RMSE-based scaled and relative error measures.
+There is no "the best" error measure, all of them have their advantages and disadvantages. For example:
+
+1. MAPE is scale sensitive (if the actual values are measured in thousands of units, the resulting error will be much lower than in the case of hundreds of units) and cannot be estimated on data with zeroes. However, it has a simple interpretation as it shows the percentage error (as the name suggests);
+2. MASE does not have issues of MAPE, but it also does not have a simple interpretation due to the division by the first differences of the data (some interpret this as an in-sample one step ahead naive forecast);
+3. rMAE does not have issues of MAPE, has a simple interpretation (it shows by how much one model is better than the other), but fails, when either $\mathrm{MAE}_a$ or $\mathrm{MAE}_b$ for a specific time series is equal to zero;
+4. sMAE does not have issues of MAPE, but has an interpretation close to it, however it breaks down, when the data exhibits trends.
+
+As a result, when comparing different forecasting methods, it makes sense calculating several of the error measures for the purposes of the comparison. Also note that the choice of the metric might depend on the specific needs in the company or the forecaster. If you want a robust measure that works consistently, but you do not care about the interpretation, then go with MASE. If you want an interpretation, then either go with rMAE, or sMAE. And you typically should avoid MAPE and other Percentage Error measures, because they are highly influenced by the actual values you have in the holdout. Furthermore, similarly to the measures above, one can propose RMSE-based scaled and relative error measures, which would measure the performance of methods in terms of means rather than medians.
 
 Finally, when aggregating performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors - this way you will know, which of the methods fails seriously, and which does a consistently good job.
 
