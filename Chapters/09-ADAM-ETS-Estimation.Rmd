@@ -32,24 +32,26 @@ The estimation itself does not happen on its own, a complicated process of minim
 
 All of these aspects will be covered in this chapter.
 
+Note that the discussions in this chapter are widely applicable to other dynamic models, such as ARIMA, which will be discussed later in this textbook.
+
 
 ## Maximum Likelihood Estimation (MLE) {#ADAMETSEstimationLikelihood}
 
 The maximum likelihood estimation (MLE) of the ADAM ETS model relies on the distributional assumptions of each specific model and might differ from model to another. There are several options for the `distribution` supported by `adam()` function in smooth package, here we will briefly discuss how the estimation is done for each one of them. We start with the additive error models, for which the assumptions, log-likelihoods and MLE of scales are provided in Table \@ref(tab:additiveErrorLikelihoods). The likelihoods are derived based on the probability density functions, discussed in [the chapter 2](#distributions), by taking logarithms of the product of pdfs for all in sample observations. For example, this is what we get for the normal distribution:
 \begin{equation}
   \begin{aligned}
-    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \prod_{t=1}^T \left(\frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} \right)\right) \\
-    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \frac{1}{\left(\sqrt{2 \pi \sigma^2}\right)^T} \exp \left( \sum_{t=1}^T -\frac{\epsilon_t^2}{2 \sigma^2} \right) \\
-    \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & \log \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) \\
-    \ell(\boldsymbol{\theta}, {\sigma}^2 | \textbf{Y}) = & -\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}
-  \end{aligned}.
+    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \prod_{t=1}^T \left(\frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_t \right)^2}{2 \sigma^2} \right)\right) \\
+    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \frac{1}{\left(\sqrt{2 \pi \sigma^2}\right)^T} \exp \left( \sum_{t=1}^T -\frac{\epsilon_t^2}{2 \sigma^2} \right) \\
+    \ell(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \log \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) \\
+    \ell(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & -\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}
+  \end{aligned},
   (\#eq:ETSADAMNormalDistributionExample01)
 \end{equation}
-As for the scale, it is obtained by solving the equation after taking derivative of the log-likelihood \@ref(eq:ETSADAMNormalDistributionExample01) with respect to $\sigma^2$ and setting it equal to zero. We don't discuss the concentrated log-likelihoods (obtained after inserting the estimated scale in the respective log-likelihood function), because they are not useful in understanding how the model is estimated, but knowing how to calculate scale helps, because it simplifies the model estimation process.
+where $\mathbf{y}$ is the vector of all in-sample actual values. As for the scale, it is obtained by solving the equation after taking derivative of the log-likelihood \@ref(eq:ETSADAMNormalDistributionExample01) with respect to $\sigma^2$ and setting it equal to zero. We don't discuss the concentrated log-likelihoods (obtained after inserting the estimated scale in the respective log-likelihood function), because they are not useful in understanding how the model is estimated, but knowing how to calculate scale helps, because it simplifies the model estimation process.
 
 
 ```{r echo=FALSE}
-# Assumption | log-likelihood \ell(\boldsymbol{\theta}, {\sigma}_\epsilon^2 | \textbf{Y}) | Scale
+# Assumption | log-likelihood \ell(\boldsymbol{\theta}, {\sigma}_\epsilon^2 | \mathbf{y}) | Scale
 # Normal distribution
 distributionsTable <- c("$\\epsilon_t \\sim \\mathcal{N}(0, \\sigma^2)$",
                         "$-\\frac{T}{2} \\log(2 \\pi \\sigma^2) -\\frac{1}{2} \\sum_{t=1}^T \\frac{\\epsilon_t^2}{\\sigma^2}$",
@@ -114,7 +116,7 @@ As a result the log-likelihoods would have the $\mu_{y,t}$ part in the formulae.
 All the likelihoods for the multiplicative error models are summarised in Table \@ref(tab:multiplicativeErrorLikelihoods).
 
 ```{r echo=FALSE}
-# Assumption | log-likelihood \ell(\boldsymbol{\theta}, {\sigma}_\epsilon^2 | \textbf{Y}) | Scale
+# Assumption | log-likelihood \ell(\boldsymbol{\theta}, {\sigma}_\epsilon^2 | \mathbf{y}) | Scale
 # Normal distribution
 distributionsTable <- c("$\\epsilon_t \\sim \\mathcal{N}(0, \\sigma^2)$",
                         "$\\begin{split} &-\\frac{T}{2} \\log(2 \\pi \\sigma^2) -\\frac{1}{2} \\sum_{t=1}^T \\frac{\\epsilon_t^2}{\\sigma^2} -\\\\
@@ -326,3 +328,22 @@ for(i in 1:6){
 ```
 
 What we observe in this case, is that different losses led to different forecasts and prediction intervals (we still assume Inverse Gaussian distribution) and that in case of LASSO, the shrinkage is so strong that the seasonality is shrunk to zero. What can potentially be done to make this practical is the [rolling origin evaluation](#rollingOrigin) for different losses and then comparison of forecast errors between them in order to select the most efficient one.
+
+
+## Multistep losses
+Another class of losses that can be used in the estimation of ADAM models is the multistep losses. The idea behind them is to produce the point forecast for $h$ steps ahead from each observation in sample and then calculate a measure based on that, which will be minimised by the optimiser in order to find the most suitable values of parameters. There is a lot of literature on this topic, @Svetunkov2020Multistep studied them in detail, showing that their usage implies shrinkage of smoothing parameters in case of ETS models. In this section we will discuss the most popular multistep losses, see what they imply and make a connection between these losses and predictive likelihoods from the ETS models.
+
+One of the simplest estimators is the $\mathrm{MSE}_h$ - mean squared $h$-steps ahead error:
+\begin{equation}
+	\mathrm{MSE}_h = \frac{1}{T-h} \sum_{t=1}^{T-h} e_{t+h|t}^2 ,
+  (\#eq:hstepsMSEPopulation)
+\end{equation}
+where $e_{t+h|t} = y_{t+h} - \hat{\mu}_{t+h|t}$ is the conditional $h$ steps ahead forecast error on the observation $t+h$ produced from the point at time $t$. This estimator is sometimes used to fit a model several times, for each horizon from 1 to $h$ steps ahead, resulting in $h$ different values of parameters for each $j=1, \ldots, h$. The estimation process in this case becomes at least $h$ times more complicated than estimating one model, but is reported to result in increased accuracy. @Svetunkov2020Multistep show that MSE$_h$ is proportional to the h steps ahead forecast error variance $V(y_{t+h}|t)=\sigma^2_h$, which implies that the minimisation of \@ref(eq:hstepsMSEPopulation) leads to the minimisation of the variance and in turn to the minimisation of both one step ahead MSE and a combination of smoothing parameters of a model. This becomes more obvious in the case of [pure additive ETS](#ADAMETSPureAdditive), where the [analytical formulae for variance](#pureAdditiveExpectationAndVariance) are available. The parameters are shrunk towards zero in case of ETS, making the model deterministic. In case of ARIMA, the mechanism is similar, making models closer to the deterministic ones, but the direction of shrinkage is more complicating. The strength of shrinkage is proportional to the forecast horizon $h$ and is weakened with the increase of the sample size.
+
+@Svetunkov2020Multistep demonstrate that the minimum of MSE$_h$ corresponds to the maximum of the predictive likelihood based on the normal distribution, assuming that $\epsilon_t \sim N(0,\sigma^2)$. The log-likelihood in this case is:
+\begin{equation}
+	\ell_{\mathrm{MSE}_h}(\theta, {\sigma^2_h} | \mathbf{y}) = -\frac{T-h}{2} \left( \log(2 \pi) + \log \sigma^2_h \right) -\frac{1}{2} \sum_{t=1}^{T-h} \left( \frac{\eta_{t+h}^2}{\sigma^2_h} \right) ,
+  (\#eq:LikelihoodMSEh)
+\end{equation}
+where $\eta_{t+h} \sim N(0, \sigma_h^2)$ is the h steps ahead forecast error, conditional on the information available at time $t$, $\theta$ is the vector of all estimated parameters of the model and $\mathbf{y}$ is the vector of $y_{t+h}$ for all $t=1,..,T-h$. The formula \@ref(eq:LikelihoodMSEh) can be used for the calculation of information criteria and in turn for the model selection in cases, when MSE$_h$ is used for the model estimation. 
+
