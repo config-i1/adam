@@ -333,17 +333,102 @@ What we observe in this case, is that different losses led to different forecast
 ## Multistep losses
 Another class of losses that can be used in the estimation of ADAM models is the multistep losses. The idea behind them is to produce the point forecast for $h$ steps ahead from each observation in sample and then calculate a measure based on that, which will be minimised by the optimiser in order to find the most suitable values of parameters. There is a lot of literature on this topic, @Svetunkov2020Multistep studied them in detail, showing that their usage implies shrinkage of smoothing parameters in case of ETS models. In this section we will discuss the most popular multistep losses, see what they imply and make a connection between these losses and predictive likelihoods from the ETS models.
 
+### $\mathrm{MSE}_h$ - MSE for h steps ahead
 One of the simplest estimators is the $\mathrm{MSE}_h$ - mean squared $h$-steps ahead error:
 \begin{equation}
 	\mathrm{MSE}_h = \frac{1}{T-h} \sum_{t=1}^{T-h} e_{t+h|t}^2 ,
-  (\#eq:hstepsMSEPopulation)
+  (\#eq:hstepsMSE)
 \end{equation}
-where $e_{t+h|t} = y_{t+h} - \hat{\mu}_{t+h|t}$ is the conditional $h$ steps ahead forecast error on the observation $t+h$ produced from the point at time $t$. This estimator is sometimes used to fit a model several times, for each horizon from 1 to $h$ steps ahead, resulting in $h$ different values of parameters for each $j=1, \ldots, h$. The estimation process in this case becomes at least $h$ times more complicated than estimating one model, but is reported to result in increased accuracy. @Svetunkov2020Multistep show that MSE$_h$ is proportional to the h steps ahead forecast error variance $V(y_{t+h}|t)=\sigma^2_h$, which implies that the minimisation of \@ref(eq:hstepsMSEPopulation) leads to the minimisation of the variance and in turn to the minimisation of both one step ahead MSE and a combination of smoothing parameters of a model. This becomes more obvious in the case of [pure additive ETS](#ADAMETSPureAdditive), where the [analytical formulae for variance](#pureAdditiveExpectationAndVariance) are available. The parameters are shrunk towards zero in case of ETS, making the model deterministic. In case of ARIMA, the mechanism is similar, making models closer to the deterministic ones, but the direction of shrinkage is more complicating. The strength of shrinkage is proportional to the forecast horizon $h$ and is weakened with the increase of the sample size.
+where $e_{t+h|t} = y_{t+h} - \hat{\mu}_{t+h|t}$ is the conditional $h$ steps ahead forecast error on the observation $t+h$ produced from the point at time $t$. This estimator is sometimes used to fit a model several times, for each horizon from 1 to $h$ steps ahead, resulting in $h$ different values of parameters for each $j=1, \ldots, h$. The estimation process in this case becomes at least $h$ times more complicated than estimating one model, but is reported to result in increased accuracy. @Svetunkov2020Multistep show that MSE$_h$ is proportional to the h steps ahead forecast error variance $V(y_{t+h}|t)=\sigma^2_h$, which implies that the minimisation of \@ref(eq:hstepsMSEPopulation) leads to the minimisation of the variance and in turn to the minimisation of both one step ahead MSE and a combination of smoothing parameters of a model. This becomes more obvious in the case of [pure additive ETS](#ADAMETSPureAdditive), where the [analytical formulae for variance](#pureAdditiveExpectationAndVariance) are available. The parameters are shrunk towards zero in case of ETS, making the model deterministic. The effect is neglected on large samples, when the ratio $\frac{T-h}{T-1}$ becomes close to one. In case of ARIMA, the shrinkage mechanism is similar, making models closer to the deterministic ones, but the direction of shrinkage is more complicating. The strength of shrinkage is proportional to the forecast horizon $h$ and is weakened with the increase of the sample size.
 
 @Svetunkov2020Multistep demonstrate that the minimum of MSE$_h$ corresponds to the maximum of the predictive likelihood based on the normal distribution, assuming that $\epsilon_t \sim N(0,\sigma^2)$. The log-likelihood in this case is:
 \begin{equation}
 	\ell_{\mathrm{MSE}_h}(\theta, {\sigma^2_h} | \mathbf{y}) = -\frac{T-h}{2} \left( \log(2 \pi) + \log \sigma^2_h \right) -\frac{1}{2} \sum_{t=1}^{T-h} \left( \frac{\eta_{t+h}^2}{\sigma^2_h} \right) ,
   (\#eq:LikelihoodMSEh)
 \end{equation}
-where $\eta_{t+h} \sim N(0, \sigma_h^2)$ is the h steps ahead forecast error, conditional on the information available at time $t$, $\theta$ is the vector of all estimated parameters of the model and $\mathbf{y}$ is the vector of $y_{t+h}$ for all $t=1,..,T-h$. The formula \@ref(eq:LikelihoodMSEh) can be used for the calculation of information criteria and in turn for the model selection in cases, when MSE$_h$ is used for the model estimation. 
+where $\eta_{t+h} \sim N(0, \sigma_h^2)$ is the h steps ahead forecast error, conditional on the information available at time $t$, $\theta$ is the vector of all estimated parameters of the model and $\mathbf{y}$ is the vector of $y_{t+h}$ for all $t=1,..,T-h$. The formula \@ref(eq:LikelihoodMSEh) can be used for the calculation of information criteria and in turn for the model selection in cases, when MSE$_h$ is used for the model estimation.
 
+@Svetunkov2020Multistep demonstrate that \@ref(eq:hstepsMSE) is [more efficient](#estimatesProperties) than the conventional MSE$_1$ one, when the true smoothing parameters are close to zero and is less efficient otherwise. On smaller samples, MSE$_h$ produces biased estimates of parameters due to shrinkage. This can still be considered as advantage if you are interested in forecasting and do not want the smoothing parameters to vary a lot.
+
+### TMSE - Trace MSE
+An alternative to MSE$_h$ is to produce 1 to $h$ steps ahead forecasts and calculate the respective forecast errors. Then, based on that, we can calculate the overall measure, which we will call "Trace MSE":
+\begin{equation}
+	\mathrm{TMSE} = \sum_{j=1}^h \frac{1}{T-h} \sum_{t=1}^{T-h} e_{t+j|t}^2 .
+  (\#eq:TMSE)
+\end{equation}
+The benefit of this estimator is in minimising the error for the whole 1 to $h$ steps ahead in one model - there is no need to construct $h$ models, minimising MSE$_j$, $j=1,...,h$. However, this comes with a cost: typically short term forecast errors have lower MSE than the longer term ones, so if we just sum their squares up, we are mixing different values, and the minimisation will be done mainly for the ones on the longer horizons.
+
+TMSE does not have a related predictive likelihood, so it is difficult to study its properties, but the simulations show that it tends to produce less biased and more efficient estimates of parameters than MSE$_h$. @Kourentzes2019 showed that TMSE performs well in comparison with the conventional MSE$_1$ and MSE$_h$ in terms of forecasting accuracy and does not take as much time as the estimation of $h$ models using MSE$_h$.
+
+### GTMSE - Geometric Trace MSE
+An estimator that addresses the issues of TMSE, is the GTMSE, which is derived from a so called General Predictive Likelihood [GPL by @Svetunkov2020Multistep]. The word "Geometric" sums up how the value is calculated:
+\begin{equation}
+	\mathrm{GTMSE} =  \sum_{j=1}^h \log \left(\frac{1}{T-h} \sum_{t=1}^{T-h} \sum_{j=1}^h e_{t+j|t}^2 \right).
+  (\#eq:GTMSE)
+\end{equation}
+Logarithms in the formula \@ref(eq:GTMSE) bring the MSEs on different horizons to the same level, so that the both short term and long term errors are minimised with a similar power. As a result, the shrinkage effect in this estimator is milder than in MSE$_h$ and in TMSE and the estimates of parameters are less biased and more efficient on smaller samples. It still has the benefits of other multistep estimators, shrinking the parameters towards zero. Although it is possible to derive a predictive likelihood that would be maximised, when GTMSE is minimised, it relies on unrealistic assumptions of independence of multistep forecast errors (they are always correlated as long as smoothing parameters are not zero).
+
+### MSCE - Mean Squared Cumulative Error
+This estimator alings the loss function with a specific inventory decision: ordering based on the lead time $h$:
+\begin{equation}
+	\mathrm{MSCE} = \frac{1}{T-h} \sum_{t=1}^{T-h} \left( \sum_{j=1}^h e_{t+j|t} \right)^2 .
+  (\#eq:MSCE)
+\end{equation}
+@kourentzes2019unconstraining demonstrated that it produces more accurate forecasts in cases of intermittent demand and lead to less revenue losses. @Svetunkov2020Multistep show that the shrinkage effect is much stronger in this estimator than in the other estimators discussed in this section. In addition, it is possible to derive a predictive log-likelihood related to this estimator:
+\begin{equation}
+	\ell_{\mathrm{MSCE}}(\theta, {\varsigma^2_h} | \mathbf{z}) = -\frac{T-h}{2} \left( \log(2 \pi) + \log {\varsigma^2_h} \right) -\frac{1}{2} \sum_{t=1}^{T-h} \left( \frac{\left(\sum_{j=1}^h \eta_{t+j|t}\right)^2}{2 {\varsigma^2_h}} \right) ,
+  (\#eq:LikelihoodMSCE)
+\end{equation}
+where $\mathbf{z}$ is the cumulative sum of actual values, the vector of $z_t=\sum_{j=1}^h y_{t+j}$ for all $t=1, \ldots, T-h$ and ${\varsigma^2_h}$ is the variance of the cumulative error term. Having the likelihood \@ref(eq:LikelihoodMSCE) permits the model selection and combination using [information criteria](#modelSelection) and also means that the parameters estimated using MSCE will be asymptotically consistent and efficient.
+
+### GPL - General Predictive Likelihood
+Finally, @Svetunkov2020Multistep studied the General Predictive Likelihood for normally distributed variable from @Clements1998, p.77, logarithm version of which can be written as:
+\begin{equation}
+	\ell_{\mathrm{GPL}_h}(\theta, \mathbf{{\Sigma}} | \mathbf{Y}) = -\frac{T-h}{2} \left( h \log(2 \pi) + \log | \mathbf{{\Sigma}}| \right) -\frac{1}{2} \sum_{t=1}^T \left( \mathbf{E_t^\prime} \mathbf{{\Sigma}}^{-1} \mathbf{E_t} \right) ,
+  (\#eq:logGPL)
+\end{equation}
+where $\mathbf{{\Sigma}}$ is the conditional covariance matrix for variable $\mathbf{Y}_t$, $\mathbf{Y}$ is the matrix consisting of \eqref{eq:vector1toh} for all $t=1, \ldots, T-h$ and $\mathbf{E_t}^{\prime} = \begin{pmatrix} \eta_{t+1|t} & \eta_{t+2|t} & \ldots & \eta_{t+h|t} \end{pmatrix}$ is the vector of 1 to $h$ steps ahead forecast errors. @Svetunkov2020Multistep showed that the maximisation of the likelihood \@ref(eq:logGPL) is equivalent to minimising the generalised variance of the error term, $|\mathbf{\hat{\Sigma}}|$, where:
+\begin{equation}
+	\mathbf{\hat{\Sigma}} = \frac{1}{T-h} \sum_{t=1}^{T-h} \mathbf{E_t} \mathbf{E_t^\prime} =
+	\begin{pmatrix}
+		\hat{\sigma}_1^2 & \hat{\sigma}_{1,2} & \dots & \hat{\sigma}_{1,h} \\
+		\hat{\sigma}_{1,2} & \hat{\sigma}_2^2 & \dots & \hat{\sigma}_{2,h} \\
+		\vdots & \vdots & \ddots & \vdots \\
+		\hat{\sigma}_{1,h} & \hat{\sigma}_{2,h} & \dots & \hat{\sigma}_h^2
+	\end{pmatrix} ,
+	(\#eq:Sigmaest)
+\end{equation}
+where $\hat{\sigma}_{i,j}$ is the covariance between $i$-th and $j$-th steps ahead forecast errors. @Svetunkov2020Multistep show that this estimator encompassess all the other estimators discussed in this section: minimising MSE$_h$ is equivalent to minimising the $\hat{\sigma}^2_{h}$; minimising TMSE is equivalent to minimising the trace of the matrix $\mathbf{\hat{\Sigma}}$; minimising GTMSE is the same as minimising the determinant of $\mathbf{\hat{\Sigma}}$ but with the restriction that all off-diagonal elements are equal to zero; minimising MSCE produces the same results as minimising the sum of all elements in $\mathbf{\hat{\Sigma}}$. However, maximum of GPL is equivalent to the maximum of the conventional one step ahead likelihood for a normal model in case, when all the basic [assumptions](#assumptions) hold. In other cases, they would be different, but it is still not clear, whether the difference would be favouring the conventional likelihood of the GPL. Nonetheless, GPL, being the likelihood, guarantees that the estimates of parameters will be efficient and consistent and permits model selection and combination via information criteria.
+
+### Other multistep estimators
+It is also possible to derive multistep estimators based on MAE, HAM and other error measures. adam() unofficially supports the following multistep losses by analogie with MSE$_h$, TMSE and MSCE discussed in this section:
+
+1. MAE$_h$;
+2. TMAE;
+3. MACE;
+4. HAM$_h$;
+5. THAM;
+6. CHAM.
+
+
+### An example in R
+In order to see how different estimators perform, we will us Box-Jenkins Sales data, ETS(A,A,N) model and $h=10$:
+```{r}
+adamModel <- vector("list",6)
+names(adamModel) <- c("MSE","MSEh","TMSE","GTMSE","MSCE","GPL")
+for(i in 1:length(adamModel)){
+  adamModel[[i]] <- adam(BJsales, "AAN", loss=names(adamModel)[i], h=10, holdout=TRUE)
+}
+```
+
+We can compare the smoothing parameters of these models to see how the shrinkage effect worked in different estimators:
+```{r}
+round(sapply(adamModel,"[[","persistence"),5)
+```
+
+In the table above we can see that $\beta$ is close to zero for the estimators that impose harder shrinkage on parameters: MSE$_h$, TMSE and MSCE. MSE does not shrink the parameters, while GTMSE has the mild shrinkage effect. While the models estimated using these losses are not comparable in-sample, they are comparable on the holdout:
+```{r}
+round(sapply(adamModel,"[[","accuracy"),5)[c("ME","MAE","MSE"),]
+```
+
+In this specific case, ETS(A,A,N) estimated using MSE$_h$ produced more accurate forecasts than based on the other estimators. Repeating the experiment on many samples and selecting the approach that produces more accurate forecasts would allow to select the most appropriate approach for the combination of the model + data.
