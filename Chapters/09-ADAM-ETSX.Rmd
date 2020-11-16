@@ -1,0 +1,68 @@
+# Explanatory variables in ADAM {#ETSX}
+Having the state space model \@ref(eq:ETSADAMStateSpace) allows easily extending the model to include additional components and explanatory variables. Furthremore, parameters for these additional components can either be fixed or change over time. The model becomes more complicated in the latter case and more difficult to estimate, but nonetheless still potentially useful.
+
+In practice, the need for explanatory variables arises, when there are some external factors influencing the response variable, which cannot be ignored and impact the final forecasts. Examples of such variables in demand forecasting context include price changes, promotional activities, temperature etc. In some cases the changes in these factors would not have a substantial impact on the demand, but in the others they would be essential for improving the accuracy.
+
+While inclusion of explanatory variables in context of ARIMA models is relatively well studied idea, in case of ETS, there is only a handful of papers on the topic. One of such papers is @Koehler2012, which discusses the mechanism of outlier detection and approximation of outliers via an ETSX model (ETS with explanatory variables). The authors show that if an outlier appears at the end of series, then it will have a serious impact on the final forecast. However, if it appears either in the middle or in the beginning of series, the impact on the final forecast is typically negligible. This is relevant to our discussion, because there is a direct link between dealing with outlier in @Koehler2012 and including explanatory variables in ETSX.
+
+In this chapter we discuss the main aspects of ETSX model, how it is formulated in ADAM framework and how the more advanced models can be built upon it.
+
+
+## ETSX: Model formulation
+As discussed previously, there are fundamentally two types of ETS models:
+
+1. Additive error model,
+2. Multiplicative error model.
+
+The inclusion of explanatory variables in ADAM ETSX is determined by the type of the error, so that in case of (1) the measurement equation of the model is:
+\begin{equation}
+  {y}_{t} = & \check{y}_t + \alpha_{1,t} x_{1,t} + \alpha_{2,t} x_{2,t} + \dots + \alpha_{n,t} x_{n,t} + \epsilon_t ,
+  (\#eq:ETSXADAMStateSpacePureAdditiveMeasurement)
+\end{equation}
+where $\check{y}_t$ is the point value based on all ETS components (for example, $\check{y}_t=l_{t-1}$ in case of ETS(A,N,N)), $x_{i,t}$ is the $j$-th explanatory variable, $\alpha_{i,t}$ is the parameter for that component and $n$ is the number of explanatory variables. We will call the estimated parameters of such model $a_{i,t}$. In the simple case, the transition equation for such model would imply that the parameters $a_{i,t}$ do not change over time:
+\begin{equation}
+  \begin{aligned}
+    &\alpha_{1,t} = \alpha_{1,t-1} \\
+    &\alpha_{2,t} = \alpha_{2,t-1} \\
+    &\vdots \\
+    &\alpha_{n,t} = \alpha_{n,t-1}
+  \end{aligned} .
+  (\#eq:ETSXADAMStateSpacePureAdditiveTransition)
+\end{equation}
+Complex mechanisms for the states update can be proposed instead of \@ref(eq:ETSXADAMStateSpacePureAdditiveTransition), but we do not discuss them at this point.
+
+When it comes to the mulitplicative error, the multiplication should be used instead of addition. However, it is easier to formulate the model in logarithms in order to linearise it:
+\begin{equation}
+  \log {y}_{t} = & \log \check{y}_t + \alpha_{1,t} x_{1,t} + \alpha_{2,t} x_{2,t} + \dots + \alpha_{n,t} x_{n,t} + \log(1+ \epsilon_t).
+  (\#eq:ETSXADAMStateSpacePureAdditiveMeasurement)
+\end{equation}
+Note that if log-log model is required, all that needs to be done, is that $x_{i,t}$ should be substituted by $\log x_{j,t}$.
+
+One of the other ways to formulate the ETSX model is to move the explanatory variables $x_{i,t}$ in the measurement vector $\mathbf{w}_{t}$, making it change over time, to move the parameters in the state vector, add diagonal matrix to the existing transition matrix and set values of the persistence vector for the parameters of explanatory variables to zero. The [general state space model](#ADAMETSIntroduction) does not change in that case, but the pure ones can be specifically represented as:
+\begin{equation}
+  \begin{aligned}
+    {y}_{t} = & \mathbf{w}'_t \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
+    \mathbf{v}_t = \mathbf{F} \mathbf{v}_{t-\mathbf{l}} + \mathbf{g} \epsilon_t
+  \end{aligned} .
+  (\#eq:ETSXADAMStateSpacePureAdditiveFull)
+\end{equation}
+For example, in case of ETSX(A,A,A) we will have:
+\begin{equation}
+  \begin{aligned}
+    \mathbf{w}_t = \begin{pmatrix} 1 \\ 1 \\ 1 \\ x_{1,t} \\ \vdots \\x_{n,t} \end{pmatrix} &
+    \mathbf{F} =
+    \begin{pmatrix} 1 & 1 & 0 & 0 & \dots & 0 \\
+                    0 & 1 & 0 & 0 & \dots & 0 \\
+                    0 & 0 & 1 & 0 & \dots & 0 \\
+                    0 & 0 & 0 & 1 & \dots & 0 \\
+                    \vdots & \vdots & \vdots & \vdots & \ddots & \vdots \\
+                    0 & 0 & 0 & 0 & \dots & 1
+    \end{pmatrix} \\
+    \mathbf{g} = \begin{pmatrix} \alpha \\ \beta \\ \gamma \\ 0 \\ \vdots \\ 0 \end{pmatrix} &
+    \mathbf{v}_{t} = \begin{pmatrix} l_t \\ b_t \\ s_t \\ a_{1,t} \\ \vdots \\ a_{n,t} \end{pmatrix} &
+    \mathbf{l} = \begin{pmatrix} 1 \\ 1 \\ m \\ 1 \\ \vdots \\ 1 \end{pmatrix}
+  \end{aligned},
+  (\#eq:ETSXADAMAAAMatrices)
+\end{equation}
+which is equivalent to the combination of equations \@ref(ETSXADAMStateSpacePureAdditiveMeasurement) and \@ref(ETSXADAMStateSpacePureAdditiveTransition). The pure multiplicative model will have the same values for the state, lags, measurement and persistence vectors and transition matrix, but formulated via logarithms, similar to the [pure multiplicative ETS](#ADAMETSPureMultiplicative).
+
