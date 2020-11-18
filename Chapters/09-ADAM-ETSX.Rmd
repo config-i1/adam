@@ -107,7 +107,7 @@ So, in general ETSX implies that we are dealing with regression with time varyin
 
 
 ## Conditional expectation and variance of ETSX {#ETSXConventionalConditionalMoments}
-### The conventional ETSX
+### The ETSX with known explanatory variables
 ETS models have a serious limitation, which we will discuss in one of the latter chapters: they assume that the parameters of the model are known, i.e. there is no variability in them and that the in-sample values are fixed no matter what. This limitation also impacts the ETSX part. While in case of point forecasts this is not an issue, this impacts the conditional variance and prediction intervals. As a result, the conditional mean and variance of the conventional ETSX assume that the parameters $a_0, \dots a_n$ are also known, leading to the following formulae in case of pure additive model, based on what was discussed in [the section on pure additive models](#pureAdditiveExpectationAndVariance):
 \begin{equation}
   \begin{aligned}
@@ -183,7 +183,7 @@ where $\delta_i$ is the smoothing parameter of the $i$-th explanatory variable. 
     {y}_{t} = & \mathbf{w}'_t \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
     \mathbf{v}_t = & \mathbf{F} \mathbf{v}_{t-\mathbf{l}} + \mathrm{diag}\left(\mathbf{w}_t\right)^{-1} \mathbf{g} \epsilon_t
   \end{aligned}
-  (\#eq:ADAMETSXStateSpacePureAdditiveDynamicFull)
+  (\#eq:ADAMETSXPureAdditiveDynamicFull)
 \end{equation}
 where $\mathrm{diag}\left(\mathbf{w}_t\right)^{-1}$ is the inverse of the diagonal matrix based on the measurement vector, for which those values that cannot be inverted (due to division by zero) are substitute by zeroes in order to reflect the condition in \@ref(eq:linearRegressionDynamicUpdates). In addition to what \@ref(eq:ETSXADAMStateSpacePureAdditiveFull) contained, we add smoothing parameters $\delta_i$ in the persistence vector $\mathbf{g}$ for each of the explanatory variables.
 
@@ -204,20 +204,54 @@ Finally, in order to distinguish the ETSX with static parameters from the ETSX w
 
 
 ### Conditional moments of the dynamic ETSX
-Similar to how it was discussed in [the previous section](#ETSXConventionalConditionalMoments), we can have two cases in the dynamic model: (1) when explanatory variables are assumed to be known, (2) when explanatory variables are assumed to be random. For illustrative purposes, we will use ETSX(A,N,N){D} model, keeping in mind that other pure additive models can be easily used instead. The cases of other ETS models are not discussed in this part in detail - the moments for these models need to be calculated based on simulations. So, ETSX(A,N,N){D} can be written as:
+Similar to how it was discussed in [the previous section](#ETSXConventionalConditionalMoments), we can have two cases in the dynamic model: (1) when explanatory variables are assumed to be known, (2) when explanatory variables are assumed to be random. For illustrative purposes, we will use a non-seasonal model for which the lag vector contains ones only, keeping in mind that other pure additive models can be easily used instead. The cases of other ETS models are not discussed in this part in detail - the moments for these models need to be calculated based on simulations. So, as discussed previously, the model can be written in the following general way, assuming that all $\mathbf{l}=1$:
 \begin{equation}
-\begin{aligned}
-    y_{t} = a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + \epsilon_t \\
-    l_t = l_{t-1} + \alpha \epsilon_t \\
-    a_{i,t} = a_{i,t-1} + \left \lbrace \begin{aligned}
-                  &\delta_i \frac{\epsilon_t}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}, \text{ if } x_{i,t}\neq 0 \\
-                  &0 \text{ otherwise }
-            \end{aligned} \right. .
-\end{aligned}
-  (\#eq:linearRegressionDynamic)
+  \begin{aligned}
+    {y}_{t} = & \mathbf{w}'_t \mathbf{v}_{t-1} + \epsilon_t \\
+    \mathbf{v}_t = & \mathbf{F} \mathbf{v}_{t-1} + \mathrm{diag}\left(\mathbf{w}_t\right)^{-1} \mathbf{g} \epsilon_t
+  \end{aligned} .
+  (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonal)
+\end{equation}
+Based on this model, we can get the recursive relation for $h$ steps ahead, similar to how it was done in [one of the previos sections](#adamETSPureAdditiveRecursive):
+\begin{equation}
+  \begin{aligned}
+    {y}_{t+h} = & \mathbf{w}'_{t+h} \mathbf{v}_{t+h-1} + \epsilon_{t+h} \\
+    \mathbf{v}_{t+h-1} = & \mathbf{F} \mathbf{v}_{t+h-2} + \mathrm{diag}\left(\mathbf{w}_{t+h-1}\right)^{-1} \mathbf{g} \epsilon_{t+h-1}
+  \end{aligned} ,
+  (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursive01)
+\end{equation}
+where the second equation can be represented based on the values available on observation $t$:
+\begin{equation}
+  \mathbf{v}_{t+h-1} = & \mathbf{F}^{h-1} \mathbf{v}_{t} + \sum_{j=1}^{h-1} F^{h-1-j} \mathrm{diag}\left(\mathbf{w}_{t+j}\right)^{-1} \mathbf{g} \epsilon_{t+j} .
+  (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursive02)
+\end{equation}
+Substituting the equation \@ref(eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursive02) in the measurement equation of \@ref(eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursive01) leads to the final recursion:
+\begin{equation}
+    {y}_{t+h} = \mathbf{w}'_{t+h} \mathbf{F}^{h-1} \mathbf{v}_{t} + \mathbf{w}'_{t+h} \sum_{j=1}^{h-1} F^{h-1-j} \mathrm{diag}\left(\mathbf{w}_{t+j}\right)^{-1} \mathbf{g} \epsilon_{t+j} + \epsilon_{t+h} .
+  (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursiveFinal)
 \end{equation}
 
+### Known explanatory variables
+Based on this recursion, we can calculate the conditional mean and variance for the model. First, we assume that the explanatory variables are controlled by an analyst, so that they are not random:
+\begin{equation}
+  \begin{aligned}
+    \mu_{y,t+h} = \text{E}(y_{t+h}|t) = \mathbf{w}'_{t+h} \mathbf{F}^{h-1} \mathbf{v}_{t} \\
+    \text{V}(y_{t+h}|t) = \left(\mathbf{w}'_{t+h} \sum_{j=1}^{h-1} F^{h-1-j} \mathrm{diag}\left(\mathbf{w}_{t+j}\right)^{-1} \mathbf{g} \right)^2 \sigma^2 + \sigma^2
+  \end{aligned} .
+  (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalMomentsNonRandom)
+\end{equation}
+The formulae for conditional moments in this case look similar to the ones from [the pure additive ETS](#pureAdditiveExpectationAndVariance) model with only difference being the interaction with time varying measurument vector.
 
+### Random explanatory variables
+Wile the conditional expectation in the case of random explanatory variables is straightforward, the variance is more complicated, because it introduces complex interactions between variances of different variables and error term:
+\begin{equation}
+  \begin{aligned}
+    \mu_{y,t+h} = \text{E}(y_{t+h}|t) = \boldsymbol{\mu}'_{w,t+h} \mathbf{F}^{h-1} \mathbf{v}_{t} \\
+    \text{V}(y_{t+h}|t) = ...
+  \end{aligned} ,
+  (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalMomentsRandom)
+\end{equation}
+where $\boldsymbol{\mu}'_{w,t+h}$ is the vector of conditional h steps ahead expectations for each element in the $\mathbf{w}_{t+h}$. In case of ETS components, the vector would contain ones.
 
 
 ## Stability and forecastability conditions of ETSX
