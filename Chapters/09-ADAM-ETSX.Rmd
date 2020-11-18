@@ -106,7 +106,7 @@ where $l_t=a_0$ is the intercept of the model. \@ref(eq:ETSXADAMANNDeterministic
 So, in general ETSX implies that we are dealing with regression with time varying intercept, where the principles of this variability are defined by the ETS components and smoothing parameters (e.g. intercept can vary seasonally). Similar properties are obtained with the multiplicative error model, with the main difference that the impact of explanatory variables on the response variable will vary with the changes of the intercept.
 
 
-## Conditional expectation and variance of ETSX
+## Conditional expectation and variance of ETSX {#ETSXConventionalConditionalMoments}
 ### The conventional ETSX
 ETS models have a serious limitation, which we will discuss in one of the latter chapters: they assume that the parameters of the model are known, i.e. there is no variability in them and that the in-sample values are fixed no matter what. This limitation also impacts the ETSX part. While in case of point forecasts this is not an issue, this impacts the conditional variance and prediction intervals. As a result, the conditional mean and variance of the conventional ETSX assume that the parameters $a_0, \dots a_n$ are also known, leading to the following formulae in case of pure additive model, based on what was discussed in [the section on pure additive models](#pureAdditiveExpectationAndVariance):
 \begin{equation}
@@ -128,7 +128,7 @@ where the variance ignores the potential variability rising from the explanatory
 
 
 ### ETSX with random explanatory variables
-Note that the ETSX works well in cases, when the future values of $x_{i,t+h}$ are known, which is not always the case. It is a realistic assumption, when we have control over the explanatory variables (e.g. prices and promotions for our product). But in the case, when the variables are out of our control, they need to be forecasted somehow. In this case we are assuming that each $x_{i,t}$ is a random variable with some dynamic conditional one step ahead expectation $\mu_{x_{i,t}}$ and a one step ahead variance $\sigma^2_{x_{i,1}}$. This will change the conditional moments of the model. Here what we will have in case of ETSX(A,N,N) (given that the [typical assumptions](#assumptions) hold):
+Note that the ETSX works well in cases, when the future values of $x_{i,t+h}$ are known, which is not always the case. It is a realistic assumption, when we have control over the explanatory variables (e.g. prices and promotions for our product). But in the case, when the variables are out of our control, they need to be forecasted somehow. In this case we are assuming that each $x_{i,t}$ is a random variable with some dynamic conditional one step ahead expectation $\mu_{x_{i,t}}$ and a one step ahead variance $\sigma^2_{x_{i,1}}$. **Note** that in this case we treat the available explanatory variables as models on their own, not just as values given to us from above. This assumption of randomness will change the conditional moments of the model. Here what we will have in case of ETSX(A,N,N) (given that the [typical assumptions](#assumptions) hold):
 \begin{equation}
   \begin{aligned}
     \mu_{y,t+h} = \text{E}(y_{t+h}|t) = & l_{t} + \sum_{i=1}^n a_i \mu_{x_{i,t+h}} \\
@@ -161,7 +161,7 @@ Summarising this section, the adequate ETSX model needs to be able to work in at
 Finally, as discussed previously, the conditional moments for the pure multiplicative and mixed models do not have closed forms in general, implying that the simulations need to be carried out. The situation becomes more challenging in case of random explanatory variables, because that randomness needs to be introduced in the model itself and propagated throught the time series. This is not a trivial task, which we will discuss later in this textbook.
 
 
-## Dynamic regression model
+## Dynamic X in ETSX
 As discussed [earlier in this chapter](#ETSX), the parameters of the explanatory variables in ETSX can be assumed to stay constant over time or can be assumed to vary according to some mechanism. The most reasonable mechanism in SSOE framework is the one relying on the same error for different components of the model. @Osman2015 proposed one of such mechanisms, relying on the differences of the data.  The main motivation of the research was to make the dynamic ETSX model stable, which is a challenging task. However, this mechanism relies on the assumption of non-stationarity of the explanatory variables, which does not always make sense (for example, it is not reasonable in case of promotional data). An alternative approach that we will discuss in this section, is the one originally proposed by @Svetunkov1985 based on stochastic approximation mechanism and further developed in @Svetunkov2014Textbook.
 
 In this method, we consider the following regression model:
@@ -169,10 +169,10 @@ In this method, we consider the following regression model:
     y_{t} = a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + \epsilon_t ,
   (\#eq:linearRegressionDynamic)
 \end{equation}
-where all parameters vary over time. The updating mechanism for the parameters is straight forward and relies on the ratio of the error term and the respective explanatory variables:
+where all parameters vary over time and $a_{0,t}$ represents the value from the conventional pure additive ETS model. The updating mechanism for the parameters is straight forward and relies on the ratio of the error term and the respective explanatory variables:
 \begin{equation}
     a_{i,t} = a_{i,t-1} + \left \lbrace \begin{aligned}
-                  &\delta_i \frac{\epsilon_t}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}, if $x_{i,t}\neq0$ \\
+                  &\delta_i \frac{\epsilon_t}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}, if x_{i,t}\neq 0 \\
                   &0 \text{ otherwise }
             \end{aligned} \right. ,
   (\#eq:linearRegressionDynamicUpdates)
@@ -182,14 +182,19 @@ where $\delta_i$ is the smoothing parameter of the $i$-th explanatory variable. 
   \begin{aligned}
     y_{t} = & \exp \left(a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + \log(1+ \epsilon_t) \right) \\
     a_{i,t} = & a_{i,t-1} + \left \lbrace \begin{aligned}
-                  &\delta_i \frac{\epsilon_t}{x_{i,t}}) \text{ for each } i \in \{1, \dots, n\}, if $x_{i,t}\neq0$ \\
+                  &\delta_i \frac{\log(1+\epsilon_t)}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}, if x_{i,t}\neq 0 \\
                   &0 \text{ otherwise }
             \end{aligned} \right.
-  \end{aligned}
+  \end{aligned} .
   (\#eq:linearRegressionDynamicMultiplicative)
 \end{equation}
-where the difference from the additive model is only in the measurement equation.
+The formulation \@ref(eq:linearRegressionDynamicMultiplicative) differs from the conventional pure multiplicative ETS model because the smoothing parameter $\delta_i$ is not included inside the error term $1+\epsilon_t$, which simplifies some derivations and makes model easier to work with. Mixed ETS models can also have explanatory variables, but we suggest to align the type of explanatory variables model with the error term.
 
+In order to distinguish the ETSX with static parameters and the ETSX with dynamic ones, we will use the letters "C" and "D" in the name of models. So, the model \@ref(eq:ETSXADAMANNDeterministic) would be called ETSX(A,N,N,C), while the model \@ref(eq:linearRegressionDynamicMultiplicative), assuming that $a_{0,t-1}=l_{t-1}$, would be called ETS(M,N,N,D).
+
+
+### Conditional moments of the dynamic ETSX
+Similar to how it was discussed in [the previous section](#ETSXConventionalConditionalMoments), we can have two cases in the dynamic model: (1) when explanatory variables are assumed to be known, (2) when explanatory variables are assumed to be random. For illustrative purposes, we will use ETSX(A,N,N) model, keeping in mind that other pure additive models can be easily used instead. The cases of other models are not discussed in this part in detail - the moments for these models need to be calculated based on simulations.
 
 
 ## Stability and forecastability conditions of ETSX
