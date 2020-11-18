@@ -43,7 +43,7 @@ One of the other ways to formulate the ETSX model is to move the explanatory var
   \begin{aligned}
     {y}_{t} = & \mathbf{w}'_t \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
     \mathbf{v}_t = & \mathbf{F} \mathbf{v}_{t-\mathbf{l}} + \mathbf{g} \epsilon_t
-  \end{aligned} 
+  \end{aligned}
   (\#eq:ETSXADAMStateSpacePureAdditiveFull)
 \end{equation}
 and 
@@ -52,7 +52,7 @@ and
     {y}_{t} = & \exp\left(\mathbf{w}'_t \log \mathbf{v}_{t-\mathbf{l}} + \log(1 + \epsilon_t)\right) \\
     \log \mathbf{v}_t = & \mathbf{F} \log \mathbf{v}_{t-\mathbf{l}} + \log(\mathbf{1}_k + \mathbf{g} \epsilon_t)
   \end{aligned}. 
-  (\#eq:ETSXADAMStateSpacePureAdditiveFull)
+  (\#eq:ETSXADAMStateSpacePureMultiplicativeFull)
 \end{equation}
 So, the only thing that changes in these models is the time varying measurement vector $\mathbf{w}'_t$ instead of the fixed one. For example, in case of ETSX(A,A,A) we will have:
 \begin{equation}
@@ -177,7 +177,17 @@ where all parameters vary over time and $a_{0,t}$ represents the value from the 
             \end{aligned} \right. ,
   (\#eq:linearRegressionDynamicUpdates)
 \end{equation}
-where $\delta_i$ is the smoothing parameter of the $i$-th explanatory variable. If the error term in the model is multiplicative, then the model changes to:
+where $\delta_i$ is the smoothing parameter of the $i$-th explanatory variable. The same model can be represented in the state space form, based on the equations, similar to \@ref(eq:ETSXADAMStateSpacePureAdditiveFull):
+\begin{equation}
+  \begin{aligned}
+    {y}_{t} = & \mathbf{w}'_t \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
+    \mathbf{v}_t = & \mathbf{F} \mathbf{v}_{t-\mathbf{l}} + \mathrm{diag}\left(\mathbf{w}_t\right)^{-1} \mathbf{g} \epsilon_t
+  \end{aligned}
+  (\#eq:ADAMETSXStateSpacePureAdditiveDynamicFull)
+\end{equation}
+where $\mathrm{diag}\left(\mathbf{w}_t\right)^{-1}$ is the inverse of the diagonal matrix based on the measurement vector, for which those values that cannot be inverted (due to division by zero) are substitute by zeroes in order to reflect the condition in \@ref(eq:linearRegressionDynamicUpdates). In addition to what \@ref(eq:ETSXADAMStateSpacePureAdditiveFull) contained, we add smoothing parameters $\delta_i$ in the persistence vector $\mathbf{g}$ for each of the explanatory variables.
+
+If the error term is multiplicative, then the model changes to:
 \begin{equation}
   \begin{aligned}
     y_{t} = & \exp \left(a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + \log(1+ \epsilon_t) \right) \\
@@ -190,11 +200,24 @@ where $\delta_i$ is the smoothing parameter of the $i$-th explanatory variable. 
 \end{equation}
 The formulation \@ref(eq:linearRegressionDynamicMultiplicative) differs from the conventional pure multiplicative ETS model because the smoothing parameter $\delta_i$ is not included inside the error term $1+\epsilon_t$, which simplifies some derivations and makes model easier to work with. Mixed ETS models can also have explanatory variables, but we suggest to align the type of explanatory variables model with the error term.
 
-In order to distinguish the ETSX with static parameters and the ETSX with dynamic ones, we will use the letters "S" and "D" in the name of models. So, the model \@ref(eq:ETSXADAMANNDeterministic) can be called ETSX(A,N,N){S}, while the model \@ref(eq:linearRegressionDynamicMultiplicative), assuming that $a_{0,t-1}=l_{t-1}$, would be called ETSX(M,N,N){D}. We use semicolon in order to split the ETS states from the type of X. Given that the model with static regressors is assumed in many contexts to be the default one, the ETSX(\*,\*,\*){S} model can also be denoted just ETSX(\*,\*,\*).
+Finally, in order to distinguish the ETSX with static parameters from the ETSX with dynamic ones, we will use the letters "S" and "D" in the names of models. So, the model \@ref(eq:ETSXADAMANNDeterministic) can be called ETSX(A,N,N){S}, while the model \@ref(eq:linearRegressionDynamicMultiplicative), assuming that $a_{0,t-1}=l_{t-1}$, would be called ETSX(M,N,N){D}. We use curly brackets in order to split the ETS states from the type of X. Furthermore, given that the model with static regressors is assumed in many contexts to be the default one, the ETSX(\*,\*,\*){S} model can also be denoted just ETSX(\*,\*,\*).
 
 
 ### Conditional moments of the dynamic ETSX
-Similar to how it was discussed in [the previous section](#ETSXConventionalConditionalMoments), we can have two cases in the dynamic model: (1) when explanatory variables are assumed to be known, (2) when explanatory variables are assumed to be random. For illustrative purposes, we will use ETSX(A,N,N;D) model, keeping in mind that other pure additive models can be easily used instead. The cases of other models are not discussed in this part in detail - the moments for these models need to be calculated based on simulations.
+Similar to how it was discussed in [the previous section](#ETSXConventionalConditionalMoments), we can have two cases in the dynamic model: (1) when explanatory variables are assumed to be known, (2) when explanatory variables are assumed to be random. For illustrative purposes, we will use ETSX(A,N,N){D} model, keeping in mind that other pure additive models can be easily used instead. The cases of other ETS models are not discussed in this part in detail - the moments for these models need to be calculated based on simulations. So, ETSX(A,N,N){D} can be written as:
+\begin{equation}
+\begin{aligned}
+    y_{t} = a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + \epsilon_t \\
+    l_t = l_{t-1} + \alpha \epsilon_t \\
+    a_{i,t} = a_{i,t-1} + \left \lbrace \begin{aligned}
+                  &\delta_i \frac{\epsilon_t}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}, \text{ if } x_{i,t}\neq 0 \\
+                  &0 \text{ otherwise }
+            \end{aligned} \right. .
+\end{aligned}
+  (\#eq:linearRegressionDynamic)
+\end{equation}
+
+
 
 
 ## Stability and forecastability conditions of ETSX
