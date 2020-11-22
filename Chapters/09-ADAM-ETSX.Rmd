@@ -268,3 +268,69 @@ As for the **forecastability** condition, for the ETSX{D} it should be (based on
   \lim\limits_{t\rightarrow\infty}\left(\mathbf{w}'_{t}\prod_{j=1}^{t-1}\mathbf{D}_{t-j} \mathbf{v}_{0}\right) = \text{const} .
   (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalBackForecastability)
 \end{equation}
+
+
+## Dealing with categorical variables in ETSX
+When dealing with categorical variables in regression context, they are typically expanded to a set of dummy variables. So, for example, having a variable colour that can be "red", "blue" and "green" for different observations $t$, we would expand it to three dummy variables, `colourred`, `colourblue` and `colourgreen`, each one of which is equal to 1, when the respective colour is observed and equal to zero otherwise. When including these variables in the model, we would drop one of them (which is sometimes called pivot variable) and have a model with two dummy variables of a type:
+\begin{equation}
+  y_t = a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + d_1 colourred_t + d_2 colourblue_t + \epsilon_t,
+  (\#eq:RegressionWithDummies)
+\end{equation}
+where $d_i$ is the parameter for the $i$-th dummy variable. The same procedure can be done in the context of ETSX, and the principles will be exactly the same for ETSX{S}. However, when it comes to the dynamic model, the parameters have time indeces, and there can be different ways of formulating the model. Here is the first one:
+\begin{equation}
+  \begin{aligned}
+    y_{t} = & a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + d_1 colourred_t + d_2 colourblue_t + \epsilon_t \\
+    a_{i,t} = & a_{i,t-1} + \left \lbrace \begin{aligned}
+                  &\delta_i \frac{\log(1+\epsilon_t)}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}, \text{ if } x_{i,t}\neq 0 \\
+                  &0 \text{ otherwise }
+            \end{aligned} \right. \\
+    d_{1,t} = & d_{1,t-1} + \left \lbrace \begin{aligned}
+                  &\delta_{n+1} \epsilon_t, \text{ if } colourred_t\neq 0 \\
+                  &0 \text{ otherwise }
+            \end{aligned} \right. \\
+    d_{2,t} = & d_{2,t-1} + \left \lbrace \begin{aligned}
+                  &\delta_{n+2} \epsilon_t, \text{ if } colourblue_t\neq 0 \\
+                  &0 \text{ otherwise }
+            \end{aligned} \right.
+  \end{aligned} .
+  (\#eq:ETSXDynamicDummies01)
+\end{equation}
+Here we assume that each specific category of the variable colour changes over time on its own with their own smoothing parameters $\delta_{n+1}$ and $\delta_{n+1}$. Alternatively, we can assume that they have the same smoothing parameters, implying that the changes of the parameters are similar throughout different categories of the variable:
+\begin{equation}
+  \begin{aligned}
+    d_{1,t} = & d_{1,t-1} + \left \lbrace \begin{aligned}
+                  &\delta_{n+1} \epsilon_t, \text{ if } colourred_t\neq 0 \\
+                  &0 \text{ otherwise }
+            \end{aligned} \right. \\
+    d_{2,t} = & d_{2,t-1} + \left \lbrace \begin{aligned}
+                  &\delta_{n+1} \epsilon_t, \text{ if } colourblue_t\neq 0 \\
+                  &0 \text{ otherwise }
+            \end{aligned} \right.
+  \end{aligned} .
+  (\#eq:ETSXDynamicDummies02)
+\end{equation}
+This case becomes useful in makeing the connection between the ETSX and the conventional seasonal ETS model. Let's assume that we deal with quarterly data with no trend and we have a categorical variable `quarterOfYear`, which can be `First`, `Second`, `Third` and `Fourth`, depending on the specific observation. Based on \@ref(eq:ETSXDynamicDummies02), the model can then be formulated as:
+\begin{equation}
+  \begin{aligned}
+    y_{t} = & l_{t-1} + d_1 quarterOfYear_{1,t} + d_2 quarterOfYear_{2,t} + d_3 quarterOfYear_{3,t} + d_4 quarterOfYear_{4,t} + \epsilon_t \\
+    l_t = l_{t-1} + \alpha \epsilon_t \\
+    d_{i,t} = & d_{i,t-1} + \left \lbrace \begin{aligned}
+                  &\delta \epsilon_t \text{ for each } i \in \{1, \dots, 4\}, \text{ if } quarterOfYear_{i,t}\neq 0 \\
+                  &0 \text{ otherwise }
+            \end{aligned} \right.
+  \end{aligned} .
+  (\#eq:ETSXDynamicDummiesSeasonal)
+\end{equation}
+We intentionally added all 4 dummy variables here, so that they separate seasonal effect from the level component. While in the regression and ETSX{S} contexts, this does not make much sense, in the ETSX{D} we avoid the trap of dummy variables due to the dynamic update of parameters. Having done that, we have just formulated the conventional ETS(A,N,A) model using a set of dummy variables, the difference being that the latter relies on the lag of component:
+\begin{equation}
+  \begin{aligned}
+    y_{t} = & l_{t-1} + s_{t-4} \epsilon_t \\
+    l_t = l_{t-1} + \alpha \epsilon_t \\
+    s_t = s_{t-4} + \gamma \epsilon_t \\
+  \end{aligned} .
+  (\#eq:ADAMETSANAQuarterly)
+\end{equation}
+So, this comparison shows on one hand that the mechanism of ETSX{D} is natural for the ETS model, and on the other hand that using the same smoothing parameters for categorical variables can be a reasonable idea, especially in cases, when we do not have grounds to assume that each category of variable should evolve over time independently.
+
+
+
