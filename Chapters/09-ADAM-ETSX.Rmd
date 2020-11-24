@@ -332,24 +332,3 @@ We intentionally added all 4 dummy variables here, so that they separate seasona
 \end{equation}
 So, this comparison shows on one hand that the mechanism of ETSX{D} is natural for the ETS model, and on the other hand that using the same smoothing parameters for categorical variables can be a reasonable idea, especially in cases, when we do not have grounds to assume that each category of variable should evolve over time independently.
 
-
-## Variables selection in ETSX
-There are different approaches for [automatic variables selection](#modelSelection), but not all of them are efficient in the context of dynamic models. For example, backward stepwise might be either not feasible in case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This is because the ETSX model needs to be refitted and reestimated over and over again using recursive relations based, for example, on the state space model \@ref(eq:ADAMETSXPureAdditiveDynamicNonSeasonal). The classical stepwise forward might also be too slow, because it has polynomial computational time. So, there need to be some simplifications, which will make variables selection in ETSX doable in a reasonable time.
-
-In order to make the mechanism doable in a limitted time, we rely on @Sagaert2021 approach of stepwise trace forward selection of variables. It is the approach that uses the partial correlations between variables in order to identify, which of the variables to include on each iteration, and has because of that linear computational time. Still, doing that in the proper ETSX would take more time than needed, so one of the possibles solutions is to do variables selection in ETSX in the following steps:
-
-1. Estimate and fit the ETS model;
-2. Extract the residuals of the ETS model;
-3. Select the most suitable variables, explaining the residuals, based on an information criterion;
-4. Estimate the ETSX model with the selected explanatory variables.
-
-The residuals in step (2) might vary from model to model, depending on the type of the error term and the selected distribution:
-
-- Normal, Laplace, S, Generalised Normal or Asymmetric Laplace: $e_t$;
-- Additive error and Log Normal or Inverse Gaussian: $\left(1+\frac{e_t}{\hat{y}_t} \right)$;
-- Multiplicative error and Normal, Laplace, S, Generalised Normal or Asymmetric Laplace: $1+e_t$.
-So, the extracted residuals should be formulated based on the distributional assumptions in the model.
-
-In R, step (3) is done using the `stepwise()` function from `greybox` package, which supports all the distributions discussed in the previous chapters.
-
-While the suggested approach has obvious limitations (e.g. smoothing parameters can be higher than needed, explaining the variability otherwise explained by variables), it is efficient in terms of computational time.
