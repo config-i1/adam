@@ -43,6 +43,43 @@ where $\check{y}_t$ is the point value based on all non-seasonal components (e.g
 Depending on a specific model, the number of seasonal components can be 1, 2, 3 or more (although more than 3 might not make much sense from modelling point of view). @DeLivera2010 introduced components based on fourier terms, updated over time via smoothing parameters. This feature is not yet fully supported in `adam()`, but it is possible to substitute some of seasonal components (especially those that have fractional periodicity) with fourier terms via explanatory variables and update them over time. The explanatory variables idea was discussed in the [previous chapter](#ETSX).
 
 
+## Using explanatory variables for multiple seasonality
+The conventional way of introducing several seasonal components has several issues:
+
+1. It only works with the data with fixed periodicity (the problem sometimes referred to as "fractional frequency"): if $m_i$ is not fixed and changes from period to period, the model becomes disaligned. An example of such problem is fitting ETS on daily data with $m=365$, while there are leap years that contain 366 days;
+2. If the model is fit on high frequency data, the problem of parameters estimation becomes non-trivial. Indeed, on daily data with $m=365$, we need to estimate 364 initial seasonal indices together with the other parameters;
+3. Different seasonal indices would "compete" with each other for each observation, thus making the model overfit the data. An example is the daily data with $m_1=7$ and $m_2=365$, where both seasonal components are updated on each observation based on the same error, but with different smoothing parameters.
+
+The situation becomes even more complicated, when the model has more than two seasonal components. But there are at least two ways of resolving these issues in ADAM framework.
+
+The first is based on the idea of @DeLivera2010 and the [dynamic ETSX](#ETSXDynamic). In this case we need to generate fourier series and use them as explanatory variables in the model, switching on the mechanism of adaptation. For example, for the pure additive model, in this case, we will have:
+\begin{equation}
+  \begin{aligned}
+    & {y}_{t} = \check{y}_t + \sum_{i=1}^n a_{i,t-1} x_{i,t} + \epsilon_t \\
+    & \vdots \\
+    & a_{i,t} = a_{i,t-1} + \delta_i \frac{\epsilon_t}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}
+  \end{aligned},
+  (\#eq:ETSXADAMMultipleSeasonalityFourier)
+\end{equation}
+where $n$ is the number of fourier harmonics. In this case, we can introduce the conventional seasonal part of the model for the fixed periodicity (e.g. days of week)in $\check{y}_t$ and use the updated harmonics for the non-fixed one. This approach is not the same as the one in @DeLivera2010, but might lead to similar results. The only issue here is in the selection of the number of harmonics, which can be done via the [variables selection mechanism](#ETSXSelection).
+
+The second option is based on the idea of [dynamic model with categorical variables](#ETSXDynamicCategories). In this case, instead of trying to fix the problem with days of year, we first introduce the categorical variables for days of week and then for the weeks of year (or months of year if we can assume that the effects of months are more appropriate). After that we can introduce both categorical variables in the model, using the similar adaptation mechanism to \@ref(eq:ETSXADAMMultipleSeasonalityFourier). In fact, if some of variables have fixed periodicity, we can substitute them with the conventional seasonal components. So, for example, in this case, ETSX(M,N,M)[7]{D} could be written as:
+\begin{equation}
+  \begin{aligned}
+    & {y}_{t} = l_{t-1} s_{t-7} \times \prod_{i=1}^n \exp(a_{i,t-1} x_{i,t}) (1 + \epsilon_t) \\
+    & l_t = l_{t-1} (1 + \alpha\epsilon_t) \\
+    & s_t = s_{t-7} (1 + \gamma\epsilon_t) \\
+    & a_{i,t} = & a_{i,t-1} + \left \lbrace \begin{aligned}
+                  &\delta \log(1+\epsilon_t) \text{ for each } i \in \{1, \dots, n\}, \text{ if } x_{i,t} = 1 \\
+                  &0 \text{ otherwise }
+            \end{aligned} \right.
+  \end{aligned},
+  (\#eq:ETSXADAMMultipleSeasonalityCategories)
+\end{equation}
+where $n$ is the number of levels in the categorical variable (for weeks of year, this should be 53). The number of parameters to estimate in this case might be greater than the number of harmonics in the first case, but this type of model resolves all three issues as well and does not have the dilema about selecting the number of harmonics.
+
+
+
 ## Normalisation of seasonal indices in ETS models
 One of the ideas arrising from [time series decomposition](#ClassicalDecomposition), inheritted by the conventional ETS, is the idea of renormalisation of seasonal indices. It comes to one of the two principles, depending on the type of seasonality:
 
