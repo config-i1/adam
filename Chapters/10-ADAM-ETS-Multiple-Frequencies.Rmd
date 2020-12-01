@@ -43,7 +43,7 @@ where $\check{y}_t$ is the point value based on all non-seasonal components (e.g
 Depending on a specific model, the number of seasonal components can be 1, 2, 3 or more (although more than 3 might not make much sense from modelling point of view). @DeLivera2010 introduced components based on fourier terms, updated over time via smoothing parameters. This feature is not yet fully supported in `adam()`, but it is possible to substitute some of seasonal components (especially those that have fractional periodicity) with fourier terms via explanatory variables and update them over time. The explanatory variables idea was discussed in the [previous chapter](#ETSX).
 
 
-## Using explanatory variables for multiple seasonalities
+## Using explanatory variables for multiple seasonalities {#ETSXMultipleSeasonality}
 The conventional way of introducing several seasonal components has several issues:
 
 1. It only works with the data with fixed periodicity (the problem sometimes referred to as "fractional frequency"): if $m_i$ is not fixed and changes from period to period, the model becomes disaligned. An example of such problem is fitting ETS on daily data with $m=365$, while there are leap years that contain 366 days;
@@ -78,6 +78,17 @@ The second option is based on the idea of [dynamic model with categorical variab
 \end{equation}
 where $n$ is the number of levels in the categorical variable (for weeks of year, this should be 53). The number of parameters to estimate in this case might be greater than the number of harmonics in the first case, but this type of model resolves all three issues as well and does not have the dilema about selecting the number of harmonics.
 
+
+## Dealing with daylight saving and leap years
+Another problem that arises in case of data with high frequency is thechange of local time due to daylight saving (DST). This happens in some countries two times a year: in Spring the time is moved one hour forward (typically at 1am to 2am), while in the Autumn it is moved back one hour. The implications of this are terrifying from forecasting point of view, because one day of year has 23 hours, while the other one has 25 hours, while all the business processes are aligned to the local time. This means that if the conventional seasonal ETS model with $m=24$ is fit to the data, it will only work correctly in a half of year. Well, it will adapt to the new patterns after some times, but this implies that the smoothing parameter $\gamma$ will be higher than needed.
+
+There are two solutions to this problem:
+1. Shift the periodicity, when the time changes from 24 to either 23, or 25, depending on the time of year;
+2. Introduce categorical variables for factors, which will mark specific hours of day;
+
+The former is more difficult to formalise mathematically and implement in software, but the latter relies on the already discussed mechanism of [ETSX{D} with categorical variables](#ETSXDynamicCategories) and should be more straightforward. Given the connection between seasonality in the conventional ETS model and the ETSX{D} with categorical variables for seasonality, both approaches should be equivalent in terms of parameters estimation and final forecasts.
+
+Similarly, the problem with leap years can be solved either using the shift from $m=365$ to $m=366$ on 29th February in a spirit of the option (1), or using the categorical variables, approach (2). There is a difference, however: the former would be suitable for the data with only one leap year, where the estimation of the seasonal index for 29th February might be difficult, while the latter assumes the separate estimation of the parameter (so it has one more parameter to estimate). However, given the discussion in [the previous section](ETSXMultipleSeasonality), maybe we should not bother with $m=365$ in the first place and rethink the problem, if possible. Having 52 / 53 weeks in a year has similar difficulties, but at least does not involve the estimation of so many initial seasonal states.
 
 
 ## Normalisation of seasonal indices in ETS models
