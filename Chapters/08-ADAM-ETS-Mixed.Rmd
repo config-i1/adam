@@ -1,4 +1,4 @@
-# Other ADAM ETS models
+# Further ADAM ETS topics
 
 @Hyndman2008b proposed five classes of ETS models, based on the types of their components:
 
@@ -62,3 +62,66 @@ plot(exp(-0.05*c(1:100)),type="l",ylab="Demand",xlab="Time")
 Assuming that either seasonal component, or the error term, or both will have exactly the same impact on the final value irrespective of the point of time is unrealistic for these situation. The more reasonable would be for the amplitude of seasonality to decrease together with the exponential decay of the trend and for the variance of the error term to do the same. But this means that we are talking about the [pure multiplicative models](#ADAMETSPureMultiplicative), not the mixed ones. There is only one situation, where such mixed models could make sense: when the speed of change of the exponential trajectory is close to zero, meaning that the level of the series does not change rapidly and when the volume of the data is high. In this case the mixed models might perform well and even produce more accurate forecasts than the models from the other classes.
 
 When it comes to the parameters bounds, this is a mistery for the mixed models. This is because the recursive relations are complicated and calculating the discount matrix or anything like that becomes a challenging task. Using the usual bounds should still be okay, but keep in mind that these mixed models are typically not very stable, so from my experience the smoothing parameters should be as low as possible, assuming that the initial values guarantee a working model (not breaking at some of observations).
+
+
+## Normalisation of seasonal indices in ETS models {#ADAMETSSeasonalNormalisation}
+One of the ideas arrising from [time series decomposition](#ClassicalDecomposition), inheritted by the conventional ETS, is the idea of renormalisation of seasonal indices. It comes to one of the two principles, depending on the type of seasonality:
+
+1. If the model has additive seasonality, then the seasonal indices should add up to zero in a specific period of time, e.g. monthly indices should add up to 0 over a yearly period;
+2. If the model has multiplicative seasonality, then the geometric mean of seasonal indices over a specific period should be equal to one.
+
+(2) in the conventional ETS is substituted by "the arithmetic mean of multiplicative indices should be equal to one", which does not have good grounds behind it - if we deal with multiplicative effect, then the geometric mean should be used, not the arithmetic one, otherwise by multiplying components by indices we introduce bias in the model. While the normalisation is a natural element of the time series decomposition and works fine for the initial seasonal indices, renormalising the seasonal indices over time might not be a natural idea for the ETS.
+
+@Hyndman2008b discuss different mechanisms for the renormalisation of seasonal indices, which as the authors claim are needed in order to make the principles (1) and (2) hold from period to period in the data. However, I argue that this is an unnatural idea for the ETS models, that the indices should only be normalised during the initialisation of the model (at the moment $t=0$) and that they should vary independently for the rest of the sample. The rationale for this comes from the model itself. To illustrate it, I will use ETS(A,N,A), but the idea can be easily used for any other ETS model with any types of components and any number of seasonal frequencies. Just a reminder, the model can be formulated as:
+\begin{equation}
+  \begin{aligned}
+  y_t = &l_{t-1} + s_{t-m} + \epsilon_t \\
+  {l}_{t} = &l_{t-1} + \alpha\epsilon_t \\
+  s_t = &s_{t-m} + \gamma\epsilon_t
+  \end{aligned}.
+  (\#eq:ETSANAExampleNormalisation)
+\end{equation}
+Let's assume that this is the true model for whatever data we have for whatever reasons. In this case the set of equations \@ref(eq:ETSANAExampleNormalisation) tells us that the seasonal indices change over time, depending on the values of the smoothing parameter $\gamma$ and each specific values of $\epsilon_t$, which is assumed to be i.i.d. All seasonal indeces $s_{t+i}$ in a specific period (e.g. monthly indices in a year) can be written down explicitly based on \@ref(eq:ETSANAExampleNormalisation):
+\begin{equation}
+  \begin{aligned}
+  s_{t+1} = &s_{t+1-m} + \gamma\epsilon_{t+1} \\
+  s_{t+2} = &s_{t+2-m} + \gamma\epsilon_{t+2} \\
+  \vdots \\
+  s_{t+m} = &s_{t} + \gamma\epsilon_{t+m}
+  \end{aligned}.
+  (\#eq:ETSANAExampleNormalisationIndices01)
+\end{equation}
+If this is how the data is "generated" and the seasonality evolves over time, then there is only one possibility, for the indices $s_{t+1}, s_{t+2}, \dots, s_{t+m}$ to add up to zero:
+\begin{equation}
+  \begin{aligned}
+  &s_{t+1}+ s_{t+2}+ \dots+ s_{t+m} = 0 \\
+  &s_{t+1-m}+ s_{t+2-m}+ \dots+ s_{t} + \gamma \left(\epsilon_{t+1}+ \epsilon_{t+2}+ \dots+ \epsilon_{t+m}\right) = 0
+  \end{aligned}.
+  (\#eq:ETSANAExampleNormalisationIndices02)
+\end{equation}
+meaning that:
+
+a. the previous indices $s_{t+1-m}, s_{t+2-m}, \dots, s_{t}$ add up to zero **and**
+b. either $\gamma=0$,
+c. or the sum of error terms $\epsilon_{t+1}, \epsilon_{t+2}, \dots, \epsilon_{t+m}$ is zero.
+
+Note that we do not consider the situation $s_{t+1-m}+ \dots+ s_{t} = - \gamma \left(\epsilon_{t+1}+ \dots+ \epsilon_{t+m}\right)$ as it does not make sense. The condition (a) can be considered reasonable if the previous indices are normalised. (b) means that the seasonal indices do not evolve over time. However, (c) implies that the error term is not independent, because $\epsilon_{t+m} = -\epsilon_{t+1}- \epsilon_{t+2}- \dots- \epsilon_{t+m-1}$, which violates one of the [basic assumptions](#assumptions) of the model, meaning that \@ref(eq:ETSANAExampleNormalisationIndices02) cannot be considered as the "true" model anymore, as it omits some important elements.
+
+The other case, when each seasonal index is updated on each observation $t$ (to make sure that the indices are normalised), does not make sense either. In this situation we have:
+\begin{equation}
+  \begin{aligned}
+  &s_t = s_{t-m} + \gamma\epsilon_t \\
+  &s_{t-m+1}+ s_{t-m+2}+ \dots+ s_{t-1} + s_{t} = 0
+  \end{aligned},
+  (\#eq:ETSANAExampleNormalisationIndices03)
+\end{equation}
+which can be rewritten as $s_{t-m} + \gamma\epsilon_t = -s_{t+1-m}- s_{t+2-m}- \dots- s_{t-1}$, meaning that:
+\begin{equation}
+  \begin{aligned}
+  s_{t-m}+ s_{t+1-m}+ s_{t+2-m}+ \dots+ s_{t-1} = -\gamma\epsilon_t
+  \end{aligned},
+  (\#eq:ETSANAExampleNormalisationIndices03)
+\end{equation}
+but due to the normalisation, the sum on the left hand side should be equal to zero, implying that either $\gamma=0$ or $\epsilon_t=0$. While former might hold in some cases (deterministic seasonality), the latter cannot hold for all $t=1,\dots,T$ and violates the assumptions of the model.
+
+The discussion in this section demonstrate that the renormalisation of seasonal indices is unnatural for the ETS model and should not be used. Having said that, this does not imply that the initial seasonal indices (those that correspond to the observation $t=0$) cannot be normalised. In fact, the normalisation of the initial indices allows reducing the number of estimated parameters in the model.
