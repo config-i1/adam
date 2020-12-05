@@ -443,75 +443,22 @@ legend("topright",legend=c(TeX("$s =10$"),TeX("$s =1$"),TeX("$s =0.1$")),
 
 
 ## Likelihood Approach {#likelihoodApproach}
-We will use different estimation techniques throughout this book, one of the main of which is **Maximum Likelihood Estimate** (MLE). The very rough idea of the approach is to maximise the chance that each observation in the sample follow a pre-selected distribution with specific set of parameters.
-
-### Mathematical explanation
-We will explain this idea on an example of [normal distribution](#distributionsNormal) and a simple linear regression model:
-\begin{equation}
-    y_t = \mu_{y,t} + \epsilon_t = a_0 + a_1 x_{1,t} + \epsilon_t ,
-    (\#eq:MLESimpleRegression)
-\end{equation}
-where $a_0$ and $a_1$ are the population parameters (the true model parameters). The typical assumption in regression context is that $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$, which means that $y_t \sim \mathcal{N}(\mu_{y,t}, \sigma^2)$. We can use this assumption in order to calculate the point likelihood value for each observation based on the [PDF of Normal distribution](#distributionsNormal):
-\begin{equation}
-    \mathcal{L} (a_0, a_1, \sigma^2 | y_t) = f(y_t | a_0, a_1, \sigma^2) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_{y,t} \right)^2}{2 \sigma^2} \right).
-    (\#eq:MLEPointLik)
-\end{equation}
-Very roughly, what the value \@ref(eq:MLEPointLik) shows is the chance that the data comes from the assumed model with specified parameters (we know that the data does not come from a model, but this interprertatio is easier to work with). This is not the same as probability, because for the continuous random variables the probability for it to be equal to any specific number is equal to zero, but has a similar idea. The point likelihood \@ref(eq:MLEPointLik) is not very helpful on its own, but we can get $T$ values like that, based on our sample of data. We can then summarise it in one number, that would characterise the whole sample, given the assumed distribution, model and selected values of parameters:
-\begin{equation}
-    \mathcal{L} (\boldsymbol{\theta} | \mathbf{y}) = \mathcal{L} (a_0, a_1, \sigma^2 | \mathbf{y}) = \prod_{t=1}^T f(y_t | a_0, a_1, \sigma^2),
-    (\#eq:MLEFullLik)
-\end{equation}
-where $\boldsymbol{\theta}$ is the vector of all parameters in the model. We take the product in \@ref(eq:MLEFullLik) because we need to see the joint likelihood for all observations and because we can typically assume that the point likelihoods are independent of each other (for example, the value on observation $t$ will not be influenced by the value on $t-1$). The value \@ref(eq:MLEFullLik) shows the summary chance that the data comes from the assumed model with specified parameters. Having this value, we can change the values oif parameters of the model, getting different value of \@ref(eq:MLEFullLik). And using an iterative procedure, we can get such estimates of parameters that would maximise the likelihood \@ref(eq:MLEFullLik), which are called Maximum Likelihood Estimates (MLE) of parameters. However, working with the products in that formula is difficult, so typically we linearise it using natural logarithm, obtaining log-likelihood:
-\begin{equation}
-    \ell (\boldsymbol{\theta} | \mathbf{y}) = \log \mathcal{L} (\boldsymbol{\theta} | \mathbf{y}) = -\frac{T}{2} \log(2 \pi \sigma^2) -\sum_{t=1}^T \frac{\left(y_t - \mu_{y,t} \right)^2}{2 \sigma^2} .
-    (\#eq:MLEFullLogLik)
-\end{equation}
-Based on that, we can find some of parameters of the model analytically. For example, we can take derivative of \@ref(eq:MLEFullLogLik) with respect to the scale $\hat{\sigma}^2$ (which is just an estimate of the true parameter $\sigma^2$) and equate it to zero in order to find the value that maximises the log-likelihood function:
-\begin{equation}
-    \frac{d \ell (\boldsymbol{\theta} | \mathbf{y})}{d \hat{\sigma}^2} = -\frac{T}{2} \frac{1}{\hat{\sigma}^2} + \frac{1}{2 \hat{\sigma}^4}\sum_{t=1}^T \left(y_t - \mu_{y,t} \right)^2 =0 , 
-    (\#eq:MLEFullLogLikScale01)
-\end{equation}
-which after multiplication of both sides by $2 \hat{\sigma}^4$ leads to:
-\begin{equation}
-    T \hat{\sigma}^2 = \sum_{t=1}^T \left(y_t - \mu_{y,t} \right)^2 , 
-    (\#eq:MLEFullLogLikScale02)
-\end{equation}
-or
-\begin{equation}
-    \hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T \left(y_t - \mu_{y,t} \right)^2 ,
-    (\#eq:MLEFullLogLikScale)
-\end{equation}
-which is in fact a Mean Squared Error of the model. So, if we calculate the value of $\hat{\sigma}^2$ using the formula \@ref(eq:MLEFullLogLikScale), we will maximise the likelihood with respect to the scale parameter. In fact, we can insert \@ref(eq:MLEFullLogLikScale) in \@ref(eq:MLEFullLogLik) in order to obtain the so called concentrated (or profile) log-likelihood for the normal distribution:
-\begin{equation}
-    \ell^* (\boldsymbol{\theta}, \hat{\sigma}^2 | \mathbf{y}) = -\frac{T}{2}\left( \log(2 \pi e) + \log \hat{\sigma}^2 \right) .
-    (\#eq:MLEFullLogLikConcentrated)
-\end{equation}
-This function is useful because it simplifies some calculations and also demonstrates the condition, for which the likelihood is maximised: the first part on the right hand side of the formula does not depend on the parameters of the model, it is only the $\log \hat{\sigma}^2$ that does. So, the maximum of the concentrated log-likelihood \@ref(eq:MLEFullLogLikConcentrated) is obtained, when $\hat{\sigma}^2$ is minimised, implying the minimisation of MSE, which is also called "Ordinary Least Squares" (OLS)
-) estimation. So, we have just demonstrated that if we assume normality in the model, then the estimates of parameters $\hat{a}_0$ and $\hat{a}_1$ obtained via the maximisation of the likelihood conicide with the values obtained from OLS. So, why bother with MLE, when we have OLS?
-
-First, the finding above holds for normal distribution only. If we assume a different [distribution](#distributions), we would get a different estimates of parameters. In some cases, it might not be possible or reasonable to use OLS, but MLE would be a plausible option.
-
-Second, the MLE of parameters have good statistical properties: they are [consistent](#estimatesPropertiesConsistency) and [efficient](#estimatesPropertiesEfficiency). These properties hold almost universally under very mild conditions. Note that they are not necessarily [unbiased](#estimatesPropertiesBias), but after estimating the model, one can de-bias some estimates of parameters (for example, calculate the standard deviation of the error via devision of the sum of squared erros by the number of degrees of freedom $T-k$ instead of $T$).
-
-Third, likelihood can be used for the model assessment, even when the standard statistics, such as $R^2$ or $F-test$ are not available.
-
-Finally, it permits the model selection via information criteria. This is not possible unless you assume a distribution and maximise the respective likelihood. In some cases, we can see that AIC is calculated for the models estimated via OLS, but there is still an assumption of normality behind it.
-
-Note that the MLE assumes that all parameters are estimated, so it typically has more parameters to estimate than, for example, OLS. This is discussed in some detail later in the [next section](#statisticsNumberOfParameters).
+We will use different estimation techniques throughout this book, one of the main of which is **Maximum Likelihood Estimate** (MLE). The very rough idea of the approach is to maximise the chance that each observation in the sample follows a pre-selected distribution with specific set of parameters. In a nutshell, what we try do when using likelihood for estimation, is fit the distribution function to the data. In order to demonstrate this idea, we start in a non-conventional way, with an example in R. We will then move to the mathematical side of the problem.
 
 ### An example in R
-In order to further explain the MLE idea, we consider a simple example, when we want to estimate the model $y_t = \mu_y + \epsilon_t$, assuming normality for the $\epsilon_t$. In this case we want to estimate two parameters using ML: $\hat{\mu}_y$ and $\hat{\sigma}^2$. First, we generate the random variable in R:
+We consider a simple example, when we want to estimate the model $y_t = \mu_y + \epsilon_t$ (global average), assuming that the error term follows normal distribution: $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$, which means that $y_t \sim \mathcal{N}(\mu_{y}, \sigma^2)$. In this case we want to estimate two parameters using likelihood: $\hat{\mu}_y$ and $\hat{\sigma}^2$. First, we generate the random variable in R and plot its distribution:
 ```{r}
-y <- rnorm(100, 100, 10)
+y <- rnorm(1000, 100, 10)
+hist(y, xlim=c(50,150), main="", probability=TRUE)
 ```
 
-If on some iteration we get values of parameters $\hat{\mu}_y=80$ and $\hat{\sigma}=10$, then this implies that we fit the following normal curve to the data:
+While this distribution is not ideal, it has the bell shape of Normal distribution. We then try a value of parameters $\hat{\mu}_y=80$ and $\hat{\sigma}=10$ just to see how the probability density function of normal distribution fits the data:
 ```{r MLENormalExample01, fig.cap="ML example with Normal curve and $\\hat{\\mu}_y=80$ and $\\hat{\\sigma}=10$"}
 hist(y, xlim=c(50,150), main="", probability=TRUE)
 lines(c(50:150),dnorm(c(50:150),80,10),col="red",lwd=2)
 abline(v=80,col="red",lwd=2)
 ```
-and we get the following log-likelihood value:
+and we get the following log-likelihood value (we will discuss how this formula can be obtained later):
 ```{r}
 sum(dnorm(y,80,10,log=T))
 ```
@@ -522,44 +469,46 @@ lines(c(50:150),dnorm(c(50:150),90,10),col="orange",lwd=2)
 abline(v=90,col="orange",lwd=2)
 ```
 
-Now, on Figure \@ref(fig:MLENormalExample02), the normal curve is much closer to the data, but still a bit off. The log-likelihood value in this case is `r sum(dnorm(y,90,10,log=T))`, which is higher than the previous one, indicating that we are moving towards the maximum of the likelihood function. Moving further, setting $\hat{\mu}_y=100$, we get:
+Now, in Figure \@ref(fig:MLENormalExample02), the normal curve is much closer to the data, but it is still a bit off. The log-likelihood value in this case is `r round(sum(dnorm(y,90,10,log=T)),3)`, which is higher than the previous one, indicating that we are moving towards the maximum of the likelihood function. Moving it further, setting $\hat{\mu}_y=100$, we get:
 ```{r MLENormalExample03, fig.cap="ML example with Normal curve and $\\hat{\\mu}_y=100$ and $\\hat{\\sigma}=10$"}
 hist(y, xlim=c(50,150), main="", probability=TRUE)
 lines(c(50:150),dnorm(c(50:150),100,10),col="green3",lwd=2)
 abline(v=100,col="green3",lwd=2)
 ```
 
-Figure \@ref(fig:MLENormalExample02) demonstrates a much better fit than in the previous cases with the log-likelihood of `r sum(dnorm(y,100,10,log=T))`, which is even higher than in the previous case. We are almost there. In fact, in order to maximise this likelihood, we just need to calculate the mean of the variable (this is the MLE of the location parameters in normal distribution) and insert it in the function to obtain:
+Figure \@ref(fig:MLENormalExample02) demonstrates a much better fit than in the previous cases with the log-likelihood of `r round(sum(dnorm(y,100,10,log=T)),3)`, which is even higher than in the previous case. We are almost there. In fact, in order to maximise this likelihood, we just need to calculate the sample mean of the variable (this is the MLE of the location parameter in normal distribution) and insert it in the function to obtain:
 ```{r MLENormalExample04, fig.cap="ML example with Normal curve and $\\hat{\\mu}_y=\\bar{y}$ and $\\hat{\\sigma}=10$"}
 hist(y, xlim=c(50,150), main="", probability=TRUE)
 lines(c(50:150),dnorm(c(50:150),mean(y),10),col="darkgreen",lwd=2)
 abline(v=mean(y),col="darkgreen",lwd=2)
 ```
 
-So the value of $\hat{\mu}_y=$`r round(mean(y),2)` maximises the likelihood function, resultin in log-likelihood of `r sum(dnorm(y,mean(y),10,log=T))`.
+So the value of $\hat{\mu}_y=\bar{y}=$ `r round(mean(y),3)` (where $\bar{y}$ is the sample mean) maximises the likelihood function, resultin in log-likelihood of `r round(sum(dnorm(y,mean(y),10,log=T)),3)`.
 
-In a similar fashion we can get the MLE of the scale parameter $\sigma^2$ of the model. In this case, we will be changing the height of the distribution. Here is an example with $\hat{\mu}_y=\bar{y}=$`r round(mean(y),2)` (where $\bar{y}$ is the sample mean) and $\hat{\sigma}=15$:
+In a similar fashion we can get the MLE of the scale parameter $\sigma^2$ of the model. In this case, we will be changing the height of the distribution. Here is an example with $\hat{\mu}_y=$ `r round(mean(y),3)` and $\hat{\sigma}=15$:
 ```{r MLENormalExample05, fig.cap="ML example with Normal curve and $\\hat{\\mu}_y=\\bar{y}$ and $\\hat{\\sigma}=15$"}
 hist(y, xlim=c(50,150), main="", probability=TRUE)
 lines(c(50:150),dnorm(c(50:150),mean(y),15),col="royalblue",lwd=2)
 abline(v=mean(y),col="royalblue",lwd=2)
 ```
-Figure \@ref(fig:MLENormalExample05) demonstrates that the curve is located lower than needed, which implies that the scale parameter $\hat{\sigma}$ is too high. The log-likelihood value in this case is `r sum(dnorm(y,mean(y),15,log=T))`. In order to get a better fit of the curve to the data, we need to reduce the $\hat{\sigma}$. Here how the situation would look for the case of $\hat{\sigma}=10$:
+Figure \@ref(fig:MLENormalExample05) demonstrates that the curve is located lower than needed, which implies that the scale parameter $\hat{\sigma}$ is too high. The log-likelihood value in this case is `r round(sum(dnorm(y,mean(y),15,log=T)),3)`. In order to get a better fit of the curve to the data, we need to reduce the $\hat{\sigma}$. Here how the situation would look for the case of $\hat{\sigma}=10$:
 ```{r MLENormalExample06, fig.cap="ML example with Normal curve and $\\hat{\\mu}_y=\\bar{y}$ and $\\hat{\\sigma}=10$"}
 hist(y, xlim=c(50,150), main="", probability=TRUE)
-lines(c(50:150),dnorm(c(50:150),mean(y),10),col="blue2",lwd=2)
-abline(v=mean(y),col="blue2",lwd=2)
+lines(c(50:150),dnorm(c(50:150),mean(y),10),col="darkblue",lwd=2)
+abline(v=mean(y),col="darkblue",lwd=2)
 ```
 
-The fit on Figure \@ref(fig:MLENormalExample06) is better than on Figure \@ref(fig:MLENormalExample05), which is also reflected in log-likelihood value being equal to `r sum(dnorm(y,mean(y),10,log=T))` instead of `r sum(dnorm(y,mean(y),15,log=T))`. The best fit and the maximum of the likelihood is obtained, when the scale parameter is estimated using the formula $\hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T\left(y_t - \bar{y}\right)^2$, resulting in log-likelihood of `r sum(dnorm(y,mean(y),sqrt(mean((y-mean(y))^2)),log=T))`. Note that if we use the unbiased estimate of the variance $\hat{s}^2 = \frac{1}{T-1}\sum_{t=1}^T\left(y_t - \bar{y}\right)^2$, the log-likelihood will not reach the maximum and will be equal to `r sum(dnorm(y,mean(y),sd(y),log=T))`. You can check this in R via the following commands:
+The fit on Figure \@ref(fig:MLENormalExample06) is better than on Figure \@ref(fig:MLENormalExample05), which is also reflected in the log-likelihood value being equal to `r round(sum(dnorm(y,mean(y),10,log=T)),3)` instead of `r round(sum(dnorm(y,mean(y),15,log=T)),3)`. The best fit and the maximum of the likelihood is obtained, when the scale parameter is estimated using the formula $\hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T\left(y_t - \bar{y}\right)^2$, resulting in log-likelihood of `r round(sum(dnorm(y,mean(y),sqrt(mean((y-mean(y))^2)),log=T)),3)`. Note that if we use the unbiased estimate of the variance $\hat{s}^2 = \frac{1}{T-1}\sum_{t=1}^T\left(y_t - \bar{y}\right)^2$, the log-likelihood will not reach the maximum and will be equal to `r round(sum(dnorm(y,mean(y),sd(y),log=T)),3)`. In our special case the difference between the two is infinitesimal, because of the large sample (1000 observations), but it will be more substantial on small samples. Still, the two likelihood values are diffrent, which can be checked in R via the following commands:
 ```{r, eval=FALSE}
 # The maximum log-likelihood with the biased variance
-sum(dnorm(y,mean(y),sqrt(mean((y-mean(y))^2)),log=TRUE))
+logLik01 <- sum(dnorm(y,mean(y),sqrt(mean((y-mean(y))^2)),log=TRUE))
 # The log-likelihood value with the unbiased variance
-sum(dnorm(y,mean(y),sd(y),log=TRUE))
+logLik02 <- sum(dnorm(y,mean(y),sd(y),log=TRUE))
+# The difference between the two
+logLik01 - logLik02
 ```
 
-Finally, if the data comes from a completely different distribution, and we fit the normal one, the idea stays the same: to find the parameters of the normal distribution, that would guarantee the best possible fit. Here is an example with MLE of parameters of Normal distribution for the data following Log Normal one:
+All of this is great, but so far we have discussed a very special case, when the data follows normal distribution and we fit the respective model. But what if the model is wrong (no kidding!)? In that case the idea stays the same: we need to find the parameters of the normal distribution, that would guarantee the best possible fit to the non-normal data. Here is an example with MLE of parameters of Normal distribution for the data following Log Normal one:
 ```{r MLENormalExample07, fig.cap="ML example with Normal curve on Log Normal data"}
 y <- rlnorm(1000, log(80), 0.4)
 hist(y, main="", probability=T, xlim=c(0,300))
@@ -572,9 +521,63 @@ hist(y, main="", probability=T, xlim=c(0,300))
 lines(c(0:300),dlnorm(c(0:300),mean(log(y)),sd(log(y))),col="red",lwd=2)
 ```
 
-which has the log likelihood of `r sum(dlnorm(y,mean(log(y)),sd(log(y)),log=TRUE))`. This gives us an idea that it is possible to compare different distributions via the likelihood, finding the better fit to the data, which is furhter explored in the [next section](#modelSelection).
+The model in Figure \@ref(fig:MLENormalExample08) has the log likelihood of `r sum(dlnorm(y,mean(log(y)),sd(log(y)),log=TRUE))`. This indicates that the Log Normal model is more appropriate for the data and gives us an idea that it is possible to compare different distributions via the likelihood, finding the better fit to the data. This idea is explored further in the [next section](#modelSelection).
 
-As a final word, when it comes to more complicated models with more parameters and dynamic structure, the specific curves and data become more complicated, but the logic of the fit stays the same.
+As a final word, when it comes to more complicated models with more parameters and dynamic structure, the specific curves and data become more complicated, but the logic of the likelihood approach stays the same.
+
+### Mathematical explanation
+Now we can discuss the same idea from the mathematical point of view. We use an example of [normal distribution](#distributionsNormal) and a simple model as before:
+\begin{equation}
+    y_t = \mu_{y} + \epsilon_t,
+    (\#eq:MLESimpleRegression)
+\end{equation}
+where $\mu_{y}$ is the population location parameter (the true parameter, the global mean). The typical assumption in regression context is that $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$, which means that $y_t \sim \mathcal{N}(\mu_{y}, \sigma^2)$. We can use this assumption in order to calculate the point likelihood value for each observation based on the [PDF of Normal distribution](#distributionsNormal):
+\begin{equation}
+    \mathcal{L} (\mu_{y}, \sigma^2 | y_t) = f(y_t | \mu_{y}, \sigma^2) = \frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t - \mu_{y,t} \right)^2}{2 \sigma^2} \right).
+    (\#eq:MLEPointLik)
+\end{equation}
+Very roughly, what the value \@ref(eq:MLEPointLik) shows is the chance that the specific observation comes from the assumed model with specified parameters (we know that in real world the data does not come from any model, but this interprertation is easier to work with). Note that the likelihood is not the same as probability, because for any continuous random variables the probability for it to be equal to any specific number is equal to zero. However, the idea of likelihood has some similarities with the probability, so we prefer to refer to it as a "chance". The point likelihood \@ref(eq:MLEPointLik) is not very helpful on its own, but we can get $T$ values like that, based on our sample of data. We can then summarise it in one number, that would characterise the whole sample, given the assumed distribution, applied model and selected values of parameters:
+\begin{equation}
+    \mathcal{L} (\boldsymbol{\theta} | \mathbf{y}) = \mathcal{L} (\mu_{y}, \sigma^2 | \mathbf{y}) = \prod_{t=1}^T f(y_t | \mu_{y}, \sigma^2),
+    (\#eq:MLEFullLik)
+\end{equation}
+where $\boldsymbol{\theta}$ is the vector of all parameters in the model (in our example, it is just the two of them). We take the product of likelihoods in \@ref(eq:MLEFullLik) because we need to get the joint likelihood for all observations and because we can typically assume that the point likelihoods are independent of each other (for example, the value on observation $t$ will not be influenced by the value on $t-1$). The value \@ref(eq:MLEFullLik) shows the summary chance that the data comes from the assumed model with specified parameters. Having this value, we can change the values of parameters of the model, getting different value of \@ref(eq:MLEFullLik) (as we did in the example above). Using an iterative procedure, we can get such estimates of parameters that would maximise the likelihood \@ref(eq:MLEFullLik), which are called Maximum Likelihood Estimates (MLE) of parameters. However, working with the products in that formula is difficult, so typically we linearise it using natural logarithm, obtaining log-likelihood:
+\begin{equation}
+    \ell (\boldsymbol{\theta} | \mathbf{y}) = \log \mathcal{L} (\boldsymbol{\theta} | \mathbf{y}) = -\frac{T}{2} \log(2 \pi \sigma^2) -\sum_{t=1}^T \frac{\left(y_t - \mu_{y,t} \right)^2}{2 \sigma^2} .
+    (\#eq:MLEFullLogLik)
+\end{equation}
+Based on that, we can find some of parameters of the model analytically. For example, we can take derivative of \@ref(eq:MLEFullLogLik) with respect to the scale $\hat{\sigma}^2$ (which is an estimate of the true parameter $\sigma^2$) and equate it to zero in order to find the value that maximises the log-likelihood function in our sample:
+\begin{equation}
+    \frac{d \ell (\boldsymbol{\theta} | \mathbf{y})}{d \hat{\sigma}^2} = -\frac{T}{2} \frac{1}{\hat{\sigma}^2} + \frac{1}{2 \hat{\sigma}^4}\sum_{t=1}^T \left(y_t - \mu_{y,t} \right)^2 =0 , 
+    (\#eq:MLEFullLogLikScale01)
+\end{equation}
+which after multiplication of both sides by $2 \hat{\sigma}^4$ leads to:
+\begin{equation}
+    T \hat{\sigma}^2 = \sum_{t=1}^T \left(y_t - \mu_{y,t} \right)^2 , 
+    (\#eq:MLEFullLogLikScale02)
+\end{equation}
+or
+\begin{equation}
+    \hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T \left(y_t - \mu_{y,t} \right)^2 .
+    (\#eq:MLEFullLogLikScale)
+\end{equation}
+The value \@ref(eq:MLEFullLogLikScale) is in fact a [Mean Squared Error](#errorMeasures) (MSE) of the model. If we calculate the value of $\hat{\sigma}^2$ using the formula \@ref(eq:MLEFullLogLikScale), we will maximise the likelihood with respect to the scale parameter. In fact, we can insert \@ref(eq:MLEFullLogLikScale) in \@ref(eq:MLEFullLogLik) in order to obtain the so called concentrated (or profile) log-likelihood for the normal distribution:
+\begin{equation}
+    \ell^* (\boldsymbol{\theta}, \hat{\sigma}^2 | \mathbf{y}) = -\frac{T}{2}\left( \log(2 \pi e) + \log \hat{\sigma}^2 \right) .
+    (\#eq:MLEFullLogLikConcentrated)
+\end{equation}
+This function is useful because it simplifies some calculations and also demonstrates the condition, for which the likelihood is maximised: the first part on the right hand side of the formula does not depend on the parameters of the model, it is only the $\log \hat{\sigma}^2$ that does. So, the maximum of the concentrated log-likelihood \@ref(eq:MLEFullLogLikConcentrated) is obtained, when $\hat{\sigma}^2$ is minimised, implying the minimisation of MSE, which is the mechanism behind the "Ordinary Least Squares" (OLS)
+) estimation method. By doing this, we have just demonstrated that if we assume normality in the model, then the estimates of its parameters obtained via the maximisation of the likelihood coincide with the values obtained from OLS. So, why bother with MLE, when we have OLS?
+
+First, the finding above holds for normal distribution only. If we assume a different [distribution](#distributions), we would get different estimates of parameters. In some cases, it might not be possible or reasonable to use OLS, but MLE would be a plausible option (for example, logistic, Poisson and any other non-standard model).
+
+Second, the MLE of parameters have good statistical properties: they are [consistent](#estimatesPropertiesConsistency) and [efficient](#estimatesPropertiesEfficiency). These properties hold almost universally for many likelihoods under very mild conditions. Note that the MLE of parameters are not necessarily [unbiased](#estimatesPropertiesBias), but after estimating the model, one can de-bias some of them (for example, calculate the standard deviation of the error via devision of the sum of squared errors by the number of degrees of freedom $T-k$ instead of $T$).
+
+Third, likelihood can be used for the model assessment, even when the standard statistics, such as $R^2$ or F-test are not available. We do not discuss these aspects in this textbook.
+
+Finally, it permits the [model selection](#modelSelection) via information criteria. In general, this is not possible to do unless you assume a distribution and maximise the respective likelihood. In some statistical literature, you can notice that information criteria are calculated for the models estimated via OLS, but what the authors of such resources do not tell you is that there is still an assumption of normality behind this (see the link between OLS and MLE of Normal distribution above).
+
+Note that the likelihood approach assumes that all parameters of the model are estimated, including location, scale, shape, shift etc of distribution. So typically it has more parameters to estimate than, for example, the OLS does. This is discussed in some detail later in the [next section](#statisticsNumberOfParameters).
 
 
 ## Model selection mechanism {#modelSelection}
