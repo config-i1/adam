@@ -25,7 +25,9 @@ We start with a simple AR(1) model, which is written as:
   {y}_{t} = \phi_1 y_{t-1} + \epsilon_t ,
   (\#eq:ADAMARIMA100Example)
 \end{equation}
-where $\phi_1$ is the parameter of the model. This formula tells us that the value on the previous observation is carried out to the new one in the proportion of $\phi_1$. Typically, the parameter $\phi_1$ is restricted with the region (-1, 1), in order to make the model stationary, but very often in real life $\phi_1$ actually lies in (0, 1) region. The forecast trajectory of this process would typically correspond to the exponentially declining curve. Here is a simple example in R of a very basic forecast from AR(1) with $\phi_1=0.9$:
+where $\phi_1$ is the parameter of the model. This formula tells us that the value on the previous observation is carried out to the new one in the proportion of $\phi_1$. Typically, the parameter $\phi_1$ is restricted with the region (-1, 1), in order to make the model stationary, but very often in real life $\phi_1$ actually lies in (0, 1) region. If the parameter is equal to 1, then the model becomes equivalent to Random Walk.
+
+The forecast trajectory (conditional expectation several steps ahead) of this model would typically correspond to the exponentially declining curve. Here is a simple example in R of a very basic forecast from AR(1) with $\phi_1=0.9$:
 ```{r}
 x <- vector("numeric", 20)
 x[1] <- 100
@@ -56,8 +58,85 @@ for(i in 4:30){
 plot(x, type="l", xlab="horizon")
 ```
 
-No matter what the forecast trajectory of AR model is, it will converge to zero, as long as the model is stationary.
-
-### I(d)
+No matter what the forecast trajectory of AR model is, it will asymptotically converge to zero, as long as the model is stationary.
 
 ### MA(q)
+Before discussing the "Moving Averages" model, we should acknowledge that the name is quite misleading, and that the model has *nothing to do* with Centred Moving Averages used in time series decomposition or Simple Moving Averages (average of several concequitive observation). The idea of the simplest MA(1) model can be summarised in the following mathematical way:
+\begin{equation}
+  {y}_{t} = \theta_1 \epsilon_{t-1} + \epsilon_t ,
+  (\#eq:ADAMARIMA001Example)
+\end{equation}
+where $\theta_1$ is the parameter of the model, typically lying between (-1, 1), showing what part of the error is carried out to the next observation. Because of the conventional assumption that the error term has a zero mean ($\mathrm{E}(\epsilon_t)=0$), the forecast trajectory of this model is just a straight line coinsiding with zero. This can be shown mathematically:
+\begin{equation}
+  \mathrm{E}({y}_{t+1}|t) = \theta_1 \mathrm{E}(\epsilon_{t}) + \mathrm{E}(\epsilon_{t+1}) = 0 .
+  (\#eq:ADAMARIMA001ExampleForecast)
+\end{equation}
+However, in case when the model is estimated in sample, and the value of $\epsilon_t$ is estimated via $e_t$, it is considered to be known. So it is substituted in \@ref(eq:ADAMARIMA001ExampleForecast) instead of $\mathrm{E}(\epsilon_{t})$, changing the formula to:
+\begin{equation}
+  \mathrm{E}({y}_{t+1}|t) = \hat{\theta}_1 e_{t} + \mathrm{E}(e_{t+1}) = \hat{\theta}_1 e_{t}.
+  (\#eq:ADAMARIMA001ExampleForecastInSample)
+\end{equation}
+So, the forecast trajectory in this case converges to zero starting from the $h=2$, for which $e_{t+1}$ is already not known.
+
+More generally, MA(q) model is written as:
+\begin{equation}
+  {y}_{t} = \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \dots + \theta_q \epsilon_{t-q} + \epsilon_t ,
+  (\#eq:ADAMARIMA00qExample)
+\end{equation}
+where $\theta_i$ is the parameters for the $i$-th lag of the error term, which are typically restricted with the so called invertibility region (discussed in the next section). In this case, the model assumes that the recent observation is influenced by several errors on previous observations (your mistakes in the past will haunt you in the future). The more lags we introduce, the more complicated the model becomes. The forecast trajectory in sample will reach zero starting from $h=q+1$.
+
+### ARMA(p,q)
+Connection the models \@ref(eq:ADAMARIMAp00Example) and \@ref(eq:ADAMARIMA00qExample), we get the more complicated model, ARMA(p,q):
+\begin{equation}
+  {y}_{t} = \phi_1 y_{t-1} + \phi_2 y_{t-2} + \dots + \phi_p y_{t-p} + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \dots + \theta_q \epsilon_{t-q} + \epsilon_t ,
+  (\#eq:ADAMARIMAp0q)
+\end{equation}
+which has the properties of the two models discussed above. In order to simplify the work with ARMA models, the equation \@ref(eq:ADAMARIMAp0q) is typically rewritten, by moving all terms with $y_t$ to the left hand side:
+\begin{equation}
+  {y}_{t} - \phi_1 y_{t-1} - \phi_2 y_{t-2} - \dots - \phi_p y_{t-p} = \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \dots + \theta_q \epsilon_{t-q} + \epsilon_t .
+  (\#eq:ADAMARIMAp0qLeft)
+\end{equation}
+Furthermore, in order to make this even more compact, the backshift operator B is introduced, which just shows by how much the subscript of the variable is shifted back in time:
+\begin{equation}
+  {y}_{t} B^i = {y}_{t-i}.
+  (\#eq:backshiftOperator)
+\end{equation}
+Using \@ref(eq:backshiftOperator), the ARMA model can be written as:
+\begin{equation}
+  {y}_{t} (1 - \phi_1 B - \phi_2 B^2 - \dots - \phi_p B^p) = \epsilon_t (1 + \theta_1 B + \theta_2 B^2 + \dots + \theta_q B^q) .
+  (\#eq:ADAMARIMAp0qCompacter)
+\end{equation}
+Finally, we can also introduce the AR and MA polynomial functions to make the model even more compact:
+\begin{equation}
+\begin{aligned}
+  & \phi_B(p) = 1 - \phi_1 B - \phi_2 B^2 - \dots - \phi_p B^p \\ 
+  & \theta_B(q) = 1 + \theta_1 B + \theta_2 B^2 + \dots + \theta_q B^q .
+\end{aligned}
+  (\#eq:ARMAPolynomials)
+\end{equation}
+Inserting the functions \@ref(eq:ARMAPolynomials) in \@ref(eq:ADAMARIMAp0qCompacter) leads to the compact presentation of ARMA model:
+\begin{equation}
+  {y}_{t} \phi_B(p) = \epsilon_t \theta_B(q) .
+  (\#eq:ADAMARIMAp0qCompact)
+\end{equation}
+The model \@ref(eq:ADAMARIMAp0qCompact) can be considered as a compact form of \@ref(eq:ADAMARIMAp0q). It is more difficult to understand and interpret, but easier to work with from mathematical point of view. In addition, this form permits introducing additional elements, which will be discussed later in this chapter.
+
+Coming back to the ARMA model \@ref(eq:ADAMARIMAp0q), we might notice, that it assumes convergence to zero, the speed of which is regulated via the parameters. In fact, this implies that the data has the mean of zero, and ARMA becomes useful, when the data is somehow pre-processed, so that it is stationary and varies around zero. This means that if you work with non-stationary and / or with non-zero mean data, the pure AR / MA or ARMA will be inappropriate - some prior transformations are in order.
+
+
+### ARMA with constant
+One of the simpler ways to deal with the issue with zero forecasts is to introduce the constant (or intercept) in ARMA:
+\begin{equation}
+  {y}_{t} = a_0 + \phi_1 y_{t-1} + \phi_2 y_{t-2} + \dots + \phi_p y_{t-p} + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \dots + \theta_p \epsilon_{t-p} + \epsilon_t 
+  (\#eq:ADAMARIMAp0qExample)
+\end{equation}
+or
+\begin{equation}
+  {y}_{t} \phi_B(p) = a_0 + \epsilon_t \theta_B(q) ,
+  (\#eq:ADAMARIMAp0qCompact)
+\end{equation}
+where $a_0$ is the constant parameter, which in this case also works as the unconditional mean of the series. The forecast trajectory in this case would converge to $a_0$ instead of zero.
+
+
+
+### I(d)
