@@ -2,7 +2,7 @@
 Another important dynamic element in ADAM is ARIMA model [developed originally by @Box1976]. ARIMA stands for "AutoRegressive Integrated Moving Average", although the name does not tell much on its own and needs additional explanation, which will be provided in the next sections. The main idea of the model is that the data might have dynamic relations over time, where the new values depend on the values on the previous observations. This becomes more obvious in case of engineering systems and modelling phisical processes. For example, @Box1976 give an example of a series of CO$_2$ output of a furnace, when the input gas rate changes. In this case, the elements of ARIMA process are natural, as the CO$_2$ cannot just drop to zero, when the gas is switched off - it will leave the furnace, in reducing quantity over time (i.e. leaving $\phi_1\times100\%$ of CO$_2$ in the next minute, where $\phi_1$ is a parameter in the model). Another example, where AR processes are natural is the temperature in the room, measured with 5 minutes intervals. In this case the temperature at 5:30pm will depend on the one at 5:25pm (if the temperature outside the room is lower, then it will go down slightly due to the loss of heat). So, in these examples, ARIMA model can be considered as a [true model](#intro), but when it comes to time series from the social or business domain, it becomes very difficult to motivate the usage of ARIMA from the from the modelling point of view. For example, the demand on products does not reproduce itself and in real live does not depend on the demand on previous observations, unless we are talking about a repetitive purchases by the same group of consumers. So, if we construct ARIMA for such process, we are closing eyes on the fact that the observed time series relations in the data are most probably spurious. At best, ARIMA in this case can be considered as a very crude approximation of a complex true process (demand is typically influenced by price changes, consumer behaviour and promotional activities). So, whenever we work with ARIMA models in social or business domain, we should keep in mind that they are wrong even from the philosophical point of view. Nevertheless, they still can be useful, which is why we discuss them in this chapter.
 
 
-## Introduction to ARIMA
+## Introduction to ARIMA {#ADAMARIMAIntro}
 ARIMA contains several elements:
 
 1. AR(p) - the AutoRegressive part, showing how the variable is impacted by its values on the previous observations. It contains $p$ lags. For example, the quantity of the liquid in a vessel with an opened tap on some observation will depend on the quantity on the previous steps. This analogy explains the idea of AR part of the model;
@@ -247,4 +247,47 @@ or in a more general form \@ref(eq:ADAMARIMAp0qCompacter) with \@ref(eq:ADAMARIM
 which is ARIMA(p,d,q) model. This model allows producing trends with some values of differences and also inherits the trajectories from both AR(p) and MA(q). This implies that the point forecasts from the model can exhibit quite complicated trajectories, depending on the values of parameters of the model.
 
 The model \@ref(eq:ADAMARIMApdq) is difficult to interpret in a general form, but opening the brackets and moving all elements but $y_t$ to the right hand side typically helps in understanding of each specific model.
+
+
+## Parameters bounds
+ARMA models have two conditions that need to be satisfied in order for them to be useful and to work appropriately:
+
+1. Stationarity,
+2. Invertibility.
+
+(1) has already been discussed [earlier in this chapter](#ADAMARIMAIntro), and is imposed on AR parameters of the model, making sure that the forecast trajectories do not exhibit explosive behaviour (in terms of both mean and variance). (2) is equivalent to the [stability condition](#stabilityConditionAdditiveError) in ETS and refers to the MA parameters: it guarantees that the old observations do not have increasing impact on the recent ones. The term "invertibility" comes from the idea that any MA process can be represented as an infinite AR process via the inversion of the parameters. For example, MA(1) model, which is written as:
+\begin{equation}
+  y_t = \epsilon_t (1 + \theta_1 B),
+  (\#eq:ADAMARIMA100Example01)
+\end{equation}
+can be rewritten as:
+\begin{equation}
+  y_t (1 + \theta_1 B)^{-1} = \epsilon_t,
+  (\#eq:ADAMARIMA100Example02)
+\end{equation}
+or in a slightly easier to digest form (based on \@ref(eq:ADAMARIMA100Example01) and the idea that $\epsilon_{t-1} = y_{t-1} - \theta_1 \epsilon_{t-2}$):
+\begin{equation}
+  y_t = \theta_1 y_{t-1} - \theta_1^2 \epsilon_{t-2} + \epsilon_t = \theta_1 y_{t-1} - \theta_1^2 y_{t-2} + \theta_1^3 \epsilon_{t-2} + \epsilon_t = \sum_{j=1}^\infty -1^{j-1} \theta_1^j y_{t-j}.
+  (\#eq:ADAMARIMA100Example03)
+\end{equation}
+Continuing the recursion in \@ref(eq:ADAMARIMA100Example01), we will see that the recent actual value $y_t$ in fact depends on the previous infinite number of values of $y_{t-j}$ for $j=\{1,\dots,\infty\}$. The parameter $\theta_1$ in this case is exponentiated and defines the distribution of weights in this infinite series (reminds [SES](#SES) doesn't it?). The *invertibility* condition makes sure that those weights decline over time with the increase of $j$, so that the older observations do not have an increasing impact on the most recent $y_t$.
+
+There are different ways how to check both conditions, the conventional of which is calculating the roots of the polynomial equations:
+\begin{equation}
+\begin{aligned}
+  & \varphi(p) = 0 \text{for AR} \\
+  & \vartheta(q) = 0 \text{for MA}
+\end{aligned} ,
+  (\#eq:ADAMARIMApdqConditionsCompact)
+\end{equation}
+or expanding the functions in \@ref(eq:ADAMARIMApdqConditionsCompact) and substituting $B$ with an unknown variable $x$:
+\begin{equation}
+\begin{aligned}
+  & 1 - \phi_1 x - \phi_2 x^2 - \dots - \phi_p x^p = 0 \text{for AR} \\
+  & 1 + \theta_1 x + \theta_2 x^2 + \dots + \theta_q x^q = 0 \text{for MA}
+\end{aligned} .
+  (\#eq:ADAMARIMApdqConditions)
+\end{equation}
+Solving the first equation for $x$ in \@ref(eq:ADAMARIMApdqConditions) we will get $p$ roots (some of them might be complex numbers). In order for the model to be stationary all the roots need to be greater than one by absolute value. Similarly, if all the roots of the second equation in \@ref(eq:ADAMARIMApdqConditions) are greater than one by absolute value, then the model is invertible (aka stable). 
+
 
