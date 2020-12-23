@@ -85,7 +85,7 @@ More generally, MA(q) model is written as:
 \end{equation}
 where $\theta_i$ is the parameters for the $i$-th lag of the error term, which are typically restricted with the so called invertibility region (discussed in the next section). In this case, the model assumes that the recent observation is influenced by several errors on previous observations (your mistakes in the past will haunt you in the future). The more lags we introduce, the more complicated the model becomes. As for the forecast trajectory, it will reach zero, when $h>q$.
 
-### ARMA(p,q)
+### ARMA(p,q) {#ARMA}
 Connection the models \@ref(eq:ARIMAp00Example) and \@ref(eq:ARIMA00qExample), we get the more complicated model, ARMA(p,q):
 \begin{equation}
   {y}_{t} = \phi_1 y_{t-1} + \phi_2 y_{t-2} + \dots + \phi_p y_{t-p} + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \dots + \theta_q \epsilon_{t-q} + \epsilon_t ,
@@ -373,5 +373,33 @@ which is slightly easier to understand, but still does not explain how the past 
   y_t = \phi_{1} y_{t-1} + \phi_{4,1} y_{t-4} + \phi_{1} \phi_{4,1} y_{t-5} + \theta_1 \epsilon_{t-1} + \theta_{4,1} \epsilon_{t-4} + \theta_{1} \theta_{4,1} \epsilon_{t-5} + \epsilon_t .
   (\#eq:SARIMA101101Example03)
 \end{equation}
-So, now we see that SARIMA(1,0,1)(1,0,1)$_m$ implies that the present values is impacted by the value in the previous quarter, the value last year on the same quarter and the value from last year on the previous quarter, which introduces a much more complicated interaction than just an ETS model does. Howver, this complexity is obtained with a minimum number of parameters: we have three lagged actual values and three lagged error terms, but we only have four parameters to estimate, not six. The more complicated SARIMA models would have even more complicated interactions, making it more challenging to interpret the model, but all of that comes with a benefit of having a parsimonious model with just $p+q+P+Q$ parameters to estimate.
+So, now we see that SARIMA(1,0,1)(1,0,1)$_4$ implies that the present values is impacted by the value in the previous quarter, the value last year on the same quarter and the value from last year on the previous quarter, which introduces a much more complicated interaction than just an ETS model does. Howver, this complexity is obtained with a minimum number of parameters: we have three lagged actual values and three lagged error terms, but we only have four parameters to estimate, not six. The more complicated SARIMA models would have even more complicated interactions, making it more challenging to interpret the model, but all of that comes with a benefit of having a parsimonious model with just $p+q+P+Q$ parameters to estimate.
 
+When it comes to forecasting from such model as SARIMA(1,0,1)(1,0,1)$_4$, the forecasting trajectories would have elements of the classical ARMA model, [discussed earlier](#ARMA), converging to zero as long as there is no constant and the model is stationary. The main difference would be in having the seasonal element. Here is an R example of a prediction for such a model for $h>m+1$ (MA part is dropped because the expectation of the error terms is assumed to be equal to zero):
+```{r}
+x <- vector("numeric", 20)
+x[1:5] <- c(97,87,85,94,95)
+phi <- c(0.3,0.5)
+for(i in 6:20){
+    x[i] <- phi[1] * x[i-1] + phi[2] * x[i-4] + phi[1] * phi[2] * x[i-5]
+}
+plot(x, type="l", xlab="horizon", ylab="Forecast")
+```
+
+As we see, the values converge to zero due to $0<\phi_1<1$ and the seasonality disappears because $0<\phi_{4,1}<1$ as well. So, this is the forecast implied by the SARIMA without differences. If the differences are introduced, then the model would produce non-stationary and seasonaly non-stationary trajectories.
+
+
+
+
+### Multiple seasonal ARIMA
+Using the same approach as with the conventional SARIMA, we can introduce more terms [similar to how it was done by @Taylor2003a] with several seasonal frequencies. For example, we can have an hour of day, an hour of week and an hour of year frequencies in the data, which would introduce three seasonal ARIMA elements with seasonalities $m_1=24$, $m_2=24\times7$ and $m_3=24\times7\times365$. The compact form of the MSARIMA (multiple seasonal ARIMA) in this case is:
+\begin{equation}
+  y_t \Delta^D_n(B^m_n) \varphi^P_n(B^m_n) \dots \Delta^D_1(B^m_1) \varphi^P_1(B^m_1) \Delta^d(B) \varphi^p(B) = \epsilon_t \vartheta^Q_n(B^m_n) \dots \vartheta^Q_1(B^m_1) \vartheta^q(B) ,
+  (\#eq:MSARIMACompact)
+\end{equation}
+where $n$ is the number of seasonal cycles. The slightly more compact and less comprehensible form of \@ref(eq:MSARIMACompact) is:
+\begin{equation}
+  y_t \prod_{j=0}^n \Delta^D_j (B^m_j) \varphi^P_j(B^m_j) = \epsilon_t \prod_{j=0}^n \vartheta^Q_j(B^m_j) ,
+  (\#eq:MSARIMACompactFinal)
+\end{equation}
+taking that $D_0=d$, $P_0=p$, $Q_0=q$. Conceptually, the model \@ref(eq:MSARIMACompactFinal) is neat, as it captures all the complex relations in the data, but it is not easy to understand and work with, not to mention the potential estimation and order selection problems.
