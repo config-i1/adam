@@ -248,7 +248,7 @@ which is ARIMA(p,d,q) model. This model allows producing trends with some values
 The model \@ref(eq:ARIMApdq) is difficult to interpret in a general form, but opening the brackets and moving all elements but $y_t$ to the right hand side typically helps in understanding of each specific model.
 
 
-### Parameters bounds
+### Parameters bounds {#ARIMABounds}
 ARMA models have two conditions that need to be satisfied in order for them to be useful and to work appropriately:
 
 1. Stationarity,
@@ -359,7 +359,7 @@ Inserting \@ref(eq:ARIMApdqForErrorRewritten) into \@ref(eq:SARIMAPDQCompact), w
 \end{equation}
 The equation \@ref(eq:SARIMApdqPDQCompact) does not tell us much about what happens in the model, it just shows how different elements interact with each other in it. In order to understand, what SARIMA really means, we need to take an example and see what impacts the current actual value. For example, here what we will have in case of SARIMA(1,0,1)(1,0,1)$_4$ (i.e. applied to quarterly data):
 \begin{equation}
-  y_t \Delta^0(B^4) \varphi^1(B^4) \Delta^0(B) \varphi^1(B) = \epsilon_t \vartheta^1(B^4) \vartheta^1(4) .
+  y_t \Delta^0(B^4) \varphi^1(B^4) \Delta^0(B) \varphi^1(B) = \epsilon_t \vartheta^1(B^4) \vartheta^1(B) .
   (\#eq:SARIMA101101Example01)
 \end{equation}
 Inserting the values of polynomials \@ref(eq:SARIMAPolynomials), \@ref(eq:ARIMADifferences) and \@ref(eq:ARMAPolynomials) in \@ref(eq:SARIMA101101Example01), we get:
@@ -423,8 +423,6 @@ plot(y, type="l", xlab="horizon", ylab="Forecast")
 
 As we see, the trajectory exhibits a drift, coming from the non-seasonal part of the model and a stable seasonality (the amplitude of which does not converge to zero anymore). More complex behaviours for the future trajectories can be obtained with higher orders of seasonal and non-seasonal parts of SARIMA model.
 
-
-
 ### Multiple seasonal ARIMA
 Using the same approach as with the conventional SARIMA, we can introduce more terms [similar to how it was done by @Taylor2003a] with several seasonal frequencies. For example, we can have an hour of day, an hour of week and an hour of year frequencies in the data, which would introduce three seasonal ARIMA elements with seasonalities $m_1=24$, $m_2=24\times7$ and $m_3=24\times7\times365$. In general, the compact form of the MSARIMA (multiple seasonal ARIMA) can be written as:
 \begin{equation}
@@ -437,3 +435,16 @@ where $n$ is the number of seasonal cycles, and taking that $D_0=d$, $P_0=p$, $Q
   (\#eq:MSARIMACompactFinal)
 \end{equation}
 Conceptually, the model \@ref(eq:MSARIMACompactFinal) is neat, as it captures all the complex relations in the data, but it is not easy to understand and work with, not to mention the potential estimation and order selection problems, which will be discussed later in this chapter.
+
+### Parameters bounds for MSARIMA {#SARIMABounds}
+When it comes to parameters bounds of SARIMA, the logic stays quite similar to the process discussed for the case of [non-seasonal model](#ARIMABounds), with the only difference being that instead of analysing the polynomials of a specific part of a model, we need to consider the product of polynomials. So, the *stationarity* condition for the MSARIMA is for the roots of the following polynomial to be greater than one by absolute value (lie outside the unit circle):
+\begin{equation}
+  \prod_{j=0}^n \varphi^{P_j}(B^{m_j}) = 0,
+  (\#eq:MSARIMABoundsStationarity)
+\end{equation}
+while the invertibility condition is for the roots of the following polynomial to lie outside the unit circle:
+\begin{equation}
+  \prod_{j=0}^n \vartheta^{Q_j}(B^{m_j}) = 0.
+  (\#eq:MSARIMABoundsInvertibility)
+\end{equation}
+Both of these conditions are difficult to check, especially for high frequencies $m_j$: the polynomial equation of order $n$ has $n$ complex roots, so if you fit a multiple seasonal ARIMA on hourly data, where the maximum frequency is $24\times 7\times 365 = 61,320$, then the equation will have at least 61,320 roots (this number will increase, if there are lower frequency or non-seasonal orders of the model). Finding all of them is not a trivial task even for modern computers (for example, `polyroot()` function from `base` package cannot handle this). So, when considering ARIMA on high frequency data with high seasonal frequency values, it might make sense to find other ways of checking the stationarity and stability conditions. The `msarima()` and `adam()` functions in `smooth` package use the state space form of ARIMA (discussed in the next chapter) and rely on a slightly different principles of checking the same conditions, and they do that more efficiently than in the case of the convetional approach of finding the roots of polynomials \@ref(eq:MSARIMABoundsStationarity) and \@ref(eq:MSARIMABoundsInvertibility).
