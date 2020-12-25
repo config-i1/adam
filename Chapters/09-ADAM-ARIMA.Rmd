@@ -63,7 +63,7 @@ plot(y, type="l", xlab="horizon", ylab="Forecast")
 
 No matter what the forecast trajectory of AR model is, it will asymptotically converge to zero, as long as the model is stationary.
 
-### MA(q)
+### MA(q) {#MA}
 Before discussing the "Moving Averages" model, we should acknowledge that the name is quite misleading, and that the model has *nothing to do* with Centred Moving Averages used in time series decomposition or Simple Moving Averages (average of several concequitive observation). The idea of the simplest MA(1) model can be summarised in the following mathematical way:
 \begin{equation}
   {y}_{t} = \theta_1 \epsilon_{t-1} + \epsilon_t ,
@@ -471,11 +471,26 @@ In the core of the Box-Jenkins approach, lies th eidea of autocorrelation and pa
 \end{equation}
 where $\rho(1)$ is the "true" autocorrelation coefficient, $\sigma_{y_t,y_{t-1}}$ is the covariance between $y_t$ and $y_{t-1}$, while $\sigma_{y_t}$ and $\sigma_{y_{t-1}}$ are the "true" standard deviations of $y_t$ and $y_{t-1}$. Note that $\sigma_{y_t}=\sigma_{y_{t-1}}$, because we are talking about one and the same variable, thus the simpler formula on the right hand side of \@ref(eq:autoCorrelation). As you see, the formula \@ref(eq:autoCorrelation) corresponds to the classical correlation coefficient, so the interpretation of this is the same as for the classical one: the value of $\rho(1)$ shows the closeness of the lagged relation to linear. If it is close to one, then this means that variable has a strong linear relation with itself on the previous observation. It obviously doe not tell you anything about the causality, just shows a technical relation between variables, even if in the real life it is spurious.
 
-Using the formula \@ref(eq:autoCorrelation), we can calculate the autocorrelation coefficients for other lags as well, just substituting $y_{t-1}$ with $y_{t-2}$, $y_{t-3}$, $\dots$, $y_{t-\tau}$ etc. In a way, $\rho(\tau)$ can be considered as a function of a lag $\tau$, which is in fact called "Autocorrelation function" (ACF). If we know the order of ARIMA process we deal with, then we can plot the values of ACF on y-axis, by changing the $\tau$ on x-axis. In fact, @Box1976 discuss different theoretical functions for several special cases of ARIMA, which we don't plan to repeat here. For example, they show that if you deal with AR(1) process, then the $\rho(1)=\phi_1$, $\rho(2)=\phi_1^2$ etc., forming the following ACF:
+Using the formula \@ref(eq:autoCorrelation), we can calculate the autocorrelation coefficients for other lags as well, just substituting $y_{t-1}$ with $y_{t-2}$, $y_{t-3}$, $\dots$, $y_{t-\tau}$ etc. In a way, $\rho(\tau)$ can be considered as a function of a lag $\tau$, which is in fact called "Autocorrelation function" (ACF). If we know the order of ARIMA process we deal with, then we can plot the values of ACF on y-axis, by changing the $\tau$ on x-axis. In fact, @Box1976 discuss different theoretical functions for several special cases of ARIMA, which we do not plan to fully repeat here. But, for example, they show that if you deal with AR(1) process, then the $\rho(1)=\phi_1$, $\rho(2)=\phi_1^2$ etc. (you can also see that by inserting the AR(1) equation into \@ref(eq:autoCorrelation)), forming the following ACF (on the example of $\phi_1=0.9$:
 ```{r echo=FALSE}
-y <- vector("numeric",20)
+y <- vector("numeric",21)
 y[] <- 0.9^c(0:(length(y)-1))
-plot(y, type="l", xlab="Lag", ylab="ACF")
+plot(0:(length(y)-1), y, type="l", xlab="Lag", ylab="ACF")
 ```
+
+Note that $\rho(0)=1$ just because the value is correlated with itself in this case, so lag 0 is typically dropped as not being useful. The declinign shape of the ACF tells us that if $y_t$ is correlated with $y_{t-1}$, then the correlation between $y_{t-1}$ and $y_{t-2}$ will be exactly the same, also implying that $y_{t}$ is somehow correlated with $y_{t-2}$, even if there is no true correlation between them. In fact, it is difficult to say anything for AR process based on ACF exactly because of this temporal relation of the variable with itself. On the other hand, ACF can be used to judge the order of MA(q) process. For example, if we consider [MA(1)](#MA), then the $\rho(1)$ will depend on the following covariance:
+\begin{equation}
+  \sigma_{y_t,y_{t-1}} = \mathrm{cov}(y_t,y_{t-1}) = \mathrm{cov}(\theta_1 \epsilon_{t-1} + \epsilon_t, \theta_1 \epsilon_{t-2} + \epsilon_{t-1}) = \mathrm{cov}(\theta_1 \epsilon_{t-1}, \epsilon_{t-1}) = \theta_1 \sigma^2 ,
+  (\#eq:autoCovarianceMA1)
+\end{equation}
+where $\sigma^2$ is the variance of the error term. However, the covariance between $y_t$ and $y_{t-2}$ will be equal to zero for the pure MA(1) (given that the [usual assumptions](#assumptions) hold). In fact, @Box1976 showed that for the MA(q) ACF tells more about the order of the model than for the AR(p): it will drop rapidly right after the specific lag q.
+
+
+### Partial autocorrelation function (PACF)
+The other instrument useful for the time series analysis with respect to ARIMA is called "partial ACF". The idea of this follows from ACF directly. As we have spotted, if the process we deal with follows AR(1), then $\rho(2)=\phi_1^2$ just because of the temporal element. In order to get rid of this effect, when calculating the correlation between $y_t$ and $y_{t-2}$ we could take off the correlation $\rho(1)$. This type of correlation is called "partial" and we will denote it as $\varrho(\tau)$. While there are proper formulae for calculating this value, we will not provide and discuss them here, it is important just to understand the idea of PACF. If we get the correlation, clean of the temporal element, then PACF would drop abruptly right after the lag p for the AR(p) process.
+
+
+
+Note, however that the idea discussed in this section is not necessarily bi-directional: e.g. if we deal with MA(q), ACF drops abruptly right after the lag q, but if ACF drops abruptly after the lag q, then this does not necessarily mean that we are dealing with MA(q). The former follows directly from the assumed "true" model, while the latter refers to the identification of the model onthe data, and there can be different reasons for the ACF to behave in a way it does.
 
 
