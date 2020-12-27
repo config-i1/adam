@@ -172,7 +172,7 @@ The more complicated ARMA(p,q) models with p>1 will have more complicated trajec
 
 Finally, as alternative to adding $a_0$, each actual value of $y_t$ can be centred via $y^\prime_t = y_t - \bar{y}$, making sure that the mean of $y^\prime_t$ is zero and ARMA can be applied to the $y^\prime_t$ data instead of $y_t$. However, this approach introduces additional steps, but the result on stationary data is typically the same.
 
-### I(d)
+### I(d) {#Differences}
 Based on the previous discussion, we can conclude that ARMA cannot be applied to non-stationary data. So, if we deal with one, we need to make it stationary somehow. The convetional way of doing that is by taking differences of the data. The logic behind this is straight forward: if the data is not stationary, then the mean somehow changes over time. This can be, for example, due to a trend in the data. In this case we should be taking about the change of variable $y_t$ rather than the variable itself. So we should work on the following data instead:
 \begin{equation}
   \Delta y_t = y_t - y_{t-1} = y_t (1 - B),
@@ -463,13 +463,31 @@ Both of these conditions are difficult to check, especially for high frequencies
 ## Box-Jenkins approach
 Know that we are more or less familiar with the idea of ARIMA models, we can move to practicalities. One of the issues with the model as it might become apparent from the previous sections, is the identification of orders p, d, q, P$_j$, D$_j$, Q$_j$ etc. Back in the 20th century, when computers were slow, this was a very difficult task to do, so George Box and Gwilym Jenkins [@Box1976] developed a methodology for the identification and estimation of ARIMA models. While nowadays there are more efficient ways of order selection for ARIMA, some of their principles are still used in time series analysis and in forecasting. We briefly outline the idea in this section, not purpoting to give the detailed explanation of the approach.
 
+### Identifying stationarity
+Before doing any sort of time series analysis, we need to make the data stationary, which in the context of ARIMA is done via the [differences](#Differences). But before doing anything, we need to understand, whether the data is stationary or not in the first place: over-differencing typically is harmful for the model and would lead to misspecification issues, while in case of under-differencing it might not be possible to correctly identify the model.
+
+There different ways of understanding, whether the data is stationary or not. The simples of them is just looking at the data: in some cases it becomes obvious that the mean of the data changes or that there is a trend in the data, so the conclusion would be relatively easy to make. If it is not stationary, then taking differences and analysing the differenced data again would be the way to go, just to make sure that the second differences are not needed.
+
+The more formal approach would be to conduct statistical tests, such as ADF (`adf.test()` from `tseries` package) or KPSS (`kpss.test()` from `tseries` package). Note that they test different hypotheses:
+
+- In case of ADF it is H$_0$: the data is **not** stationary; H$_1$: the data is stationary;
+- In case of KPSS, H$_0$: the data is stationary; H$_1$: the data is **not** stationary;
+
+I do not plan discussing, how the tests are conducted and what they imply, but it should suffice to say that ADF is based on estimating parameters of AR model and then testing the hypothesis for those parameters, while KPSS includes the component of Random Walk in a model (with potential trend) and checks, whether the variance of that component is zero or not. Both tests have their own advantages and disadvantages and sometimes might contradict each other. No matter, what test you choose, do not forget what conducting testing a statistical hypothesis means: if you fail to reject H$_0$, it does not mean that it is true.
+
+Note that even if you select the test-based appraoch, the procedure should be iterative as well: test the hypothesis, take differences if needed, test hypothesis again etc. This way we can determine the order of differences I(d).
+
+When you work with seasonal data, the situation becomes more complicated. Yes, you can probably spot seasonality doing a visual analysis of the data, but it is not easy to conclude, whether the seasonal differences are needed or not. Canova-Hansen test (`ch.test()` in `uroot` package) can be used in this case to formally test the hypothesis similar to the one in KPSS test.
+
+Only after making sure that the data is stationary, we can move to the analysis of the Autocorrelation and Partial Autocorrelation functions.
+
 ### Autocorrelation function (ACF)
 In the core of the Box-Jenkins approach, lies th eidea of autocorrelation and partial autocorrelation functions. **Autocorrelation** is the correlation of a variable with itself from a different period of time. Here is an example of aucorrelation coefficient for lag 1:
 \begin{equation}
   \rho(1) = \frac{\sigma_{y_t,y_{t-1}}}{\sigma_{y_t}\sigma_{y_{t-1}}} = \frac{\sigma_{y_t,y_{t-1}}}{\sigma_{y_t}^2},
   (\#eq:autoCorrelation)
 \end{equation}
-where $\rho(1)$ is the "true" autocorrelation coefficient, $\sigma_{y_t,y_{t-1}}$ is the covariance between $y_t$ and $y_{t-1}$, while $\sigma_{y_t}$ and $\sigma_{y_{t-1}}$ are the "true" standard deviations of $y_t$ and $y_{t-1}$. Note that $\sigma_{y_t}=\sigma_{y_{t-1}}$, because we are talking about one and the same variable, thus the simpler formula on the right hand side of \@ref(eq:autoCorrelation). As you see, the formula \@ref(eq:autoCorrelation) corresponds to the classical correlation coefficient, so the interpretation of this is the same as for the classical one: the value of $\rho(1)$ shows the closeness of the lagged relation to linear. If it is close to one, then this means that variable has a strong linear relation with itself on the previous observation. It obviously doe not tell you anything about the causality, just shows a technical relation between variables, even if in the real life it is spurious.
+where $\rho(1)$ is the "true" autocorrelation coefficient, $\sigma_{y_t,y_{t-1}}$ is the covariance between $y_t$ and $y_{t-1}$, while $\sigma_{y_t}$ and $\sigma_{y_{t-1}}$ are the "true" standard deviations of $y_t$ and $y_{t-1}$. Note that $\sigma_{y_t}=\sigma_{y_{t-1}}$, because we are talking about one and the same variable, thus the simpler formula on the right hand side of \@ref(eq:autoCorrelation). As you see, the formula \@ref(eq:autoCorrelation) corresponds to the classical correlation coefficient, so the interpretation of this is the same as for the classical one: the value of $\rho(1)$ shows the closeness of the lagged relation to linear. If it is close to one, then this means that variable has a strong linear relation with itself on the previous observation. It obviously does not tell you anything about the causality, just shows a technical relation between variables, even if in the real life it is spurious.
 
 Using the formula \@ref(eq:autoCorrelation), we can calculate the autocorrelation coefficients for other lags as well, just substituting $y_{t-1}$ with $y_{t-2}$, $y_{t-3}$, $\dots$, $y_{t-\tau}$ etc. In a way, $\rho(\tau)$ can be considered as a function of a lag $\tau$, which is in fact called "Autocorrelation function" (ACF). If we know the order of ARIMA process we deal with, then we can plot the values of ACF on y-axis, by changing the $\tau$ on x-axis. In fact, @Box1976 discuss different theoretical functions for several special cases of ARIMA, which we do not plan to fully repeat here. But, for example, they show that if you deal with AR(1) process, then the $\rho(1)=\phi_1$, $\rho(2)=\phi_1^2$ etc. (you can also see that by inserting the AR(1) equation into \@ref(eq:autoCorrelation)), forming the following ACF (on the example of $\phi_1=0.9$:
 ```{r echo=FALSE}
@@ -483,14 +501,48 @@ Note that $\rho(0)=1$ just because the value is correlated with itself in this c
   \sigma_{y_t,y_{t-1}} = \mathrm{cov}(y_t,y_{t-1}) = \mathrm{cov}(\theta_1 \epsilon_{t-1} + \epsilon_t, \theta_1 \epsilon_{t-2} + \epsilon_{t-1}) = \mathrm{cov}(\theta_1 \epsilon_{t-1}, \epsilon_{t-1}) = \theta_1 \sigma^2 ,
   (\#eq:autoCovarianceMA1)
 \end{equation}
-where $\sigma^2$ is the variance of the error term. However, the covariance between $y_t$ and $y_{t-2}$ will be equal to zero for the pure MA(1) (given that the [usual assumptions](#assumptions) hold). In fact, @Box1976 showed that for the MA(q) ACF tells more about the order of the model than for the AR(p): it will drop rapidly right after the specific lag q.
+where $\sigma^2$ is the variance of the error term. However, the covariance between $y_t$ and $y_{t-2}$ will be equal to zero for the pure MA(1) (given that the [usual assumptions](#assumptions) hold). In fact, @Box1976 showed that for the moving averages, ACF tells more about the order of the model than for the autoregressive one: *ACF will drop rapidly right after the specific lag q for the MA(q) process*.
+
+When it comes to seasonal models, in case of seasonal AR(P), ACF would decrease exponentially from season to season (e.g you would see a decrease on lags 4, 8, 12 etc for SAR(1) and $m=4$), while in case of seasonal MA(Q), ACF would drop abruptly, starting from the lag $(Q+1)m$ (so, the next seasonal lag from the one that the process has, e.g. on lag 8, if we deal with SMA(1) with $m=4$).
 
 
 ### Partial autocorrelation function (PACF)
-The other instrument useful for the time series analysis with respect to ARIMA is called "partial ACF". The idea of this follows from ACF directly. As we have spotted, if the process we deal with follows AR(1), then $\rho(2)=\phi_1^2$ just because of the temporal element. In order to get rid of this effect, when calculating the correlation between $y_t$ and $y_{t-2}$ we could take off the correlation $\rho(1)$. This type of correlation is called "partial" and we will denote it as $\varrho(\tau)$. While there are proper formulae for calculating this value, we will not provide and discuss them here, it is important just to understand the idea of PACF. If we get the correlation, clean of the temporal element, then PACF would drop abruptly right after the lag p for the AR(p) process.
+The other instrument useful for the time series analysis with respect to ARIMA is called "partial ACF". The idea of this follows from ACF directly. As we have spotted, if the process we deal with follows AR(1), then $\rho(2)=\phi_1^2$ just because of the temporal element. In order to get rid of this temporal effect, when calculating the correlation between $y_t$ and $y_{t-2}$ we could remove the correlation $\rho(1)$ in order to get the clean effect of $y_{t-2}$ on $y_t$. This type of correlation is called "partial" and we will denote it as $\varrho(\tau)$. There are different ways how to do that, one of the simplest is to estimate the following regression model:
+\begin{equation}
+  y_t = a_1 y_{t-1} + a_2 y_{t-2} + \dots + a_\tau y_{t-\tau} + \epsilon_t,
+  (\#eq:PACFRegression)
+\end{equation}
+where $a_i$ is the parameter for the $i$-th lag of the model. In this regression, all the relations between $y_t$ and $y_{t-\tau}$ are captured separately, so the last parameter $a_k$ is clean of all the temporal effects discussed above. We can then use the value $\varrho(\tau) = a_\tau$ as the coefficient, showing this relation. In order to obtain the PACF, we would need to construct and estimate regressions \@ref(eq:PACFRegression) for each lag $\tau=\{1, 2, \dots, p\}$ and get the respective parameters $a_1$, $a_2$, ..., $a_p$, which would correspond to $\varrho(1)$, $\varrho(2)$, ..., $\varrho(p)$.
 
+Just to show what this implies, we consider calculating PACF for AR(1) process. In this case, the true model is:
+\begin{equation*}
+  y_t = \phi_1 y_{t-1} + \epsilon_t.
+\end{equation*}
+For the first lag we estimate exactly the same model, so that $\varrho(1)=\phi_1$. For the second lag we estimate the model:
+\begin{equation*}
+  y_t = a_1 y_{t-1} + a_2 y_{t-2} + \epsilon_t.
+\end{equation*}
+But we know that for AR(1) $a_2=0$, so when estimated in population this would result in $\varrho(2)=0$. If we continue with other lags, we will come to the same conclusion: for all lags $\tau>1$ for the AR(1) we will have $\varrho(\tau)=0$. In fact, this is one of the properties of PACF: *if we deal with AR(p) process, then it drops rapidly to zero right after the lag $p$*.
 
+When it comes to MA(q) process, PACF behaves differently. In order to understand how it would behave, we take an example of MA(1) model, which is formulated as:
+\begin{equation*}
+  y_t = \theta_1 \epsilon_{t-1} + \epsilon_t.
+\end{equation*}
+As it was [discussed earlier](#ARIMABounds), MA process can be also represented as an infinite AR (see \@ref(eq:ARIMA100Example03) for derivation):
+\begin{equation*}
+  y_t = \sum_{j=1}^\infty -1^{j-1} \theta_1^j y_{t-j} + \epsilon_t.
+\end{equation*}
+If we construct and estimate the regression \@ref(eq:PACFRegression) for any lag $\tau$ we will get $\varrho(\tau)=-1^{\tau-1} \theta_1^\tau$. This would correspond to the exponentially decreasing curve (if the parameter $\theta_1$ is positive, then this will be an alternating series of values), similar to the one we have seen for the AR(1) and ACF. More generally PACF will decline exponentially for MA(q) process, starting from the $\varrho(q)=\theta_q$.
 
-Note, however that the idea discussed in this section is not necessarily bi-directional: e.g. if we deal with MA(q), ACF drops abruptly right after the lag q, but if ACF drops abruptly after the lag q, then this does not necessarily mean that we are dealing with MA(q). The former follows directly from the assumed "true" model, while the latter refers to the identification of the model onthe data, and there can be different reasons for the ACF to behave in a way it does.
+When it comes to seasonal ARIMA models, the behaviour of PACF would resemble the one of the non-seasonal models, but with lags, multiple to the seasonality $m$. e.g., for the SAR(1) process with $m=4$, the $\varrho(4)=\phi_{4,1}$, while $\varrho(8)=0$.
+
+Summarising the discussions in this section, we can conclude that:
+
+1. For AR(p) process, ACF will decrease either exponentially or alternating (depending on the parameters' values), starting from the lag $p$;
+2. For AR(p) process, PACF will drop abruptly right after the lag $p$;
+3. For MA(q) process, ACF will drop abruptly right after the lag $q$;
+4. For MA(q) process, PACF will decline either exponentially or alternating (based on the specific values of parameters), starting from the lag $q$.
+
+These rules are tempting to use, when determining the appropriate order of ARMA model. However these rules are not necessarily bi-directional: e.g. if we deal with MA(q), ACF drops abruptly right after the lag q, but if ACF drops abruptly after the lag q, then this does not necessarily mean that we are dealing with MA(q). The former follows directly from the assumed "true" model, while the latter refers to the identification of the model on the data, and there can be different reasons for the ACF to behave in a way it does. This small discrepancy led to issues in ARIMA identification over the years. You should not rely fully on Box-Jenkins approach, when identifying the orders of ARIMA, there are more appropriate methods for order selection, which can be used in the context of ARIMA, and we will discuss them in the next chapter. Still, ACF and PACF could be helpful in order to see if anything important is missing in the model.
 
 
