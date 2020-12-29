@@ -581,6 +581,40 @@ The main conceptual difference between ARIMA(0,1,1) and ETS(A,N,N) is that the l
 
 Finally, the connection between the two models tells us that if we have ARIMA(0,1,q) model, then this model would be suitable for the data called "level" in ETS framework. The length of $q$ would define the weights distribution in the model. The specific impact of each MA parameter on the actual values would differ, depending on the order $q$ and values of parameters.
 
+In order to demonstrate the connection between the two models we consider the following example in R using functions `sim.es()`, `es()` and `ssarima()` from `smooth` package:
+```{r}
+# Generate data from ETS(A,N,N) with alpha=0.2
+y <- sim.es("ANN", obs=120, persistence=0.2)
+# Estimate ETS(A,N,N)
+esModel <- es(x$data, "ANN")
+# Estimate ARIMA(0,1,1)
+ssarimaModel <- ssarima(x$data, c(0,1,1), initial="optimal")
+```
+
+Given the the two models in smooth have the same initialisation mechanism, they should be equivalent. The values of their losses and information criteria should be the same:
+```{r}
+# Loss values
+esModel$lossValue
+ssarimaModel$lossValue
+# AIC
+AIC(esModel)
+AIC(ssarimaModel)
+```
+In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
+```{r}
+# Smoothing parameter and theta_1
+esModel$persistence
+ssarimaModel$MA+1
+```
+Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related:
+```{r}
+par(mfcol=c(2,1))
+plot(esModel,7)
+plot(ssarimaModel,7)
+```
+We expect the ETS(A,N,N) and ARIMA(0,1,1) models to be equivalent in this example because they are estimated using the respective functions es() and ssarima(), which are implemented in the same way, using the same framework. If the framework, initialisation, construction or estimation would be different, then the relation between the applied models might be not exact, but approximate.
+
+
 ### ARIMA(0,2,2) and ETS(A,A,N)
 
 ### ARIMA(1,1,2) and ETS(A,Ad,N)
