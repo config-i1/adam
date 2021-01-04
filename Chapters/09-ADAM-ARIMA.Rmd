@@ -558,7 +558,7 @@ These rules are tempting to use, when determining the appropriate order of ARMA 
 
 Still, there is a connection between ARIMA and ETS models, which can be beneficial for both models, so it is worth discussing this in a separate section of the textbook.
 
-### ARIMA(0,1,1) and ETS(A,N,N)
+### ARIMA(0,1,1) and ETS(A,N,N) {#ARIMAETS011}
 @Muth1960 was one of the first authors who showed that [Simple Exponential Smoothing](#SES) has an underlying ARIMA(0,1,1) model. This becomes apparent, when we study the error correction form of SES:
 \begin{equation*}
   \hat{y}_{t} = \hat{y}_{t-1} + \hat{\alpha} e_{t-1}.
@@ -616,7 +616,7 @@ plot(ssarimaModel,7)
 We expect the ETS(A,N,N) and ARIMA(0,1,1) models to be equivalent in this example because they are estimated using the respective functions es() and ssarima(), which are implemented in the same way, using the same framework. If the framework, initialisation, construction or estimation would be different, then the relation between the applied models might be not exact, but approximate.
 
 
-### ARIMA(0,2,2) and ETS(A,A,N)
+### ARIMA(0,2,2) and ETS(A,A,N) {#ARIMAETS022}
 @Nerlove1964 showed that there is an underlying ARIMA(0,2,2) for the [Holts method](#ETSAAN), althought they do not say that exlicitly in their paper. Skipping the derivations, the relation between Holts method and the ARIMA model are expressed in the following two equations about their parameters (in the form of ARIMA discussed in this textbook):
 \begin{equation*}
   \begin{aligned}
@@ -635,7 +635,7 @@ which tells us that in ARIMA framework, the global trend model is only available
 Finally, the ETA(A,A,N) and ARIMA(0,2,2) will fit the data similarly and produce the same forecasts as long as they are constructed, initialised and estimated in the same way.
 
 
-### ARIMA(1,1,2) and ETS(A,Ad,N)
+### ARIMA(1,1,2) and ETS(A,Ad,N) {#ARIMAETS112}
 @Roberts1982 proposed [damped trend exponential smoothing](#ETSAAdN), showing that it is related to ARIMA(1,1,2), with the following connection between the parameters of the two:
 \begin{equation*}
   \begin{aligned}
@@ -649,11 +649,97 @@ At the same time, the damped trend method has underlying ETS(A,Ad,N), so there i
 The lesson to learn from the connection between the two models is that AR(p) part of ARIMA can act as a dampening element for the forecasting trajectories, although the specific shape would depend on the value of $p$ and the values of parameters.
 
 
-### Seasonal ETS
-The [pure additive](#ADAMETSPureAdditive) seasonal ETS models also have connection with ARIMA, but the resulting models are not parsimoinious. For example, ETS(A,A,A) is related to SARIMA(0,1,m+1)(0,1,0)$_m$ [@Mckenzie1976, @Chatfield1977] with some restrictions on parameters, and if we were to work with SARIMA and wanted to model the seasonal time series, we would probably apply SARIMA(0,1,1)(0,1,1)$_m$ instead of this larger model.
+### ARIMA and other ETS models
+The [pure additive](#ADAMETSPureAdditive) seasonal ETS models also have connection with ARIMA, but the resulting models are not parsimonious. For example, ETS(A,A,A) is related to SARIMA(0,1,m+1)(0,1,0)$_m$ [@Mckenzie1976, @Chatfield1977] with some restrictions on parameters, and if we were to work with SARIMA and wanted to model the seasonal time series, we would probably apply SARIMA(0,1,1)(0,1,1)$_m$ instead of this larger model.
 
-When it comes to [pure multiplicative](#ADAMETSPureMultiplicative) and [mixed](#ADAMETSMixedModels) ETS models, there are no appropriate ARIMA analogues for them. For example, @Chatfield1977 showed that there are no ARIMA models for the exponential smoothing with multiplicative seasonal component.
+When it comes to [pure multiplicative](#ADAMETSPureMultiplicative) and [mixed](#ADAMETSMixedModels) ETS models, there are no appropriate ARIMA analogues for them. For example, @Chatfield1977 showed that there are no ARIMA models for the exponential smoothing with multiplicative seasonal component. In fact, this makes ETS distinct from ARIMA. The closest one can get to a pure multiplicative model is the ARIMA aplpied to logarithmically transformed data, when the smoothing parameters of ETS are close to zero, coming from the limit \@ref(eq:limitOf1x).
 
 
 ### ETS + ARIMA
+Finally, it is possible to have a combination of ETS and ARIMA, based on the discussion above, but not all combinations would be meaningful and helpful. For example, fitting a combination of ETS(A,N,N)+ARIMA(0,1,1) is not a good idea due to [the connection of the two models](#ARIMAETS011). However, doing ETS(A,N,N) and adding ARIMA(1,0,0) component might be useful - the resulting model would exhibit the dampening trends as [discussed before](#ARIMAETS112), but would have fewer parameters to estimate than ETS(A,Ad,N). In fact @Gardner1985 pointed out that using AR(1) together with some exponential smoothing methods improves the forecasting accuracy, so this sort of combination of the two models is potentially beneficial for ETS. In the next chapter we will discuss how specifically the two models can be united in one framework.
 
+
+## Examples in R
+### Non-seasonal data
+Using the time series from the Box-Jenkins textbook [@Box1976], we will fit ARIMA model to the data, but based on our judgment rather than their approach. Just a reminder, here how the data looks (series `BJsales`):
+```{r echo=FALSE}
+plot(BJsales)
+```
+
+It seems to exhibit the trend in the data, so we can consider ARIMA(1,1,2), ARIMA(0,2,2) and ARIMA(1,1,1). We do not consider models with drift in this example, because they would imply the same slope over time, which does not seem to be the case here:
+```{r}
+adamModelARIMA <- vector("list",3)
+adamModelARIMA[[1]] <- adam(BJsales, "NNN", orders=c(1,1,2),
+                            h=10, holdout=TRUE)
+adamModelARIMA[[2]] <- adam(BJsales, "NNN", orders=c(0,2,2),
+                            h=10, holdout=TRUE)
+adamModelARIMA[[3]] <- adam(BJsales, "NNN", orders=c(1,1,1),
+                            h=10, holdout=TRUE)
+names(adamModelARIMA) <- c("ARIMA(1,1,2)",
+                           "ARIMA(0,2,2)",
+                           "ARIMA(1,1,1)")
+```
+Note that we need to tell adam to use `model="NNN"` in order to switch off the ETS part of the model. Comparing information criteria (we will use AICc) of the three models, we can select the most appropriate one:
+```{r}
+sapply(adamModelARIMA, AICc)
+```
+Based on this comparison, it looks like the ARIMA(0,2,2) is the most appropriate model (among the three) to the data. Here how the fit and the forecast from the model look (figure \@ref(fig:adamARIMAPlotBJSales)):
+```{r adamARIMAPlotBJSales, fig.cap="BJSales series and ARIMA(0,2,2)"}
+plot(adamModelARIMA[[2]], 7)
+```
+
+Comparing this model with the ETS(A,A,N), we will see a slight difference, because the two models are initialised and estimated differently:
+```{r}
+adam(BJsales, "AAN", h=10, holdout=TRUE, silent=FALSE)
+```
+
+If we are interested in a more classical Box-Jenkins approach, we can always analyse the residuals of the constructed model and try improving it further. Here is an example of ACF and PACF of the residuals of the ARIMA(0,2,2):
+```{r adamARIMAPlotBJSalesACFPACF, fig.cap="ACF and PACF of ARIMA(0,2,2) on BJSales data"}
+par(mfcol=c(1,2))
+plot(adamModelARIMA[[2]], c(10,11), main="")
+```
+
+As we see from the plot above, all autocorrelation coefficients lie inside the confidence interval, implying that there are no significant AR / MA lags to include in the model.
+
+### Seasonal data
+Similarly to the previous cases, we use Box-Jenkins AirPassengers data, which exhibits a multiplicative seasonality and a trend. We will model this using SARIMA(0,2,2)(0,1,1)$_{12}$, SARIMA(0,2,2)(1,1,1)$_{12}$ and SARIMA(0,2,2)(1,1,0)$_{12}$ models, which are selected to see what type of seasonal ARIMA is more appropriate to the data:
+```{r}
+adamModelSARIMA <- vector("list",3)
+adamModelSARIMA[[1]] <- adam(AirPassengers, "NNN", lags=c(1,12),
+                             orders=list(ar=c(0,0), i=c(2,1), ma=c(2,1)),
+                             h=12, holdout=TRUE)
+adamModelSARIMA[[2]] <- adam(AirPassengers, "NNN", lags=c(1,12),
+                             orders=list(ar=c(0,1), i=c(2,1), ma=c(2,1)),
+                             h=12, holdout=TRUE)
+adamModelSARIMA[[3]] <- adam(AirPassengers, "NNN", lags=c(1,12),
+                             orders=list(ar=c(0,1), i=c(2,1), ma=c(2,0)),
+                             h=12, holdout=TRUE)
+names(adamModelSARIMA) <- c("SARIMA(0,2,2)(0,1,1)[12]",
+                            "SARIMA(0,2,2)(1,1,1)[12]",
+                            "SARIMA(0,2,2)(1,1,0)[12]")
+```
+Note that now that we have seasonal component, we need to provide the SARIMA lags: 1 and $m=12$ and need to provide `orders` differently - as a list, specifying the values for AR, I and MA separately. This is done because the SARIMA implemented in `adam()` supports multiple seasonality (e.g. you can have `lags=c(1,24,24*7)` if you want). The resulting information criteria of models are:
+```{r}
+sapply(adamModelSARIMA, AICc)
+```
+It looks like the first model is slightly better than the other two, so we will use it in order to produce forecasts:
+```{r adamSARIMAPlotAir}
+plot(forecast(adamModelSARIMA[[1]], h=12, interval="prediction"))
+```
+This model is directly comparable with ETS models, so here, for example, AICc of ETS(M,A,M) on the same data:
+```{r}
+AICc(adamModelETS <- adam(AirPassengers, "MAM", h=12, holdout=TRUE))
+```
+
+Which is lower than for the SARIMA model. This means that ETS(M,A,M) is more appropriate to the data in terms of information criteria. Let's see if there is a way to improve ETS(M,A,M) by adding some ARMA components (figure \@ref(fig:adamETSPlotAirACFPACF)):
+```{r adamETSPlotAirACFPACF, fig.cap="ACF and PACF of ETS(M,A,M) on AirPassengers data"}
+par(mfcol=c(1,2))
+plot(adamModelETS, c(10,11), main="")
+```
+
+Judging by the plots, there are some significant correlation coefficients for some lags, but it is not clear, whether they appear due to the type I error or not. Just to check, we will see if adding SARIMA(0,0,0)(0,0,1)$_12$ helps (reduces AICc) in this case:
+```{r}
+AICc(adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+          order=list(ma=c(0,1)), lags=c(1,12)))
+```
+As we see, the increased complexity does not decrease the AICc (probably because now we need to estimate 13 parameters more than in just ETS(M,A,M)), so we should not add the SARIMA component. We could try adding other SARIMA elements to see if they improve the model or not, the reader is suggested to do that as an additional exercise.
