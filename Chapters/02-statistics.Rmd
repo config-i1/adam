@@ -154,8 +154,89 @@ Another thing to note about CLT is that it holds only, when:
 If these assumptions hold, then CLT will work for the estimate of a parameter, no matter what the distribution of the random variable is. This becomes especially useful, when we want to test a hypothesis or construct a confidence interval for the estimate of parameter.
 
 
+## Confidence and prediction intervals
+As mentioned in the previous section, we always work with samples and inevitably we deal with randomness just because of that even, when there are no other sources of uncertainty in the data. For example, if we want to estimate the mean of a variable based on the observed data, the value we get will differ from one sample to another. This should have become apparent from the examples we discussed [earlier](#estimatesProperties). And, if the [LLN and CLT](#LLNandCLT) hold, then we know that the estimate of our parameter will have its own distribution and will converge to the population value with the increase of the sample size. This is the basis for the confidence and prediction interval construction, discussed in this section. Depending on our needs, we can focus on the uncertainty of either the estimate of a parameter, or the random variable $y$ itself. When dealing with the former, we typically work with the **confidence interval** - the interval constructed for the estimate of a parameter, while in the latter case we are interested in the **prediction interval** - the interval constructed for the random variable $y$.
+
+In order to simplify the further discussion in this section, we will take the population mean and its in-sample estimate as an example. In this case we have:
+
+1. A random variable $y$, which is assumed to follow some distribution with finite mean $\mu$ and variance $\sigma^2$;
+2. A sample of the size $T$ from the population of $y$;
+3. Estimates of the mean $\hat{\mu}=\bar{y}$ and the variance $\hat{\sigma}^2 = s^2$, obtained based on the sample of size $T$.
+
+
+### Confidence interval
+What we want to get by doing this is an idea about the population mean $\mu$. The value $\bar{y}$ does not tell us much on its own due to randomness and if we do not capture its uncertainty, we will not know, where the true value $\mu$ can be. But using LLN and CLT, we know that the sample mean should converge to the true one and should follow normal distribution. So, the distribution of the sample mean would look like this:
+```{r normalCurveBasic}
+plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), xlab=TeX("$\\hat{\\mu}$"), ylab="Density", type="l")
+lines(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), lwd=1, lty=1, col="darkblue")
+lines(c(-5,5), c(0,0), col="black", lwd=1)
+abline(v=0, col="darkblue", lwd=2)
+legend("topright",legend=c(TeX("$\\mu$")),
+       lwd=c(2), col=c("darkblue"))
+```
+
+On its own, this distribution just tells us that the variable is random around the true mean $\mu$ and that its density function has a bell-like shape. In order to make this more useful, we can construct the **confidence interval** for it, which would tell us where the true parameter is most likely to lie. We can cut the tails of this distribution to determine the width of the interval, expecting it to cover $(1-\alpha)\times 100$% of cases. In the ideal world, asymptotically, the confidence interval will be constructed based on the true value, like this:
+```{r normalCurveIntervals, fig.cap="Distribution of the sample mean and the confidence interval based on the population data."}
+plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), xlab=TeX("$\\hat{\\mu}$"), ylab="Density", type="l",
+     lwd=0, lty=0, col="darkblue")
+polygon(c(seq(-5,5,0.1),rev(seq(-5,5,0.1))),
+        c(dnorm(seq(-5,5,0.1)),rep(0,length(seq(-5,5,0.1)))), col="grey95", lty=0)
+lines(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), lwd=1, lty=1, col="darkblue")
+lines(c(-5,5), c(0,0), col="black", lwd=1)
+polygon(c(seq(-5,qnorm(0.025),0.1),rev(seq(-5,qnorm(0.025),0.1))),
+        c(dnorm(seq(-5,qnorm(0.025),0.1)), rep(0,length(seq(-5,qnorm(0.025),0.1)))), col="grey")
+polygon(c(seq(qnorm(0.975),5,0.1),rev(seq(qnorm(0.975),5,0.1))),
+        c(dnorm(seq(qnorm(0.975),5,0.1)), rep(0,length(seq(qnorm(0.975),5,0.1)))), col="grey")
+abline(v=qnorm(c(0.025,0.975)), col="darkred", lwd=2)
+abline(v=0, col="darkblue", lwd=2)
+legend("topright",legend=c(TeX("$\\mu$"),"bounds",TeX("$1-\\alpha$"),TeX("$\\alpha$")),
+       lwd=c(2,2,6,6), col=c("darkblue","darkred","grey95","grey"))
+```
+
+Figure \@ref(fig:normalCurveIntervals) shows the classical normal distribution curve around the population mean $\mu$, confidence interval of the level $1-\alpha$ and the cut off tails, the overall surface of which corresponds to $\alpha$. The value $1-\alpha$ is called **confidence level**, while $\alpha$ is the **significance level**. By constructing the interval this way, we expect that in the $(1-\alpha)\times 100$% of cases the value will be inside the bounds, and in $\alpha\times 100$% it will not.
+
+In reality we do not know the true mean $\mu$, so we do a slightly different thing: we construct a confidence interval based on the sample mean $\bar{y}$ and sample variance $s^2$, hoping that due to LLN they will converge to the true values. We use Normal distribution, because we expect CLT to work. This process looks something like this with the bell curve in the background representing the true distribution for the sample mean and the curve on the foreground representing the assumed distribution based on our sample (Figure \@ref(fig:normalCurveIntervalsShades)):
+```{r normalCurveIntervalsShades, fig.cap="Distribution of the sample mean and the confidence interval based on a sample"}
+plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1),-1), xlab=TeX("$\\hat{\\mu}$"), ylab="Density", type="l", xlim=c(-5,5),
+     lwd=1,lty=2, col="darkblue")
+polygon(c(seq(-5,5,0.1),rev(seq(-5,5,0.1))),
+        c(dnorm(seq(-5,5,0.1),-1),rep(0,length(seq(-5,5,0.1)))),col="grey95",lty=0)
+polygon(c(seq(-5,5,0.1),rev(seq(-5,5,0.1))),
+        c(dnorm(seq(-5,5,0.1),0),rep(0,length(seq(-5,5,0.1)))),col="white",lty=0)
+lines(c(-5,5), c(0,0), col="black", lwd=1)
+lines(seq(-5,5,0.1), dnorm(seq(-5,5,0.1),-1), lwd=1, lty=2, col="darkblue")
+lines(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), lwd=2, lty=1, col="darkgreen")
+abline(v=qnorm(c(0.025,0.975)), col="darkred", lwd=2)
+abline(v=-1, col="darkblue", lwd=1, lty=2)
+abline(v=0, col="darkgreen", lwd=2)
+legend("topright",legend=c(TeX("$\\mu$"),"Sample mean","Bounds","True PDF","Assumed PDF"),
+       lwd=c(1,2,2,1,2), col=c("darkblue","darkgreen","darkred","darkblue","darkgreen"), lty=c(2,1,1,2,1))
+```
+
+So, what the confidence interval does in reality is tries to cover the unknown population mean, based on the sample values of $\bar{y}$ and $s^2$. If we construct the confidence interval of the width $1-\alpha$ (e.g. 0.95) for thousands of random samples (thousands of trials), then in $(1-\alpha)\times 100$% of cases (e.g. 95%) the true mean will be covered by the interval, while in $\alpha \times 100$% cases it will not be. The interval itself is random, and we rely on LLN and CLT, when constructing it, expecting for it to work asymptotically, with the increase of the number of trials.
+
+Mathematically the red bounds in Figure \@ref(fig:normalCurveIntervalsShades) are represented using the following well-known formula for the confidence interval:
+\begin{equation}
+    \mu \in (\bar{y} + t_{\alpha/2}(df) s_{\bar{y}}, \bar{y} + t_{1-\alpha/2}(df) s_{\bar{y}}),
+    (\#eq:confidenceInterval)
+\end{equation}
+where $t_{\alpha/2}(df)$ is Student's t-statistics for $df=T-k$ degrees of freedom ($T$ is the sample size and $k$ is the number of estimated parameters, e.g. $k=1$ in our case) and level $\alpha/2$, and $s_{\bar{y}}=\frac{1}{\sqrt{T}}s$ is the estimate of the standard deviation of the sample mean. If we knew for some reason the true variance $\sigma^2$, then we could use z-statistics instead of t, but we typically do not, so we need to take the uncertainty about the variance into account as well, thus the use of t-statistics.
+
+Note, that in order to construct *confidence interval*, we do not care what distribution $y$ follows, as long as LLN and CLT hold.
+
+### Prediction interval
+If we are interested in capturing the uncertainty about the random variable $y$, then we should rever to prediction interval. In this case, we typically rely on [LLN](#LLNandCLT) and the [assumed distribution](#distributions) for the random variable $y$. For example, if we know that $y \sim \mathcal{N}(\mu, \sigma^2)$, then based on our sample we can construct a prediction interval of the width $1-\alpha$:
+\begin{equation}
+    y \in (\bar{y} + z_{\alpha/2} s, \bar{y} + z_{1-\alpha/2} s),
+    (\#eq:confidenceInterval)
+\end{equation}
+where $z_{\alpha/2}$ is the z-statistics (quantile of standard normal distribution) for the level $\alpha/2$.
+
+
 ## Hypothesis testing
 While we will not need hypothesis testing for ADAM itself, we might face it in some parts of the textbook, so it is worth discussing the main aspects of it.
+
+Hypothesis testing arises naturally from the idea of sampling: we cannot have all the data in the world, we work with just a sample of it, and we want to get an idea about some parameters of the true model (in the population), based on the data that we have. The classical example is the hypothesis testing about the population mean, based on the sample values of mean and variance.
 
 
 ## Typical assumptions of statistical models {#assumptions}
