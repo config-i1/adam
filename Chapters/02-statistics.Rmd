@@ -167,7 +167,9 @@ In order to simplify the further discussion in this section, we will take the po
 ### Confidence interval
 What we want to get by doing this is an idea about the population mean $\mu$. The value $\bar{y}$ does not tell us much on its own due to randomness and if we do not capture its uncertainty, we will not know, where the true value $\mu$ can be. But using LLN and CLT, we know that the sample mean should converge to the true one and should follow normal distribution. So, the distribution of the sample mean would look like this:
 ```{r normalCurveBasic}
-plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), xlab=TeX("$\\hat{\\mu}$"), ylab="Density", type="l")
+hist(rnorm(10000), xlab=TeX("$\\bar{y}$"), ylab="Density", xlim=c(-5,5), axes=FALSE, main="")
+par(new=TRUE)
+plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), xlab="", ylab="", type="l")
 lines(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), lwd=1, lty=1, col="darkblue")
 lines(c(-5,5), c(0,0), col="black", lwd=1)
 abline(v=0, col="darkblue", lwd=2)
@@ -177,7 +179,7 @@ legend("topright",legend=c(TeX("$\\mu$")),
 
 On its own, this distribution just tells us that the variable is random around the true mean $\mu$ and that its density function has a bell-like shape. In order to make this more useful, we can construct the **confidence interval** for it, which would tell us where the true parameter is most likely to lie. We can cut the tails of this distribution to determine the width of the interval, expecting it to cover $(1-\alpha)\times 100$% of cases. In the ideal world, asymptotically, the confidence interval will be constructed based on the true value, like this:
 ```{r normalCurveIntervals, fig.cap="Distribution of the sample mean and the confidence interval based on the population data."}
-plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), xlab=TeX("$\\hat{\\mu}$"), ylab="Density", type="l",
+plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), xlab=TeX("$\\bar{y}$"), ylab="Density", type="l",
      lwd=0, lty=0, col="darkblue")
 polygon(c(seq(-5,5,0.1),rev(seq(-5,5,0.1))),
         c(dnorm(seq(-5,5,0.1)),rep(0,length(seq(-5,5,0.1)))), col="grey95", lty=0)
@@ -197,7 +199,7 @@ Figure \@ref(fig:normalCurveIntervals) shows the classical normal distribution c
 
 In reality we do not know the true mean $\mu$, so we do a slightly different thing: we construct a confidence interval based on the sample mean $\bar{y}$ and sample variance $s^2$, hoping that due to LLN they will converge to the true values. We use Normal distribution, because we expect CLT to work. This process looks something like this with the bell curve in the background representing the true distribution for the sample mean and the curve on the foreground representing the assumed distribution based on our sample (Figure \@ref(fig:normalCurveIntervalsShades)):
 ```{r normalCurveIntervalsShades, fig.cap="Distribution of the sample mean and the confidence interval based on a sample"}
-plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1),-1), xlab=TeX("$\\hat{\\mu}$"), ylab="Density", type="l", xlim=c(-5,5),
+plot(seq(-5,5,0.1), dnorm(seq(-5,5,0.1),-1), xlab=TeX("$\\bar{y}$"), ylab="Density", type="l", xlim=c(-5,5),
      lwd=1,lty=2, col="darkblue")
 polygon(c(seq(-5,5,0.1),rev(seq(-5,5,0.1))),
         c(dnorm(seq(-5,5,0.1),-1),rep(0,length(seq(-5,5,0.1)))),col="grey95",lty=0)
@@ -285,7 +287,47 @@ If the blue line on Figure \@ref(fig:hypothesisTesting01) would lie inside the r
         & \mu \in (-0.84, -0.16).
     \end{aligned}
 \end{equation*}
-In our case it does not, so we conclude that we reject H$_0$ on 5% significance level.
+In our case it does not, so we conclude that we reject H$_0$ on 5% significance level. This can be roughly represented by the graph on  Figure \@ref(fig:hypothesisTesting02):
+```{r hypothesisTesting02, fig.cap="The process of hypothesis testing with t value"}
+plot(seq(-1.5,0.5,0.01), dt((seq(-1.5,0.5,0.01)+0.5)*6, 36-1), xlab="Sample mean", ylab="Density", type="l",
+     lwd=0, lty=0, col="darkblue")
+polygon(c(seq(-1.5,0.5,0.01),rev(seq(-1.5,0.5,0.01))),
+        c(dt((seq(-1.5,0.5,0.01)+0.5)*6, 36-1),rep(0,length(seq(-1.5,0.5,0.01)))), col="grey95", lty=0)
+lines(seq(-1.5,0.5,0.01), dt((seq(-1.5,0.5,0.01)+0.5)*6, 36-1), lwd=1, lty=1, col="darkgreen")
+lines(c(-1.5,0.5), c(0,0), col="black", lwd=1)
+polygon(c(seq(-1.5,qt(0.025, 36-1)/6-0.5,0.01),rev(seq(-1.5,qt(0.025, 36-1)/6-0.5,0.01))),
+        c(dt((seq(-1.5,qt(0.025, 36-1)/6-0.5,0.01)+0.5)*6,36-1), rep(0,length(seq(-1.5,qt(0.025, 36-1)/6-0.5,0.01)))), col="grey")
+polygon(c(seq(qt(0.975, 36-1)/6-0.5,0.5,0.01),rev(seq(qt(0.975, 36-1)/6-0.5,0.5,0.01))),
+        c(dt((seq(qt(0.975, 36-1)/6-0.5,0.5,0.01)+0.5)*6,36-1), rep(0,length(seq(qt(0.975, 36-1)/6-0.5,0.5,0.01)))), col="grey")
+abline(v=qt(c(0.025,0.975),36-1)/6-0.5, col="darkred", lwd=2)
+abline(v=0, col="darkblue", lwd=2)
+legend("topright",legend=c("bounds",TeX("$\\mu$=0"),TeX("$1-\\alpha$"),TeX("$\\alpha$")),
+       lwd=c(2,2,6,6), col=c("darkred","darkblue","grey95","grey"))
+```
+
+Note that the positioning of the blue line has changed in the case of confidence interval, which happens because of the transition from \@ref(eq:ttestFormula) to \@ref(eq:confidenceInterval). The idea and the message, however, stay the same: if the value is not inside the light grey area, then we reject H$_0$ on the selected significance level.
+
+Finally, there is a third way to test the hypothesis. We could calculate how much surface is left in the tails with the cut off of the assumed distribution by the blue line on \@ref(fig:hypothesisTesting01) (calculated value). In R this can be done using the `pt()` function:
+```{r}
+pt(-3, 36-1)
+```
+Given that we had the inequality in the alternative hypothesis, we need to consider both tails, multiplying the value by 2 to get approximately `r round(pt(-3, 36-1)*2, 4)`. This is the significance level, for which the switch from "reject" to "do not reject" happens. We could compare this value with the pre-selected significance level directly, rejecting H$_0$ if it is lower than $\alpha$. This value is called "p-value" and simplifies the hypothesis testing, because we do not need to look at critical values or construct the confidence interval. There are different definitions of what it is, I personally find the following easier to comprehend: **p-value** is the smallest significance level at which a null hypothesis can be rejected.
+
+
+
+
+While p-value is a comfortable thing, I personally prefer using confidence interval, because they show the uncertainty clearer. Consider the following cases to see what I mean:
+
+1. We reject H$_0$ because t-value is -3, which is smaller than the critical value of `r round(qt(0.025, 36-1),3)` (or equivalently the absolute of t-value is 3, while the critical is `r round(qt(0.975, 36-1),3)`);
+2. We reject H$_0$ because p-value is `r round(pt(-3, 36-1)*2, 4)`, which is smaller than the significance level $\alpha=0.05$;
+3. The confidence interval for the mean is $\mu \in (-0.84, -0.16)$. It does not include zero, so we reject H$_0$.
+
+In case of (3), we not only get the same message as in (1) and (2), but we also see how far the bound is from the tested value. In addition, in the situation, when we fail to reject H$_0$, the approach (3) gives more appropriate information. Consider the case, when we test, whether $\mu=-0.6$. We then the three approaches:
+
+1. We fail to reject H$_0$ because t-value is 0.245, which is smaller than the critical value of `r round(qt(0.975, 36-1),3)`;
+2. We fail to reject H$_0$ because p-value is 0.808, which is greater than the significance level $\alpha=0.05$;
+3. The confidence interval for the mean is $\mu \in (-0.84, -0.16)$. It includes -0.6, so we fail to reject H$_0$. *This does not mean that the true mean is indeed equal to -0.6, but it means that it is somewhere in the constructed region on 5% significance level.*
+
 
 **Note** that we never say that we accept H$_0$, because this is not what we do in hypothesis testing: if the value would lie inside the interval, then this would only mean that our sample shows that the true mean is covered by the region.
 
