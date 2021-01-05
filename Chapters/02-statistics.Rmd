@@ -183,10 +183,10 @@ polygon(c(seq(-5,5,0.1),rev(seq(-5,5,0.1))),
         c(dnorm(seq(-5,5,0.1)),rep(0,length(seq(-5,5,0.1)))), col="grey95", lty=0)
 lines(seq(-5,5,0.1), dnorm(seq(-5,5,0.1)), lwd=1, lty=1, col="darkblue")
 lines(c(-5,5), c(0,0), col="black", lwd=1)
-polygon(c(seq(-5,qnorm(0.025),0.1),rev(seq(-5,qnorm(0.025),0.1))),
-        c(dnorm(seq(-5,qnorm(0.025),0.1)), rep(0,length(seq(-5,qnorm(0.025),0.1)))), col="grey")
-polygon(c(seq(qnorm(0.975),5,0.1),rev(seq(qnorm(0.975),5,0.1))),
-        c(dnorm(seq(qnorm(0.975),5,0.1)), rep(0,length(seq(qnorm(0.975),5,0.1)))), col="grey")
+polygon(c(seq(-5,qnorm(0.025),0.01),rev(seq(-5,qnorm(0.025),0.01))),
+        c(dnorm(seq(-5,qnorm(0.025),0.01)), rep(0,length(seq(-5,qnorm(0.025),0.01)))), col="grey")
+polygon(c(seq(qnorm(0.975),5,0.01),rev(seq(qnorm(0.975),5,0.01))),
+        c(dnorm(seq(qnorm(0.975),5,0.01)), rep(0,length(seq(qnorm(0.975),5,0.01)))), col="grey")
 abline(v=qnorm(c(0.025,0.975)), col="darkred", lwd=2)
 abline(v=0, col="darkblue", lwd=2)
 legend("topright",legend=c(TeX("$\\mu$"),"bounds",TeX("$1-\\alpha$"),TeX("$\\alpha$")),
@@ -228,15 +228,66 @@ Note, that in order to construct *confidence interval*, we do not care what dist
 If we are interested in capturing the uncertainty about the random variable $y$, then we should rever to prediction interval. In this case, we typically rely on [LLN](#LLNandCLT) and the [assumed distribution](#distributions) for the random variable $y$. For example, if we know that $y \sim \mathcal{N}(\mu, \sigma^2)$, then based on our sample we can construct a prediction interval of the width $1-\alpha$:
 \begin{equation}
     y \in (\bar{y} + z_{\alpha/2} s, \bar{y} + z_{1-\alpha/2} s),
-    (\#eq:confidenceInterval)
+    (\#eq:predictionInterval)
 \end{equation}
 where $z_{\alpha/2}$ is the z-statistics (quantile of standard normal distribution) for the level $\alpha/2$.
 
 
 ## Hypothesis testing
-While we will not need hypothesis testing for ADAM itself, we might face it in some parts of the textbook, so it is worth discussing the main aspects of it.
+While we will not need hypothesis testing for ADAM itself, we might face it in some parts of the textbook, so it is worth discussing it briefly.
 
-Hypothesis testing arises naturally from the idea of sampling: we cannot have all the data in the world, we work with just a sample of it, and we want to get an idea about some parameters of the true model (in the population), based on the data that we have. The classical example is the hypothesis testing about the population mean, based on the sample values of mean and variance.
+Hypothesis testing arises naturally from the idea of confidence intervals: instead of constructing the interval and getting the idea about the uncertainty about the parameter, we could check, whether the sample agrees with our expectations or not. For example, we could test, whether the population mean is equal to zero based on our sample. We could either construct a confidence interval for the sample mean and see if zero is included in it (in which case it might indicate that zero is one of the possible values of the population mean), or we could reformulate the problem and compare some calculated value with the theoretical threshold one. The latter approach is in the nutshell what hypothesis testing does.
+
+The correct procedure of conducting the hypothesis testing can be summarised in the following steps:
+
+1. Formulate null and alternative hypotheses, H$_0$ and H$_1$;
+2. Select the significance level $\alpha$ on which the hypothesis will be tested;
+3. Select the test appropriate for the formulate hypotheses (1);
+4. Conduct the test (3) and get the calculated value;
+5. Compare the value in (4) with the threshold one;
+6. Make a conclusion based on (5) on the selected level (2).
+
+Note that the order of some elements might change depending on the circumstances, but (2) should always happen before (4), otherwise we might be dealing with so called "p-hacking", trying to make results look nicer than they really are.
+
+Consider an example, where we want to check, whether the population mean $\mu$ is equal to zero or not based on a sample of 36 observations, where $\bar{y}=-0.5$ and $s^2=1$. In this case, we formulate the null and alternative hypotheses:
+\begin{equation*}
+    \mathrm{H}_0: \mu=0, \mathrm{H}_1: \mu \neq 0.
+\end{equation*}
+We then select the significance level $\alpha=0.05$ (just as an example) and select the test. Based on the description of the task, this can be either a t-test, or a z-test, depending on whether the variance of the variable is known or not. Usually it is not, so we tend to use t-test. We then conduct the test using the formula:
+\begin{equation}
+    t = \frac{\bar{y} - \mu}{s_{\bar{y}}} = \frac{-0.5 - 0}{\frac{1}{\sqrt{36}}} = -3 .
+    (\#eq:ttestFormula)
+\end{equation}
+After that we get the critical value of t with $df=36-1=35$ degrees of freedom and significance level $\alpha/2=0.025$, which is approximately equal to `r round(qt(0.025, 36-1),3)`. We compare this value with the \@ref(eq:ttestFormula) by modules and reject H$_0$ if the calculated value is higher than the critical one. In our case it is, so it appears that we have enough evidence to say that the population mean is not equal to 0, on the 5% significance level.
+
+Visually, the whole process of hypothesis testing explained above can be represented in the following way:
+```{r hypothesisTesting01, fig.cap="The process of hypothesis testing with t value"}
+plot(seq(-5,5,0.1), dt(seq(-5,5,0.1), 36-1), xlab="t", ylab="Density", type="l",
+     lwd=0, lty=0, col="darkblue")
+polygon(c(seq(-5,5,0.1),rev(seq(-5,5,0.1))),
+        c(dt(seq(-5,5,0.1), 36-1),rep(0,length(seq(-5,5,0.1)))), col="grey95", lty=0)
+lines(seq(-5,5,0.1), dt(seq(-5,5,0.1), 36-1), lwd=1, lty=1, col="darkgreen")
+lines(c(-5,5), c(0,0), col="black", lwd=1)
+polygon(c(seq(-5,qt(0.025, 36-1),0.01),rev(seq(-5,qt(0.025, 36-1),0.01))),
+        c(dt(seq(-5,qt(0.025, 36-1),0.01),36-1), rep(0,length(seq(-5,qt(0.025, 36-1),0.01)))), col="grey")
+polygon(c(seq(qt(0.975, 36-1),5,0.01),rev(seq(qt(0.975, 36-1),5,0.01))),
+        c(dt(seq(qt(0.975, 36-1),5,0.01),36-1), rep(0,length(seq(qt(0.975, 36-1),5,0.01)))), col="grey")
+abline(v=qt(c(0.025,0.975),36-1), col="darkred", lwd=2)
+abline(v=-3, col="darkblue", lwd=2)
+legend("topright",legend=c("critical values","calculated t",TeX("$1-\\alpha$"),TeX("$\\alpha$")),
+       lwd=c(2,2,6,6), col=c("darkred","darkblue","grey95","grey"))
+```
+
+If the blue line on Figure \@ref(fig:hypothesisTesting01) would lie inside the red bounds (i.e. the calculated value is less than the critical value by module), then we would fail to reject H$_0$. But in our example it is outside the bounds, so the we have enough evidence to conclude that the population mean is not equal to zero on 5% significance level. Notice, how similar the mechanisms of confidence interval construction and hypothesis testing are. This is because they are one and the same thing, presented differently. In fact, we could test the same hypothesis by constructing the 95% confidence interval using \@ref(eq:confidenceInterval) and checking, whether the interval covers the $\mu=0$:
+\begin{equation*}
+    \begin{aligned}
+        & \mu \in (-0.50 -2.03 \frac{1}{\sqrt{36}}, -0.50 + 2.03 \frac{1}{\sqrt{36}}), \\
+        & \mu \in (-0.84, -0.16).
+    \end{aligned}
+\end{equation*}
+In our case it does not, so we conclude that we reject H$_0$ on 5% significance level.
+
+**Note** that we never say that we accept H$_0$, because this is not what we do in hypothesis testing: if the value would lie inside the interval, then this would only mean that our sample shows that the true mean is covered by the region.
 
 
 ## Typical assumptions of statistical models {#assumptions}
