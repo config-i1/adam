@@ -5,6 +5,7 @@ Besides the conventional formulation, there is also a state space form of ARIMA,
 
 
 ## State space ARIMA
+### Model formulation
 In order to develop state space ARIMA, we will use the most general multiple seasonal ARIMA, discussed in [the previous section](#MSARIMA):
 \begin{equation*}
   y_t \prod_{j=0}^n \Delta^{D_j} (B^{m_j}) \varphi^{P_j}(B^{m_j}) = \epsilon_t \prod_{j=0}^n \vartheta^{Q_j}(B^{m_j}) ,
@@ -14,7 +15,7 @@ This model can be represented in an easier to digest form by expanding the polyn
   y_t = \sum_{j=1}^K \eta_j y_{t-j} + \sum_{j=1}^K \theta_j \epsilon_{t-j} + \epsilon_t .
   (\#eq:MSARIMAExpanded)
 \end{equation}
-Based on this we could define states for each of the previous elements:
+Here $K$ is the order of the highest polynomial, calculated as $K=\max\left(\sum_{j=0}^n (P_j + D_j)m_j, \sum_{j=0}^n Q_j m_j\right)$. If, for example, the MA order is higher than the sum of ARI orders, then polynomials $\eta_i=0$ for $i>\sum_{j=0}^n (P_j + D_j)m_j$. The same property holds for the opposite situation of the sum of ARI orders being higher than the MA orders. Based on this we could define states for each of the previous elements:
 \begin{equation}
   v_{i,t-i} = \eta_i y_{t-i} + \theta_i \epsilon_{t-i},
   (\#eq:MSARIMAState)
@@ -37,16 +38,16 @@ The value \@ref(eq:MSARIMAMeasurement02) can be inserted into \@ref(eq:MSARIMASt
 This leads to the SSOE state space model based on \@ref(eq:MSARIMAMeasurement02) and \@ref(eq:MSARIMATransition):
 \begin{equation}
   \begin{aligned}
-    {y}_{t} = & \sum_{j=1}^K v_{j,t-j} + \epsilon_t \\
-    v_{i,t} = & \eta_i \sum_{j=1}^K v_{j,t-j} + (\eta_i + \theta_i) \epsilon_{t} \text{ for each } i=\{1, 2, \dots, K \}
+    &{y}_{t} = \sum_{j=1}^K v_{j,t-j} + \epsilon_t \\
+    &v_{i,t} = \eta_i \sum_{j=1}^K v_{j,t-j} + (\eta_i + \theta_i) \epsilon_{t} \text{ for each } i=\{1, 2, \dots, K \}
   \end{aligned},
   (\#eq:ADAMARIMAExpanded)
 \end{equation}
 which can be formulated in the conventional form:
 \begin{equation*}
   \begin{aligned}
-    {y}_{t} = &\mathbf{w}' \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
-    \mathbf{v}_{t} = &\mathbf{F} \mathbf{v}_{t-\mathbf{l}} + \mathbf{g} \epsilon_t
+    &{y}_{t} = \mathbf{w}' \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
+    &\mathbf{v}_{t} = \mathbf{F} \mathbf{v}_{t-\mathbf{l}} + \mathbf{g} \epsilon_t
   \end{aligned},
 \end{equation*}
 with the following values for matrices:
@@ -57,10 +58,82 @@ with the following values for matrices:
   \end{aligned}.
   (\#eq:ADAMARIMAMatrices)
 \end{equation}
+States in this model do not have any specific meaning, they just represent a combination of actual values and error terms, some portion of ARIMA model. Furthremore, there are zero states in this model, corresponding to zero polynomials of ARI and MA. These can be dropped to make the model even more compact.
 
-In this model, each state of $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second etc). This leads in general to more initial states than the SSARIMA from @Svetunkov2019: $\frac{K(K+1)}{2}$ instead of $K$. However, this formulation has a more compact transition matrix, leading to computational improvements in terms of applying the model to the data with large $K$. Besides, we can reduce the number of initial seeds to estimate to $K$ either by using a different initialisation procedure (e.g. backcasting) or using a trick explained below.
+### An example
+In order to better understand what the state space model \@ref(eq:ADAMARIMAExpanded) implies, we consider an example of SARIMA(1,1,2)(0,1,0)$_4$:
+\begin{equation*}
+    {y}_{t} (1- \phi_1 B)(1-B)(1-B^4) = \epsilon_t (1 + \theta_1 B + \theta_2 B^2),
+\end{equation*}
+which can be rewritten in the expanded form:
+\begin{equation*}
+    {y}_{t} (1-\phi_1 B - B + \phi_1 B^2 - B^4 +\phi_1 B^5 + B^5 - \phi_1 B^6) = \epsilon_t (1 + \theta_1 B + \theta_2 B^2),
+\end{equation*}
+or after moving the previous values to the right hand side:
+\begin{equation*}
+    {y}_{t} = (1+\phi_1) {y}_{t-1} - \phi_1 {y}_{t-2} + {y}_{t-4} - (1+\phi_1) {y}_{t-5} + \phi_1 {y}_{t-6} + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \epsilon_t .
+\end{equation*}
+The polynomials in this case can be written as:
+\begin{equation*}
+    \begin{aligned}
+    & \eta_1 = 1+\phi_1 \\
+    & \eta_2 = -\phi_1 \\
+    & \eta_3 = 0 \\
+    & \eta_4 = 1 \\
+    & \eta_5 = - (1+\phi_1) \\
+    & \eta_6 = \phi_1
+    \end{aligned} ,
+\end{equation*}
+leading to 6 states, one of which can be dropped (the third one, for which both $\eta_3=0$ and $\theta_3=0$). The state space ARIMA can then be written as:
+\begin{equation*}
+    \begin{aligned}
+    &{y}_{t} = \sum_{j=1}^6 v_{j,t-j} + \epsilon_t \\
+    & v_{1,t} = (1+\phi_1) \sum_{j=1}^6 v_{j,t-j} + (1+\phi_1+\theta_1) \epsilon_t \\
+    & v_{2,t} = -\phi_1 \sum_{j=1}^6 v_{j,t-j} + (-\phi_1+\theta_2) \epsilon_t \\
+    & v_{4,t} = \sum_{j=1}^6 v_{j,t-j} + \epsilon_t \\
+    & v_{5,t} = -(1+\phi_1) \sum_{j=1}^6 v_{j,t-j} -(1+\phi_1) \epsilon_t \\
+    & v_{6,t} = \phi_1 \sum_{j=1}^6 v_{j,t-j} + \phi_1 \epsilon_t
+    \end{aligned} .
+\end{equation*}
+This model looks more complicated than the original ARIMA in the conventional form, but it bring the model to the same ground as [ETS in ADAM](#ADAMETSIntroduction), making them directly comparable via information criteria and allowing to easily combine the two models.
 
-Using \@ref(eq:MSARIMAState), we can express the actual value based on the last equation for the state $v_{K,t}$ in the transition matrix:
+### State space ARIMA with constant
+If we want to add the [constant](#ARMAConstant) to the model, we need to modify the equation \@ref(eq:MSARIMAExpanded):
+\begin{equation}
+  y_t = \sum_{j=1}^K \eta_j y_{t-j} + \sum_{j=1}^K \theta_j \epsilon_{t-j} + a_0 + \epsilon_t .
+  (\#eq:MSARIMAExpandedConstant)
+\end{equation}
+This then leads to the appearance of the new state:
+\begin{equation}
+  v_{K+1,t} = a_0 ,
+  (\#eq:MSARIMAStateConstant)
+\end{equation}
+which leads to the modified measurement equation:
+\begin{equation}
+  y_t = \sum_{j=1}^{K+1} v_{j,t-j} + \epsilon_t ,
+  (\#eq:MSARIMAMeasurementConstant)
+\end{equation}
+and the modified transition states:
+\begin{equation}
+  \begin{aligned}
+    v_{i,t} = \eta_i \sum_{j=1}^{K+1} v_{j,t-j} + (\eta_i + \theta_i) \epsilon_{t} , \text{ for } i=\{1, 2, \dots, K\} \\
+    v_{K+1, t} = v_{K+1, t-1} .
+  \end{aligned}
+  (\#eq:MSARIMATransitionConstant)
+\end{equation}
+Note that the constant term introduced in this model has different meaning, depending on the differences of the model. For example, if all $D_j=0$, then it acts as an intercept, while for the $d=1$, it will act as a drift.
+
+
+<!-- ## Multiplicative error ARIMA -->
+
+<!-- ## Stability and Stationarity conditions -->
+
+<!-- ## Forecasting with ADAM ARIMA -->
+
+## Constructing ADAM ARIMA
+Each state $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second etc). This leads in general to more initial values for states than the SSARIMA from @Svetunkov2019: $\frac{K(K+1)}{2}$ instead of $K$. However, this formulation has a more compact transition matrix, leading to computational improvements in terms of applying the model to the data with large $K$ (e.g. multiple seasonalities), having the $K \times K$ transition matrix. Besides, we can reduce the number of initial seeds to estimate to $K$ either by using a different initialisation procedure (e.g. backcasting) or using a trick explained below.
+
+First we assume that there exists non-zero $\eta_K$. This does not necessarily hold, because there can be models like ARIMA(0,1,2), where the ARI(p,d) polynomial only contains the value for $i=1$, while the MA polynomial contains both $\theta_1$ and $\theta_2$. But we will discuss later, what can be done in this situation. So, for now we assume that there exists non-zero $\eta_K$. Using \@ref(eq:MSARIMAState), we can express the actual value based on the last equation for the state $v_{K,t}$ in the transition matrix:
 \begin{equation}
   y_{t} = \frac{v_{K,t} - \theta_K \epsilon_{t}}{\eta_K}.
   (\#eq:MSARIMAInitialisation01)
@@ -70,18 +143,12 @@ We select the last state $K$ because it has the highest number of initials to es
   v_{i,t} = \frac{v_{K,t} - \theta_K \epsilon_{t}}{\eta_K} + \theta_i \epsilon_{t} = \frac{\eta_i}{\eta_K} v_{K,t} + \left( \theta_i - \frac{\theta_K}{\eta_K} \right) \epsilon_{t} .
   (\#eq:MSARIMAInitialisation02)
 \end{equation}
-
-...
-
-The model with the constant.
-
-<!-- ## Multiplicative error ARIMA -->
-
-<!-- ## Stability and Stationarity conditions -->
-
-<!-- ## Forecasting with ADAM ARIMA -->
-
-<!-- ## Constructing ADAM ARIMA -->
+We then take the expectation of the state \@ref(eq:MSARIMAInitialisation02) to get the formula for the initialisation of states:
+\begin{equation}
+  v_{i,t} = \frac{\eta_i}{\eta_K} v_{K,t} .
+  (\#eq:MSARIMAInitialisation03)
+\end{equation}
+The indices can be then moved back in time to get the initials before the $t=1$.
 
 <!-- ## ETS + ARIMA -->
 
