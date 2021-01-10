@@ -4,8 +4,61 @@ There are different ways to formulate and implement ARIMA. The one discussed in 
 Besides the conventional formulation, there is also a state space form of ARIMA, implemented in SSOE [@Hyndman2008b]. @Svetunkov2019 adapted this state space model for supply chain forecasting, developing an order selection mechanism, sidesteping the hypothesis testing and focusing on information criteria. However, the main issue with this approach is that the resulting ARIMA model works very slow on the data with large frequencies (because the transition matrix becomes huge). Luckily, there is an alternative SSOE state space formulation, using the same idea of lags as [ADAM ETS](#ADAMETSIntroduction). This model is already implemented in `msarima()` function of `smooth` package and was also used as the basis for the ADAM ARIMA.
 
 
-<!-- ## State space ARIMA -->
+## State space ARIMA
+In order to develop state space ARIMA, we will use the most general multiple seasonal ARIMA, discussed in [the previous section](#MSARIMA):
+\begin{equation*}
+  y_t \prod_{j=0}^n \Delta^{D_j} (B^{m_j}) \varphi^{P_j}(B^{m_j}) = \epsilon_t \prod_{j=0}^n \vartheta^{Q_j}(B^{m_j}) ,
+\end{equation*}
+This model can be represented in an easier to digest form by expanding the polynomials on the left hand side of the equation and moving all the previous values to the right hand side and then expanding the MA polynomials:
+\begin{equation}
+  y_t = \sum_{j=1}^K \eta_j y_{t-j} + \sum_{j=1}^K \theta_j \epsilon_{t-j} + \epsilon_t .
+  (\#eq:MSARIMAExpanded)
+\end{equation}
+Based on this we could define states for each of the previous elements:
+\begin{equation}
+  v_{i,t-i} = \eta_i y_{t-i} + \theta_i \epsilon_{t-i},
+  (\#eq:MSARIMAState)
+\end{equation}
+leading to the following model based on \@ref(eq:MSARIMAState) and \@ref(eq:MSARIMAExpanded):
+\begin{equation}
+  y_t = \sum_{j=1}^K v_{j,t-j} + \epsilon_t .
+  (\#eq:MSARIMAMeasurement01)
+\end{equation}
+This can be considered as a measurement equation of the state space ARIMA. Now if we consider the previous values of $y_t$ based on \@ref(eq:MSARIMAMeasurement01), for $y_{t-i}$, it will be equal to:
+\begin{equation}
+  y_{t-i} = \sum_{j=1}^K v_{j,t-j-i} + \epsilon_{t-i} .
+  (\#eq:MSARIMAMeasurement02)
+\end{equation}
+The value \@ref(eq:MSARIMAMeasurement02) can be inserted into \@ref(eq:MSARIMAState), in order to get the transition equation:
+\begin{equation}
+  v_{i,t-i} = \eta_i \sum_{j=1}^K v_{j,t-j-i} + (\eta_i + \theta_i) \epsilon_{t-i}.
+  (\#eq:MSARIMATransition)
+\end{equation}
+This leads to the SSOE state space model based on \@ref(eq:MSARIMAMeasurement02) and \@ref(eq:MSARIMATransition):
+\begin{equation}
+  \begin{aligned}
+    {y}_{t} = & \sum_{j=1}^K v_{j,t-j} + \epsilon_t \\
+    v_{i,t} = \eta_i \sum_{j=1}^K v_{j,t-j} + (\eta_i + \theta_i) \epsilon_{t} \text{ for each } i=\{1, 2, \dots, K \}
+  \end{aligned},
+  (\#eq:ADAMARIMAExpanded)
+\end{equation}
+which can be formulated in the conventional form:
+\begin{equation*}
+  \begin{aligned}
+    {y}_{t} = &\mathbf{w}' \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
+    \mathbf{v}_{t} = &\mathbf{F} \mathbf{v}_{t-\mathbf{l}} + \mathbf{g} \epsilon_t
+  \end{aligned},
+\end{equation*}
+with the following values for matrices:
+\begin{equation}
+  \begin{aligned}
+    \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ \vdots \\ 1 \end{pmatrix}, & \mathbf{F} = \begin{pmatrix} \eta_1 & \eta_1 & \dots & \eta_1 \\ \eta_2 & \eta_2 & \dots & \eta_1 \\ \vdots & \vdots & \ddots & \vdots \\ \eta_K & \eta_K & \dots & \eta_K \end{pmatrix}, \\
+    \mathbf{g} = \begin{pmatrix} \eta_1 + \theta_1 \\ \eta_2 + \theta_2 \\ \vdots \\ \eta_K + \theta_K \end{pmatrix}, & \mathbf{v}_{t} = \begin{pmatrix} v_{1,t} \\ v_{2,t} \\ \vdots \\ v_{K,t} \end{pmatrix}, & \mathbf{l} = \begin{pmatrix} 1 \\ 2 \\ \vdots \\ K \end{pmatrix}
+  \end{aligned}.
+  (\#eq:ADAMARIMAMatrices)
+\end{equation}
 
+In this model, each state of $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second etc). This leads in general to more initial states than the SSARIMA from @Svetunkov2019. However, this formulation leads to more compact transition matrix, leading to improvements in terms of applying the model to the data with large $K$.
 
 <!-- ## Multiplicative error ARIMA -->
 
