@@ -152,7 +152,8 @@ The model \@ref(eq:ADAMARIMAExpandedMultiplicative) can be written in the follow
 where $\mathbf{w}$, $\mathbf{F}$, $\mathbf{v}_t$, $\mathbf{g}$ and $\mathbf{l}$ are defined as before for the [additive ARIMA](#StateSpaceARIMA), e.g. in equation \@ref(eq:ADAMARIMAMatricesConstant). This model is equivalent to applying ARIMA to log-transformed data, but at the same time shares some similarities with [pure multiplicative ETS](#ADAMETSPureMultiplicative). The main advantage of this formulation is that this model has analytical solutions for the conditional moments and has well defined h steps ahead distributions, which simplifies the work with it in contrast with the [pure multiplicative ETS](#ADAMETSPureMultiplicative) models.
 
 
-<!-- ## Stability and Stationarity conditions -->
+## Parameters bounds
+
 
 ## Moments of ADAM ARIMA
 Having formulated ARIMA in state space forms \@ref(eq:ETSADAMStateSpacePureAdditive) (pure additive) and \@ref(eq:ADAMStateSpaceMultiplicative) (pure multiplicative), we can now calculate the conditional moments for ADAM ARIMA.
@@ -161,31 +162,35 @@ In case of the pure additive ARIMA model, the moments correspond to the ones dis
 \begin{equation*}
   \begin{aligned}
     \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
-    \mathrm{V}(y_{t+h}|t) = & \left( \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \sigma^2
+    \sigma^2_{h} = \mathrm{V}(y_{t+h}|t) = & \left( \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \sigma^2
   \end{aligned},
 \end{equation*}
-where in our case $m_i$ corresponds to each lag in the vector $l$. Another thing to note that due to how we formulated the model, each $\mathbf{w}_{m_i}$ and $\mathbf{g}_{m_i}$ would contain only one non-zero element, while the matrix $\mathbf{F}_{m_i}$ would be sparse, containing only one non-zero column $i$.
+where in our case $m_i$ corresponds to each lag in the vector $\mathbf{l}$. Another thing to note that due to how we formulated the model, each $\mathbf{w}_{m_i}$ and $\mathbf{g}_{m_i}$ would contain only one non-zero element, while the matrix $\mathbf{F}_{m_i}$ would be sparse, containing only one non-zero column $i$.
 
 When it comes to the multiplicative ARIMA model, using the same idea with recursive relation as in the [pure additive ETS section](#adamETSPureAdditiveRecursive), we can obtain the logarithmic moments:
 \begin{equation}
   \begin{aligned}
     \mu_{\log y,t+h} = \mathrm{E}(\log y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \log \mathbf{v}_{t} \\
-    \mathrm{V}(\log y_{t+h}|t) = & \left( \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \sigma^2
+    \sigma^2_{\log y,h} = \mathrm{V}(\log y_{t+h}|t) = & \left( \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \sigma^2
   \end{aligned}.
   (\#eq:ADAMARIMAMultiplicativeMomentsLogs)
 \end{equation}
 The obtained logarithmic moments can then be used to get the normal ones, after making assumptions about the distribution of the random variable. For example, if we assume that $\left(1+\epsilon_t \right) \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$, then the conditional expectation and variance can be calculated as:
 \begin{equation}
   \begin{aligned}
-    & \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = \exp \left(\mathrm{E}(\log y_{t+h}|t) + \frac{\mathrm{V}(\log y_{t+h}|t)}{2} \right) \\
-    & \mathrm{V}(y_{t+h}|t) = \left(\exp\left( \mathrm{V}(\log y_{t+h}|t) \right) - 1 \right)\exp\left(2 \times \mathrm{E}(\log y_{t+h}|t) + \mathrm{V}(\log y_{t+h}|t) \right)
+    & \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = \exp \left(\mu_{\log y,t+h} + \frac{\sigma^2_{\log y,h}}{2} \right) \\
+    & \sigma^2_{h} = \mathrm{V}(y_{t+h}|t) = \left(\exp\left( \sigma^2_{\log y,h} \right) - 1 \right)\exp\left(2 \times \mu_{\log y,t+h} + \sigma^2_{\log y,h} \right)
   \end{aligned}.
   (\#eq:ADAMARIMAMultiplicativeMomentsLogN)
 \end{equation}
 If some other distributions are assumed in the model, then the connection between the logarithmic and normal moments should be used in order to get the conditional expectation and variance. If these relations are not available, then simulations can be used in order to obtain the numeric approximations.
 
+
 <!-- ## Distributional assumptions of ADAM ARIMA -->
+
 
 <!-- ## ETS + ARIMA -->
 
+
 <!-- ## Examples in R -->
+
