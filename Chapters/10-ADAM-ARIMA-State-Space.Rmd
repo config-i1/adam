@@ -152,22 +152,28 @@ The model \@ref(eq:ADAMARIMAExpandedMultiplicative) can be written in the follow
 where $\mathbf{w}$, $\mathbf{F}$, $\mathbf{v}_t$, $\mathbf{g}$ and $\mathbf{l}$ are defined as before for the [additive ARIMA](#StateSpaceARIMA), e.g. in equation \@ref(eq:ADAMARIMAMatricesConstant). This model is equivalent to applying ARIMA to log-transformed data, but at the same time shares some similarities with [pure multiplicative ETS](#ADAMETSPureMultiplicative). The main advantage of this formulation is that this model has analytical solutions for the conditional moments and has well defined h steps ahead distributions, which simplifies the work with it in contrast with the [pure multiplicative ETS](#ADAMETSPureMultiplicative) models.
 
 
-## Parameters bounds
+## Recursive relation
+Both additive and multiplicative ARIMA models can be written in the recursion form, similar to [pure additive ETS](#adamETSPureAdditiveRecursive). The formulae would be cumbersome in this case, but would have closed forms. Here they are for the pure additive ARIMA:
+\begin{equation}
+    y_{t+h} = \sum_{i=1}^K \mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \mathbf{v}_{t} + \mathbf{w}_{i}' \sum_{j=1}^{\lceil\frac{h}{i}\rceil-1} \mathbf{F}_{i}^{j-1} \mathbf{g}_{i} \epsilon_{t+i\lceil\frac{h}{i}\rceil-j} + \epsilon_{t+h} ,
+  (\#eq:ADAMARIMAStateSpacePureAdditiveRecursion)
+\end{equation}
+and for the pure multiplicative one:
+\begin{equation}
+    \log y_{t+h} = \sum_{i=1}^K \mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \log \mathbf{v}_{t} + \mathbf{w}_{i}' \sum_{j=1}^{\lceil\frac{h}{i}\rceil-1} \mathbf{F}_{i}^{j-1} \mathbf{g}_{i} \log (1+\epsilon_{t+i\lceil\frac{h}{i}\rceil-j}) + \log(1+ \epsilon_{t+h}) ,
+  (\#eq:ADAMARIMAStateSpacePureMultiplicativeRecursion)
+\end{equation}
+where $i$ corresponds to each lag of the model from 1 to $K$, $\mathbf{w}_{i}$ is the measurement vector, $\mathbf{g}_{i}$ is the persistence vector, both including only $i$-th elements, $\mathbf{F}_{i}$ is the transition matrix, including only $i$-th column. Based on this recursion, we can calculate conditional moments of ADAM ARIMA.
 
-
-## Moments of ADAM ARIMA
-Having formulated ARIMA in state space forms \@ref(eq:ETSADAMStateSpacePureAdditive) (pure additive) and \@ref(eq:ADAMStateSpaceMultiplicative) (pure multiplicative), we can now calculate the conditional moments for ADAM ARIMA.
-
-In case of the pure additive ARIMA model, the moments correspond to the ones discussed in the [pure additive ETS section](#ADAMETSPureAdditive):
+### Moments of ADAM ARIMA
+In case of the pure additive ARIMA model, the moments correspond to the ones discussed in the [pure additive ETS section](#ADAMETSPureAdditive) and follows directly from \@ref(ADAMARIMAStateSpacePureAdditiveRecursion):
 \begin{equation*}
   \begin{aligned}
-    \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
-    \sigma^2_{h} = \mathrm{V}(y_{t+h}|t) = & \left( \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \sigma^2
-  \end{aligned},
+    \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = & \sum_{i=1}^K \left(\mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \right) \mathbf{v}_{t} \\
+    \sigma^2_{h} = \mathrm{V}(y_{t+h}|t) = & \left( \sum_{i=1}^K \left(\mathbf{w}_{i}' \sum_{j=1}^{\lceil\frac{h}{i}\rceil-1} \mathbf{F}_{i}^{j-1} \mathbf{g}_{i} \mathbf{g}'_{i} (\mathbf{F}_{i}')^{j-1} \mathbf{w}_{i} \right) + 1 \right) \sigma^2
+  \end{aligned} .
 \end{equation*}
-where in our case $m_i$ corresponds to each lag in the vector $\mathbf{l}$. Another thing to note that due to how we formulated the model, each $\mathbf{w}_{m_i}$ and $\mathbf{g}_{m_i}$ would contain only one non-zero element, while the matrix $\mathbf{F}_{m_i}$ would be sparse, containing only one non-zero column $i$.
-
-When it comes to the multiplicative ARIMA model, using the same idea with recursive relation as in the [pure additive ETS section](#adamETSPureAdditiveRecursive), we can obtain the logarithmic moments:
+When it comes to the multiplicative ARIMA model, using the same idea with recursive relation as in the [pure additive ETS section](#adamETSPureAdditiveRecursive), we can obtain the logarithmic moments based on \@ref(ADAMARIMAStateSpacePureMultiplicativeRecursion):
 \begin{equation}
   \begin{aligned}
     \mu_{\log y,t+h} = \mathrm{E}(\log y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \log \mathbf{v}_{t} \\
@@ -175,7 +181,7 @@ When it comes to the multiplicative ARIMA model, using the same idea with recurs
   \end{aligned},
   (\#eq:ADAMARIMAMultiplicativeMomentsLogs)
 \end{equation}
-where $\sigma_{\log \epsilon}^2$ is the variance of the error term in logarithms. The obtained logarithmic moments can then be used to get the normal ones, after making assumptions about the distribution of the random variable. For example, if we assume that $\left(1+\epsilon_t \right) \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$, then the conditional expectation and variance can be calculated as:
+where $\sigma_{\log \epsilon}^2$ is the variance of the error term in logarithms. The obtained logarithmic moments can then be used to get the ones in the original scale, after making assumptions about the distribution of the random variable. For example, if we assume that $\left(1+\epsilon_t \right) \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$, then the conditional expectation and variance can be calculated as:
 \begin{equation}
   \begin{aligned}
     & \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = \exp \left(\mu_{\log y,t+h} + \frac{\sigma^2_{\log y,h}}{2} \right) \\
@@ -184,6 +190,18 @@ where $\sigma_{\log \epsilon}^2$ is the variance of the error term in logarithms
   (\#eq:ADAMARIMAMultiplicativeMomentsLogN)
 \end{equation}
 If some other distributions are assumed in the model, then the connection between the logarithmic and normal moments should be used in order to get the conditional expectation and variance. If these relations are not available, then simulations can be used in order to obtain the numeric approximations.
+
+### Parameters bounds
+Finally, modifying the recursions \@ref(ADAMARIMAStateSpacePureAdditiveRecursion) and \@ref(ADAMARIMAStateSpacePureMultiplicativeRecursion), we can get the stability condition for the parameters, similar to the one for [pure additive ETS](#stabilityConditionAdditiveError). The advantage of the pure multiplicative ARIMA formulated in the form \@ref(eq:ADAMStateSpaceMultiplicative) is that the adequate stability condition can be obtained. In fact, it will be the same as for the pure additive ARIMA and / or ETS. The ARIMA model will be **stable**, when the absolute values of all non-zero eigenvalues of the discount matrices $\mathbf{D}_{i}$ are lower than one, given that:
+\begin{equation}
+  \mathbf{D}_{i} = \mathbf{F}_{i} - \mathbf{g}_{i} \mathbf{w}_{i}' .
+  (\#eq:ADAMARIMADiscountmatrix)
+\end{equation}
+@Hyndman2008b shows that the stability condition corresponds to the [invertibility](#MSARIMABounds) condition of ARIMA, so the model can either be checked via the discount matrix \@ref(eq:ADAMARIMADiscountmatrix) or via the MA polynomials \@ref(eq:MSARIMABoundsInvertibility).
+
+When it comes to **stationarity**, state space ARIMA is always non-stationary if the differences $d \neq 0$. So, there needs to be a different mechanism for the stationarity check. The simplest thing to do would be to expand the AR(p) polynomials, ignoring I(d), fill in the transition matrix $\mathbf{F}$ and then calculate its eigenvalues. If they are lower than one by absolute values, then the model is stationary. The same condition can be checked via the roots of polynomial of AR(p) \@ref(eq:MSARIMABoundsStationarity).
+
+If both stability and stationarity conditions for ARIMA are satisfied, then we will call the bounds that the AR / MA parameters form "admissible", similar to how they are called in ETS. Note that there are no "usual" or "traditional" bounds for ARIMA.
 
 
 <!-- ## Distributional assumptions of ADAM ARIMA -->
