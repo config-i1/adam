@@ -1,7 +1,7 @@
 # ADAM ARIMA {#ADAMARIMA}
-There are different ways to formulate and implement ARIMA. The one discussed in the [previous section](#ARIMA) is the conventional model, which can be estimate directly, assuming that the initialisation of the model happens some time before the Big Bang: the conventional ARIMA assumes that there is no starting point of the model, we just observe a specific piece of data from a population without any beginning or end. Obviously this assumption is idealistic and does not necessarily agree with reality (imagine the series of infinitely lasting sales of Siemens mobile phones).
+There are different ways to formulate and implement ARIMA. The one discussed in the [previous section](#ARIMA) is the conventional way, and the model in that case can be estimate directly, assuming that its initialisation happens some time before the Big Bang: the conventional ARIMA assumes that there is no starting point of the model, we just observe a specific piece of data from a population without any beginning or end. Obviously this assumption is idealistic and does not necessarily agree with reality (imagine the series of infinitely lasting sales of Siemens S45 mobile phones. Do you even remember such thing?).
 
-Besides the conventional formulation, there is also a state space form of ARIMA, implemented in SSOE [@Hyndman2008b]. @Svetunkov2019 adapted this state space model for supply chain forecasting, developing an order selection mechanism, sidesteping the hypothesis testing and focusing on information criteria. However, the main issue with this approach is that the resulting ARIMA model works very slow on the data with large frequencies (because the transition matrix becomes huge). Luckily, there is an alternative SSOE state space formulation, using the same idea of lags as [ADAM ETS](#ADAMETSIntroduction). This model is already implemented in `msarima()` function of `smooth` package and was also used as the basis for the ADAM ARIMA.
+But besides the conventional formulation, there is also a state space form of ARIMA, implemented in SSOE [@Hyndman2008b]. @Svetunkov2019 adapted this state space model for supply chain forecasting, developing an order selection mechanism, sidesteping the hypothesis testing and focusing on information criteria. However, the main issue with this approach is that the resulting ARIMA model works very slow on the data with large frequencies (because the transition matrix becomes huge). Luckily, there is an alternative SSOE state space formulation, using the same idea of lags as [ADAM ETS](#ADAMETSIntroduction). This model is already implemented in `msarima()` function of `smooth` package and was also used as the basis for the ADAM ARIMA.
 
 
 ## State space ARIMA {#StateSpaceARIMA}
@@ -152,7 +152,7 @@ The model \@ref(eq:ADAMARIMAExpandedMultiplicative) can be written in the follow
 where $\mathbf{w}$, $\mathbf{F}$, $\mathbf{v}_t$, $\mathbf{g}$ and $\mathbf{l}$ are defined as before for the [additive ARIMA](#StateSpaceARIMA), e.g. in equation \@ref(eq:ADAMARIMAMatricesConstant). This model is equivalent to applying ARIMA to log-transformed data, but at the same time shares some similarities with [pure multiplicative ETS](#ADAMETSPureMultiplicative). The main advantage of this formulation is that this model has analytical solutions for the conditional moments and has well defined h steps ahead distributions, which simplifies the work with it in contrast with the [pure multiplicative ETS](#ADAMETSPureMultiplicative) models.
 
 
-## Recursive relation
+## Recursive relation {#ADAMARIMARecursive}
 Both additive and multiplicative ARIMA models can be written in the recursion form, similar to [pure additive ETS](#adamETSPureAdditiveRecursive). The formulae would be cumbersome in this case, but would have closed forms. Here they are for the pure additive ARIMA:
 \begin{equation}
     y_{t+h} = \sum_{i=1}^K \mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \mathbf{v}_{t} + \mathbf{w}_{i}' \sum_{j=1}^{\lceil\frac{h}{i}\rceil-1} \mathbf{F}_{i}^{j-1} \mathbf{g}_{i} \epsilon_{t+i\lceil\frac{h}{i}\rceil-j} + \epsilon_{t+h} ,
@@ -204,7 +204,31 @@ When it comes to **stationarity**, state space ARIMA is always non-stationary if
 If both stability and stationarity conditions for ARIMA are satisfied, then we will call the bounds that the AR / MA parameters form "admissible", similar to how they are called in ETS. Note that there are no "usual" or "traditional" bounds for ARIMA.
 
 
-<!-- ## Distributional assumptions of ADAM ARIMA -->
+## Distributional assumptions of ADAM ARIMA {#ADAMARIMADistributions}
+Following the same idea as in [pure additive](#ADAMETSAdditiveDistributions) and [pure multiplicative](ADAMETSMultiplicativeDistributions) ETS models, we can have state space ARIMA with different distributions, but with distributions aligning more appropriately with the types of models. For additive ARIMA:
+
+1. Normal: $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$;
+2. Laplace: $\epsilon_t \sim \mathcal{Laplace}(0, s)$;
+3. S: $\epsilon_t \sim \mathcal{S}(0, s)$;
+4. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$;
+5. Asymmetric Laplace: $\epsilon_t \sim \mathcal{ALaplace}(0, s, \alpha)$
+
+For multiplicative ARIMA:
+
+1. Inverse Gaussian: $\left(1+\epsilon_t \right) \sim \mathcal{IG}(1, s)$;
+2. Log Normal: $\left(1+\epsilon_t \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$.
+
+The restrictions imposed on the parameters of the model correspond to the ones for ETS: in case of pure additive models, they ensure that the conditional h steps ahead mean is not impacted by the location of distribution (thus $\mu_\epsilon=0$); in case of pure multiplicative models, they ensure that the conditional h steps ahead mean is just equal to the point forecast (thus imposing $\mathrm{E}(1+\epsilon_t)=1$).
+
+### Conditional distributions
+When it comes to conditional distribution of variables, ADAM ARIMA with the [assumptions](#ADAMARIMADistributions) discussed above has closed forms for all of them. For example, if we work with additive ARIMA, then according to [recursive relation](#ADAMARIMARecursive) \@ref(eq:ADAMARIMAStateSpacePureAdditiveRecursion) the h steps ahead value follows the same distribution but with different conditional mean and variance. For example, if $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$, then $y_{t+h} \sim \mathcal{GN}(\mu_{y,t+h}, s_{h}, \beta)$, where $s_{h}$ is the conditional h steps ahead scale, found from the connection between variance and scale in [Generalised Normal distribution](#distributionsGeneralisedNormal) via:
+\begin{equation*}
+    s_h = \sqrt{\frac{\sigma^2_h \Gamma(1/\beta)}{\Gamma(3/\beta)}}.
+\end{equation*}
+
+Using similar principles, we can calculate scale parameters for the other distributions.
+
+When it comes to the multiplicative models, the conditional distribution has the closed form in case of log Normal (it is log Normal as well), but does not have it in case of Inverse Gaussian. In the former case, the logarithmic moments can be directly used to define the parameters of distribution, i.e. if $\left(1+\epsilon_t \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$, then $y_{t+h} \sim \text{log}\mathcal{N}\left(\mu_{\log y,t+h}, \sigma^2_{\log y,h} \right)$. In the latter case, simulations need to be used in order to get the quantile, cumulative and density functions.
 
 
 <!-- ## ETS + ARIMA -->
