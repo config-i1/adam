@@ -132,7 +132,7 @@ The state space equations \@ref(eq:MSARIMAMeasurementConstant) and \@ref(eq:MSAR
 
 Note that the constant term introduced in this model has different meaning, depending on the differences of the model. For example, if all $D_j=0$, then it acts as an intercept, while for the $d=1$, it will act as a drift. 
 
-### Multiplicative ARIMA
+### Multiplicative ARIMA {#ADAMARIMAPureMultiplicative}
 In order to connect ARIMA with ETS, we also need to define cases for multiplicative models. This implies that the error term $(1+\epsilon_t)$ is multiplied by components of the model. The state space ARIMA in this case is formulated using logarithms in the following way:
 \begin{equation}
   \begin{aligned}
@@ -150,6 +150,8 @@ The model \@ref(eq:ADAMARIMAExpandedMultiplicative) can be written in the follow
   (\#eq:ADAMStateSpaceMultiplicative)
 \end{equation}
 where $\mathbf{w}$, $\mathbf{F}$, $\mathbf{v}_t$, $\mathbf{g}$ and $\mathbf{l}$ are defined as before for the [additive ARIMA](#StateSpaceARIMA), e.g. in equation \@ref(eq:ADAMARIMAMatricesConstant). This model is equivalent to applying ARIMA to log-transformed data, but at the same time shares some similarities with [pure multiplicative ETS](#ADAMETSPureMultiplicative). The main advantage of this formulation is that this model has analytical solutions for the conditional moments and has well defined h steps ahead distributions, which simplifies the work with it in contrast with the [pure multiplicative ETS](#ADAMETSPureMultiplicative) models.
+
+In order to distinguish the additive ARIMA from the multiplicative one, we will use the notation "logARIMA" for the latter in this book, pointing out at what such model is equivalent to (applying ARIMA to the log-transformed data).
 
 
 ## Recursive relation {#ADAMARIMARecursive}
@@ -232,7 +234,10 @@ When it comes to the multiplicative models, the conditional distribution has the
 
 
 ## ETS + ARIMA
-Coming back to the topic of ETS and ARIMA, we can now look at it from the SSOE state space point of view. In general an ETS + ARIMA model can be formulated in the general form, which we have [already discussed](#ADAMETSPureAdditive) several times in this textbook:
+Coming back to the topic of ETS and ARIMA, we can now look at it from the SSOE state space point of view.
+
+### Pure additive models
+A pure additive ETS + ARIMA model can be formulated in the general form, which we have [already discussed](#ADAMETSPureAdditive) several times in this textbook:
 \begin{equation*}
   \begin{aligned}
     &{y}_{t} = \mathbf{w}' \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
@@ -269,20 +274,45 @@ ADAM introduces the flexibility necessary for fitting any ETS+ARIMA combination,
   \end{aligned}.
   (\#eq:ADAMETSARIMAANN011)
 \end{equation}
-In the transition part of the model \@ref(eq:ADAMETSARIMAANN011), the two equations duplicate each other, because they same exactly the same mechanism of update of states. In fact, as we know from [a previous chapter](#ARIMAETS011), ETS(A,N,N) and ARIMA(0,1,1) are equivalent, when $\alpha=1+\theta_1$. If we estimate this model, then we are duplicating the state, splitting it into two parts with some arbitrary weights, which can be written something like this:
+In the transition part of the model \@ref(eq:ADAMETSARIMAANN011), the two equations duplicate each other, because they same exactly the same mechanism of update of states. In fact, as we know from [a previous chapter](#ARIMAETS011), ETS(A,N,N) and ARIMA(0,1,1) are equivalent, when $\alpha=1+\theta_1$. If we estimate this model, then we are duplicating the state, in a way splitting it into two parts with some arbitrary weights. This can be seen if we insert the transition equations in the measurement one, obtaining:
 \begin{equation}
   \begin{aligned}
-    &{y}_{t} = w_1 l_{t-1} + w_2 v_{1,t-1} + \epsilon_t & \text{so that } w_1+w_2=1 \\
-    &l_t = l_{t-1} + \alpha \epsilon_t \\
-    &v_{1,t} = v_{1,t-1} + (1+\theta_1) \epsilon_t 
-  \end{aligned}.
-  (\#eq:ADAMETSARIMAANN011)
+    {y}_{t} = & l_{t-2} + \alpha \epsilon_{t-1} + v_{1,t-2} + (1+\theta_1) \epsilon_{t-1} + \epsilon_t =\\
+    & l_{t-2} + v_{1,t-2} + (1+\theta_1+\alpha) \epsilon_{t-1} + \epsilon_t
+  \end{aligned},
+  (\#eq:ADAMETSARIMAANN011Measurement)
 \end{equation}
-And there is an infinite combination of weights $w_1$ and $w_2$ that would result to exactly the same fit. So, the model \@ref(eq:ADAMETSARIMAANN011) does not have a unique combination of parameters and thus is not identifiable.
+which leads to an infinite combination of values of parameters $\theta$ and $\alpha$ that would produce exactly the same fit. So, the model \@ref(eq:ADAMETSARIMAANN011) does not have unique parameters and thus is not identifiable.
 
-This example shows that, when using ETS + ARIMA, modelling needs to be done with a caution, not to get an unreasonable model that cannot be identefied. As a general recommendation, keep the [ETS and ARIMA connection](#ARIMAandETS) in mind, when deciding, what to construct.
+This example shows that, when using ETS + ARIMA, model building needs to be done with care, not to get an unreasonable model that cannot be identefied. As a general recommendation, keep the [ETS and ARIMA connection](#ARIMAandETS) in mind, when deciding, what to construct. Here is a short list of model combinations that lead to identification problems and thus should be avoided:
 
+1. ETS(A,N,N)+ARIMA(0,1,1);
+2. ETS(A,A,N)+ARIMA(0,2,2);
+3. ETS(A,Ad,N)+ARIMA(1,1,1);
+4. ETS(A,N,A)+ARIMA(0,1,m)(0,1,0)$_m$;
+5. ETS(A,A,A)+ARIMA(0,2,m+1)(0,1,0)$_m$;
+6. ETS(A,Ad,A)+ARIMA(1,1,m+1)(0,1,0)$_m$.
 
+### Pure multiplicative models
+When it comes to the multiplicative error and mixed ETS models, then the ETS+ARIMA might not have the same issues as the pure additive one. This is because the [multiplicative ETS](#ADAMETSPureMultiplicative) and [multiplicative ARIMA](#ADAMARIMAPureMultiplicative) are formulated differently. An example is an ETS(M,N,N)+ARIMA(0,1,1), which is formulated as:
+\begin{equation}
+  \begin{aligned}
+    &{y}_{t} = l_{t-1} v_{1,t-1} (1 + \epsilon_t) \\
+    &l_t = l_{t-1}(1 + \alpha \epsilon_t) \\
+    &\log v_{1,t} = \log v_{1,t-1} + (1+\theta_1) \log (1 + \epsilon_t)
+  \end{aligned}.
+  (\#eq:ADAMETSARIMAMNN011)
+\end{equation}
+The last equation in \@ref(eq:ADAMETSARIMAMNN011) can be rewritten as $v_{1,t} = v_{1,t-1} (1 + \epsilon_t)^{(1+\theta_1)}$, demonstrating the difference between the transition equation of ETS(M,N,N) and multiplicative ARIMA(0,1,1). Still, the two models will be similar in cases, when $\alpha$ is close to zero and (respectively) $\theta$ is close to -1. So this combination of models should be treated with care, along with other potentially similar combinations. The following combinations of the two models can be considered as potentially unidentifiable under some conditions:
+
+1. ETS(M,N,N)+logARIMA(0,1,1);
+2. ETS(M,M,N)+logARIMA(0,2,2);
+3. ETS(M,Md,N)+logARIMA(1,1,1);
+4. ETS(M,N,M)+logARIMA(0,1,m)(0,1,0)$_m$;
+5. ETS(M,M,M)+logARIMA(0,2,m+1)(0,1,0)$_m$;
+6. ETS(M,Md,M)+logARIMA(1,1,m+1)(0,1,0)$_m$.
+
+Finally, mixing additive ETS with multiplicative ARIMA or multiplicative ETS with additive ARIMA does not make sense and only complicates the model building process, so, we do not consider these exotic cases in the book.
 
 <!-- ## Examples in R -->
 
