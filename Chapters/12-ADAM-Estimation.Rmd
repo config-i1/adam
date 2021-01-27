@@ -242,8 +242,8 @@ Similar to HAM, one can calculate other fractional losses, which would be even l
 While this is not a well studied approach yet, it is possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation of ETS models [@James2017 give a good overview of these losses with examples in R], which can be formulated as (at least this is how it is formualted in ADAM ETS):
 \begin{equation}
   \begin{aligned}
-    \mathrm{LASSO} = &(1-\lambda) \frac{1}{T} \sum_{j=1}^T e_t^2 + \lambda \sum |\hat{\theta}| \\
-    \mathrm{RIDGE} = &(1-\lambda) \frac{1}{T} \sum_{j=1}^T e_t^2 + \lambda \sum \hat{\theta}^2,
+    \mathrm{LASSO} = &(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum |\hat{\theta}| \\
+    \mathrm{RIDGE} = &(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum \hat{\theta}^2,
   \end{aligned}
   (\#eq:Regularisation)
 \end{equation}
@@ -254,6 +254,7 @@ where $\theta$ is the vector of all parameters in the model and $\lambda$ is the
 3. If the trend is *additive*, then the initial trend component is scaled using: $\hat{b}_0' = \frac{\hat{b}_0}{\hat{\sigma}_{y,m}}$, making sure that it shrinks towards zero (no trend). In case of the *multiplicative* trend, this becomes: $\hat{b}_0' = \log{\hat{b}_0}$ , making it shrink towards 1 in the original scale (again, no trend case);
 4. If the seasonal component is *additive*, then the normalisation similar to the one in trend is done for every seasonal index: $\hat{s}_i' = \frac{\hat{s}_i}{\hat{\sigma}_{y,m}}$, making sure that they shrink towards zero. If the seasonal component is *multiplicative*, then the logarithm of components is taken: $\hat{s}_i' = \log{\hat{s}_i}$, making sure that they shrink towards 1 in the original scale.
 5. If there are explanatory variables and the error term of the model is *additive*, then the respective parameters are divided by the standard deviations of the respective variables. In case of *multiplicative* error term, nothing is done, because the parameters in this case would typically be close to zero anyway (see a chapter on the ADAM ETSX).
+6. Finally, in order to make $\lambda$ slightly more meaningful, we also divide the MSE part of the loss by $\mathrm{V}\left({\Delta}y_t\right)$, where ${\Delta}y_t=y_t-y_{t-1}$. This sort of scaling helps in both cases, when there is a trend in the data and when the data does not exhibit one.
 
 All of these tricks make sure that different components shrink towards zero, not breaking the model. As a result, one can potentially use the model with trend and seasonality and use regularisation in order to shrink the unnecessary parameters towards zero. The `adam()` function does not select the most appropriate $\lambda$ and will set it equal to zero if it is not provided by the user.
 
