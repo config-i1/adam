@@ -1,19 +1,19 @@
 # Forecasting process and forecasts evaluation {#forecastingProcess}
-One more thing to discuss before moving to the meat of the textbook, is how to evaluate forecasting models and methods. We should start by saying that forecasting needs to be done for a specific purpose. It should not be done just because you can do that. Forecasts should be useful for specific decisions. And these decisions dictate what forecasts, in what form and on what horizons are needed.
+Forecasts ought to serve a specific purpose. They should not be made "just because" but be useful in the making of a decision. The decision then dictates the kind of forecast that should be made -- its form and its time horizon(s). It also dictates how the forecast should be evaluated -- a forecast only being as good as the quality of the decisions it enables.
 
 ```{example}
-Retailers typically need to order some amount of milk that they will sell over the next week. They do not know, how much they will sell, so they usually order, hoping to satisfy, let us say, 95% of demand. This situation tells us that the forecasts need to be done for a week ahead, they should be cumulative (considering the overal demand during a week before the next order) and that they should focus on an upper bound of a 95% prediction interval. Producing just point forecasts might not be useful in this situation.
+Retailers typically need to order some amount of milk that they will sell over the next week. They do not know how much they will sell so they usually order, hoping to satisfy, let us say, 95% of demand. This situation tells us that the forecasts need to be made a week ahead, they should be cumulative (considering the overal demand during a week before the next order) and that they should focus on an upper bound of a 95% prediction interval. Producing only point forecasts would not be useful in this situation.
 ```
 
-When you understand how your system works and what sort of forecasts you should produce, then you can start an evaluation process, measuring the performance of several forecasting models / methods and selecting the most appropriate for your data. There are different ways how the performance of models / methods can be measured and compared. In this chapte, we discuss the most common approaches.
+When you understand how your system works and what sort of forecasts you should produce you can start an evaluation process; measuring the performance of different forecasting models / methods and selecting the most appropriate for your data. There are different ways to measure and compare the performance of models / methods In this chapter, we discuss the most common approaches.
 
 
 ## Measuring accuracy of point forecasts {#errorMeasures}
-We start with a situation, when point forecasts are of the main interest. In this case we typically start by splitting the available data into train and test sets, and apply the models under consideration to the first one, producing the forecasts for the second, not showing that part to the model. This is called "fixed origin" approach: we fix the point in time, from which to produce forecasts, we produce them, calculate some sort of error measures and compare the models.
+We start with a setting in which we are interested in point forecasts only. In this case we typically start by splitting the available data into train and test sets, apply the models under consideration to the former and produce forecasts on the latter, not showing that part to the models. This is called the "fixed origin" approach: we fix the point in time from which to produce forecasts, we produce them, calculate some sort of error measures and compare the models.
 
-There are different error measures that can be used in this case, the selection of one depends on the specific needs. Here we briefly discuss them, noting that the topic has already been extensively discussed in different sources [@Davydenko2013; @SvetunkovAccuracy2019; @SvetunkovAPEs2017]. Here we discuss only the main aspects of the error measures.
+There are different error measures that can be used in this case. Which measure ought to be used depends on the specific need. Here we briefly discuss the most important meaures and refer to [@Davydenko2013; @SvetunkovAccuracy2019; @SvetunkovAPEs2017] for the gory details.
 
-The very basic error measures are Root Mean Squared Error (RMSE):
+The most important error measures are Root Mean Squared Error (RMSE):
 \begin{equation}
     \mathrm{RMSE} = \sqrt{\frac{1}{h} \sum_{j=1}^h \left( y_{t+j} - \hat{y}_{t+j} \right)^2 },
     (\#eq:RMSE)
@@ -25,11 +25,11 @@ and Mean Absolute Error (MAE):
 \end{equation}
 where $y_{t+j}$ is the actual value $j$ steps ahead from the holdout, $\hat{y}_{t+j}$ is the $j$ steps ahead point forecast (conditional expectation of the model) and $h$ is the forecast horizon. As you see, these error measures aggregate the performance of competing forecasting methods across the forecasting horizon, averaging out the specific performances on each $j$. If this information needs to be retained, then the summation can be dropped to obtain just "SE" and "AE".
 
-It is well-known [see, for example, @Kolassa2016] that **RMSE is minimised by the mean value** of a distribution, and **MAE is minimised by the median**. So, when selecting between the two, you should consider this property. This mean, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand.
+It is well-known [see, for example, @Kolassa2016] that **RMSE is minimised by the mean value** of a distribution, and **MAE is minimised by the median**. So, when selecting between the two, you should consider this property. This means, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand.
 
-The main advantage of these error measures is that they are very simple and have a clear interprertation: they show the average distance from the point forecasts to the actual values. They are perfect if you work with only one time series. However, they are not suitable, when you have several time series and want to see the performance of methods across them. This is mainly because they are scale dependent and contain specific units: if you measures sales of bananas in pounds, then MAE and RMSE will show the error in pounds. And, as we know, you should not add up pounds of bananas with pounds of apples - the result might not make sense.
+The main advantage of these error measures is that they are very simple and have a clear interpretations: they are the "average" distances between the point forecasts and the observed values. They are perfect if you work with only one time series. However, they are not suitable, when you have several time series and want to see the performance of methods across them. This is mainly because they are scale dependent and contain specific units: if you measures sales of apples in pounds, then MAE and RMSE will show the error in pounds. And, as we know, you should not add up pounds of apples with pounds of oranges - the result might not make sense.
 
-In order to tackle this issue, different error scaling techniques have been proposed over the years, resulting in a zoo of error measures:
+In order to tackle this issue, different error scaling techniques have been proposed, resulting in a zoo of error measures:
 
 1. MAPE - Mean Absolute Percentage Error:
 \begin{equation}
@@ -56,16 +56,16 @@ where $\mathrm{MAE}_a$ is the mean absolute error of the model under considerati
 where $\bar{y}$ is the mean of the in-sample data.
 5. and others.
 
-There is no "the best" error measure, all of them have their advantages and disadvantages. For example:
+There is no "best" error measure. All have advantages and disadvantages. For example:
 
 1. MAPE is scale sensitive (if the actual values are measured in thousands of units, the resulting error will be much lower than in the case of hundreds of units) and cannot be estimated on data with zeroes. However, it has a simple interpretation as it shows the percentage error (as the name suggests);
-2. MASE does not have issues of MAPE, but it also does not have a simple interpretation due to the division by the first differences of the data (some interpret this as an in-sample one step ahead naive forecast);
-3. rMAE does not have issues of MAPE, has a simple interpretation (it shows by how much one model is better than the other), but fails, when either $\mathrm{MAE}_a$ or $\mathrm{MAE}_b$ for a specific time series is equal to zero;
-4. sMAE does not have issues of MAPE, but has an interpretation close to it, however it breaks down, when the data exhibits trends.
+2. MASE avoids the disadvantages of MAPE, but does so at the cost of a simple interpretation due to the division by the first differences of the data (some interpret this as an in-sample one-step-ahead naive forecast);
+3. rMAE avoids the disadvantages of MAPE, has a simple interpretation (it shows by how much one model is better than the other), but fails, when either $\mathrm{MAE}_a$ or $\mathrm{MAE}_b$ for a specific time series is equal to zero;
+4. sMAE avoids the disadvantages of MAPE, but has an interpretation close to it but breaks down when the data has a trend.
 
-As a result, when comparing different forecasting methods, it makes sense calculating several of the error measures for the purposes of the comparison. Also note that the choice of the metric might depend on the specific needs in the company or the forecaster. If you want a robust measure that works consistently, but you do not care about the interpretation, then go with MASE. If you want an interpretation, then either go with rMAE, or sMAE. And you typically should avoid MAPE and other Percentage Error measures, because they are highly influenced by the actual values you have in the holdout. Furthermore, similarly to the measures above, one can propose RMSE-based scaled and relative error measures, which would measure the performance of methods in terms of means rather than medians.
+As a result, when comparing different forecasting methods, it makes sense to calculate several of the error measures for the purposes of the comparison. Also note that the choice of metric might depend on the specific needs in the company or the forecaster. If you want a robust measure that works consistently, but you do not care about the interpretation, then go with MASE. If you want an interpretation, then either go with rMAE, or sMAE. You should typically avoid MAPE and other percentage error measures because they are highly influenced by the actual values you have in the holdout. Furthermore, similar to the measures above, one can propose RMSE-based scaled and relative error measures, which would measure the performance of methods in terms of means rather than medians.
 
-Finally, when aggregating performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors - this way you will know, which of the methods fails seriously, and which does a consistently good job.
+Finally, when aggregating the performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors - this way you will know which of the methods fails seriously and which does a consistently good job.
 
 
 ## Measuring uncertainty {#uncertainty}
@@ -200,7 +200,7 @@ plot(returnedValues2)
 
 In this example the forecasts from different origins are close to each other. This is because the data is stationary and the model is quite stable.
 
-The rolling origin function from `greybox` package also allows working with explanatory variables and returning prediction intervals, if needed. Some further examples are discussed in the vignette of the package: `vignette("ro","greybox")`.
+The rolling origin function from the `greybox` package also allows working with explanatory variables and returning prediction intervals if needed. Some further examples are discussed in the vignette of the package: `vignette("ro","greybox")`.
 
 
 ## Statistical tests {#statisticalTests}
