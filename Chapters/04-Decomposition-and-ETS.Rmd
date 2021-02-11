@@ -29,39 +29,39 @@ It is also possible to define mixed models in which, for example, the trend is a
     y_t = (l_{t-1} + b_{t-1}) s_{t-m} \varepsilon_t ,
     (\#eq:MixedAdditiveTrend)
 \end{equation}
-these models work well in practice, when the data has high values, far from zero, but in the other cases they might produce strange results (e.g. negative values on positive data). So, the conventional decomposition techniques only consider the pure models.
+These models work well in practice when the data has high values far from zero. In other cases, however, they might produce strange results (e.g. negative values on positive data) so the conventional decomposition techniques only consider the pure models.
 
 ## Classical Seasonal Decomposition {#ClassicalDecomposition}
 ### How to do?
-One of the classical textbook methods for decomposing the time series into unobservable components is called "Classical Seasonal Decomposition" [@Persons1919]. It assumes either a pure additive or pure multiplicative model, it is done using centred moving averages and is focused on approximation, not on forecasting. The idea of the method can be summarised in the following steps:
+One of the classical textbook methods for decomposing the time series into unobservable components is called "Classical Seasonal Decomposition" [@Persons1919]. It assumes either a pure additive or pure multiplicative model, is done using centred moving averages and is focused on approximation, not on forecasting. The idea of the method can be summarised in the following steps:
 
 1. Decide, which of the models to use based on the type of seasonality in the data: additive \@ref(eq:PureAdditive) or multiplicative \@ref(eq:PureMultiplicative)
-2. Smooth the data using centred moving average (CMA) of the order equal to the periodicity of the data $m$. If $m$ is the odd number then the formula is the following:
+2. Smooth the data using a centred moving average (CMA) of order equal to the periodicity of the data $m$. If $m$ is the an number then the formula is:
 \begin{equation}
     d_t = \frac{1}{m}\sum_{i=-(m-1)/2}^{(m-1)/2} y_{t+i},
     (\#eq:CMAOdd)
 \end{equation}
-which means that, for example, the value on Thursday is the average of values from Monday to Sunday. If $m$ is the even number, then a different weighting scheme is typically used, involving the inclusion of additional value:
+which means that, for example, the value on Thursday is the average of values from Monday to Sunday. If $m$ is an even number then a different weighting scheme is typically used, involving the inclusion of additional an value:
 \begin{equation}
     d_t = \frac{1}{m}\left(\frac{1}{2}\left(y_{t+(m-1)/2}+y_{t-(m-1)/2}\right) + \sum_{i=-(m-2)/2}^{(m-2)/2} y_{t+i}\right),
     (\#eq:CMAEven)
 \end{equation}
-which means, for example, that we take a half of December of the previous year and half of December of this year in order to calculate the centred moving average in June. The values $d_t$ are placed in the middle of the windows, going through the series (e.g. on Thursday the average will contain values from Monday to Sunday).
+which means that we use half of the December of the previous year and half of the December of the current year in order to calculate the centred moving average in June. The values $d_t$ are placed in the middle of the window going through the series (e.g. on Thursday the average will contain values from Monday to Sunday).
 
-The resulting series corresponds to the deseasonalised data. Indeed, when we, for instance, take an average values of the sales in a year, we automatically remove the potential seasonality, which can be observed individually in each month. A drawback from using CMA is that this way we inevitably loose $\frac{m}{2}$ observations from the head and from the tail of the series.
+The resulting series is deseasonalised. When we average e.g. sales in a year we automatically remove the potential seasonality, which can be observed individually in each month. A drawback of using CMA is that we inevitably lose $\frac{m}{2}$ observations at the beginning and the end of the series.
 
-In R, `ma()` function from `forecast` package implements CMA.
+In R, the `ma()` function from the `forecast` package implements CMA.
 
 3. De-trend the data:
 - For the additive decomposition this is done using: ${y^\prime}_t = y_t - d_t$;
-- For the multiplicative one, it is: ${y^\prime}_t = \frac{y_t}{d_t}$;
+- For the multiplicative decomposition, it is: ${y^\prime}_t = \frac{y_t}{d_t}$;
 4. If the data is seasonal, then the average value for each period is calculated based on the de-trended series. e.g. we produce average seasonal indices for each January, February, etc. This will give us the set of seasonal indices $s_t$;
 5. Calculate the residuals based on what you assume in the model:
 - additive seasonality: $e_t = y_t - d_t - s_t$;
 - multiplicative seasonality: $e_t = \frac{y_t}{d_t s_t}$;
 - no seasonality: $e_t = {y^\prime}_t$.
 
-Note that the functions in R typically allow selecting between additive and multiplicative seasonality only, there is no option for "none", so inevitably you will get the value of $s_t$ in the output, even if the data is not seasonal. Also, notice that the classical decomposition assumes that there is $d_t$ - deseasonalised series, but it does not make any further split of this variable into level $l_t$ and trend $b_t$.
+Note that the functions in R typically allow you to select between additive and multiplicative seasonality. There is no option for "none" and so even if the data is not seasonal you will nonetheless get values for $s_t$ in the output. Also, notice that the classical decomposition assumes that there is a deseasonalised series $d_t$ but does not make any further split of this variable into level $l_t$ and trend $b_t$.
 
 ### A couple of examples
 An example of the classical decomposition in R is the `decompose()` function from `stats` package. Here is an example with pure multiplicative model and `AirPassengers` data:
@@ -70,16 +70,16 @@ ourDecomposition <- decompose(AirPassengers, type="multiplicative")
 plot(ourDecomposition)
 ```
 
-We can see that the function has smoothed the original series and produced the seasonal indices. Note that the trend component has gaps in the beginning and in the end. This is because the method relies on CMA, which results in loosing $\frac{m}{2}$ observations in those parts (as mentioned above). We can also notice that the error term still contains some seasonal elements, which is a downside of such a simple decomposition procedure. However, the lack of precision in this method is compensated by the simplicity and speed of calculation. Note again that the trend component in `decompose()` function is in fact $d_t = l_{t}+b_{t}$.
+We can see that the function has smoothed the original series and produced the seasonal indices. Note that the trend component has gaps at the beginning and at the end. This is because the method relies on CMA (see above). Note also that the error term still contains some seasonal elements, which is a downside of such a simple decomposition procedure. However, the lack of precision in this method is compensated by the simplicity and speed of calculation. Note again that the trend component in `decompose()` function is in fact $d_t = l_{t}+b_{t}$.
 
-And here is an example of decomposition of the **non-seasonal data** (we assume pure additive model in this example):
+Here is an example of decomposition of the **non-seasonal data** (we assume pure additive model in this example):
 ```{r decomposeRandomNoise}
 y <- ts(c(1:100)+rnorm(100,0,10),frequency=12)
 ourDecomposition <- decompose(y, type="additive")
 plot(ourDecomposition)
 ```
 
-As you can see, the original data has no seasonality in it, but the decomposition assumes that there is one and proceeds with the default approach, returning the seasonal component. This is expected, because with the time series decompositions you get what you ask for.
+As you can see, the original data has is not seasonal but the decomposition assumes that it is and proceeds with the default approach returning a seasonal component. You get what you ask for.
 
 ### Other techniques and "Why bother?"
 There are other decomposition techniques  that do a similar split into Error-Trend-Seasonal components with different assumptions. The logic behind them is roughly the same: (1) smooth original series, (2) extract seasonal components, (3) smooth them out. The methods differ by the smoother they use (e.g. Bisquare function in LOESS instead of CMA), and in some cases the smoothing is done several times, to make sure that the components are split correctly.
