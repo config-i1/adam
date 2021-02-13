@@ -563,4 +563,15 @@ We select the last state $K$ because it has the highest number of initials to es
   \mathrm{E}(v_{i,t}|t) = \frac{\eta_i}{\eta_K} \mathrm{E}(v_{K,t}|t)  \text{ for } t=\{-i+1, -i+2, \dots, 0\}.
   (\#eq:MSARIMAInitialisation02)
 \end{equation}
-So the process then comes to estimating the initials states of $v_{K,t}$ for $t=\{-K+1, -K+2, \dots, 0\}$ and then propagating them to the other states. However, this strategy will not work for models, when ARI polynomials are shorter than MA ones, i.e. $ \sum_{j=0}^n (P_j + D_j) m_j < \sum_{j=0}^n Q_j m_j $. But using the same principle of initialisation via the conditional expectation, we can set the initial MA states to zero and estimate only ARI states.
+So the process then comes to estimating the initials states of $v_{K,t}$ for $t=\{-K+1, -K+2, \dots, 0\}$ and then propagating them to the other states. However, this strategy will not work for models, when ARI polynomials are shorter than MA ones, i.e. $\sum_{j=0}^n (P_j + D_j) m_j < \sum_{j=0}^n Q_j m_j $. But using the same principle of initialisation via the conditional expectation, we can set the initial MA states to zero and estimate only ARI states.
+
+
+### Pre-initialisation of ADAM states, Regressors and constant
+When it comes to the initials for the regressors, they are obtained from the parameters of the `alm()` model based on the rules below:
+
+- The model with logarithm of response variable is constructed, if the error term is multiplicative and one of the following [distributions](#distributions) has been selected: Normal, Laplace, S, Generalised Normal or Asymmetric Laplace;
+- Otherwise the model is constructed based on provided formula and selected distribution;
+- In both cases, the global trend is added to the formula to make sure that its effect on the values of parameters is reduced;
+- If the data contains categorical variables (aka "factors" in R), then the factors are expanded to dummy variable, adding the baseline value as well. While the classical multiple regression would not be estimable in this situation, the dynamic models like ETSX and ARIMAX can work with the full set of levels of categorical variable. In order to get the missing level, the intercept is added to the parameters of dummy variables, after which the obtained vector is normalised. This way we can get, for example, all seasonal components if we want to model seasonality via X part of the model, not merging one of the components with level.
+
+Finally, the initialisation of constant (if it is needed in the model) is done depending on the selected model. In case of ARIMA with all $D_j=0$, the mean of the data is used. In all the other cases either the arithmetic mean of difference or geometric mean of ratios of all actual values is used. This is because the constant acts as a drift in the model in this situation. The impact of the constant is removed from the level in ETS and the states of ARIMA by either subtraction, or division.
