@@ -442,31 +442,31 @@ In this specific case, ETS(A,A,N) estimated using MSE$_h$ produced more accurate
 
 
 ## Initialisation of ADAM
-In order to construct a model, we need to initialise it, meaning define the values of $\mathbf{v}_{-m+1}, \dots, \mathbf{v}_0$ - initial states of the model. There are different ways of doing that, but here we will only discuss the following three:
+In order to construct a model, we need to initialise it, defining the values of $\mathbf{v}_{-m+1}, \dots, \mathbf{v}_0$ - initial states of the model. There are different ways of doing that, but here we only discuss the following three:
 
 1. Optimisation of initials,
 2. Backcasting,
 3. Provided values.
 
-(1) implies that the values of initials are found in the same procedure as other parameters of the model. (2) means that the initials are refined iteratively, when the model is fit to the data from observation $t=1$ to $t=T$ and backwards. Finally, (3) is when a user know initials and provides them to the model.
+The first option implies that the values of initial states are found in the same procedure as the other parameters of the model. (2) means that the initials are refined iteratively, when the model is fit to the data from observation $t=1$ to $t=T$ and backwards. Finally, (3) is when a user knows initials and provides them to the model.
 
-As a side note, we assume in ADAM that the model is initialised at the moment just before $t=1$, we do not believe that it was initialised some time before the Big Bang (as ARIMA typically does) and we do not initialised it at the start of the sample. This way we make all models comparable, making them work on exactly the same sample, no matter how many differences are taken or how many seasonal components they contain.
+As a side note, we assume in ADAM that the model is initialised at the moment just before $t=1$, we do not believe that it was initialised some time before the Big Bang (as ARIMA typically does) and we do not initialise it at the start of the sample. This way we make all models in ADAM comparable, making them work on exactly the same sample, no matter how many differences are taken or how many seasonal components they contain.
 
 
 ### Optimisation vs backcasting
-In case of optimisation all the parameters of model are estimated together. This includes (depending on the type of model):
+In case of optimisation, all the parameters of model are estimated together. This includes (depending on the type of model):
 
 - Smoothing parameters of ETS,
-- Parameters of ARIMA: both AR(p) and MA(q),
 - Smoothing parameters for the [regression part of the model](#ETSXDynamic),
 - Dampening parameter of ETS,
+- Parameters of ARIMA: both AR(p) and MA(q),
 - Initials of ETS,
 - Initials of ARIMA,
 - Initial values for explanatory variables,
 - Constant / drift for ARIMA,
 - Other additional parameters needed by assumed distribuitons.
 
-The more complex the selected model is, the more parameters it will have to estimate, and all of this will happen in one and the same iterative process in the optimiser:
+The more complex the selected model is, the more parameters we will need to estimate, and all of this will happen in one and the same iterative process in the optimiser:
 
 1. Select parameters,
 2. Fit the model,
@@ -475,16 +475,16 @@ The more complex the selected model is, the more parameters it will have to esti
 5. Update the parameters based on (4),
 6. Go to (2) and repeat until a specific criteria is met.
 
-The stopping criteria can be different and specified by the user. There are several things considered in the optimiser of `adam()`:
+The stopping criteria can be different and specified by the user. There are several options considered by the optimiser of `adam()`:
 
-1. Maximum number of iterations, which is equal to $40\times k$, where $k$ is the number of all estimated parameters,
-2. The relative precision of the optimiser with default value of $10^{-6}$, which regulates the relative change of parmaters;
-3. The absolute precision of the optimiser with default value of $10^{-8}$, which regulates the absolute change of parmaters;
-4. The stopping criterion in case of the relative change in the loss function with default value of $10^{-8}$;
+1. Maximum number of iterations (`maxeval`), which is equal to $40\times k$, where $k$ is the number of all estimated parameters;
+2. The relative precision of the optimiser (`xtol_rel`) with default value of $10^{-6}$, which regulates the relative change of parmaters;
+3. The absolute precision of the optimiser (`xtol_abs`) with default value of $10^{-8}$, which regulates the absolute change of parmaters;
+4. The stopping criterion in case of the relative change in the loss function (`ftol_rel`) with default value of $10^{-8}$;
 
-All these parameters are explained in more detail in the documentation of `nloptr()` function from `nloptr` package for R. `adam()` accepts several other stopping criteria, see the documentation for details.
+All these parameters are explained in more detail in the documentation of `nloptr()` function from `nloptr` package for R. `adam()` accepts several other stopping criteria, which can be found in the documentation of the function.
 
-The mechanism explained above can become quite complicated if a big complex model is constructed and might take a lot of time and manual tuning of parameters in order to get to the optimum. And in some cases it is worth considering to reduce the number of estimated parameters. One of the ways of doing so is the backcasting.
+The mechanism explained above can become quite complicated if a big complex model is constructed and might take a lot of time and manual tuning of parameters in order to get to the optimum. In some cases, it is worth considering to reduce the number of estimated parameters, and one way of doing so is the backcasting.
 
 In case of backcasting we do not need to estimate initials of ETS, ARIMA and regression. What model does in this case is goes through the series from $t=1$ to $t=T$, fitting to the data and then reverses and goes back from $t=T$ to $t=1$ based on the following state space model:
 \begin{equation}
@@ -496,12 +496,30 @@ In case of backcasting we do not need to estimate initials of ETS, ARIMA and reg
 \end{equation}
 The new values of $\mathbf{v}_t$ for $t<1$ are then used in order to fit the model to the data again. The procedure can be repeated several times in order for the initial states to converge to more reasonable values.
 
-The backcasting procedure implies the extended fitting process for the model, removing the need to estimate all the initials. It works especially well, when you work with large samples of data (thousands of observations) and with models with several seasonal components. The bigger your model is, the more time optimisation will take and the more likely backcasting would become more appropriate.
+The backcasting procedure implies the extended fitting process for the model, removing the need to estimate all the initials. It works especially well, on large samples of data (thousands of observations) and with models with several seasonal components. The bigger your model is, the more time the optimisation will take and the more likely backcasting would do better.
 
-Nonetheless, no matter what initialisation method is used, we need to start the fitting process from $t=1$, and this cannot be done unless we provide some pre-initialised values for parameters. The better we guess the correct values, the faster the model will converge to the optimum. `adam()` uses several heuristics in this stage, explained in more detail in the next subsections.
+Nonetheless, no matter what initialisation method is used, we need to start the fitting process from $t=1$, and this cannot be done unless we provide some pre-initialised values for parameters to the optimiser. The better we guess the initial values, the faster the optimiser will converge to the optimum. `adam()` uses several heuristics in this stage, explained in more detail in the next subsections.
 
 
-<!-- ### Pre-initialisation of ADAM parameters -->
+### Pre-initialisation of ADAM parameters
+In this subsection we discuss how the value of smoothing parameter, damping parameter and coefficients of ARIMA are preset before the initialisation. All the things discussed here are heuristic, developed based on my experience and many experiments with ADAM ETS. Depending on the type of model, the vector of estimated parameters will contain different values. We start with smoothing parameters of ETS:
+
+1. For the unsafe mixed models ETS(A,A,M), ETS(A,M,A), ETS(M,A,A) and ETS(M,A,M): $\hat{\alpha}=0.01$, $\hat{\beta}=0$ and $\hat{\gamma}=0$. This is needed because the models listed above are very sensitive to the changes in smoothing parameters and might fail for time series with level close to zero;
+2. For the one of the most complicated and sensitive models ETS(M,M,A) $\hat{\alpha}=\hat{\beta}=\hat{\gamma}=0$. The combination of additive seasonality and multiplicative trend is one of the most difficult ones. The multiplcative error makes estimation even more challenging in cases of the low level data. So starting from the deterministic model, that will work for sure is a safe option;
+3. ETS(M,A,N) is slightly easier to estimate than ETS(M,A,M) and ETS(M,A,A), so $\hat{\alpha}=0.2$, $\hat{\beta}=0.01$. The low value for the trend is needed to avoid the difficult situations with low level data, when the fitted values become negative;
+4. ETS(M,M,N) and ETS(M,M,M) have $\hat{\alpha}=0.1$, $\hat{\beta}=0.05$ and $\hat{\gamma}=0.01$, making the ternd and seasonal components a bit more conservative. The high values are not needed in this model as they might lead to explosive behaviour;
+5. Other models with multiplicative components (ETS(M,N,N), ETS(M,N,A), ETS(M,N,M), ETS(A,N,M), ETS(A,M,N) and ETS(A,M,M)) are slightly easier to estimate and harder to break, so their parameters are set to $\hat{\alpha}=0.1$, $\hat{\beta}=0.05$ and $\hat{\gamma}=0.05$;
+6. Finally, pure additive models are initialised with $\hat{\alpha}=0.1$, $\hat{\beta}=0.05$ and $\hat{\gamma}=0.11$. Their parameter space is the widest, and the models do not break on any data.
+
+The smoothing parameter for the [explanatory variables](#ETSXDynamic) is set to $\hat{\delta}=0.01$ in case of additive error and $\hat{\delta}=0$ in case of the multiplicative one. The latter is done because the model might break if some of ETS components are additive.
+
+If dampening parameter is needed in the model, then its pre-initialised value is $\hat{\phi}=0.95$.
+
+In case of ARIMA, the parameters are pre-initialised based on [ACF](#ACF) and [PACF](#PACF). First, the in sample actual values are differenced, according to the selected order $d$ and all $D_j$, after which the ACF and PACF are calculated. Then the initials for AR parameters are taken from the PACF, while the initials for MA parameters are taken from ACF, making sure that the sum of parameters is not greater than one in both cases. If it is, then the parameters are renormalised to satisfy the condition. The reason behind this mechanism is to get a potentially correct direction towards the optimal parameters of the model and make sure that the initial values satisfy the very basic stationarity and invertibility conditions.
+
+If the skewness parameter of [Asymmetric Laplace distribution](#distributionsALaplace) is estimated, then its initial value is set to 0.5, corresponding to the median of the data. In case of [Generalised Normal distribution](#distributionsGeneralisedNormal), the shape parameter is set to 2 (if it is estimated), makign the optimiser start from the conventional Normal distribution.
+
+The pre-initialisations described above guarantee that the model is estimable for a wide variety of time series and that the optimiser will reach the optimum in a limited time.
 
 
 <!-- ### Pre-initialisation of ADAM states, ETS -->
