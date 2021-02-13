@@ -515,14 +515,37 @@ The smoothing parameter for the [explanatory variables](#ETSXDynamic) is set to 
 
 If dampening parameter is needed in the model, then its pre-initialised value is $\hat{\phi}=0.95$.
 
-In case of ARIMA, the parameters are pre-initialised based on [ACF](#ACF) and [PACF](#PACF). First, the in sample actual values are differenced, according to the selected order $d$ and all $D_j$, after which the ACF and PACF are calculated. Then the initials for AR parameters are taken from the PACF, while the initials for MA parameters are taken from ACF, making sure that the sum of parameters is not greater than one in both cases. If it is, then the parameters are renormalised to satisfy the condition. The reason behind this mechanism is to get a potentially correct direction towards the optimal parameters of the model and make sure that the initial values satisfy the very basic stationarity and invertibility conditions.
+In case of ARIMA, the parameters are pre-initialised based on [ACF](#ACF) and [PACF](#PACF). First, the in sample actual values are differenced, according to the selected order $d$ and all $D_j$, after which the ACF and PACF are calculated. Then the initials for AR parameters are taken from the PACF, while the initials for MA parameters are taken from ACF, making sure that the sum of parameters is not greater than one in both cases. If it is, then the parameters are renormalised to satisfy the condition. The reason behind this mechanism is to get a potentially correct direction towards the optimal parameters of the model and make sure that the initial values satisfy the very basic stationarity and invertibility conditions. In cases, when it is not possible to calculate ACF and PACF for the specified lags and orders, AR parameters are set to -0.1, while the MA parameters are set to 0.1, making sure that the conditions mentioned above hold.
 
 If the skewness parameter of [Asymmetric Laplace distribution](#distributionsALaplace) is estimated, then its initial value is set to 0.5, corresponding to the median of the data. In case of [Generalised Normal distribution](#distributionsGeneralisedNormal), the shape parameter is set to 2 (if it is estimated), makign the optimiser start from the conventional Normal distribution.
 
 The pre-initialisations described above guarantee that the model is estimable for a wide variety of time series and that the optimiser will reach the optimum in a limited time.
 
 
-<!-- ### Pre-initialisation of ADAM states, ETS -->
+### Pre-initialisation of ADAM states, ETS
+The pre-initialisation of states of ADAM ETS differs depending on whether the model is seasonal or not. If it is, then the multiple seasonal decomposition is done using `msdecompose()` function from `smooth` with the seasonality set to "multiplicative" if either error or seasonal component of ETS is multiplicative. After that:
+
+- Initial level is then equal to the first initial value from the function (which is the back forecasted de-seasonalised series);
+- The value is corrected if regressors are included to remove their impact on the value (either by subtracting the fitted of the regression part or by dividing by them - depending on the type of error);
+- If trend is additive and seasonality is multiplicative, then the trend component is obtained by multiplying the initial level and trend from the decomposition (remember, the assumed model is multiplicative in this case) and then subtracting the previous level;
+- If trend is multiplicative and seasonality is additive, then the initials are added and then divided by the previous level to get the initial multiplicative trend component;
+- If there is no seasonality and trend is multiplicative, then the initial trend is set to 1. This is done in order to avoid the potentially explosive behaviour of the model;
+- If the trend is multiplicative and level is negative, then the level is substituted by the first actual value. This might happen in some weird cases of time series with low values;
+- When it comes to seasonal components, if we have pure additive, or pure multiplicative ETS model or ETS(A,Z,M), then we use the seasonal indices, obtained from the `msdecompose()` function, making sure that they are normalised. The type of seasonality in `msdecompose()` corresponds to the seasonal component of ETS in this case, and nothing additional needs to be done;
+- The situation is more challenging with ETS(M,Z,A), for which the decomposition would return the multiplicative seasonal components. In order to convert them to the additive, we take their logarithm and multiply them by the minimum value of the actual time series. This way we guarantee that the seasonal components are closer to the optimal ones.
+
+In case of the non-seasonal model, the algorithm is easier:
+
+- The initial level is equal to either arithmetic or geometric mean (depending on the type of trend component) of the first $\max(m_1,\dots,m_n)$ observations, where $m_j$ is the seasonal periodicity. If the length of this mean is smaller than 20% of the sample, then the arithmetic mean of the first 20% of actual values is used;
+- If regressors are included, then the value is modified, similar to how it is done in the seasonal ETS;
+- If the model has additive trend then its initial value is equal to the mean difference between first $\max(m_1,\dots,m_n)$ observations;
+- In case of multiplicative trend, initial value is equal to the to the geometric mean of ratios between first $\max(m_1,\dots,m_n)$ observations;
+
+In cases of the small samples (less than 2 seasonal periods), the procedure is similar to the one above, but the seasonal indices are obtained by taking the actual values and either subtracting an arithmetic mean or dividing them by the geometric one of the first $m_j$ observations, normalising them afterwards.
+
+Finally, to make sure that the safe initials were provided, for the ETS(M,Z,Z) models, if the initial level contains negative value, then it is substituted by the global mean of the series.
+
+The pre-initialisation described here is not simple, but it guarantees that any ETS model can be constructed and estimated almost to any data. Yes, there might still be some issues with mixed ETS models, but the mechanism used in ADAM is quite robust.
 
 
 ### Pre-initialisation of ADAM states, ARIMA
