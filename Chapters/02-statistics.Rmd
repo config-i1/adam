@@ -646,6 +646,40 @@ legend("topright",legend=c(TeX("$s =10$"),TeX("$s =1$"),TeX("$s =0.1$")),
 `statmod` package implements density, quantile, cumulative and random number generator functions for the $\mathcal{IG}$.
 
 
+### Gamma distribution {#GammaDistribution}
+Finally, another distribution that will be useful for ETS and ARIMA is Gamma ($\mathcal{\Gamma}$), which is parameterised using shape $\xi$ and scale $s$, and is defined for positive values only. This distribution is useful because it is scalable and is as flexible as ($\mathcal{IG}$) in terms of possible shapes. It also has an important scalability property (simila to $\mathcal{IG}$), but the shape needs to be restricted in order to make sense in ETS model:
+\begin{equation}
+    \text{if } (1+\epsilon_t) \sim \mathcal{\Gamma}(s^{-1}, s) \text{, then }
+    y_t = \mu_{y,t} \times (1+\epsilon_t) \sim \mathcal{\Gamma}\left(s^{-1}, s \mu_{y,t} \right),
+    (\#eq:GammaModel)
+\end{equation}
+implying that the scale of the model changes together with the expectation. The restriction on the shape parameters is needed in order to make the expectation of $(1+\epsilon_t)$ equal to one. The PDF of the distribution of $1+\epsilon_t$ is:
+
+\begin{equation}
+    f(\epsilon_t) = \frac{1}{\Gamma(s^{-1}) (s)^{s^{-1}}} (1+\epsilon_t)^{s^{-1}-1}\exp \left(-\frac{1+\epsilon_t}{s}\right) .
+    (\#eq:Gamma)
+\end{equation}
+However, the scale $s$ cannot be estimated via the maximisation of likelihood analytically due to the restriction \@ref(eq:GammaModel). Luckliy, the method of moments can be used instead, where based on the expectation and variance we get:
+\begin{equation}
+    \hat{s} = \frac{1}{T} \sum_{t=1}^T e_t^2 ,
+    (\#eq:GammaScale)
+\end{equation}
+where $e_t$ is the estimate of $\epsilon_t$. So, imposing the restrictions \@ref(eq:GammaModel) implies that the scale of $\mathcal{\Gamma}$ is equal to the variance of the error term.
+
+Here how the PDF of $\mathcal{\Gamma}(s^{-1},s)$ looks for different values of $s$:
+```{r dIGPlot, echo=FALSE}
+plot(seq(0,6,0.01),dgamma(seq(0,6,0.01),0.1,scale=10),type="l",ylab="Density",xlab="y",main="PDF of Gamma distribution")
+lines(seq(0,6,0.01),dgamma(seq(0,6,0.01),1,scale=1),col="darkblue")
+lines(seq(0,6,0.01),dgamma(seq(0,6,0.01),10,scale=0.1),col="darkred")
+abline(v=1, col="red")
+legend("topright",legend=c(TeX("$s =10$"),TeX("$s =1$"),TeX("$s =0.1$")),
+       col=c("black","darkblue","darkred"),lwd=1)
+```
+
+With the increase of the shape $\xi=s^{-1}$, $\mathcal{\Gamma}$ distribution converges to the normal one with $\mu=\xi s=1$ and variance $\sigma^2=s$.
+
+
+
 ## Likelihood Approach {#likelihoodApproach}
 We will use different estimation techniques throughout this book, one of the main of which is **Maximum Likelihood Estimate** (MLE). The very rough idea of the approach is to maximise the chance that each observation in the sample follows a pre-selected distribution with specific set of parameters. In a nutshell, what we try to do when using likelihood for estimation, is fit the distribution function to the data. In order to demonstrate this idea, we start in a non-conventional way, with an example in R. We will then move to the mathematical side of the problem.
 
