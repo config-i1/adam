@@ -1,6 +1,44 @@
 # Model selection and combinations in ADAM {#ADAMSelection}
+When it comes to time series analysis and to forecasting a specific time series, there are several ways to decide, which model to use, and there are several dimensions, in which a decision needs to be made:
 
-TBA
+1. Which of the models to use: ETS / ARIMA / ETS + ARIMA / Regression / ETSX / ARIMAX / ETSX+ARIMA?
+2. What components of the ETS model to select?
+3. What order of ARIMA model to select?
+4. Which of the explanatory variables to use?
+5. What distribution to use?
+6. Should we select model or combine forecasts from different ones?
+7. Do we need all models in the pool?
+8. How should we do all the above?
+
+In this chapter, we discuss all aspects, related to model selection and combinations in ADAM. We will start the discussion with principles based on [information criteria](#modelSelection), we will then move to more complicated topics, related to pooling and then we will finish with selection and combinations based on rolling origin.
+
+
+## ADAM ETS selection {#ETSXSelection}
+Having 30 ETS models to choose from, the task of selecting the most appropriate one becomes challenging. @Petropoulos2018a show that human experts can do this task successfully if they need to choose, which components to include in time series. However, when you face the problem of fitting ETS to thousands of time series, the judgmental selection becomes infeasible. Using some sort of automatic selection becomes critically important.
+
+The basic idea underlying the components selection in ETS is based on [information criteria](#modelSelection): we define a pool of models, we fit those models and we select the one that has the lowest information criterion. Using this approach in ETS context was first proposed by @Hyndman2002. Based on this, we can construct some pool of models (e.g. based on our understanding of the problem) and then select the one that is the most appropriate to our data. `adam()` function in `smooth` package supports the following options for the pools:
+
+1. Pool of [all 30 models](#ETSTaxonomy), `model="FFF"`;
+2. Pool of [pure additive models](#ADAMETSPureAdditive), `model="XXX"`. As an option, "X" can also be used to tell function to only try additive component on the selected place. e.g. `model="MXM"` will tell function to only test ETS(M,N,M), ETS(M,A,M) and ETS(M,Ad,M) models;
+3. Pool of [pure multiplicative models](#ADAMETSPureMultiplicative), `model="YYY"`. Similarly to (2), we can tell `adam()` to only consider multiplicative component in a specific place. e.g. `model="YNY"` will consider only ETS(M,N,N) and ETS(M,N,M);
+4. Pool of pure models only, `model="PPP"` - this is a shortcut for doing (2) and (3) and then selecting the best between the two pools;
+5. Manual pool of models, which can be provided as a vector of models, for example: `model=c("ANN","MNN","ANA","AAN")`.
+
+In the cases explained above, `adam()` will try different models and select the most appropriate one from the predefined pool. There is a trade-off, when deciding which pool to use: if you provide the bigger one, it will take more time to find the appropriate one and there is a risk of overfitting the data; if you provide the smaller pool, then the optimal model might be outside of the pool, giving you the sub-optimal one.
+
+Furthermore, in some situations you might not need to go through all 30 models, because, for example, the seasonal component is not needed in the data. Trying out all the models would be just a waste of time. So, in order to address this issue, I have developed a branch-and-bound algorithm for the selection of the most appropriate ETS model, which is triggered via `model="ZZZ"` (the same mechanism is used in `es()` function). The idea of the algorithm is to drop the components that do not improve the model. Here how it works:
+
+1. Apply ETS(A,N,N) to the data, calculate an information criterion (IC);
+2. Apply ETS(A,N,A) to the data, calculate IC. If it is lower than (1), then this means that there is some sort of seasonal component in the data, move to step (3). Otherwise go to (4);
+3. If (2) is lower than (1), then apply ETS(M,N,M) model and calculate IC. If it is lower than it means that the data exhibits multiplicative seasonality. Go to (4);
+4. Fit the model with the additive trend component and the seasonal component selected from previous steps, which can be either "N", "A" or "M", depending on the IC value. Calculate IC for the new model and compare it with the best IC so far. If it is lower, then there is some trend component in the data. If it is not, then the trend component is not needed.
+
+Based on these 4 steps, we can kick off the unneeded components and reduce the pool of models to test. For example, if the algorithm shows that seasonality is not needed, but there is a trend, then we only have 10 models to test overall instead of 30: ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N), ETS(M,N,N), ETS(M,M,N), ETS(M,Md,N), ETS(A,M,N), ETS(A,Md,N), ETS(M,A,N), ETS(M,Ad,N). Also, in steps (2) and (3), if there is a trend in the data, then the model will have higher than needed smoothing parameter $\alpha$, but the seasonality will play an important role in reducing the value of IC. This is why the algorithm is in general efficient. It might not guarantee that the optimal model will be selected all the time, but it reduces the computational time.
+
+The branch-and-bound algorithm can be combined with different types of models and is in fact is also supported in `model="XXX"` and `model="YYY`, where the pool of models for steps (1) - (4) is restricted by the pure models only.
+
+Finally, while the branch-and-bound algorithm is quite efficient, it might end up providing a mixed model, which might not be very suitable for the data. So, it is recommended to think of the possible pool of models prior to applying it to the data. For example, in some cases you might realise that additive seasonality is not needed, and that the data can be either non-seasonal or with multiplicative seasonality. In this case, you can explore the `model="YZY"` option, aligning the error term with the seasonal component.
+
 
 ## Explanatory variables selection {#ETSXSelection}
 There are different approaches for [automatic variables selection](#modelSelection), but not all of them are efficient in the context of dynamic models. For example, backward stepwise might be either not feasible in case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This is because the ADAMX model needs to be refitted and reestimated over and over again using recursive relations based, for example, on the state space model \@ref(eq:ETSXADAMStateSpacePureAdditiveFull). The classical stepwise forward might also be too slow, because it has polynomial computational time. So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.
