@@ -53,7 +53,23 @@ The branch-and-bound algorithm can be combined with different types of models an
 Finally, while the branch-and-bound algorithm is quite efficient, it might end up providing a mixed model, which might not be very suitable for the data. So, it is recommended to think of the possible pool of models prior to applying it to the data. For example, in some cases you might realise that additive seasonality is not needed, and that the data can be either non-seasonal or with multiplicative seasonality. In this case, you can explore the `model="YZY"` option, aligning the error term with the seasonal component.
 
 
-<!-- ## ADAM ARIMA order selection {#ARIMASelection} -->
+## ADAM ARIMA order selection {#ARIMASelection}
+While ETS has 30 models to choose from, ARIMA has many more options. For example, selecting the non-seasonal ARIMA with / without constant restricting the orders with $p \leq 3$, $d \leq 2$ and $q \leq 3$ leads to the combination of $3 \times 2 \times 3 \times 2 = 36$ possible ARIMA models. If we increase the possible orders to 5 or even more, we will need to go through hundreds of models. Adding the seasonal part increases this number by an order of magnitude. This means that we cannot just test all possible ARIMA models and select the most appropriate one, we need to be smart in the selection proces.
+
+@Hyndman2008Forecast developed an efficient mechanism of ARIMA order selection based on statistical tests (for stationarity and seasonality), reducing the number of models to test to reasonable ammount. @Svetunkov2019 developed an alternative mechanism, relying purely on information criteria, which works especially well on seasonal data, but potentially may lead to models that overfit the data (this is implemented in `auto.ssarima()` and `auto.msarima()` functions in `smooth` package). We also have the [Box-Jenkins approach](#BJApproach) for ARIMA orders selection, which relies on the analysis of [ACF](#ACF) and [PACF](#PACF), but we should not forget the [limitations of that approach](#BJApproachSummary). Finally, @Sagaert2021 proposed the [stepwise trace forward approach](#ETSXSelection), which relies on partial correlations and uses the information criteria to test model on each iteration. Building upon all of that, I have developed the following algorithm for order selection of ADAM ARIMA:
+
+1. Determine the order of differences by fitting all possible combinations of ARIMA models with $P_j=0$ and $Q_j=0$ for all lags $j$. This includes trying the models with and without the constant term. The order $D_j$ is then determined via the model with the lowest IC;
+2. Then iteratively, starting from the highest seasonal lag and moving to the lag of 1 do for every lag $m_j$:
+a. Calculate ACF of residuals of the model;
+b. Find the highest value of autocorrelation coefficient that corresponds to the multiple of the respective seasonal lag $m_j$;
+c. Define, what should be the order of MA based on the lag of the autocorrelation coefficient on the previous step and include it in the ARIMA model;
+d. Calculate IC, and if it is lower than for the previous best model, leave the new MA order;
+e. Repeat (a) - (d) while there is an improvement in IC;
+f. Do steps (a) - (e) for AR order, substituting ACF with PACF of the residuals of the best model;
+g. Move to the next seasonal lag;
+3. Try out several restricted ARIMA models of the order $q=d$ (this is based on (1) and the restrictions provide by the user). The motivation for this comes from the idea of relation between [ARIMA and ETS](#ARIMAandETS).
+
+As you can see, this algorithm relies on the idea of Box-Jenkins methodology, but takes it with a pinch of salt, checking every time if the proposed order is improving the model or not. The motivation for doing MA orders before AR is based on the understanding of what [AR model](#AR) implies for forecasting. In a way, it is safer to have ARIMA(0,d,q) model than ARIMA(p,d,0), because the former is less prone to overfitting than the latter. Finally, the proposed algorithm is faster than the algorithm of @Svetunkov2019 and is more modest in the number of selected orders of the model.
 
 
 ## Explanatory variables selection {#ETSXSelection}
