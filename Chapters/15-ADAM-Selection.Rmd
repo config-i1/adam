@@ -25,6 +25,14 @@ Before we do that, we need to recall the [distributional assumptions](#distribut
 
 The function `auto.adam()` implements this automatic selection of distribution based on IC for the provided vector of `distribution` by user. This selection procedure can be combined together with other selection techniques for different elements of ADAM model discussed in the following sections of the textbook.
 
+Here is an example of selection of distribution for a specific model, ETS(M,M,N) on Box-Jenkins data using `auto.adam()`:
+```{r}
+adamModel <- auto.adam(BJsales, model="MMN", silent=FALSE, h=10, holdout=TRUE)
+adamModel
+```
+
+In this case the function has applied one and the same model but with different distributions, estimated it using likelihood and selected the one that has the lowest AICc value.
+
 
 ## ADAM ETS components selection {#ETSSelection}
 Having 30 ETS models to choose from, the task of selecting the most appropriate one becomes challenging. @Petropoulos2018a show that human experts can do this task successfully if they need to choose, which components to include in time series. However, when you face the problem of fitting ETS to thousands of time series, the judgmental selection becomes infeasible. Using some sort of automatic selection becomes critically important.
@@ -52,6 +60,13 @@ The branch-and-bound algorithm can be combined with different types of models an
 
 Finally, while the branch-and-bound algorithm is quite efficient, it might end up providing a mixed model, which might not be very suitable for the data. So, it is recommended to think of the possible pool of models prior to applying it to the data. For example, in some cases you might realise that additive seasonality is not needed, and that the data can be either non-seasonal or with multiplicative seasonality. In this case, you can explore the `model="YZY"` option, aligning the error term with the seasonal component.
 
+Here is an example with automatically selected ETS model using the branch-and-bound algorithm described above:
+```{r}
+adamETSModel <- adam(AirPassengers, model="ZZZ", silent=FALSE, h=12, holdout=TRUE)
+adamETSModel
+```
+
+
 
 ## ADAM ARIMA order selection {#ARIMASelection}
 While ETS has 30 models to choose from, ARIMA has many more options. For example, selecting the non-seasonal ARIMA with / without constant restricting the orders with $p \leq 3$, $d \leq 2$ and $q \leq 3$ leads to the combination of $3 \times 2 \times 3 \times 2 = 36$ possible ARIMA models. If we increase the possible orders to 5 or even more, we will need to go through hundreds of models. Adding the seasonal part increases this number by an order of magnitude. This means that we cannot just test all possible ARIMA models and select the most appropriate one, we need to be smart in the selection proces.
@@ -73,9 +88,9 @@ As you can see, this algorithm relies on the idea of Box-Jenkins methodology, bu
 
 In order to start the algorithm, you would need to provide a parameter `select=TRUE` in the `orders`. Here is an example with Box-Jenkins data:
 ```{r}
-adamArimaModel <- adam(BJsales, model="NNN", orders=list(ar=3,i=2,ma=3,select=TRUE),
+adamARIMAModel <- adam(BJsales, model="NNN", orders=list(ar=3,i=2,ma=3,select=TRUE),
                        silent=FALSE, h=10, holdout=TRUE)
-adamArimaModel
+adamARIMAModel
 ```
 
 In this example, `orders=list(ar=3,i=2,ma=3,select=TRUE)` tells function that the maximum orders to check are $p\leq 3$, $d\leq 2$ $q\leq 3$.
