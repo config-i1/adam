@@ -43,6 +43,22 @@ where $\check{y}_t$ is the point value based on all non-seasonal components (e.g
 Depending on a specific model, the number of seasonal components can be 1, 2, 3 or more (although more than 3 might not make much sense from modelling point of view). @DeLivera2010 introduced components based on fourier terms, updated over time via smoothing parameters. This feature is not yet fully supported in `adam()`, but it is possible to substitute some of seasonal components (especially those that have fractional periodicity) with fourier terms via explanatory variables and update them over time. The explanatory variables idea was discussed in the [previous chapter](#ETSX).
 
 
+## Estimation of multiple seasonal model
+### ADAM ETS issues
+Estimating a multiple seasonal ETS model is a challenging task, because the number of parameters becomes large. The number of parameters related to seasonal components is equal in general to $\sum_{j=1}^n m_j + n$. For example, in case of hourly data, a triple seasonal model for hours of day, hours of week and hours of year will have: $m_1 = 24$, $m_2 = 24 \times 7 = 168$ and $m_3= 7 \times 24 \times 365 = 61320$, resulting overall in $24 + 168 + 61320 + 3 = 61498$ parameters related to seasonal components to estimate. This is not a trivial task and would take hours to converge to optimum, unless the [pre-initials](#ADAMInitialisation) are already close to optimum. So, if you want to construct multiple seasonal ADAM ETS model, it makes sense to use a different initialisation, reducing the number of estimated parameters. A possible solution in this case is [backcasting](#ADAMInitialisationOptAndBack). The number of parameters in our example would reduce from 61498 to 3, substantially speeding up the model estimation process.
+
+Another consideration is fitting model to the data. In the conventional ETS, the size of transition matrix is equal to the number of initial parameters, which makes it too slow to be practical on high frequency data (multiplying a matrix $61498 \times 61498$ matrix by a vector with rows is a difficult task even for modern computers). But due to the [lagged structure of ADAM models](#ADAMETSIntroduction), construction of multiple seasonal models does not take as much time, because we end up multiplying a matrix of $3 \times 3$ by a vector with 3 rows (skipping level and trend, which would add two more elements). So, in ADAM, the main computational burden comes from recursive relation in transition equation of the state space model, because this operation needs to be repeated at least $T$ times, whatever the sample size $T$ is. As a result, you would want to get to the optimum with as fewer iterations as possible, not needing to refit the model with different parameters to the same data many times. This gives another motivation for reducing the number of parameters to estimate (and thus for using backcasting).
+
+Another potential simplification would be to use deterministic seasonality for some of seasonal frequencies. The possible solution in this case is to use [explanatory variables](#ADAMX) for the higher frequency states (see discussion in the (next section)[#ETSXMultipleSeasonality]).
+
+Finally, given that we deal with large samples of data, some of states of ETS might become more reactive than needed, having higher than needed smoothing parameters. One of possible ways to overcome this limitation is by using [multistep loss functions](#multistepLosses). For example, @kourentzes2018smoothing showed that using such loss functions as [TMSE](#multistepLossesTMSE) in the estimation of ETS models on high frequency data leads to improvements in accuracy due to the shrinkage of parameters towards zero, mitigating the potential overfitting issue. The only problem with this approach is that it is more computationally expensive and thus would take more time (at least $h$ times more, where $h$ is the length of the forecast horizon).
+
+### ADAM ARIMA issues
+It is also possible to fit multiple seasonal ARIMA to the high frequency data, and, for example, @Taylor2010 used [triple seasonal ARIMA](#MSARIMA) on example of two time series, and demonstrated that it produced more accurate forecasts than other ARIMAs under consideration, even slightly outperforming ETS. The main issue with ARIMA arises in the model selection direction. While in case of ETS, one can decide, what model to use based on judgment (e.g. there is no obvious trend, and the amplitude increases with the increase of level, so we will fit ETS(M,N,M) model), ARIMA requires more careful consideration of possible orders of the model. Selecting appropriate orders of ARIMA is not a trivial task on its own, but selecting the orders on high frequency data (where correlations might appear significant just because of the sample size) becomes even more challenging task than usual. Furthremore, while on monthly data we typically maximum AR and MA orders of the model with 3 or 5, in case of high frequency data this does not look natural anymore. If the first seasonal component has lag of 24, then in theory anything up until 24 might be useful for the model. Long story short, be prepared for the lengthy investigation of appropriate ARIMA orders. While ADAM ARIMA implements an efficient [order selection mechanism for ARIMA](#ARIMASelection), it does not guarantee that the most appropriate model will be applied to the data. Inevitably, you would need to analyse the residuals, add higher orders and see if there is an improvement in performance of the model.
+
+The related issue to this in context of [ADAM ARIMA](#StateSpaceARIMA) is the dimensionality problem. The more orders you introduce in the model, the bigger transition matrix becomes. This leads to the same issues as in the ADAM ETS, discussed in the previous subsection. There is no unique recipe in this difficult situation, but using [backcasting](#ADAMInitialisationOptAndBack) addresses some of these issues. You might also want to fine tune the optimiser to get a balance between speed and accuracy in the estimation of parameters (see discussion in [Subection 12.4](#ADAMInitialisationOptAndBack)).
+
+
 ## Using explanatory variables for multiple seasonalities {#ETSXMultipleSeasonality}
 The conventional way of introducing several seasonal components has several issues:
 
@@ -91,14 +107,6 @@ The former is more difficult to formalise mathematically and implement in softwa
 Similarly, the problem with leap years can be solved either using the shift from $m=365$ to $m=366$ on 29th February in a spirit of the option (1), or using the categorical variables, approach (2). There is a difference, however: the former would be suitable for the data with only one leap year, where the estimation of the seasonal index for 29th February might be difficult, while the latter assumes the separate estimation of the parameter (so it has one more parameter to estimate). However, given the discussion in [the previous section](ETSXMultipleSeasonality), maybe we should not bother with $m=365$ in the first place and rethink the problem, if possible. Having 52 / 53 weeks in a year has similar difficulties, but at least does not involve the estimation of so many initial seasonal states.
 
 
-<!-- ## Estimation of multiple seasonal models -->
-
-<!-- Why it is a difficult task, how to speed it up: -->
-
-<!-- 1. Different initials, -->
-<!-- 2. Deterministic components, -->
-
-<!-- Also use multistep functions to get better forecasts. -->
 
 <!-- ## Examples of application -->
 
