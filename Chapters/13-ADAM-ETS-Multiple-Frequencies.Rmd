@@ -49,7 +49,7 @@ Estimating a multiple seasonal ETS model is a challenging task, because the numb
 
 Another consideration is fitting model to the data. In the conventional ETS, the size of transition matrix is equal to the number of initial parameters, which makes it too slow to be practical on high frequency data (multiplying a matrix $61498 \times 61498$ matrix by a vector with rows is a difficult task even for modern computers). But due to the [lagged structure of ADAM models](#ADAMETSIntroduction), construction of multiple seasonal models does not take as much time, because we end up multiplying a matrix of $3 \times 3$ by a vector with 3 rows (skipping level and trend, which would add two more elements). So, in ADAM, the main computational burden comes from recursive relation in transition equation of the state space model, because this operation needs to be repeated at least $T$ times, whatever the sample size $T$ is. As a result, you would want to get to the optimum with as fewer iterations as possible, not needing to refit the model with different parameters to the same data many times. This gives another motivation for reducing the number of parameters to estimate (and thus for using backcasting).
 
-Another potential simplification would be to use deterministic seasonality for some of seasonal frequencies. The possible solution in this case is to use [explanatory variables](#ADAMX) for the higher frequency states (see discussion in the (next section)[#ETSXMultipleSeasonality]).
+Another potential simplification would be to use deterministic seasonality for some of seasonal frequencies. The possible solution in this case is to use [explanatory variables](#ADAMX) for the higher frequency states (see discussion in the (next section)[#ETSXMultipleSeasonality]) or use multiple seasonal ETS, setting some of smoothing parameters equal to zero.
 
 Finally, given that we deal with large samples of data, some of states of ETS might become more reactive than needed, having higher than needed smoothing parameters. One of possible ways to overcome this limitation is by using [multistep loss functions](#multistepLosses). For example, @kourentzes2018smoothing showed that using such loss functions as [TMSE](#multistepLossesTMSE) in the estimation of ETS models on high frequency data leads to improvements in accuracy due to the shrinkage of parameters towards zero, mitigating the potential overfitting issue. The only problem with this approach is that it is more computationally expensive and thus would take more time (at least $h$ times more, where $h$ is the length of the forecast horizon).
 
@@ -154,3 +154,38 @@ adamModelETSMNMAR
 ```
 
 In this specific example, we see that the ADAM ETS(M,N,M)+AR(1) leads to a small improvement in accuracy.
+
+
+<!-- ### ADAM ETSX -->
+<!-- Another option of dealing with multiple seasonalities, as discussed above, is ETSX model. We start with a static model, which captures half-hours of day via its seasonal component and days of week frequency via explanatory variable. We will use `temporaldummy()` function from `greybox` package for this. This function works much better, when the data contains proper time stamps and, for example, is of class `zoo` or `xts`. So we will convert the original variable `y` in zoo object: -->
+<!-- ```{r} -->
+<!-- library(zoo) -->
+<!-- y <- zoo(y, order.by=as.POSIXct("2000/06/05")+(c(1:length(y))-1)*60*30) -->
+<!-- x1 <- temporaldummy(y,type="day",of="week",factors=TRUE) -->
+<!-- # x2 <- temporaldummy(y,type="hour",of="day",factors=TRUE) -->
+<!-- taylorData <- data.frame(y=y,x=x1) -->
+<!-- ``` -->
+
+<!-- We can now fit the ADAM ETSX model with dummy variables for days of week: -->
+<!-- ```{r} -->
+<!-- adamModelETSXMNM <- adam(taylorData, "MNM", lags=c(1,48), h=336, holdout=TRUE) -->
+<!-- adamModelETSXMNM -->
+<!-- ``` -->
+
+<!-- We can spot that the forecasts are off, which is mainly because the smoothing parameter $\alpha$ is too high. In order to make sure that we do not overfit the data, we can use a multistep estimator, to shrink the parameter: -->
+```{r}
+adamModelETSXMNMGTMSE <- adam(taylorData, "MNM", lags=c(1,48), h=336, holdout=TRUE, loss="GTMSE")
+adamModelETSXMNMGTMSE
+plot(adamModelETSXMNMGTMSE,7)
+```
+
+### ADAM ARIMA
+Another model we can try on this data is ARIMA. We have not yet discussed the order selection mechanism for ARIMA, so I will construct a model based on my judgment. Keeping in mind that ETS(A,N,N) is equivalent to ARIMA(0,1,1), and that the changing seasonality in ARIMA context can be modelled with seasonal differences, I will construct ARIMA(0,1,1)(0,1,1)$_{336}$, skipping the frequencies for half-hour of day. Hopefully, this will be enough to model: (a) changing level of data; (b) changing seasonal amplitude. Here how we can construct this model using `adam()`:
+```{r}
+adamModelARIMA <- adam(y, "NNN", lags=c(1,336), initial="back", orders=list(i=c(1,1),ma=c(1,1)),
+                       h=336, holdout=TRUE)
+adamModelARIMA
+plot(adamModelARIMA,7)
+```
+
+This model is directly comparable with ADAM ETS via information criteria, and as we can see is slightly worse than ADAM ETS(M,N,M)+AR(1), but is better than multiple seasonal ETS(M,N,M) in terms of AICc. In fact, it is better even in terms of RMSSE, producing more accurate forecasts. We could analyse the residuals of this model and iteratively test, whether the addition of AR terms and halfhour of day seasonality improves the accuracy of the model. The reader is encouraged to do this task on their own.
