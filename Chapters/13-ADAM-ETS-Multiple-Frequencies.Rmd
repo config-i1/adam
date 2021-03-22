@@ -2,7 +2,7 @@
 
 @Taylor2003 proposed an exponential smoothing model with double seasonality and applied it to energy data. Since then, the topic was developed by @Gould2008, @Taylor2008, @Taylor2010, @DeLivera2010 and @DeLivera2011. In this chapter we will discuss some of the proposed models, how they relate to the ADAM framework and can be implemented. Roughly, the idea of a model with multiple seasonalities is in introducing additional seasonal components. For the general framework this means that the state vector (for example, in a model with trend and seasonality) becomes:
 \begin{equation}
-    \mathbf{v}_t' =
+  \mathbf{v}_t' =
     \begin{pmatrix}
     l_t & b_t & s_{1,t} & s_{2,t} & \dots & s_{n,t}
     \end{pmatrix},
@@ -10,8 +10,8 @@
 \end{equation}
 where $n$ is the number of seasonal components (e.g. hour of day, hour of week and hour of year components). The lag matrix in this case becomes:
 \begin{equation}
-    \mathbf{l}'=\begin{pmatrix}1 & 1 & m_1 & m_2 & \dots & m_n \end{pmatrix},
-    (\#eq:ETSADAMSeasonalMultiStateVectorLags)
+  \mathbf{l}'=\begin{pmatrix}1 & 1 & m_1 & m_2 & \dots & m_n \end{pmatrix},
+  (\#eq:ETSADAMSeasonalMultiStateVectorLags)
 \end{equation}
 where $m_i$ is the $i$-th seasonal periodicity. While, in theory there can be combinations between additive and multiplicative seasonal components, we argue that such a mixture does not make sense, and the components should align with each other. This means that in case of ETS(M,N,M), all seasonal components should be multiplicative, while in ETS(A,A,A) they should be additive. This results fundamentally in two types of models:
 
@@ -37,7 +37,7 @@ where $\check{y}_t$ is the point value based on all non-seasonal components (e.g
     & \vdots \\
     & s_{n,t} = s_{n,t-m_n} (1+ \gamma_n \epsilon_t)
   \end{aligned}.
-  (\#eq:ETSADAMMultiplicativeSeasonality)
+(\#eq:ETSADAMMultiplicativeSeasonality)
 \end{equation}
 
 Depending on a specific model, the number of seasonal components can be 1, 2, 3 or more (although more than 3 might not make much sense from modelling point of view). @DeLivera2010 introduced components based on fourier terms, updated over time via smoothing parameters. This feature is not yet fully supported in `adam()`, but it is possible to substitute some of seasonal components (especially those that have fractional periodicity) with fourier terms via explanatory variables and update them over time. The explanatory variables idea was discussed in the [previous chapter](#ETSX).
@@ -77,7 +77,7 @@ The first is based on the idea of @DeLivera2010 and the [dynamic ETSX](#ETSXDyna
   \end{aligned},
   (\#eq:ETSXADAMMultipleSeasonalityFourier)
 \end{equation}
-where $p$ is the number of fourier harmonics. In this case, we can introduce the conventional seasonal part of the model for the fixed periodicity (e.g. days of week) in $\check{y}_t$ and use the updated harmonics for the non-fixed one. This approach is not the same as the one in @DeLivera2010, but might lead to similar results. The only issue here is in the selection of the number of harmonics, which can be done via the [variables selection mechanism](#ETSXSelection).
+where $p$ is the number of fourier harmonics. In this case, we can introduce the conventional seasonal part of the model for the fixed periodicity (e.g. days of week) in $\check{y}_t$ and use the updated harmonics for the non-fixed one. This approach is not the same as the one in @DeLivera2010, but might lead to similar results. The only issue here is in the selection of the number of harmonics, which can be done via the [variables selection mechanism](#ETSXSelection), but would inevitably increase computational time.
 
 The second option is based on the idea of [dynamic model with categorical variables](#ETSXDynamicCategories). In this case, instead of trying to fix the problem with days of year, we first introduce the categorical variables for days of week and then for the weeks of year (or months of year if we can assume that the effects of months are more appropriate). After that we can introduce both categorical variables in the model, using the similar adaptation mechanism to \@ref(eq:ETSXADAMMultipleSeasonalityFourier). In fact, if some of variables have fixed periodicity, we can substitute them with the conventional seasonal components. So, for example, in this case, ETSX(M,N,M)[7]{D} could be written as:
 \begin{equation}
@@ -86,11 +86,11 @@ The second option is based on the idea of [dynamic model with categorical variab
     & l_t = l_{t-1} (1 + \alpha\epsilon_t) \\
     & s_t = s_{t-7} (1 + \gamma\epsilon_t) \\
     & a_{i,t} = a_{i,t-1} + \left \lbrace \begin{aligned}
-                  &\delta \log(1+\epsilon_t) \text{ for each } i \in \{1, \dots, q\}, \text{ if } x_{i,t} = 1 \\
-                  &0 \text{ otherwise }
-            \end{aligned} \right.
+      &\delta \log(1+\epsilon_t) \text{ for each } i \in \{1, \dots, q\}, \text{ if } x_{i,t} = 1 \\
+      &0 \text{ otherwise }
+    \end{aligned} \right.
   \end{aligned},
-  (\#eq:ETSXADAMMultipleSeasonalityCategories)
+(\#eq:ETSXADAMMultipleSeasonalityCategories)
 \end{equation}
 where $q$ is the number of levels in the categorical variable (for weeks of year, this should be 53). The number of parameters to estimate in this case might be greater than the number of harmonics in the first case, but this type of model resolves all three issues as well and does not have the dilema about selecting the number of harmonics.
 
@@ -107,6 +107,50 @@ The former is more difficult to formalise mathematically and implement in softwa
 Similarly, the problem with leap years can be solved either using the shift from $m=365$ to $m=366$ on 29th February in a spirit of the option (1), or using the categorical variables, approach (2). There is a difference, however: the former would be suitable for the data with only one leap year, where the estimation of the seasonal index for 29th February might be difficult, while the latter assumes the separate estimation of the parameter (so it has one more parameter to estimate). However, given the discussion in [the previous section](ETSXMultipleSeasonality), maybe we should not bother with $m=365$ in the first place and rethink the problem, if possible. Having 52 / 53 weeks in a year has similar difficulties, but at least does not involve the estimation of so many initial seasonal states.
 
 
+## Examples of application
+```{r include=FALSE}
+load("./data/adamModelETSMNMTaylor.Rdata")
+```
+### ADAM ETS
+In order to see how ADAM can be applied to high frequency data, we will use `taylor` series from `forecast` package. This is half-hourly electricity demand in England and Wales from Monday 5 June 2000 to Sunday 27 August 2000, used in @Taylor2003a.
 
-<!-- ## Examples of application -->
+```{r}
+y <- forecast::taylor
+plot(y)
+```
+The series does not exhibit an obvious trend, but has two seasonal cycles: half-hour of day and day of week. Seasonality seems to be multiplicative. We will try several different models and see how they compare. In all the cases below, we will use backcasting as initialisation of the model. We will use the last 336 observations ($48 \times 7$) as the holdout, just to see whether models perform adequately or not.
 
+First, it is ADAM ETS(M,N,M) with `lags=c(48,7*48)`:
+```{r}
+adamModelETSMNM <- adam(y, "MNM", lags=c(1,48,336), initial="back",
+                        h=336, holdout=TRUE)
+adamModelETSMNM
+plot(adamModelETSMNM,7)
+```
+
+As you might notice the model was constructed in `r round(adamModelETSMNM$timeElapsed,2)` seconds, and while it might not be the most accurate model for the data, it fits the data well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of multistep estimators, for example [GTMSE](#multistepLossesGTMSE):
+
+```{r eval=FALSE}
+adamModelETSMNMGTMSE <- adam(y, "MNM", lags=c(1,48,336), initial="back",
+                             h=336, holdout=TRUE, loss="GTMSE")
+```
+This time the function will take much more time (on my computer it takes around 1.5 minutes), but hopefully will produce more accurate forecasts due to shrinkage of smoothing parameters:
+```{r}
+adamModelETSMNMGTMSE
+```
+
+Comparing, for example, RMSSE of the two models, we can conclude that the one with TMSE was more accurate than the one estimated using the conventional likelihood.
+
+Another potential way of improvement for the model is the inclusion of AR(1) term, as for example done by @Taylor2010. This will take more time, but might lead to some improvements in the accuracy:
+```{r eval=FALSE}
+adamModelETSMNMAR <- adam(y, "MNM", lags=c(1,48,336), initial="back", orders=c(1,0,0),
+                          h=336, holdout=TRUE, maxeval=1000)
+```
+
+Note that estimating ETS+ARIMA models is a complicated task, but by default the number of iterations would be restricted by 160, which might not be enough to get to the minimum of the loss. This is why I increased the number of iterations in the code above to 1000. If you want to get more feedback on how the optimisation has been carried out, you can ask function to print details via `print_level=41`.
+
+```{r}
+adamModelETSMNMAR
+```
+
+In this specific example, we see that the ADAM ETS(M,N,M)+AR(1) leads to a small improvement in accuracy.
