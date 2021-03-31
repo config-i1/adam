@@ -3,7 +3,7 @@ So far we have discussed data that has regular occurrence. This is a characteris
 
 One of the simplest definitions of intermittent demand is that *it is the demand that happens at irregular frequency*. While at a first glance it might seem that it is an exotic problem, intermittent demand can be encountered in many areas, when the frequency of measurement is high enough. For example, daily sales of a specific type of tomatoes in a store might exhibit regular demand, but the same sales on hourly or minute frequency would exhibit intermittence. So, the problem is universal and might appear in almost any context.
 
-Sometimes the term "count data" (or "integer-valued data") is used in a similar context, but there is a difference between this term and intermittent data. "Count data" implies that demand can take integer values only and can be typically modelled via Poisson, Binomial or Negative Binomial distributions. It does not necessarily contain zeroes and does not explicitly allow demand to happen at random. If there are zeroes, then it is assumed that they are just one of the possible values of a distribution. In case of intermittent demand, we explicitly acknowledge that demand might not happen, but if it happens then the demand size will be greater than zero. Having said that, count distributions can be used in some cases of intermittent demand, but they do not necessarily always provide a good approximation of complex reality.
+Sometimes the term "count data" (or "integer-valued data") is used in a similar context, but there is a difference between this term and intermittent data. "Count data" implies that demand can take integer values only and can be typically modelled via Poisson, Binomial or Negative Binomial distributions. It does not necessarily contain zeroes and does not explicitly allow demand to happen at random. If there are zeroes, then it is assumed that they are just one of the possible values of a distribution. In case of intermittent demand, we explicitly acknowledge that demand might not happen, but if it happens then the demand size will be greater than zero. Furthermore, intermittent demand does not necessarily need to be integer-valued. For example, daily energy consumption for charging electric vehicles would typically be intermittent (because the vehicle owners do not charge them every day), but the non-zero consumption will not be integer. Having said that, count distributions can be used in some cases of intermittent demand, but they do not necessarily always provide a good approximation of complex reality.
 
 Before we move towards the proper discussion of the topic in context of ADAM, we should acknowledge that at the heart of what follows, there lies the following model [@Croston1972]:
 \begin{equation}
@@ -70,6 +70,48 @@ plot(oETSFModel1)
 The plot above demonstrates the dynamics of the occurrence variable $o_t$ and the fitted and predicted probabilities. The oETS$_F$ model produces the straight line for the probability of `r round(oETSFModel1$initial,2)`, ignoring the fact that in our example the probability of occurrence has increased over time.
 
 
+### Odds ratio model, iETS$_O$
+In this model, it is assumed that the update of the probability is driven by the occurrence of variable. It is more complicated than the previous as the probability now changes over time and can be modelled, for example, with ETS(M,N,N) model:
+\begin{equation}
+    \begin{aligned}
+		& o_t \sim \text{Bernoulli} \left(p_t \right) \\
+		& p_t = \frac{\mu_{a,t}}{\mu_{a,t}+1} \\
+		& a_t = l_{a,t-1} \left(1 + \epsilon_{a,t} \right) \\
+		& l_{a,t} = l_{a,t-1}( 1  + \alpha_{a} \epsilon_{a,t}) \\
+		& \mu_{a,t} = l_{a,t-1}
+    \end{aligned},
+	(\#eq:oETSOddsMNN)
+\end{equation}
+where $l_{a,t}$ is the unobserved level component, $\alpha_{a}$ is the smoothing parameter, the error term $1+\epsilon_{a,t}$ is positive, has means of one and follows an unknown distribution and $\mu_{a,t}$is the conditional expectation for the unobservable shape parameters $a_t$. The measurement and transition equations in \@ref(eq:oETSOddsMNN) can be substituted by any other ADAM ETS or ARIMA model if it is reasonable to assume that the dynamics of probability has some additional components. This model is called ``odds ratio'', because the probability of occurrence in \@ref(eq:oETSOddsMNN) is calculated using the classical logistic transform. This also means that $\mu_{a,t}$ is equal to:
+\begin{equation} \label{eq:iETS_O_oddsRatio}
+	\mu_{a,t} = \frac{{p}_t}{1 - {p}_t} .
+\end{equation}
+When $\mu_{a,t}$ increases in the iETS\textsubscript{O} model, the odds ratio increases as well, meaning that the probability of occurrence goes up. @Svetunkov2019a explain that this model is in theory more appropriate for the demand on products becoming obsolescent, but given the updating mechanism it should also work fine on other types of intermittent demand data.
+
+When it comes to the application of the model to the data, its construction is done via the following set of equations (example with oETS$_O$(M,N,N)):
+\begin{equation}
+    \begin{aligned}
+        & \hat{p}_t = \frac{\hat{\mu}_{a,t}}{\hat{\mu}_{a,t}+1} \\
+		& \hat{\mu}_{a,t} = \hat{l}_{a,t-1} \\
+		& \hat{l}_{a,t} = \hat{l}_{a,t-1}( 1  + \hat{\alpha}_{a} e_{a,t}) \\
+		& 1+e_{a,t} = \frac{u_t}{1-u_t} \\
+		& u_{t} = \frac{1 + o_t - \hat{p}_t}{2}
+    \end{aligned},
+	(\#eq:oETSOddsMNNEstimated)
+\end{equation}
+where $e_{a,t}$ is the proxy for the unobservable error term $\epsilon_{a,t}$ and $\hat{\mu}_t$ is the estimate of $\mu_{a,t}$, conditional expectation discussed in Subsection \@ref(ETSTaxonomyMaths). If a multiple steps ahead forecast for the probability is needed from this model, then the formulae discussed in Subsection \@ref(ETSTaxonomyMaths) can be used to get $\hat{\mu}_{a,t}$, which then can be inserted in the first equation of \@ref(eq:oETSOddsMNNEstimated) to get the final conditional multiple steps ahead probability of occurrence.
+
+Finally, in order to estimate the model \@ref(eq:oETSOddsMNNEstimated), the likelihood \@ref(eq:oETSLikelihood) can be used.
+
+The occurrence part of the model iETS$_O$ is constructed using the very same `oes()` function, but also allows specifying the ETS model to use. For example, here is the oETS$_O$(M,M,N) model:
+```{r iETSOExample1}
+oETSOModel <- oes(y, model="MMN", occurrence="odds-ratio", h=10, holdout=TRUE)
+oETSOModel
+plot(oETSOModel)
+```
+
+The constructed model introduces the trend component, capturing the changing probability of occurrence and reflecting well the fact that it increases over time.
+
 
 
 <!-- In the most general case, $p_t$ can be modelled using two ADAM models: -->
@@ -83,7 +125,7 @@ The plot above demonstrates the dynamics of the occurrence variable $o_t$ and th
 <!--     \end{aligned} , -->
 <!--   (\#eq:OccurrenceModelVeryGeneral) -->
 <!-- \end{equation} -->
-<!-- where $\epsilon_{a,t}$ and $\epsilon_{b,t}$ are the mutually independent error terms that follow unknown distribution, $\mu_{a,t}$ and $\mu_{b,t}$ are the conditional expectations for the unobservable shape parameters $a_t$ and $b_t$. Note that two models similar to the one discussed in Section \@ref(#ADAMETSIntroduction) are used for modelling of $a_t$ and $b_t$. This more general form permits using any type of ADAM model, but we will focus on this chapter on [ADAM ETS](#ADAMETSIntroduction). Depending on what type of error is assumed in the ADAM ETS model for the occurrence part, the probability of occurrence will be calculated differently. The general formula for the multiplicative error is: -->
+<!-- where $\epsilon_{a,t}$ and $\epsilon_{b,t}$ are the mutually independent error terms that follow unknown distribution, $\mu_{a,t}$ and $\mu_{b,t}$ are the conditional expectations for the unobservable shape parameters $a_t$ and $b_t$. Note that two models similar to the one discussed in Section \@ref(ADAMETSIntroduction) are used for modelling of $a_t$ and $b_t$. This more general form permits using any type of ADAM model, but we will focus on this chapter on [ADAM ETS](#ADAMETSIntroduction). Depending on what type of error is assumed in the ADAM ETS model for the occurrence part, the probability of occurrence will be calculated differently. The general formula for the multiplicative error is: -->
 <!-- \begin{equation} -->
 <!--     p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} , -->
 <!--   (\#eq:oETSMZZ) -->
