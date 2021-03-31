@@ -12,7 +12,7 @@ Before we move towards the proper discussion of the topic in context of ADAM, we
 \end{equation}
 where $o_t$ is the demand occurrence variable, which can be either zero or one and has some probability of occurrence, $z_t$ is the demand sizes captured by a model (for example, ADAM ETS) and $y_t$ is the final observed demand. This model in context of intermittent demand was originally proposed by @Croston1972, but similar models (e.g. Hurdle and Zero Inflated Poisson) exist in other, non-forecasting related contexts.
 
-In this chapter we will discuss the intermittent state space model that \@ref(eq:IntermittentDemandModel), both parts of which can be modelled via ADAM models, and we will see how they can be used, what they imply and how they connect to the convetional regular demand. If ETS model is used for $z_t$ then \@ref(eq:IntermittentDemandModel) is called iETS. So, iETS(M,N,N) model refers to the intermittent state space model, where demand sizes are modelled via ETS(M,N,N). If the discussion is focused on demand occurrence part of the model, we will use ``oETS'' instead. Furthermore, depending on how the occurrence part is modelled, these notations can be expanded to include references to specific parts of the occurrence part of the model. This is discussed in the Subsection \@ref(ADAMOccurrence). All of this is based on @Svetunkov2019a.
+In this chapter we will discuss the intermittent state space model that \@ref(eq:IntermittentDemandModel), both parts of which can be modelled via ADAM models, and we will see how they can be used, what they imply and how they connect to the convetional regular demand. If ETS model is used for $z_t$ then \@ref(eq:IntermittentDemandModel) is called iETS. So, iETS(M,N,N) model refers to the intermittent state space model, where demand sizes are modelled via ETS(M,N,N). If the discussion is focused on demand occurrence part of the model, we will use ``oETS'' instead. While ARIMA can be used in this context as well, it is not yet implemented for the occurrence part of the model. So we will focus the discussio on ADAM ETS. Furthermore, depending on how the occurrence part is modelled, these notations can be expanded to include references to specific parts of the occurrence part of the model. This is discussed in the Subsection \@ref(ADAMOccurrence). All of this is based on @Svetunkov2019a.
 
 
 ## Occurrence part of the model {#ADAMOccurrence}
@@ -21,67 +21,16 @@ The general model \@ref(eq:IntermittentDemandModel) assumes that demand occurs r
     o_t \sim \text{Bernoulli} \left(p_t \right) ,
   (\#eq:OccurrenceModelBernoulli)
 \end{equation}
-where $p_t$ is the probability of occurrence. In the most general case, $p_t$ can be modelled using two ADAM models:
-\begin{equation}
-    \begin{aligned}
-		& p_t = f(\mu_{a,t}, \mu_{b,t}) \\
-		& a_t = w_a(\mathbf{v}_{a,t-\mathbf{l}}) + r_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\
-		& \mathbf{v}_{a,t} = f_a(\mathbf{v}_{a,t-\mathbf{l}}) + g_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\
-		& b_t = w_a(\mathbf{v}_{b,t-\mathbf{l}}) + r_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} \\
-		& \mathbf{v}_{b,t} = f_a(\mathbf{v}_{b,t-\mathbf{l}}) + g_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t}
-    \end{aligned} ,
-  (\#eq:OccurrenceModelVeryGeneral)
-\end{equation}
-where $\epsilon_{a,t}$ and $\epsilon_{b,t}$ are the mutually independent error terms that follow unknown distribution, $\mu_{a,t}$ and $\mu_{b,t}$ are the conditional expectations for the unobservable shape parameters $a_t$ and $b_t$. Note that two models similar to the one discussed in Section \@ref(#ADAMETSIntroduction) are used for modelling of $a_t$ and $b_t$. This more general form permits using any type of ADAM model, but we will focus on this chapter on [ADAM ETS](#ADAMETSIntroduction). Depending on what type of error is assumed in the ADAM ETS model for the occurrence part, the probability of occurrence will be calculated differently. The general formula for the multiplicative error is:
-\begin{equation}
-    p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} ,
-  (\#eq:oETSMZZ)
-\end{equation}
-while for the additive error, it is:
-\begin{equation}
-    p_t = \frac{\exp(\mu_{a,t})}{\exp(\mu_{a,t})+\exp(\mu_{b,t})} .
-  (\#eq:oETSAZZ)
-\end{equation}
-This is because both $\mu_{a,t}$ and $\mu_{b,t}$ need to be strictly positive, while the additive error models support the real plane. The canonical iETS model assumes that the pure multiplicative model is used for the both $a_t$ and $b_t$. This type of model is positively defined for any values of error, trend and seasonality, which is essential for the values of $a_t$ and $b_t$ and their expectations. If a combination of additive and multiplicative error models is used, then the additive part is exponentiated prior to the usage of the formulae for the calculation of the probability.
+where $p_t$ is the probability of occurrence. In this section we will discuss different types of models for this probability. Each one has some idea behind it, and there are different mechanisms of the model construction, estimation, error calculation, update of the states and the generation of forecasts for each of them.
 
-An example of the occurrence part of an iETS model is the one for the basic local level model iETS(M,N,N)$_G$(M,N,N)(M,N,N):
-\begin{equation}
-    \begin{aligned}
-		& o_t \sim \text{Bernoulli} \left(p_t \right) \\
-		& p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} \\
-		\\
-		& a_t = l_{a,t-1} \left(1 + \epsilon_{a,t} \right) \\
-		& l_{a,t} = l_{a,t-1}( 1  + \alpha_{a} \epsilon_{a,t}) \\
-		& \mu_{a,t} = l_{a,t-1} \\
-		\\
-		& b_t = l_{b,t-1} \left(1 + \epsilon_{b,t} \right) \\
-		& l_{b,t} = l_{b,t-1}( 1  + \alpha_{b} \epsilon_{b,t}) \\
-		& \mu_{b,t} = l_{b,t-1} \\
-    \end{aligned},
-  (\#eq:iETSGExample)
-\end{equation}
-where $l_{a,t}$ and $l_{b,t}$ are the levels for each of the shape parameters and $\alpha_{a}$ and $\alpha_{b}$ are the smoothing parameters and the error terms $1+\epsilon_{a,t}$ and $1+\epsilon_{b,t}$ are positive and have means of one. We do not make any other distributional assumptions concerning the error terms. More advanced models can be constructing by specifying the ETS models for each part and / or adding explanatory variables.
-
-In the notation of the model iETS(M,N,N)$_G$(M,N,N)(M,N,N), the first brackets describe the ETS model for the demand sizes, the underscore letter points out at the specific subtype of model (whic is discussed in the next subsections), the second brackets describe the ETS model, underlying the variable $a_t$ and the last ones stand for the model for the $b_t$. If only one variable is needed (either $a_t$ or $b_t$), then the redundant brackets are dropped, so that the notation simplifies, for example, to: iETS(M,N,N)$_O$(M,N,N). If the same type of model is used for both demand sizes and demand occurrence, then the second brackets can be dropped as well, simplifying this further to: iETS(M,N,N)$_G$. Furthermore, the notation without any brackets, such as iETS$_G$ stands for a general class of a specific subtype of iETS model (so any error / trend / seasonality). Also, given that iETS$_G$ is the most general model of all iETS models, the "$G$" can be dropped, when the properties are applicable to all subtypes. Finally, the "oETS" notation is used when the occurrence part of the model is discussed explicitly, skipping the demand sizes.
-
-Depending on the restrictions on $a_t$ and $b_t$, there can be several types of iETS models:
-
-1. iETS$_F$: $\mu_{a,t} = \text{const}$, $\mu_{b,t} = \text{const}$ - the model with the fixed probability of occurrence;
-2. iETS$_O$: $\mu_{b,t} = 1$ - the "odds ratio" model, based on the logistic transform of the $o_t$ variable;
-3. iETS$_I$: $\mu_{a,t} = 1$ - the "inverse odds ratio" model, based on the inverse logistic transform of the $o_t$ variable;
-4. iETS$_D$: $\mu_{a,t} + \mu_{b,t} = 1$, $\mu_{a,t} \leq 1$ - the direct probability model, where the $p_t$ is calculated directly from the occurrence variable $o_t$;
-5. iETS$_G$: No restrictions - the model based on the evolution of both $\mu_{a,t}$ and $\mu_{b,t}$.
-
-Each type of models has some idea behind it, and depending on the type of the model, there are different mechanisms of the model construction, error calculation, update of the states and the generation of forecasts.
-
-The log-likelihood function for the occurrence part of the model is:
+The occurrence part of the model can be estimated via the likelihood, which in the most general case is:
 \begin{equation}
 	\ell \left(\boldsymbol{\theta} | o_t \right) = {\sum_{o_t=1}} \log(\hat{p}_t) + {\sum_{o_t=0}} \log(1-\hat{p}_t) ,
   (\#eq:oETSLikelihood)
 \end{equation}
-where $\hat{p}_t$ is the in-sample conditional one step ahead expectation of the probability on observation $t$, given the information on observation $t-1$, which depends on the vector of estimated parameters $\boldsymbol{\theta}$. The derivation of the formula \@ref(eq:oETSLikelihood) is discussed in more detail later in this chapter, and it can be used for the estimation of parameters of oETS model.
+where $\hat{p}_t$ is the in-sample conditional one step ahead expectation of the probability on observation $t$, given the information on observation $t-1$, which depends on the vector of estimated parameters $\boldsymbol{\theta}$. The derivation of the formula \@ref(eq:oETSLikelihood) is discussed in more detail later in this chapter.
 
-In order to demonstrate the difference between specific types of models, we will use the following artificial data:
+In order to demonstrate the difference between specific types of oETS models, we will use the following artificial data:
 ```{r artificialData}
 y <- ts(c(rpois(20,0.25),rpois(20,0.5),rpois(20,1),rpois(20,2),rpois(20,3),rpois(20,5)))
 ```
@@ -92,31 +41,88 @@ Here how the data looks like:
 plot(y)
 ```
 
-The probability of occurrence in this model increases together with the demand sizes. This example corresponds to the situation of demand on a product becoming regular.
+The probability of occurrence in this model increases together with the demand sizes. This example corresponds to the situation of intermittent demand of a product becoming regular.
 
 
-### iETS$_F$
-In case of the fixed $a_t$ and $b_t$, the iETS$_G$ model reduces to:
+### Fixed probability model, iETS$_F$
+We start with the simplest case of the fixed probability of occurrence, iETS$_F$ model:
 \begin{equation}
 	o_t \sim \text{Bernoulli}(p) ,
 	(\#eq:oETSFixed)
 \end{equation}
-This model assumes that demand happens with the same probability no matter what. This might sound exotic in practice, because there might be many different factors influencing the desire to purchase for the customers and the impact of these factors might change over the year. But this is a very basic model, which can be used as a benchmark on intermittent demand data. Furthermore, it might be suitable for modelling demand on expensive high-tech products, such as jet engines, which is ``very slow'' in its nature and will not evolve much over time.
+This model assumes that demand happens with the same probability no matter what. This might sound exotic, because in practice, there might be many factors influencing customers' desire to purchase and the impact of these factors might change over the year. But this is a very basic model, which at least can be used as a benchmark on intermittent demand data. Furthermore, it might be suitable for modelling demand on expensive high-tech products, such as jet engines, which is ``very slow'' in its nature and typically does not evolve much over time.
 
-When estimated via maximisation of likelihood function, the probability of occurrence is equal to:
-\begin{equation} \label{eq:ISSETS(MNN)FixedLikelihoodSmoothProbability}
+When estimated via maximisation of likelihood function \@ref(eq:oETSLikelihood), the probability of occurrence is equal to:
+\begin{equation}
 	\hat{p} = \frac{T_1}{T},
+	(\#eq:oETSFixedProbabilityMLE)
 \end{equation}
 where $T_1$ is the number of non-zero observations and $T$ is the number of all the available observations in sample.
 
 The occurrence part of the model, oETS$_F$ can be constructed using `oes()` function from `smooth` package:
+
 ```{r iETSFExample1}
 oETSFModel1 <- oes(y, occurrence="fixed", h=10, holdout=TRUE)
 oETSFModel1
 plot(oETSFModel1)
 ```
 
-The plot above demonstrates the dynamic of the occurrence variable $o_t$ and the fitted and predicted probabilities. The oETS$_F$ model produces the straight line for the probability of `r round(oETSFModel1$initial,2)`, ignoring the fact that in reality the probability of occurrence has increased over time.
+The plot above demonstrates the dynamics of the occurrence variable $o_t$ and the fitted and predicted probabilities. The oETS$_F$ model produces the straight line for the probability of `r round(oETSFModel1$initial,2)`, ignoring the fact that in our example the probability of occurrence has increased over time.
+
+
+
+
+<!-- In the most general case, $p_t$ can be modelled using two ADAM models: -->
+<!-- \begin{equation} -->
+<!--     \begin{aligned} -->
+<!-- 		& p_t = f(\mu_{a,t}, \mu_{b,t}) \\ -->
+<!-- 		& a_t = w_a(\mathbf{v}_{a,t-\mathbf{l}}) + r_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\ -->
+<!-- 		& \mathbf{v}_{a,t} = f_a(\mathbf{v}_{a,t-\mathbf{l}}) + g_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\ -->
+<!-- 		& b_t = w_a(\mathbf{v}_{b,t-\mathbf{l}}) + r_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} \\ -->
+<!-- 		& \mathbf{v}_{b,t} = f_a(\mathbf{v}_{b,t-\mathbf{l}}) + g_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} -->
+<!--     \end{aligned} , -->
+<!--   (\#eq:OccurrenceModelVeryGeneral) -->
+<!-- \end{equation} -->
+<!-- where $\epsilon_{a,t}$ and $\epsilon_{b,t}$ are the mutually independent error terms that follow unknown distribution, $\mu_{a,t}$ and $\mu_{b,t}$ are the conditional expectations for the unobservable shape parameters $a_t$ and $b_t$. Note that two models similar to the one discussed in Section \@ref(#ADAMETSIntroduction) are used for modelling of $a_t$ and $b_t$. This more general form permits using any type of ADAM model, but we will focus on this chapter on [ADAM ETS](#ADAMETSIntroduction). Depending on what type of error is assumed in the ADAM ETS model for the occurrence part, the probability of occurrence will be calculated differently. The general formula for the multiplicative error is: -->
+<!-- \begin{equation} -->
+<!--     p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} , -->
+<!--   (\#eq:oETSMZZ) -->
+<!-- \end{equation} -->
+<!-- while for the additive error, it is: -->
+<!-- \begin{equation} -->
+<!--     p_t = \frac{\exp(\mu_{a,t})}{\exp(\mu_{a,t})+\exp(\mu_{b,t})} . -->
+<!--   (\#eq:oETSAZZ) -->
+<!-- \end{equation} -->
+<!-- This is because both $\mu_{a,t}$ and $\mu_{b,t}$ need to be strictly positive, while the additive error models support the real plane. The canonical iETS model assumes that the pure multiplicative model is used for the both $a_t$ and $b_t$. This type of model is positively defined for any values of error, trend and seasonality, which is essential for the values of $a_t$ and $b_t$ and their expectations. If a combination of additive and multiplicative error models is used, then the additive part is exponentiated prior to the usage of the formulae for the calculation of the probability. -->
+
+<!-- An example of the occurrence part of an iETS model is the one for the basic local level model iETS(M,N,N)$_G$(M,N,N)(M,N,N): -->
+<!-- \begin{equation} -->
+<!--     \begin{aligned} -->
+<!-- 		& o_t \sim \text{Bernoulli} \left(p_t \right) \\ -->
+<!-- 		& p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} \\ -->
+<!-- 		\\ -->
+<!-- 		& a_t = l_{a,t-1} \left(1 + \epsilon_{a,t} \right) \\ -->
+<!-- 		& l_{a,t} = l_{a,t-1}( 1  + \alpha_{a} \epsilon_{a,t}) \\ -->
+<!-- 		& \mu_{a,t} = l_{a,t-1} \\ -->
+<!-- 		\\ -->
+<!-- 		& b_t = l_{b,t-1} \left(1 + \epsilon_{b,t} \right) \\ -->
+<!-- 		& l_{b,t} = l_{b,t-1}( 1  + \alpha_{b} \epsilon_{b,t}) \\ -->
+<!-- 		& \mu_{b,t} = l_{b,t-1} \\ -->
+<!--     \end{aligned}, -->
+<!--   (\#eq:iETSGExample) -->
+<!-- \end{equation} -->
+<!-- where $l_{a,t}$ and $l_{b,t}$ are the levels for each of the shape parameters and $\alpha_{a}$ and $\alpha_{b}$ are the smoothing parameters and the error terms $1+\epsilon_{a,t}$ and $1+\epsilon_{b,t}$ are positive and have means of one. We do not make any other distributional assumptions concerning the error terms. More advanced models can be constructing by specifying the ETS models for each part and / or adding explanatory variables. -->
+
+<!-- In the notation of the model iETS(M,N,N)$_G$(M,N,N)(M,N,N), the first brackets describe the ETS model for the demand sizes, the underscore letter points out at the specific subtype of model (whic is discussed in the next subsections), the second brackets describe the ETS model, underlying the variable $a_t$ and the last ones stand for the model for the $b_t$. If only one variable is needed (either $a_t$ or $b_t$), then the redundant brackets are dropped, so that the notation simplifies, for example, to: iETS(M,N,N)$_O$(M,N,N). If the same type of model is used for both demand sizes and demand occurrence, then the second brackets can be dropped as well, simplifying this further to: iETS(M,N,N)$_G$. Furthermore, the notation without any brackets, such as iETS$_G$ stands for a general class of a specific subtype of iETS model (so any error / trend / seasonality). Also, given that iETS$_G$ is the most general model of all iETS models, the "$G$" can be dropped, when the properties are applicable to all subtypes. Finally, the "oETS" notation is used when the occurrence part of the model is discussed explicitly, skipping the demand sizes. -->
+
+<!-- Depending on the restrictions on $a_t$ and $b_t$, there can be several types of iETS models: -->
+
+<!-- 1. iETS$_F$: $\mu_{a,t} = \text{const}$, $\mu_{b,t} = \text{const}$ - the model with the fixed probability of occurrence; -->
+<!-- 2. iETS$_O$: $\mu_{b,t} = 1$ - the "odds ratio" model, based on the logistic transform of the $o_t$ variable; -->
+<!-- 3. iETS$_I$: $\mu_{a,t} = 1$ - the "inverse odds ratio" model, based on the inverse logistic transform of the $o_t$ variable; -->
+<!-- 4. iETS$_D$: $\mu_{a,t} + \mu_{b,t} = 1$, $\mu_{a,t} \leq 1$ - the direct probability model, where the $p_t$ is calculated directly from the occurrence variable $o_t$; -->
+<!-- 5. iETS$_G$: No restrictions - the model based on the evolution of both $\mu_{a,t}$ and $\mu_{b,t}$. -->
+
 
 
 <!-- ## Demand sizes part of the model -->
