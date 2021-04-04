@@ -84,7 +84,7 @@ In this model, it is assumed that the update of the probability is driven by the
 \end{equation}
 where $l_{a,t}$ is the unobserved level component, $\alpha_{a}$ is the smoothing parameter, the error term $1+\epsilon_{a,t}$ is positive, has means of one and follows an unknown distribution and $\mu_{a,t}$is the conditional expectation for the unobservable shape parameters $a_t$. The measurement and transition equations in \@ref(eq:oETSOddsMNN) can be substituted by any other ADAM ETS or ARIMA model if it is reasonable to assume that the dynamics of probability has some additional components. This model is called ``odds ratio'', because the probability of occurrence in \@ref(eq:oETSOddsMNN) is calculated using the classical logistic transform. This also means that $\mu_{a,t}$ is equal to:
 \begin{equation} \label{eq:iETS_O_oddsRatio}
-	\mu_{a,t} = \frac{{p}_t}{1 - {p}_t} .
+	\mu_{a,t} = \frac{p_t}{1 - p_t} .
 \end{equation}
 When $\mu_{a,t}$ increases in the iETS\textsubscript{O} model, the odds ratio increases as well, meaning that the probability of occurrence goes up. @Svetunkov2019a explain that this model is in theory more appropriate for the demand on products becoming obsolescent, but given the updating mechanism it should also work fine on other types of intermittent demand data.
 
@@ -111,6 +111,52 @@ plot(oETSOModel)
 ```
 
 The constructed model introduces the trend component, capturing the changing probability of occurrence and reflecting well the fact that it increases over time.
+
+
+### Inverse odds ratio model, iETS$_I$
+Using similar approach to the iETS$_O$ model, we can formulate the "inverse odds ration" model oETS$_I$(M,N,N):
+\begin{equation}
+    \begin{aligned}
+		& o_t \sim \text{Bernoulli} \left(p_t \right) \\
+		& p_t = \frac{1}{1+\mu_{b,t}} \\
+		& b_t = l_{b,t-1} \left(1 + \epsilon_{b,t} \right) \\
+		& l_{b,t} = l_{b,t-1}( 1  + \alpha_{b} \epsilon_{b,t}) \\
+		& \mu_{b,t} = l_{b,t-1}
+    \end{aligned},
+	(\#eq:oETSInverseOddsMNN)
+\end{equation}
+where similarly to \@ref(eq:oETSOddsMNNEstimated), $l_{b,t}$ is the unobserved level component, $\alpha_{b}$ is the smoothing parameter, the error term $1+\epsilon_{b,t}$ is positive, has means of one and follows an unknown distribution and $\mu_{b,t}$is the conditional expectation for the unobservable shape parameters $b_t$. The main difference of this model with the previous is in the different mechanism of probability calculation, which focuses on the probability of "inoccurrence", i.e. on zeroes of data rather than on ones. This type of model should be more appropriate for cases of demand building up [@Svetunkov2019a]. The probability calculation mechanism in \@ref(eq:oETSInverseOddsMNN) implies that $\mu_{b,t}$ is equal to:
+\begin{equation} \label{eq:iETS_O_oddsRatio}
+	\mu_{b,t} = \frac{1-p_t}{p_t} .
+\end{equation}
+
+The construction of the model \@ref(eq:oETSInverseOddsMNN) is similar to \@ref(eq:oETSOddsMNNEstimated):
+\begin{equation}
+    \begin{aligned}
+        & \hat{p}_t = \frac{1}{1+\hat{\mu}_{b,t}} \\
+		& \hat{\mu}_{b,t} = \hat{l}_{b,t-1} \\
+		& \hat{l}_{b,t} = l_{b,t-1}( 1  + \hat{\alpha}_{b} e_{b,t}) \\
+		& 1+e_{b,t} = \frac{1-u_t}{u_t} \\
+		& u_{t} = \frac{1 + o_t - \hat{p}_t}{2}
+    \end{aligned},
+	(\#eq:oETSInverseOddsMNNEstimated)
+\end{equation}
+where $e_{b,t}$ is the proxy for the unobservable error term $\epsilon_{b,t}$ and $\hat{\mu}_{b,t}$ is the estimate of $\mu_{b,t}$. Once again, we refer an interested reader to Subsection \@ref(ETSTaxonomyMaths) for the discussion of the multiple steps ahead conditional expectations from the model.
+
+The function `oes()` implements the iETS$_I$ model as well. For example, here is the oETS$_I$(M,M,N) model:
+```{r iETSOExample1}
+oETSIModel <- oes(y, model="MMN", occurrence="inverse-odds-ratio", h=10, holdout=TRUE)
+oETSIModel
+plot(oETSIModel)
+```
+
+Similarly to the oETS$_O$, the model captures the trend in the probability of occurrence, but has a higher smoothing parameters $\alpha$ and thus is more reactive.
+
+
+<!-- ### Inverse odds ratio model, iETS$_G$ -->
+
+
+<!-- ### Inverse odds ratio model, iETS$_D$ -->
 
 
 
@@ -184,6 +230,7 @@ The constructed model introduces the trend component, capturing the changing pro
 
 
 <!-- ## Intermittent ETS -->
+<!-- Note that estimating seasonality on intermittent data is challenging -->
 
 <!-- ## Other occurrence models -->
 <!-- occurrence with provided values -->
