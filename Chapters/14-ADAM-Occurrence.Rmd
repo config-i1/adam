@@ -153,53 +153,93 @@ plot(oETSIModel)
 Similarly to the oETS$_O$, the model captures the trend in the probability of occurrence, but will have different smoothing parameters.
 
 
-<!-- ### Inverse odds ratio model, iETS$_G$ -->
+### General iETS model, iETS$_G$
+Uniting the models iETS$_O$ with iETS$_I$, we can obtain the "general" model, which in the most general case can be summarised in the following way:
+\begin{equation}
+    \begin{aligned}
+		& p_t = f(\mu_{a,t}, \mu_{b,t}) \\
+		& a_t = w_a(\mathbf{v}_{a,t-\mathbf{l}}) + r_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\
+		& \mathbf{v}_{a,t} = f_a(\mathbf{v}_{a,t-\mathbf{l}}) + g_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\
+		& b_t = w_a(\mathbf{v}_{b,t-\mathbf{l}}) + r_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} \\
+		& \mathbf{v}_{b,t} = f_a(\mathbf{v}_{b,t-\mathbf{l}}) + g_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t}
+    \end{aligned} ,
+  (\#eq:OccurrenceModelVeryGeneral)
+\end{equation}
+where $\epsilon_{a,t}$, $\epsilon_{b,t}$, $\mu_{a,t}$ and $\mu_{b,t}$ have been defined in previous subsections. Note that two models similar to the one discussed in Section \@ref(ADAMETSIntroduction) are used for modelling of $a_t$ and $b_t$. The general formula for the probability in case of the multiplicative error model is:
+\begin{equation}
+    p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} ,
+  (\#eq:oETSMZZ)
+\end{equation}
+while for the additive one, it is:
+\begin{equation}
+    p_t = \frac{\exp(\mu_{a,t})}{\exp(\mu_{a,t})+\exp(\mu_{b,t})} .
+  (\#eq:oETSAZZ)
+\end{equation}
+This is because both $\mu_{a,t}$ and $\mu_{b,t}$ need to be strictly positive, while the additive error models support the real plane. The canonical iETS model assumes that the pure multiplicative model is used for the both $a_t$ and $b_t$. This type of model is positively defined for any values of error, trend and seasonality, which is essential for the values of $a_t$ and $b_t$ and their expectations. If a combination of additive and multiplicative error models is used, then the additive part should be exponentiated prior to the usage of the formulae for the calculation of the probability.
+
+An example of the oETS model is oETS$_G$(M,N,N)(M,N,N):
+\begin{equation}
+    \begin{aligned}
+		& o_t \sim \text{Bernoulli} \left(p_t \right) \\
+		& p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} \\
+		\\
+		& a_t = l_{a,t-1} \left(1 + \epsilon_{a,t} \right) \\
+		& l_{a,t} = l_{a,t-1}( 1  + \alpha_{a} \epsilon_{a,t}) \\
+		& \mu_{a,t} = l_{a,t-1} \\
+		\\
+		& b_t = l_{b,t-1} \left(1 + \epsilon_{b,t} \right) \\
+		& l_{b,t} = l_{b,t-1}( 1  + \alpha_{b} \epsilon_{b,t}) \\
+		& \mu_{b,t} = l_{b,t-1} \\
+    \end{aligned},
+  (\#eq:iETSGExample)
+\end{equation}
+where all the parameters have already been defined in previous subsections. More advanced models can be constructing for $a_t$ and $b_t$ by specifying the ETS models for each part and / or adding explanatory variables. The construction of this model is done via the following set of equations:
+\begin{equation} \label{eq:ISSETSMNNEstimated}
+	\begin{aligned}
+		& e_{a,t} = \frac{u_t}{1-u_t} -1 \\
+		& \hat{a}_t = \hat{l}_{a,t-1} \\
+		& \hat{l}_{a,t} = \hat{l}_{a,t-1}( 1  + \alpha_{a} e_{a,t}) \\
+		& e_{b,t} = \frac{1-u_t}{u_t} -1 \\
+		& \hat{b}_t = \hat{l}_{b,t-1} \\
+		& \hat{l}_{b,t} = \hat{l}_{b,t-1}( 1  + \alpha_{b} e_{b,t})
+	\end{aligned} .
+\end{equation}
+The initialisation of the parameters of the iETS$_G$ model is done separately for the variables $a_t$ and $b_t$, based on the principles, described above for the iETS$_O$ and iETS$_I$.
+
+There is a separate function for the oETS$_G$ model, called `oesg()`. It has twice more parameters than `oes()`, because it allows fine tuning of the models for the both variables $a_t$ and $b_t$. This gives an additional flexibility. For example, here is how we can use ETS(M,N,N) for the $a_t$ and ETS(A,A,N) for the $b_t$, resulting in oETS$_G$(M,N,N)(A,A,N):
+```{r iETSGExample1}
+oETSGModel1 <- oesg(y, modelA="MNN", modelB="AAN", h=10, holdout=TRUE)
+oETSGModel1
+plot(oETSGModel1)
+```
+
+We can also analyse separately models for $a_t$ and $b_t$. Here is, for example, the model A:
+```{r}
+oETSGModel1$modelA
+```
+
+The experiments that I have done so far show that oETS$_G$ very seldomly brings improvements in comparison with iETS$_O$ or iETS$_I$ in terms of forecasting accuracy. Besides, selecting models for each of the parts is a challenging task. So, this model is theoretically nice, being more general than the other iETS models, but is not very practical. Still it is useful because we can introduce different iETS model by restricting $a_t$ and $b_t$. For example, we can get:
+
+1. iETS$_F$, when $\mu_{a,t} = \text{const}$, $\mu_{b,t} = \text{const}$ for all $t$;
+2. iETS$_O$, when $\mu_{b,t} = 1$ for all $t$;
+3. iETS$_I$, when $\mu_{a,t} = 1$ for all $t$;
+4. iETS$_D$, when $\mu_{a,t} + \mu_{b,t} = 1$, $\mu_{a,t} \leq 1$ for all $t$ (discussed in the next subsection);
+5. iETS$_G$, when there are no restrictions.
+
 
 
 <!-- ### Inverse odds ratio model, iETS$_D$ -->
 
 
 
-<!-- In the most general case, $p_t$ can be modelled using two ADAM models: -->
-<!-- \begin{equation} -->
-<!--     \begin{aligned} -->
-<!-- 		& p_t = f(\mu_{a,t}, \mu_{b,t}) \\ -->
-<!-- 		& a_t = w_a(\mathbf{v}_{a,t-\mathbf{l}}) + r_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\ -->
-<!-- 		& \mathbf{v}_{a,t} = f_a(\mathbf{v}_{a,t-\mathbf{l}}) + g_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\ -->
-<!-- 		& b_t = w_a(\mathbf{v}_{b,t-\mathbf{l}}) + r_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} \\ -->
-<!-- 		& \mathbf{v}_{b,t} = f_a(\mathbf{v}_{b,t-\mathbf{l}}) + g_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} -->
-<!--     \end{aligned} , -->
-<!--   (\#eq:OccurrenceModelVeryGeneral) -->
-<!-- \end{equation} -->
-<!-- where $\epsilon_{a,t}$ and $\epsilon_{b,t}$ are the mutually independent error terms that follow unknown distribution, $\mu_{a,t}$ and $\mu_{b,t}$ are the conditional expectations for the unobservable shape parameters $a_t$ and $b_t$. Note that two models similar to the one discussed in Section \@ref(ADAMETSIntroduction) are used for modelling of $a_t$ and $b_t$. This more general form permits using any type of ADAM model, but we will focus on this chapter on [ADAM ETS](#ADAMETSIntroduction). Depending on what type of error is assumed in the ADAM ETS model for the occurrence part, the probability of occurrence will be calculated differently. The general formula for the multiplicative error is: -->
-<!-- \begin{equation} -->
-<!--     p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} , -->
-<!--   (\#eq:oETSMZZ) -->
-<!-- \end{equation} -->
-<!-- while for the additive error, it is: -->
-<!-- \begin{equation} -->
-<!--     p_t = \frac{\exp(\mu_{a,t})}{\exp(\mu_{a,t})+\exp(\mu_{b,t})} . -->
-<!--   (\#eq:oETSAZZ) -->
-<!-- \end{equation} -->
-<!-- This is because both $\mu_{a,t}$ and $\mu_{b,t}$ need to be strictly positive, while the additive error models support the real plane. The canonical iETS model assumes that the pure multiplicative model is used for the both $a_t$ and $b_t$. This type of model is positively defined for any values of error, trend and seasonality, which is essential for the values of $a_t$ and $b_t$ and their expectations. If a combination of additive and multiplicative error models is used, then the additive part is exponentiated prior to the usage of the formulae for the calculation of the probability. -->
 
-<!-- An example of the occurrence part of an iETS model is the one for the basic local level model iETS(M,N,N)$_G$(M,N,N)(M,N,N): -->
-<!-- \begin{equation} -->
-<!--     \begin{aligned} -->
-<!-- 		& o_t \sim \text{Bernoulli} \left(p_t \right) \\ -->
-<!-- 		& p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} \\ -->
-<!-- 		\\ -->
-<!-- 		& a_t = l_{a,t-1} \left(1 + \epsilon_{a,t} \right) \\ -->
-<!-- 		& l_{a,t} = l_{a,t-1}( 1  + \alpha_{a} \epsilon_{a,t}) \\ -->
-<!-- 		& \mu_{a,t} = l_{a,t-1} \\ -->
-<!-- 		\\ -->
-<!-- 		& b_t = l_{b,t-1} \left(1 + \epsilon_{b,t} \right) \\ -->
-<!-- 		& l_{b,t} = l_{b,t-1}( 1  + \alpha_{b} \epsilon_{b,t}) \\ -->
-<!-- 		& \mu_{b,t} = l_{b,t-1} \\ -->
-<!--     \end{aligned}, -->
-<!--   (\#eq:iETSGExample) -->
-<!-- \end{equation} -->
-<!-- where $l_{a,t}$ and $l_{b,t}$ are the levels for each of the shape parameters and $\alpha_{a}$ and $\alpha_{b}$ are the smoothing parameters and the error terms $1+\epsilon_{a,t}$ and $1+\epsilon_{b,t}$ are positive and have means of one. We do not make any other distributional assumptions concerning the error terms. More advanced models can be constructing by specifying the ETS models for each part and / or adding explanatory variables. -->
+<!-- ## Demand sizes part of the model -->
+
+<!-- ### Additive vs multiplicative error models -->
+
+<!-- ## Intermittent ETS -->
+<!-- Note that estimating seasonality on intermittent data is challenging -->
+
 
 <!-- In the notation of the model iETS(M,N,N)$_G$(M,N,N)(M,N,N), the first brackets describe the ETS model for the demand sizes, the underscore letter points out at the specific subtype of model (whic is discussed in the next subsections), the second brackets describe the ETS model, underlying the variable $a_t$ and the last ones stand for the model for the $b_t$. If only one variable is needed (either $a_t$ or $b_t$), then the redundant brackets are dropped, so that the notation simplifies, for example, to: iETS(M,N,N)$_O$(M,N,N). If the same type of model is used for both demand sizes and demand occurrence, then the second brackets can be dropped as well, simplifying this further to: iETS(M,N,N)$_G$. Furthermore, the notation without any brackets, such as iETS$_G$ stands for a general class of a specific subtype of iETS model (so any error / trend / seasonality). Also, given that iETS$_G$ is the most general model of all iETS models, the "$G$" can be dropped, when the properties are applicable to all subtypes. Finally, the "oETS" notation is used when the occurrence part of the model is discussed explicitly, skipping the demand sizes. -->
 
@@ -213,10 +253,6 @@ Similarly to the oETS$_O$, the model captures the trend in the probability of oc
 
 
 
-<!-- ## Demand sizes part of the model -->
-
-<!-- ### Additive vs multiplicative error models -->
-
 <!-- ## Conditional means and variance -->
 
 
@@ -229,8 +265,6 @@ Similarly to the oETS$_O$, the model captures the trend in the probability of oc
 
 
 
-<!-- ## Intermittent ETS -->
-<!-- Note that estimating seasonality on intermittent data is challenging -->
 
 <!-- ## Other occurrence models -->
 <!-- occurrence with provided values -->
