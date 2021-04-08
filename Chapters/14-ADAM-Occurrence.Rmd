@@ -200,7 +200,7 @@ An example of the oETS model is oETS$_G$(M,N,N)(M,N,N):
   (\#eq:oETSGExample)
 \end{equation}
 where all the parameters have already been defined in previous subsections. More advanced models can be constructing for $a_t$ and $b_t$ by specifying the ETS models for each part and / or adding explanatory variables. The construction of this model is done via the following set of equations:
-\begin{equation} \label{eq:ISSETSMNNEstimated}
+\begin{equation}
 	\begin{aligned}
 		& e_{a,t} = \frac{u_t}{1-u_t} -1 \\
 		& \hat{a}_t = \hat{l}_{a,t-1} \\
@@ -209,6 +209,7 @@ where all the parameters have already been defined in previous subsections. More
 		& \hat{b}_t = \hat{l}_{b,t-1} \\
 		& \hat{l}_{b,t} = \hat{l}_{b,t-1}( 1  + \alpha_{b} e_{b,t})
 	\end{aligned} .
+  (\#eq:ISSETSMNNEstimated)
 \end{equation}
 The initialisation of the parameters of the oETS$_G$ model is done separately for the variables $a_t$ and $b_t$, based on the principles, described above for the oETS$_O$ and oETS$_I$.
 
@@ -233,9 +234,63 @@ The experiments that I have done so far show that oETS$_G$ very seldomly brings 
 5. oETS$_G$, when there are no restrictions.
 
 
-<!-- ### Inverse odds ratio model, oETS$_D$ -->
+### Direct probability model, oETS$_D$
+The last model in the family of oETS is the "Direct probability". It appears, when the following restriction is imposed on the oETS$_G$:
+\begin{equation}
+    \mu_{a,t} + \mu_{b,t} = 1, \mu_{a,t} \in [0, 1] .
+  (\#eq:iETSGRestriction)
+\end{equation}
+This restriction is inspired by the mechanism for the probability update proposed by @Teunter2011 (TSB method). In their paper they use [SES](#SES) to model the time varying probability of occurrence. Based on this idea and the restriction \@ref(eq:iETSGRestriction) we can formulate oETS$_D$(M,N,N) model, which will underly the occurrence part of the TSB method:
+\begin{equation}
+    \begin{aligned}
+		& o_t \sim \text{Bernoulli} \left(\mu_{a,t} \right) \\
+		& a_t = l_{a,t-1} \left(1 + \epsilon_{a,t} \right) \\
+		& l_{a,t} = l_{a,t-1}( 1  + \alpha_{a} \epsilon_{a,t}) \\
+		& \mu_{a,t} = \min(l_{a,t-1}, 1)
+    \end{aligned}.
+  (\#eq:iETSD)
+\end{equation}
+There is also an option with the additive error for the occurrence part (also underlying TSB), which has a different, more complicated form:
+\begin{equation}
+    \begin{aligned}
+		& o_t \sim \text{Bernoulli} \left(\mu_{a,t} \right) \\
+		& a_t = l_{a,t-1} \left(1 + \epsilon_{a,t} \right) \\
+		& l_{a,t} = l_{a,t-1}  + \alpha_{a} \epsilon_{a,t} \\
+		& \mu_{a,t} = \max \left( \min(l_{a,t-1}, 1), 0 \right)
+    \end{aligned}.
+  (\#eq:iETSDAdditive)
+\end{equation}
 
+The estimation of the oETS$_D$(M,N,M) model can be done using the following set of equations:
+\begin{equation}
+	\begin{aligned}
+		& \hat{\mu}_{a,t} = \hat{l}_{a,t-1} \\
+		& \hat{l}_{a,t} = \hat{l}_{a,t-1}( 1  + \hat{\alpha}_{a} e_{a,t})
+	\end{aligned},
+  (\#eq:ISSETSMNN_probability_estimate)
+\end{equation}
+where
+\begin{equation}
+	e_{a,t} = \frac{o_t (1 - 2 \kappa) + \kappa - \hat{\mu}_{a,t}}{\hat{\mu}_{a,t}},
+  (\#eq:ISSETSMNN_TSB_model_error_approximation)
+\end{equation}
+and $\kappa$ is a very small number (for example, $\kappa = 10^{-10}$), needed only in order to make the model estimable. The estimate of the error term in case of the additive model is much simpler and does not need any specific tricks to work:
+\begin{equation}
+	e_{a,t} = o_t - \hat{\mu}_{a,t} ,
+  (\#eq:ISSETSMNN_TSB_model_error_approximation2)
+\end{equation}
+which is directly related to TSB method. Note that equation \@ref(eq:ISSETSMNN_probability_estimate) does not contain $\min$ function, because the estimated error \@ref(eq:ISSETSMNN_TSB_model_error_approximation) will always guarantee that the level will lie between 0 and 1 as long as the smoothing parameter lies in the [0, 1] region (which is the conventional assumption for both ETS(A,N,N) and ETS(M,N,N) models).
 
+When it comes to initialising the oETS$_D$ model, the values are calculated directly from the data without any additional transformations.
+
+Here's an example of the application of the oETS$_D$(M,M,N) to the same artificial data:
+```{r iETSDExample1}
+oETSDModel <- oes(y, model="MMN", occurrence="d", h=10, holdout=TRUE)
+oETSDModel
+plot(oETSDModel)
+```
+
+The empirical analysis I have done so far on different datasets shows that oETS$_D$ model works efficiently in many cases and produces accurate forecasts. So, if you are unsure, which of the oETS models to choose for your intermittent data, I would recommend starting with oETS$_D$.
 
 
 <!-- ## Demand sizes part of the model -->
