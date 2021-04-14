@@ -254,7 +254,7 @@ There is also an option with the additive error for the occurrence part (also un
 \begin{equation}
     \begin{aligned}
 		& o_t \sim \text{Bernoulli} \left(\mu_{a,t} \right) \\
-		& a_t = l_{a,t-1} \left(1 + \epsilon_{a,t} \right) \\
+		& a_t = l_{a,t-1} + \epsilon_{a,t} \\
 		& l_{a,t} = l_{a,t-1}  + \alpha_{a} \epsilon_{a,t} \\
 		& \mu_{a,t} = \max \left( \min(l_{a,t-1}, 1), 0 \right)
     \end{aligned}.
@@ -293,7 +293,35 @@ plot(oETSDModel)
 The empirical analysis I have done so far on different datasets shows that oETS$_D$ model works efficiently in many cases and produces accurate forecasts. So, if you are unsure, which of the oETS models to choose for your intermittent data, I would recommend starting with oETS$_D$.
 
 
-<!-- ## Demand sizes part of the model -->
+## Demand sizes part of the model
+So far we have discussed the occurrence part $o_t$ of the model and how to capture the probability of demand occurrence $p_t$. But this is only a half of the intermittent state space model. The second one is the model for the demand sizes $z_t$, which focuses on how many units of product will be sold if our customers decide to buy in a specific period of time. This can be modelled with any ADAM model, but has its own implications.
+
+We start discussion with analysis of iETS(M,N,N)$_F$ model, which can be formulate as:
+\begin{equation}
+    \begin{aligned}
+        & y_t = o_t z_t ,
+		& z_t = l_{z,t-1}(1 + \epsilon_{z,t}) \\
+		& l_{z,t} = l_{z,t-1}(1  + \alpha_{z} \epsilon_{z,t}) \\
+		& o_t \sim \text{Bernoulli}(p) \\
+    \end{aligned},
+	(\#eq:iETSMNNFixed)
+\end{equation}
+where the subscript $z$ refers to the components and parameters of demand sizes. This model assumes that there is always a potential demand on the product which evolves over time, even when $o_t=0$, we just do not always observe it. All the properties of this model have alread been discussed in chapter \@ref(ADAMETSPureMultiplicative). The main challenge appears, when this model needs to be constructed and estimated, because $z_t$ is not observable, when $o_t=0$. In these situations the error term cannot be esimated, but according to the model it still exists, thus impacting the level of demand $l_{z,t}$. In order to construct the model in the cases of no demand, we propose taking the conditional expectation for these periods, given the last available non-zero observations. This means that the model can be constructed using the following set of equations
+\begin{equation}
+    \begin{aligned}
+		& e_{z,t} = \frac{z_t - \hat{\mu}_{z,t}}{\hat{\mu}_{z,t}}, \text{ when } o_t=1 \\
+		& \hat{\mu}_{z,t} = \hat{l}_{z,t-1} \\
+		& \hat{l}_{z,t} = 
+		\lbrace \begin{aligned}
+                  & \hat{l}_{z,t-1} (1 + \hat{\alpha}_z e_t ), \text{ when } o_t=1 \\
+                  & \hat{l}_{z,t-1} , \text{ when } o_t=0 \\
+            \end{aligned} \right.
+    \end{aligned}.
+	(\#eq:iETSMNNFixedConstruction)
+\end{equation}
+This is only possible if $\mathrm{E}(1+\epsilon_t)=1$, which is an important assumption for multiplicative error models, discussed in Section \@ref(ADAMETSMultiplicativeDistributions). If this is violated, then the formula for the conditional expectation of the level in \@ref(eq:iETSMNNFixedConstruction) will become more complicated.
+
+
 
 <!-- ### Additive vs multiplicative error models -->
 
