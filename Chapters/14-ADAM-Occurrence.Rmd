@@ -74,7 +74,7 @@ plot(oETSFModel1)
 The plot above demonstrates the dynamics of the occurrence variable $o_t$ and the fitted and predicted probabilities. The oETS$_F$ model produces the straight line for the probability of `r round(oETSFModel1$initial,2)`, ignoring the fact that in our example the probability of occurrence has increased over time.
 
 
-### Odds ratio model, oETS$_O$
+### Odds ratio model, oETS$_O$ {#oETSO}
 In this model, it is assumed that the update of the probability is driven by the occurrence of variable. It is more complicated than the previous as the probability now changes over time and can be modelled, for example, with ETS(M,N,N) model:
 \begin{equation}
     \begin{aligned}
@@ -159,19 +159,19 @@ plot(oETSIModel)
 Similarly to the oETS$_O$, the model captures the trend in the probability of occurrence, but will have different smoothing parameters.
 
 
-### General oETS model, oETS$_G$
+### General oETS model, oETS$_G$ {#oETSG}
 Uniting the models oETS$_O$ with oETS$_I$, we can obtain the "general" model, which in the most general case can be summarised in the following way:
 \begin{equation}
     \begin{aligned}
-		& p_t = f(\mu_{a,t}, \mu_{b,t}) \\
+		& p_t = f_p(\mu_{a,t}, \mu_{b,t}) \\
 		& a_t = w_a(\mathbf{v}_{a,t-\mathbf{l}}) + r_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\
 		& \mathbf{v}_{a,t} = f_a(\mathbf{v}_{a,t-\mathbf{l}}) + g_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\
-		& b_t = w_a(\mathbf{v}_{b,t-\mathbf{l}}) + r_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} \\
-		& \mathbf{v}_{b,t} = f_a(\mathbf{v}_{b,t-\mathbf{l}}) + g_a(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t}
+		& b_t = w_b(\mathbf{v}_{b,t-\mathbf{l}}) + r_b(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} \\
+		& \mathbf{v}_{b,t} = f_b(\mathbf{v}_{b,t-\mathbf{l}}) + g_b(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t}
     \end{aligned} ,
   (\#eq:oETSG)
 \end{equation}
-where $\epsilon_{a,t}$, $\epsilon_{b,t}$, $\mu_{a,t}$ and $\mu_{b,t}$ have been defined in previous subsections. Note that two models similar to the one discussed in Section \@ref(ADAMETSIntroduction) are used for modelling of $a_t$ and $b_t$. The general formula for the probability in case of the multiplicative error model is:
+where $\epsilon_{a,t}$, $\epsilon_{b,t}$, $\mu_{a,t}$ and $\mu_{b,t}$ have been defined in previous subsectionsa and the other elements correspond to the ADAM model discussed in section \@ref(ADAMETSIntroduction). Note that two models similar to the one discussed in Section \@ref(ADAMETSIntroduction) are used for modelling of $a_t$ and $b_t$. The general formula for the probability in case of the multiplicative error model is:
 \begin{equation}
     p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} ,
   (\#eq:oETSMZZ)
@@ -181,7 +181,18 @@ while for the additive one, it is:
     p_t = \frac{\exp(\mu_{a,t})}{\exp(\mu_{a,t})+\exp(\mu_{b,t})} .
   (\#eq:oETSAZZ)
 \end{equation}
-This is because both $\mu_{a,t}$ and $\mu_{b,t}$ need to be strictly positive, while the additive error models support the real plane. The canonical oETS model assumes that the pure multiplicative model is used for the both $a_t$ and $b_t$. This type of model is positively defined for any values of error, trend and seasonality, which is essential for the values of $a_t$ and $b_t$ and their expectations. If a combination of additive and multiplicative error models is used, then the additive part should be exponentiated prior to the usage of the formulae for the calculation of the probability.
+This is because both $\mu_{a,t}$ and $\mu_{b,t}$ need to be strictly positive, while the additive error models support the real plane. The canonical oETS model assumes that the pure multiplicative model is used for the both $a_t$ and $b_t$. This type of model is positively defined for any values of error, trend and seasonality, which is essential for the values of $a_t$ and $b_t$ and their expectations. If a combination of additive and multiplicative error models is used, then the additive part should be exponentiated prior to the usage of the formulae for the calculation of the probability. So, $f_p(\cdot)$ function maps the expectations from models A and B to the probability of occurrence, depending on the error type of the respective models:
+\begin{equation}
+    p_t = f_p(\mu_{a,t}, \mu_{b,t}) = \left \lbrace
+    \begin{aligned}
+		& \frac{\mu_{a,t}}{\mu_{a,t} + \mu_{b,t}} & \text{ when both have multiplicative errors} \\
+		& \frac{\mu_{a,t}}{\mu_{a,t} + \exp(\mu_{b,t})} & \text{ when model B has additive error} \\
+		& \frac{\exp(\mu_{a,t})}{\exp(\mu_{a,t}) + \mu_{b,t}} & \text{ when model A has additive error} \\
+		& \frac{\exp(\mu_{a,t})}{\exp(\mu_{a,t}) + \exp(\mu_{b,t})} & \text{ when both have additive errors}
+    \end{aligned} .
+    \right.
+  (\#eq:probabilityFunction)
+\end{equation}
 
 An example of the oETS model is oETS$_G$(M,N,N)(M,N,N):
 \begin{equation}
@@ -238,9 +249,9 @@ The experiments that I have done so far show that oETS$_G$ very seldomly brings 
 The last model in the family of oETS is the "Direct probability". It appears, when the following restriction is imposed on the oETS$_G$:
 \begin{equation}
     \mu_{a,t} + \mu_{b,t} = 1, \mu_{a,t} \in [0, 1] .
-  (\#eq:iETSGRestriction)
+  (\#eq:oETSGRestriction)
 \end{equation}
-This restriction is inspired by the mechanism for the probability update proposed by @Teunter2011 (TSB method). In their paper they use [SES](#SES) to model the time varying probability of occurrence. Based on this idea and the restriction \@ref(eq:iETSGRestriction) we can formulate oETS$_D$(M,N,N) model, which will underly the occurrence part of the TSB method:
+This restriction is inspired by the mechanism for the probability update proposed by @Teunter2011 (TSB method). In their paper they use [SES](#SES) to model the time varying probability of occurrence. Based on this idea and the restriction \@ref(eq:oETSGRestriction) we can formulate oETS$_D$(M,N,N) model, which will underly the occurrence part of the TSB method:
 \begin{equation}
     \begin{aligned}
 		& o_t \sim \text{Bernoulli} \left(\mu_{a,t} \right) \\
@@ -333,7 +344,7 @@ In a similar way, we can construct more complicated models for the demand sizes.
   \end{aligned},
   (\#eq:iETSADAMStateSpaceConstruction)
 \end{equation}
-where all the functions and vectors have been defined for the original ADAM ETS model \@ref(eq:ETSADAMStateSpace) in Section \@ref(#ADAMETSIntroduction).
+where all the functions and vectors have been defined for the original ADAM ETS model \@ref(eq:ETSADAMStateSpace) in Section \@ref(ADAMETSIntroduction).
 
 ### Additive vs multiplicative ETS for demand sizes
 iETS supports any type of ETS model, including [pure additive](#ADAMETSPureAdditive), [pure multiplicative](#ADAMETSPureMultiplicative) and [mixed](#ADAMETSMixedModels) ones. But the selection of the appropriate model should be done based on the understanding of the problem. Typically, we expect demands to be non-negative: people want to buy our product, and usually the business does not want to buy from customers. In this case, we should use pure multiplicative models, as they will always produce meaningful results, as long as the assumption of positivity of $(1+\epsilon_{z,t})$ holds. This is important because the data would typically have low volume and the model might generate unreasonable (negative) pont and interval forecasts if a non-positive distribution is used (e.g. [Normal](#distributionsNormal)). Thus, it is important to use either [Inverse Gaussian, or Gamma, or Log Normal distribution](#ADAMETSMultiplicativeDistributions) for the error term of the demand sizes part of the model, when the volume of data is low and you expect the non-zero values to be strictly positive.
@@ -346,25 +357,32 @@ The pure additive models do not have the issue with the conditional expectation 
 Finally, ADAM ARIMA can be used for demand sizes as well, making iARIMA model. All the discussions in the previous subsection would apply to ARIMA as well, keeping in mind that ADAM ARIMA can be either [pure additive](#StateSpaceARIMAAdditive) or [pure multiplicative](#ADAMARIMAPureMultiplicative). Given that the multiplicative ARIMA is formulated via logarithms, and still has the error term with the expectation of one, any ARIMA model can be used for the variable $z_t$ and can be constructed via \@ref(eq:iETSADAMStateSpaceConstruction). This can also be used for the cases, when a pure multiplicative model with trend is needed, and there are difficulties with constructing ETS(M,M,N) (i.e. smoothing parameters are not close to zero). The relation between [ARIMA and ETS](#ARIMAandETS) might be useful in this case. For example, instead of constructing ETS(M,M,N) we can construct logARIMA(0,2,2) in this case, sidestepping the aforementioned problem.
 
 
-## Intermittent ETS
+## The full ADAM model
+Uniting [demand occurrence](#ADAMOccurrence) with the [demand sizes](#iADAMDemandSizes) parts of the model, we can now discuss the full iETS model, which in the most general form can be represented as:
+\begin{equation}
+    \begin{aligned}
+        & y_t = o_t z_t ,
+        & {z}_{t} = w_z(\mathbf{v}_{z,t-\mathbf{l}}) + r_z(\mathbf{v}_{z,t-\mathbf{l}}) \epsilon_{z,t} \\
+        & \mathbf{v}_{z,t} = f_z(\mathbf{v}_{z,t-\mathbf{l}}) + g_z(\mathbf{v}_{z,t-\mathbf{l}}) \epsilon_{z,t} \\
+        & \\
+        & o_t \sim \text{Bernoulli} \left(p_t \right) ,
+		& p_t = f_p(\mu_{a,t}, \mu_{b,t}) \\
+		& a_t = w_a(\mathbf{v}_{a,t-\mathbf{l}}) + r_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\
+		& \mathbf{v}_{a,t} = f_a(\mathbf{v}_{a,t-\mathbf{l}}) + g_a(\mathbf{v}_{a,t-\mathbf{l}}) \epsilon_{a,t} \\
+		& b_t = w_b(\mathbf{v}_{b,t-\mathbf{l}}) + r_b(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t} \\
+		& \mathbf{v}_{b,t} = f_b(\mathbf{v}_{b,t-\mathbf{l}}) + g_b(\mathbf{v}_{b,t-\mathbf{l}}) \epsilon_{b,t}
+    \end{aligned} ,
+  (\#eq:iETSG)
+\end{equation}
+where the elements of the demand size and demand occurrence parts have been defined in Sections \@ref(ADAMETSIntroduction) and \@ref(oETSG) respectively. Depending on the specific model for each part and restrictions on $\mu_{a,t}$ and $\mu_{b,t}$, we might have different types of iETS models. In order to distinguish one model from another, we introduce the notation of iETS models of the form iETS(demand sizes model)$_\text{type of occurrence}$(model A type)(model B type). For example, in the iETS(M,N,N)$_G$(A,N,N)(M,M,N) the first brackets say that ETS(M,N,N) was applied to the demand sizes, the underscore letter points out that this is the ["general probability" model](#oETSG), which has ETS(A,N,N) for the model A and ETS(M,M,N) for the model B. If only one variable is needed (either $a_t$ or $b_t$), then the redundant brackets are dropped, and the notation is simplified, for example, to: iETS(M,N,N)$_O$(M,N,N). If the same type of model is used for both demand sizes and demand occurrence, then the second brackets can be dropped as well, simplifying this further to: iETS(M,N,N)$_O$ ([odds ratio model](#oETSO) with ETS(M,N,N) for all parts). All these models are implemented in `adam()` function for `smooth` package in R.
 
-
-<!-- Note that estimating seasonality on intermittent data is challenging -->
-
-
-<!-- In the notation of the model iETS(M,N,N)$_G$(M,N,N)(M,N,N), the first brackets describe the ETS model for the demand sizes, the underscore letter points out at the specific subtype of model (whic is discussed in the next subsections), the second brackets describe the ETS model, underlying the variable $a_t$ and the last ones stand for the model for the $b_t$. If only one variable is needed (either $a_t$ or $b_t$), then the redundant brackets are dropped, so that the notation simplifies, for example, to: iETS(M,N,N)$_O$(M,N,N). If the same type of model is used for both demand sizes and demand occurrence, then the second brackets can be dropped as well, simplifying this further to: iETS(M,N,N)$_G$. Furthermore, the notation without any brackets, such as iETS$_G$ stands for a general class of a specific subtype of iETS model (so any error / trend / seasonality). Also, given that iETS$_G$ is the most general model of all iETS models, the "$G$" can be dropped, when the properties are applicable to all subtypes. Finally, the "oETS" notation is used when the occurrence part of the model is discussed explicitly, skipping the demand sizes. -->
-
-<!-- Depending on the restrictions on $a_t$ and $b_t$, there can be several types of iETS models: -->
-
-<!-- 1. iETS$_F$: $\mu_{a,t} = \text{const}$, $\mu_{b,t} = \text{const}$ - the model with the fixed probability of occurrence; -->
-<!-- 2. iETS$_O$: $\mu_{b,t} = 1$ - the "odds ratio" model, based on the logistic transform of the $o_t$ variable; -->
-<!-- 3. iETS$_I$: $\mu_{a,t} = 1$ - the "inverse odds ratio" model, based on the inverse logistic transform of the $o_t$ variable; -->
-<!-- 4. iETS$_D$: $\mu_{a,t} + \mu_{b,t} = 1$, $\mu_{a,t} \leq 1$ - the direct probability model, where the $p_t$ is calculated directly from the occurrence variable $o_t$; -->
-<!-- 5. iETS$_G$: No restrictions - the model based on the evolution of both $\mu_{a,t}$ and $\mu_{b,t}$. -->
-
+Similar notations and principles can be used for models based on ARIMA. Note that oARIMA is not yet implemented, but in theory a model like iARIMA(0,1,1)$_O$(0,1,1) could be constructed in ADAM framework.
 
 
 <!-- ### Model estimation -->
+
+<!-- Note that estimating seasonality on intermittent data is challenging -->
+
 <!-- The concentrated likelihood function for the iETS model is: -->
 <!-- \begin{equation} \label{eq:LogNormalConcentratedLogLikelihood} \tag{2} -->
 <!-- 	\ell(\boldsymbol{\theta}, \hat{\sigma}_\epsilon^2 | \textbf{Y}) = - \frac{1}{2} \left( T \log(2 \pi e \hat{\sigma}_\epsilon^2) + T_0 \right) - {\sum_{o_t=1}} \log(z_t) + {\sum_{o_t=1}} \log(\hat{p}_t) + {\sum_{o_t=0}} \log(1-\hat{p}_t) , -->
@@ -376,6 +394,69 @@ Finally, ADAM ARIMA can be used for demand sizes as well, making iARIMA model. A
 <!-- ### Conditional means and variance -->
 
 
+### Examples of application
+In order to see how ADAM works on intermittent data, we consider the same example from the Section \@ref(ADAMOccurrence). We remember that in that example both demand occurrence and demand sizes increase over time, meaning that we can try the model with trend for both parts:
+
+```{r}
+plot(y)
+```
+
+This can be done using `adam()` function from `smooth` package, defining the type of occurrence to use. We will try several options and select the one that has the lowest AICc:
+```{r}
+adamModelsiETS <- vector("list",4)
+adamModelsiETS[[1]] <- adam(y, "MMN", occurrence="odds-ratio",
+                            h=10, holdout=TRUE)
+adamModelsiETS[[2]] <- adam(y, "MMN", occurrence="inverse-odds-ratio",
+                            h=10, holdout=TRUE)
+adamModelsiETS[[3]] <- adam(y, "MMN", occurrence="direct",
+                            h=10, holdout=TRUE)
+adamModelsiETS[[4]] <- adam(y, "MMN", occurrence="general",
+                            h=10, holdout=TRUE)
+adamModelsiETSAICcs <- setNames(sapply(adamModelsiETS,AICc),
+                                c("odds-ratio","inverse-odds-ratio","direct","general"))
+adamModelsiETSAICcs
+```
+
+Based on this, we can see that the model with `r names(adamModelsiETSAICcs)[which.min(adamModelsiETSAICcs)]` has the lowest AICc. We can see how the model has approximated the data and produced forecasts for the holdout:
+
+```{r}
+i <- which.min(adamModelsiETSAICcs)
+plot(adamModelsiETS[[i]],7)
+```
+
+We can explore the demand occurrence part of this model the following way:
+
+```{r}
+adamModelsiETS[[i]]$occurrence
+plot(adamModelsiETS[[i]]$occurrence)
+```
+
+Depending on the generated data, there might be issues in the ETS(M,M,N) model for demand sizes, if the smoothing parameters are large. So, we can try out the ADAM logARIMA(0,2,2) to see how it compares with this model. Given that ARIMA is not yet implemented for the occurrence part of the model, we need to construct it separately and then use in `adam()`:
+
+```{r}
+oETSModel <- oes(y, "MMN", occurrence=names(adamModelsiETSAICcs)[i],
+                 h=10, holdout=TRUE)
+adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(0,2,2),
+                        distribution="dlnorm", h=10, holdout=TRUE)
+adamModeliARIMA
+plot(adamModeliARIMA,7)
+```
+
+Comparing the iARIMA model with the previous iETS based on AIC would not be fair, because as soon as the occurrence model is provided to `adam()`, he does not count the parameters estimated in that part towards the overal number of estimated parameters. In order to make the comparison fair, we need to estimate ADAM iETS in the following way:
+
+```{r}
+adamModelsiETS[[i]] <- adam(y, "MMN", occurrence=oETSModel,
+                            h=10, holdout=TRUE)
+adamModelsiETS[[i]]
+plot(adamModelsiETS[[i]],7)
+```
+
+Comparing information criteria, the iETS model is more appropriate for this data. But this might be due to a different distributional assumptions and difficulties estimating ARIMA model. If you want to experiment more with ADAM iARIMA, you might try [fine tuning](#ADAMInitialisationOptAndBack) it for the data either by increasing the `maxeval` or changing the initialisation, for example:
+
+```{r eval=FALSE}
+adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(0,2,2),
+                        distribution="dinvgauss", h=10, holdout=TRUE, initial="back")
+```
 
 
 <!-- ## Other related models -->
