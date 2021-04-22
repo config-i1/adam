@@ -400,7 +400,6 @@ while in the opposite case it is:
 	\mathcal{L}(\boldsymbol{\theta}, \lambda_\epsilon | y_t, o_t=0) = (1-p_t) f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}).
 	(\#eq:LogLikelihoodOccursNot)
 \end{equation}
-
 Based on the equations \@ref(eq:LogLikelihoodOccurs) and \@ref(eq:LogLikelihoodOccursNot), we can summarise the likelihood for the whole sample of $T$ observations:
 \begin{equation}
 	\mathcal{L}(\boldsymbol{\theta}, \lambda_\epsilon | \textbf{Y}) = \prod_{o_t=1} p_t \prod_{o_t=0} (1-p_t) \prod_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) ,
@@ -408,16 +407,16 @@ Based on the equations \@ref(eq:LogLikelihoodOccurs) and \@ref(eq:LogLikelihoodO
 \end{equation}
 or in logarithms:
 \begin{equation}
-	\ell(\boldsymbol{\theta}, \lambda_\epsilon | \textbf{Y}) = \sum_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1-p_t).
+	\ell(\boldsymbol{\theta}, \lambda_\epsilon | \textbf{Y}) = \sum_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1-p_t),
 	(\#eq:LogLikelihoodForDGP)
 \end{equation}
-The main issue in calculating the likelihood \@ref(eq:LogLikelihoodForDGP) is that the demand sizes are not observable, when $o_t=0$. This means that we cannot calculate the likelihood using the conventional approach, we need to use something else. @Svetunkov2019a proposed using Expectation Maximisation (EM) algorithm for this purposes, which is typically done in the following stages:
+where $f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}})$ can be substituted by a likelihood of the assumed distribution from the list of candidates in Section \@ref(ADAMETSEstimationLikelihood) (substituting $T$ in formulae in Tables \@ref(tab:additiveErrorLikelihoods) and \@ref(tab:multiplicativeErrorLikelihoods) by $T_1$). The main issue in calculating the likelihood \@ref(eq:LogLikelihoodForDGP) is that the demand sizes are not observable when $o_t=0$. This means that we cannot calculate the likelihood using the conventional approach, we need to use something else. @Svetunkov2019a proposed using Expectation Maximisation (EM) algorithm for this purpose, which is typically done in the following stages:
 
 1. Take *Expectation* of the likelihood;
 2. *Maximise* it with the obtained parameters;
 3. Go to (1) with the new set of parameters if the likelihood has not converged to maximum.
 
-A classical example with EM is when there are several samples with different parameters and we need to distinguish them, but we do not know what belongs to what and what is the probability that each point belongs to one of the groups. In our context, it is a slightly different idea: we know probabilities, but we do not observe some of demand sizes. If we take the expectation of \@ref(eq:LogLikelihoodForDGP) with respect to the unobserved demand sizes, we will get:
+A classical example with EM is when there are several samples with different parameters and we need to split them, but we do not know where specific observations belongs to and what is the probability that each observation belongs to one of the groups. In our context, it is a slightly different idea: we know probabilities, but we do not observe some of demand sizes. If we take the expectation of \@ref(eq:LogLikelihoodForDGP) with respect to the unobserved demand sizes, we will get:
 \begin{equation}
 	\begin{aligned}
 	\ell(\boldsymbol{\theta}, {\lambda}_\epsilon | \textbf{Y}) & = \sum_{o_t=1} \log f_z \left(z_{t} | \mathbf{v}_{z,t-\mathbf{l}} \right) + \sum_{o_t=0} \text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\mathbf{l}} \right) \right) \\
@@ -425,7 +424,7 @@ A classical example with EM is when there are several samples with different par
 	\end{aligned}.
 	(\#eq:LogLikelihoodForDGPExpectation)
 \end{equation}
-Luckily, the expectation in \@ref(eq:LogLikelihoodForDGPExpectation) is well known in statistics and called "Differential Entropy" (it is actually negative differential entropy in the formula above). It will differ from one distribution to another, depending on what demand sizes model is assumed. Table \@ref(tab:differentialEntropy) summarises differential entropies for the distributions used in ADAM.
+Luckily, the expectation in \@ref(eq:LogLikelihoodForDGPExpectation) is known in statistics as "Differential Entropy" (it is actually negative differential entropy in the formula above). It will differ from one case to another, depending on the assumed demand sizes distribution. Table \@ref(tab:differentialEntropy) summarises differential entropies for the distributions used in ADAM.
 
 ```{r echo=FALSE}
 # Assumption | Differential Entropy
@@ -464,19 +463,19 @@ kableTable <- kableExtra::kable(entropiesTable, escape=FALSE, caption="Different
 kableExtra::kable_styling(kableTable, font_size=12, protect_latex=TRUE)
 ```
 
-The majority of formulae for differential entropy in Table \@ref(tab:differentialEntropy) are taken from @WikipediaDifferentialEntropy2021 with the exclusion of the one for $\mathcal{IG}$, which was derived by @Mudholkar2002. These values can be inserted instead of the $\text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\mathbf{l}} \right) \right)$ in the formula, leading to the expected likelihood for respective distributions. Luckily, the EM process in our specific situation does not need to be iterative - the obtained likelihood can then be maximised directly by changing the values of parameters $\boldsymbol{\theta}$. It is also possible to derive analytical formulae for parameters of some of distributions based on \@ref(eq:LogLikelihoodForDGPExpectation) and the values from Table \@ref(tab:differentialEntropy). For example, in case of $\mathcal{IG}$ the estimate of scale parameter is:
+The majority of formulae for differential entropy in Table \@ref(tab:differentialEntropy) are taken from @WikipediaDifferentialEntropy2021 with the exclusion of the one for $\mathcal{IG}$, which was derived by @Mudholkar2002. These values can be inserted instead of the $\text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\mathbf{l}} \right) \right)$ in the formula \@ref(eq:LogLikelihoodForDGPExpectation), leading to the expected likelihood for respective distributions. Luckily, the EM process in our specific situation does not need to be iterative - the obtained likelihood can then be maximised directly by changing the values of parameters $\boldsymbol{\theta}$. It is also possible to derive analytical formulae for parameters of some of distributions based on \@ref(eq:LogLikelihoodForDGPExpectation) and the values from Table \@ref(tab:differentialEntropy). For example, in case of $\mathcal{IG}$ the estimate of scale parameter is:
 \begin{equation}
 	\hat{s} = \frac{1}{T} \sum_{o_t=1}\frac{e_t^2}{1+e_t}.
 	(\#eq:IGLogLikelihoodScale)
 \end{equation}
-In fact, it can be shown that the likelihood estimates of scales for different distributions correspond to the conventional formulae from Section \@ref(ADAMETSEstimationLikelihood), but with the summation over $o_t=1$ instead of all the observations. Note however that the division in \@ref(eq:IGLogLikelihoodScale) is done by the whole sample $T$. This implies that the estimate of scale will be [biased](#estimatesPropertiesBias), similarly to the classical bias in sample variance \@ref(eq:varianceBiased). However, in the full ADAM model, the estimate of scale is biased not only in sample, but asymptotically as well, implying that with the increase of the sample size it will be consistently lower than needed. This is because the summation is done over the non-zero values, while the division is done over the whole sample. This proportion of non-zero values will impact the value of \@ref(eq:IGLogLikelihoodScale), deflating its value. The only situation, when the bias will be reduced is when the probabilty of occurrence reaches 1 (demand on product becomes regular). Still, the value \@ref(eq:IGLogLikelihoodScale) will maximise the expected likelihood \@ref(eq:LogLikelihoodForDGPExpectation) and is useful in inference. However, if one needs to construct prediction intervals, this bias needs to be addressed, which can be done using the following correction:
+In fact, it can be shown that the likelihood estimates of scales for different distributions correspond to the conventional formulae from Section \@ref(ADAMETSEstimationLikelihood), but with the summation over $o_t=1$ instead of all the observations. Note however that the division in \@ref(eq:IGLogLikelihoodScale) is done by the whole sample $T$. This implies that the estimate of scale will be [biased](#estimatesPropertiesBias), similarly to the classical bias of the sample variance \@ref(eq:varianceBiased). However, in the full ADAM model, the estimate of scale is biased not only in sample, but [asymptotically](#asymptoticNormality) as well, implying that with the increase of the sample size it will be consistently lower than needed. This is because the summation is done over the non-zero values, while the division is done over the whole sample. This proportion of non-zeroes will impact the scale in \@ref(eq:IGLogLikelihoodScale), deflating its value. The only situation, when the bias will be reduced is when the probabilty of occurrence reaches 1 (demand on product becomes regular). Still, the value \@ref(eq:IGLogLikelihoodScale) will maximise the expected likelihood \@ref(eq:LogLikelihoodForDGPExpectation) and is useful for inference. However, if one needs to construct prediction intervals, this bias needs to be addressed, which can be done using the following correction:
 \begin{equation}
 	\hat{s}^\prime = \frac{T}{T_1-k} \hat{s},
 	(\#eq:scaleFixed)
 \end{equation}
 where $k$ is the number of all estimated parameters.
 
-The final thing to note is that all the iETS models estimated via the maximisation of likelihood will produce [consistent](#estimatesPropertiesConsistency), [efficient](#estimatesPropertiesEfficiency), but [positively biased](#estimatesPropertiesBias) estimates of the smoothing parameters (higher than needed). @Svetunkov2019a gives an explanation to this phenomenon. Given the connection between MLE for some distributions and MSE (see Section \@ref(MSEandMAEEstimators) for detail), this also implies that such forecasting methods as Croston [@Croston1972] and TSB [@Teunter2011] would also result in positively biased estimates of parameters, when estimated via the minimisation of MSE.
+The final thing to note [@Svetunkov2019a] is that all the iETS models estimated via the maximisation of likelihood will produce [consistent](#estimatesPropertiesConsistency), [efficient](#estimatesPropertiesEfficiency), but [positively biased](#estimatesPropertiesBias) estimates of the smoothing parameters (higher than needed). Given the connection between MLE for some distributions and MSE (see Section \@ref(MSEandMAEEstimators) for detail), this also implies that such forecasting methods as Croston [@Croston1972] and TSB [@Teunter2011] would also result in positively biased estimates of parameters, when estimated via the minimisation of MSE.
 
 
 <!-- Note that estimating seasonality on intermittent data is challenging -->
