@@ -382,6 +382,8 @@ Depending on the specific model for each part and restrictions on $\mu_{a,t}$ an
 
 Similar notations and principles can be used for models based on ARIMA. Note that oARIMA is not yet implemented, but in theory a model like iARIMA(0,1,1)$_O$(0,1,1) could be constructed in ADAM framework.
 
+Last but not least, in some cases we might have explanatory variables (such as promotions, prices, weather etc) that would impact both demand occurrence and demand sizes. In ADAM, we can include them in respective `oes()` and `adam()` functions. Just remember that when you include explanatory variables in the occurrence part, you are modelling the probability of occurrence, not the occurrence itself. So, for example, a promotional effect in this situation would mean that there is a higher chance of having sales. In some other situations we might not need dynamic models, such as ETS and ARIMA, and can focus on the static regression. While `adam()` supports this as well, the `alm()` function from `greybox` might be more suitable in this situation. It supports similar parameters, but its `occurrence` parameter accepts either the type of transform (`plogis` for logit model and `pnorm` for the probit one) or a previously estimated occurrence model (either from `alm()` or from `oes()`).
+
 
 ### Maximum Likelihood Estimation
 While there are different ways of estimating the parameters of ADAM model \@ref(eq:iETSG), it is worth focusing on [likelihood estimation](#likelihoodApproach). The log-likelihood of the model should consist of several parts:
@@ -392,22 +394,22 @@ While there are different ways of estimating the parameters of ADAM model \@ref(
 
 When demand occurs the likelihood is:
 \begin{equation}
-	\mathcal{L}(\boldsymbol{\theta}, \lambda_\epsilon | y_t, o_t=1) = p_t f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) ,
+	\mathcal{L}(\boldsymbol{\theta} | y_t, o_t=1) = p_t f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) ,
 	(\#eq:LogLikelihoodOccurs)
 \end{equation}
 while in the opposite case it is:
 \begin{equation}
-	\mathcal{L}(\boldsymbol{\theta}, \lambda_\epsilon | y_t, o_t=0) = (1-p_t) f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}).
+	\mathcal{L}(\boldsymbol{\theta} | y_t, o_t=0) = (1-p_t) f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}),
 	(\#eq:LogLikelihoodOccursNot)
 \end{equation}
-Based on the equations \@ref(eq:LogLikelihoodOccurs) and \@ref(eq:LogLikelihoodOccursNot), we can summarise the likelihood for the whole sample of $T$ observations:
+where $\boldsymbol{\theta}$ includes all the estimated parameters of the model and parameters of assumed distribution (i.e. scale). Based on the equations \@ref(eq:LogLikelihoodOccurs) and \@ref(eq:LogLikelihoodOccursNot), we can summarise the likelihood for the whole sample of $T$ observations:
 \begin{equation}
-	\mathcal{L}(\boldsymbol{\theta}, \lambda_\epsilon | \textbf{Y}) = \prod_{o_t=1} p_t \prod_{o_t=0} (1-p_t) \prod_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) ,
+	\mathcal{L}(\boldsymbol{\theta} | \textbf{Y}) = \prod_{o_t=1} p_t \prod_{o_t=0} (1-p_t) \prod_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) ,
 	(\#eq:LikelihoodForDGP)
 \end{equation}
 or in logarithms:
 \begin{equation}
-	\ell(\boldsymbol{\theta}, \lambda_\epsilon | \textbf{Y}) = \sum_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1-p_t),
+	\ell(\boldsymbol{\theta} | \textbf{Y}) = \sum_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}}) + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1-p_t),
 	(\#eq:LogLikelihoodForDGP)
 \end{equation}
 where $f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}})$ can be substituted by a likelihood of the assumed distribution from the list of candidates in Section \@ref(ADAMETSEstimationLikelihood) (substituting $T$ in formulae in Tables \@ref(tab:additiveErrorLikelihoods) and \@ref(tab:multiplicativeErrorLikelihoods) by $T_1$). The main issue in calculating the likelihood \@ref(eq:LogLikelihoodForDGP) is that the demand sizes are not observable when $o_t=0$. This means that we cannot calculate the likelihood using the conventional approach, we need to use something else. @Svetunkov2019a proposed using Expectation Maximisation (EM) algorithm for this purpose, which is typically done in the following stages:
@@ -419,7 +421,7 @@ where $f_z(z_t | \mathbf{v}_{z,t-\mathbf{l}})$ can be substituted by a likelihoo
 A classical example with EM is when there are several samples with different parameters and we need to split them, but we do not know where specific observations belongs to and what is the probability that each observation belongs to one of the groups. In our context, it is a slightly different idea: we know probabilities, but we do not observe some of demand sizes. If we take the expectation of \@ref(eq:LogLikelihoodForDGP) with respect to the unobserved demand sizes, we will get:
 \begin{equation}
 	\begin{aligned}
-	\ell(\boldsymbol{\theta}, {\lambda}_\epsilon | \textbf{Y}) & = \sum_{o_t=1} \log f_z \left(z_{t} | \mathbf{v}_{z,t-\mathbf{l}} \right) + \sum_{o_t=0} \text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\mathbf{l}} \right) \right) \\
+	\ell(\boldsymbol{\theta} | \textbf{Y}) & = \sum_{o_t=1} \log f_z \left(z_{t} | \mathbf{v}_{z,t-\mathbf{l}} \right) + \sum_{o_t=0} \text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\mathbf{l}} \right) \right) \\
 	& + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1- p_t)
 	\end{aligned}.
 	(\#eq:LogLikelihoodForDGPExpectation)
@@ -475,9 +477,6 @@ In fact, it can be shown that the likelihood estimates of scales for different d
 \end{equation}
 where $k$ is the number of all estimated parameters.
 
-Another related thing to note is that all the iETS models, whatever the estimator is used, will produce [positively biased](#estimatesPropertiesBias) estimates of the smoothing parameters [see explanation in @Svetunkov2019a]. This is caused by the assumption that the potential demand might chang between the the observed sales. In this situation the components would evolve over time slowly, while we would only see their value before the row of zeroes and afterwards, which will make model catch up to the data. This also implies that such forecasting methods as Croston [@Croston1972] and TSB [@Teunter2011] would also result in positively biased estimates of parameters, if we assume that demand might change between the non-zero observations.
-
-Last but not least, while it is possible to use any ETS / ARIMA model for both demand occurrence and demand sizes of the ADAM model, some of the specific model types are either impossible or very difficult to estimate. For example, seasonality on intermittent data is not very well pronounced, so estimating the initial values of components of seasonal models (such as ETS(M,N,M)) is not a trivial task. In some cases, if we have several products in a group that exhibit the same seasonal patterns, we can aggregate them to the group level in order to get a better estimate of seasonal indices, and then use them on the lower level. `adam()` function allows doing that via `initial=list(seasonal=seasonalIndices)`.
 
 <!-- ### Conditional means and variance -->
 
@@ -552,7 +551,15 @@ plot(adamModeliARIMA,7)
 ```
 
 
-<!-- ## Other related models -->
-<!-- occurrence with provided values -->
-<!-- occurrence estimated by alm() -->
-<!-- Estimate initial seasonal on aggregate level -->
+## Intermittent demand challenges
+Intermittent demand is complicated and is difficult to work with. As a result, there are several challenges that are related to ADAM model specifically and to the intermittent demand in general that are worth discussing.
+
+First, given the presence of zeroes, the [decomposition](#ClassicalDecomposition) of intermittent time series does not make sense. The classical time series model assumes that the demand happens on every observation, while the intermittent demand happens irregularly. This makes all the conventional models inapplicable to the problem, although some of them might still work well in some cases (for example, [SES](#SES) in case of slightly intermittent data).
+
+Second, follows directly from the previous point: while it is possible to use any ETS / ARIMA model for both demand occurrence and demand sizes of the ADAM model, some of the specific model types are either impossible or very difficult to estimate. For example, seasonality on intermittent data is not very well pronounced, so estimating the initial values of components of seasonal models (such as ETS(M,N,M)) is not a trivial task. In some cases, if we have several products in a group that exhibit the same seasonal patterns, we can aggregate them to the group level in order to get a better estimate of seasonal indices, and then use them on the lower level. `adam()` function allows doing that via `initial=list(seasonal=seasonalIndices)`.
+
+Third, in some cases you might know, when specifically demand will happen (for example, Kiwis stop growing in New Zealand from May till September, so the crop will go down around that time). In this case, you do not need a proper intermittent demand model, you just need to deal with demand sizes via ADAM ETS / ARIMA and provide zeroes and ones in the demand occurrence part for the variable $o_t$. This can be done in `adam()` via `occurrence=ot`, where `ot` contains zeroes and ones for each observation.
+
+Fourth, more specialised models, such as iETS, will produce [positively biased](#estimatesPropertiesBias) estimates of the smoothing parameters, whatever the estimator is used [see explanation in @Svetunkov2019a]. This is caused by the assumption that the potential demand might change between the the observed sales. In this situation the components would evolve over time slowly, while we would only see their values before the set of zeroes and afterwards, which will make the applied model catch up to the data, increasing the values of smoothing parameters. This also implies that such forecasting methods as Croston [@Croston1972] and TSB [@Teunter2011] would also result in positively biased estimates of parameters, if we assume that demand might change between the non-zero observations. Practically speaking, this means that the smoothing parameters will be higher than needed, implying more rapid changes in components and higher uncertainty in final forecasts.
+
+<!-- Finally, Kourentzes & Athanasopoulos paper on intermittent demand -->
