@@ -107,9 +107,9 @@ where $e_{a,t}$ is the proxy for the unobservable error term $\epsilon_{a,t}$ an
 
 Finally, in order to estimate the model \@ref(eq:oETSOddsMNNEstimated), the likelihood \@ref(eq:oETSLikelihood) can be used.
 
-The occurrence part of the model oETS$_O$ is constructed using the very same `oes()` function, but also allows specifying the ETS model to use. For example, here is the oETS$_O$(M,Md,N) model:
+The occurrence part of the model oETS$_O$ is constructed using the very same `oes()` function, but also allows specifying the ETS model to use. For example, here is the oETS$_O$(M,M,N) model:
 ```{r oETSOExample1}
-oETSOModel <- oes(y, model="MMdN", occurrence="odds-ratio", h=10, holdout=TRUE)
+oETSOModel <- oes(y, model="MMN", occurrence="odds-ratio", h=10, holdout=TRUE)
 oETSOModel
 plot(oETSOModel)
 ```
@@ -149,9 +149,9 @@ where $e_{b,t}$ is the proxy for the unobservable error term $\epsilon_{b,t}$ an
 
 @Svetunkov2019a show that the oETS$_I$(M,N,N) model can also be estimated using Croston's method, as long as we can assume that the probability does not change over time substantially. In this case the demand intervals can be used instead of $\hat{\mu}_{b,t}$ in \@ref(eq:oETSInverseOddsMNNEstimated). So the iETS(M,N,N)$_I$(M,N,N) can be considered as the model underlying Croston's method.
 
-The function `oes()` implements the oETS$_I$ model as well. For example, here is the oETS$_I$(M,Md,N) model:
+The function `oes()` implements the oETS$_I$ model as well. For example, here is the oETS$_I$(M,M,N) model:
 ```{r oETSIExample1}
-oETSIModel <- oes(y, model="MMdN", occurrence="inverse-odds-ratio", h=10, holdout=TRUE)
+oETSIModel <- oes(y, model="MMN", occurrence="inverse-odds-ratio", h=10, holdout=TRUE)
 oETSIModel
 plot(oETSIModel)
 ```
@@ -296,9 +296,9 @@ An important feature of this model is that it allows probability to become eithe
 
 When it comes to initialising the oETS$_D$ model, the values are calculated directly from the data without any additional transformations.
 
-Here's an example of the application of the oETS$_D$(M,Md,N) to the same artificial data:
+Here's an example of the application of the oETS$_D$(M,M,N) to the same artificial data:
 ```{r oETSDExample1}
-oETSDModel <- oes(y, model="MMdN", occurrence="d", h=10, holdout=TRUE)
+oETSDModel <- oes(y, model="MMN", occurrence="d", h=10, holdout=TRUE)
 oETSDModel
 plot(oETSDModel)
 ```
@@ -543,13 +543,13 @@ plot(y)
 This can be done using `adam()` function from `smooth` package, defining the type of occurrence to use. We will try several options and select the one that has the lowest AICc:
 ```{r}
 adamModelsiETS <- vector("list",4)
-adamModelsiETS[[1]] <- adam(y, "MMdN", occurrence="odds-ratio",
+adamModelsiETS[[1]] <- adam(y, "MMN", occurrence="odds-ratio",
                             h=10, holdout=TRUE)
-adamModelsiETS[[2]] <- adam(y, "MMdN", occurrence="inverse-odds-ratio",
+adamModelsiETS[[2]] <- adam(y, "MMN", occurrence="inverse-odds-ratio",
                             h=10, holdout=TRUE)
-adamModelsiETS[[3]] <- adam(y, "MMdN", occurrence="direct",
+adamModelsiETS[[3]] <- adam(y, "MMN", occurrence="direct",
                             h=10, holdout=TRUE)
-adamModelsiETS[[4]] <- adam(y, "MMdN", occurrence="general",
+adamModelsiETS[[4]] <- adam(y, "MMN", occurrence="general",
                             h=10, holdout=TRUE)
 adamModelsiETSAICcs <- setNames(sapply(adamModelsiETS,AICc),
                                 c("odds-ratio","inverse-odds-ratio","direct","general"))
@@ -570,12 +570,12 @@ adamModelsiETS[[i]]$occurrence
 plot(adamModelsiETS[[i]]$occurrence)
 ```
 
-Depending on the generated data, there might be issues in the ETS(M,Md,N) model for demand sizes, if the smoothing parameters are large. So, we can try out the ADAM logARIMA(1,1,2) to see how it compares with this model. Given that ARIMA is not yet implemented for the occurrence part of the model, we need to construct it separately and then use in `adam()`:
+Depending on the generated data, there might be issues in the ETS(M,M,N) model for demand sizes, if the smoothing parameters are large. So, we can try out the ADAM logARIMA(0,2,2) to see how it compares with this model. Given that ARIMA is not yet implemented for the occurrence part of the model, we need to construct it separately and then use in `adam()`:
 
 ```{r}
-oETSModel <- oes(y, "MMdN", occurrence=names(adamModelsiETSAICcs)[i],
+oETSModel <- oes(y, "MMN", occurrence=names(adamModelsiETSAICcs)[i],
                  h=10, holdout=TRUE)
-adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(1,1,2),
+adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(0,2,2),
                         distribution="dlnorm", h=10, holdout=TRUE)
 adamModeliARIMA
 plot(adamModeliARIMA,7)
@@ -584,7 +584,7 @@ plot(adamModeliARIMA,7)
 Comparing the iARIMA model with the previous iETS based on AIC would not be fair, because as soon as the occurrence model is provided to `adam()`, he does not count the parameters estimated in that part towards the overal number of estimated parameters. In order to make the comparison fair, we need to estimate ADAM iETS in the following way:
 
 ```{r}
-adamModelsiETS[[i]] <- adam(y, "MMdN", occurrence=oETSModel,
+adamModelsiETS[[i]] <- adam(y, "MMN", occurrence=oETSModel,
                             h=10, holdout=TRUE)
 adamModelsiETS[[i]]
 plot(adamModelsiETS[[i]],7)
@@ -593,7 +593,7 @@ plot(adamModelsiETS[[i]],7)
 Comparing information criteria, the iETS model is more appropriate for this data. But this might be due to a different distributional assumptions and difficulties estimating ARIMA model. If you want to experiment more with ADAM iARIMA, you might try [fine tuning](#ADAMInitialisationOptAndBack) it for the data either by increasing the `maxeval` or changing the initialisation, for example:
 
 ```{r}
-adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(1,1,2),
+adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(0,2,2),
                         distribution="dinvgauss", h=10, holdout=TRUE, initial="back")
 adamModeliARIMA
 plot(adamModeliARIMA,7)
