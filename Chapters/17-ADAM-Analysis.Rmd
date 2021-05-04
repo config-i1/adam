@@ -1,0 +1,127 @@
+# Model diagnostics
+In this chapter we investigate how ADAM can be diagnosed and improved. The majority of topics will build upon the typical model assumptions discussed in Section \@ref(assumptions). In order to make this more actionable, we will consider an example of the following ADAM ETS model:
+
+```{r}
+adamModel <- adam(AirPassengers, "AAA")
+plot(adamModel,7)
+```
+
+While the original data exhibits multiplicative seasonality and trend, we fit the pure additive model in order to see how it can be then diagnosed and improved upon.
+
+
+## Outlier {#Outliers}
+As we discussed in Section \@ref(assumptionsCorrectModel), one of the important assumptions in forecasting and analytics is the correct specification of the model, which also includes "no outliers in the model" element. Outliers might appear for many different reasons:
+
+1. We missed some important information (e.g. promotion) and did not include a respective variable in the model;
+2. There was an error in recordings of the data, i.e. a value of 2000 was recorded as 200;
+3. We did not miss anything predictable, we just deal with a distribution with fat tails.
+
+In any of these cases, outliers will impact estimates of parameters of our models. In case of ETS, this will lead to higher than needed smoothing parameters, which leads to wider prediction intervals and potentially biased forecasts. In case of ARIMA, the mechanism is more complicated, but also leads to widened intervals and biased forecasts. So, it is important to identify outliers and deal with them.
+
+### Outliers identification
+One of the simplest ways for identifying outliers is based on distributional assumptions. For example, if we assume that our data follows normal distribution, then we would expect 95% of observations lie inside the bounds with approximately $\pm 1.96\sigma$ and 99.8% of them to lie inside the $\pm3.09 \sigma$. Sometimes these values are substituted by heuristic "values lying inside 2 / 3 sigmas", which is not precise and works only for Normal distribution. Still, based on this, we could flag the values outside these bounds and investigate them in order to see if any of them are indeed outliers.
+
+Given that ADAM framework supports [different distributions](#distributions), the heuristics mentioned above is not appropriate. We need to get proper quantiles for each of the assumed distributions. Luckily, this is not difficult to do, because the quantile functions for all the distributions supported by ADAM either have analytical forms or can be obtained numerically.
+
+Given that we typically make assumptions about the error term, it makes sense to analyse the residuals of the model. And relatively simple way of identifying outliers in this case is via the fitted vs standardised residuals plot. The formula for the standardised residuals should differ depending on the assumed distribution and for some of them comes to the value inside the "$\exp$" part of the [probability density function](#distributions):
+
+1. Normal, $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$: $u_t = \frac{e_t - \bar{e}}{\hat{\sigma}}$;
+2. Laplace, $\epsilon_t \sim \mathcal{Laplace}(0, s)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}}$;
+3. S, $\epsilon_t \sim \mathcal{S}(0, s)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}^2}$;
+4. Generalised Normal, $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}^{\frac{1}{\beta}}}$;
+5. Inverse Gaussian, $1+\epsilon_t \sim \mathcal{IG}(1, s)$: $u_t = \frac{1+e_t}{\bar{e}}$;
+6. Gamma, $1+\epsilon_t \sim \mathcal{\Gamma}(s^{-1}, s)$: $u_t = \frac{1+e_t}{\bar{e}}$;
+7. Log Normal, $1+\epsilon_t \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$: $u_t = \frac{e_t - \bar{e} +\frac{\hat{\sigma}^2}{2}}{\hat{\sigma}}$.
+
+where $\bar{e}$ is the mean of residuals, which is typically assumed to be zero and $u_t$ is the value of standardised residuals. Note that the scales in the formulae above should be calculated via the formula with the bias correction, i.e. with the division by degrees of freedom, not the number of observations. Also, note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$ and additive error models, the formulae for the standardised residuals will be the same, only the assumptions will change (see Section \@ref(ADAMETSAdditiveDistributions)).
+
+Here is an example in R with the same model as before and the standardised residuals vs fitted values with the 95% bounds:
+
+```{r}
+plot(adamModel, 2, level=0.95)
+```
+
+The plot demonstrates that there are some outliers that appear when the fitted values increase. Although the amount of outliers is not big, it would make sense investigating why they happened. Well, we know why - we constructed an incorrect model. We can also see that the LOESS line (red line in the middle) is not straight and has a U-shape. This indicates that there is some non-linearity in the data, which we missed. Given that we deal with time series, plotting residuals vs time is also sometimes helpful:
+
+```{r}
+plot(adamModel, 8)
+```
+
+This plot shows us that all the outliers happen at the end of the time series. It also shows us that the variability of the residuals changes over time. These things indicate that we should use multiplicative model instead of the additive one. We can easily fix this by running:
+
+```{r}
+adamModelMultiplicative <- adam(AirPassengers, "MMM")
+```
+
+and analysing the results:
+```{r}
+par(mfcol=c(2,1))
+plot(adamModelMultiplicative, c(2,8))
+```
+
+Note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$, the function will plot $\log u_t$ in order to make the plot more readable. We now see that the residuals do not exhibit those issues as discussed above, but we now have 8 observations lying outside the bounds, although all of them are very close to them. Given that the sample contains 144 observations, this means that the 95% interval contains $\frac{144-8}{144} \times 100 \mathrm{\%} \approx 94\mathrm{\%}$ of observations. This is close to the nominal, so we probably do not have real outliers in the data. If this was a real situation, I would still recommend investigating those of the observations that lie further away in order to understand whether they indeed happened at random. But this is a toy example, so we leave it on that.
+
+In some cases, standardised residuals might not provide the correct information because of the impact of outliers on the scale of distribution (e.g. the estimated variance would increase if there are outliers). In order to address this issue, studentised residuals can be used. They are calculated similarly to the standardised ones, but the scale of distribution is recalculated for each observation by considering errors on all observations but the current one. So, in a general case, this is an iterative procedure which involves looking through $t=\{1,\dots,T\}$ and which should in theory guarantee that the real outliers do not impact the scale of distribution. Here how they can be analysed in R:
+
+```{r}
+par(mfcol=c(2,1))
+plot(adamModelMultiplicative, c(3,9))
+```
+
+In many cases the standardised and studentised residuals will look very similar, but in some cases of extreme outliers they might differ and the latter might show outliers better than the former.
+
+As a side note, in R, there are several methods for extracting residuals:
+
+- `resid()` or `residuals()` will extract either $e_t$ or $1+e_t$, depending on the distributional assumptions of the model;
+- `rstandard()` will extract the standardised residuals $u_t$;
+- `rstudent()` will do the same for the studentised ones.
+
+
+### Dealing with outliers 
+There are also automated methods for outliers identification. For example, the package `greybox` has a method `outlierdummy`, which extracts either standardised or studentised residuals and flags those observations that lie outside the constructed interval, automatically creating dummy variables for these observations. Here how it works:
+
+```{r}
+adamModelOutliers <- outlierdummy(adamModelMultiplicative,
+                                  level=0.95, type="rstandard")
+```
+
+The method returns several objects (see documentation for details), including the ids of outliers:
+```{r}
+adamModelOutliers$id
+```
+Based on the output of this method, we can construct a model with explanatory variables to interpolate the outliers and neglect their impact on the model:
+
+```{r}
+AirPassengersData <- cbind(y=AirPassengers,outliers=adamModelOutliers$outliers)
+adamModelMultiplicativeOutliers <- adam(AirPassengersData, "MMM")
+adamModelMultiplicativeOutliers
+```
+
+In order to decide, whether the dummy variables help or not, we can use information criteria, comparing the two models:
+```{r}
+setNames(c(AICc(adamModelMultiplicative),
+           AICc(adamModelMultiplicativeOutliers)),
+         c("ETS","ETSX"))
+```
+Comparing the two values above, I would conclude that the dummy variables do not help and that we do not have outliers in our model.
+
+
+### An automatic mechanism
+A similar mechanism is implemented in `adam()` function, which has `outliers` parameter, defining what to do with outliers if there are any with three options:
+
+1. "ignore" - do nothing;
+2. "use" - create the model with explanatory variables as shown in the previous subsection and see if it is better than the simpler model in terms of an information criterion;
+3. "select" - create lags and leads of dummies from `outlierdummy()` and then select the dummies based on the [explanatory variables selection mechanism](#ETSXSelection). Lags and leads are needed for cases, when the effect of outlier is carried over to neighbouring observations.
+
+Here how this works for our case:
+```{r}
+adamModelMultiplicativeAutoOutliers <- adam(AirPassengers, "MMM",
+                                            outliers="select", level=0.95)
+adamModelMultiplicativeAutoOutliers
+```
+
+This results in a model that automatically detects `r length(adamModelMultiplicativeAutoOutliers$initial$xreg)` observations as outliers. Given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might lead to overfitting. I would still recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
+
+
+### Final words
+@Koehler2012 explored the question of the impact of outliers on ETS performance in terms of forecasting accuracy. They found that if outliers happen at the end of the time series then it is important to take them into account in a model. If they happen much earlier, then their impact on the final forecast will be negligible. Unfortunately, the authors did not explore the impact of outliers on the prediction intervals, and based on my experience I can tell that the main impact of outliers is on the width of the interval.
