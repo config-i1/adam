@@ -11,33 +11,91 @@ d. No outliers in the model.
 4. [The explanatory variables are not correlated with anything but the response variable](#assumptionsXreg);
 5. [The residuals follow the specified distribution](#assumptionsDistribution).
 
-In order to make this more actionable, we will consider an example of the following ADAM ETS model:
+All the model diagnostics is aimed at spotting patterns in residuals. If there are some, then something is probably missing in the model. In this chapter we will discuss, which instruments can be used to diagnose different types of assumptions
 
+<!-- In order to make this more actionable, we will consider an example of the following ADAM ETS model: -->
+
+<!-- ```{r} -->
+<!-- adamModelAir <- adam(AirPassengers, "AAN") -->
+<!-- plot(adamModelAir,7) -->
+<!-- ``` -->
+
+<!-- While the original data exhibits multiplicative seasonality and trend, we fit the pure additive non-seasonal model in order to see how it can be then diagnosed and improved upon. -->
+
+In order to make this more actionable, we will consider a conventional regression model on `Seatbelts` data. This can be estimated equally well either with `adam()` from `smooth` or `alm()` from `greybox`. In general, I recommend using `alm()`, when no dynamic elements are present in the model, but for illustrative purposes we will do this with `adam()`:
 ```{r}
-adamModel <- adam(AirPassengers, "AAA")
-plot(adamModel,7)
+adamModelSeat01 <- adam(Seatbelts,"NNN",formula=drivers~PetrolPrice+kms)
+plot(adamModelSeat01,7)
 ```
 
-While the original data exhibits multiplicative seasonality and trend, we fit the pure additive model in order to see how it can be then diagnosed and improved upon.
-
-<!-- Additional model based on alm -->
+This model has several issues, and in this chapter we will discuss how to diagnose and fix them.
 
 
-<!-- ## Model is correctly specified: Omitted variables -->
-<!-- Residuals vs potential variables -->
-<!-- Missing structure -->
+## Model specification: Omitted variables
+We start with one of the most important assumptions for models: model has not omitted important variables. In general this is difficult to diagnose, because typically it is not possible what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of variables are missing, the next step would be to either collect the variables themselves or their proxies. One way or another, we would need to add the missing information in the model.
+
+In some cases we might be able to diagnose this. For example, with our regression model from the previous section, we have a set of variables that are not included in the model. A simple thing to do would be to see if the residuals of our model are correlated with any of the omitted variables. We can either produce scatterplots or calculate measures of association to see if there is some relation in the residuals that is not explained by the existing structure. I will use `assoc()` and `spread()` functions from `greybox` for this:
+
+```{r}
+# Create a new matrix, removing the variables that are already in the model
+SeatbeltsWithResiduals <- cbind(as.data.frame(residuals(adamModelSeat01)), Seatbelts[,-c(2,5,6)])
+colnames(SeatbeltsWithResiduals)[1] <- "residuals"
+# Spread plot
+greybox::spread(SeatbeltsWithResiduals)
+```
+
+`spread()` function automatically detects the type of variable and produces scatterplot / `boxplot()` / `tableplot()` between them, making the final plot more readable. The plot above tells us that residuals are correlated with `DriversKilled`, `front`, `rear` and `law`, so some of these variables can be added to the model to improve it. `VanKilled` might have a weak relation with `drivers`, but judging by description does not make sense in the model (this is a part of the `drivers` variable). In our case, it is safe to add these variables, because they make sense in explaining the number of injured drivers. However, I would not add `DriversKilled` as it seems not to drive the number of deaths and injuries, but is just correlated with it for obvious reasons (`DriversKilled` is included in `drivers`). We can also calculate measures of association between variables:
+```{r}
+greybox::assoc(SeatbeltsWithResiduals)
+```
+Technically speaking, the output of this function tells us that all variables are correlated with residuals and can be considered in the model. I would still prefer not to add `DriversKilled` in the model for the reasons explained earlier. We can construct a new model in the following way:
+```{r}
+adamModelSeat02 <- adam(Seatbelts,"NNN",formula=drivers~PetrolPrice+kms+front+rear+law)
+plot(adamModelSeat02,7)
+```
+
+How can we know that we have not omitted any important variables in our new model? Unfortunately, there is no good way of knowing that. In general, we should use judgment in order to decide whether anything else is needed or not. But given that we deal with time series, we can analyse residuals over time and see if there is any structure left:
+
+```{r}
+plot(adamModelSeat02,8)
+```
+
+This plot shows that the model has not captured seasonality and that there is stil some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model:
+```{r}
+adamModelSeat03 <- adam(Seatbelts,"ANA",formula=drivers~PetrolPrice+kms+front+rear+law)
+par(mfcol=c(2,1))
+plot(adamModelSeat03,7:8)
+```
+
+This is much better. There is no apparent missing structure in the data and no apparent omitted variables. We can now move to the next steps of diagnostics.
 
 
-<!-- ## Model is correctly specified: Redundant variables -->
-<!-- Critical analysis -->
+## Model specification: Redundant variables
+While there are some ways of testing for omitted variables, the redundant ones are very difficult to diagnose. Yes, we could look at the [significance of variables](#hypothesisTesting) or compare models with and without some variables based on [information criteria](#informationCriteria), but even if our approaches say that a variable is not significant, this does not mean that it is not needed in the model. There can be many reasons, why a test would fail to reject H$_0$ and AIC would prefer a model without the variable under consideration. So, it comes to using judgment, trying to figure out whether a variable is needed in the model or not.
+
+In the example with Seatbelt data, `DriversKilled` would be a redundant variable. Let's see what happens with the model in this case:
+
+```{r}
+adamModelSeat04 <- adam(Seatbelts,"NNN",formula=drivers~PetrolPrice+kms+front+rear+law+DriversKilled)
+par(mfcol=c(2,1))
+plot(adamModelSeat04,7:8)
+```
+
+The residuals from this model look adequate, with only issue being the first 45 observations lying below the zero line. The summary of this model is:
+```{r}
+summary(adamModelSeat04)
+```
+The uncertainty around the parameter `DriversKilled` is narrow, showing that the variable has a positive impact on the `drivers`. However the issue here is not statistical, but rather fundamental: we have included the variable that is a part of our response variable. It does not explain why drivers get injured and killed, it just reflects a specific part of this relation. So it explains part of the variance, which should have been explained by other variables (e.g. `kms` and `law`), making them statistically not significant. So, based on technical analysis we would be inclined to keep the variable, but based on our understanding of the problem we should not.
+
+If we have redundant variables in the model, then the model might overfit the data, leading to narrower prediction intervals and biased forecasts. The parameters of such model are typically unbiased, but inefficient.
 
 
-<!-- ## Model is correctly specified: Transformations -->
+<!-- ## Model specification: Transformations -->
 <!-- Actuals vs Fitted, -->
 <!-- Rstandard vs Fitted -->
 
 
-## Model is correctly specified: Outlier {#DiagnosticsOutliers}
+## Model specification: Outlier {#DiagnosticsOutliers}
 As we discussed in Section \@ref(assumptionsCorrectModel), one of the important assumptions in forecasting and analytics is the correct specification of the model, which also includes "no outliers in the model" element. Outliers might appear for many different reasons:
 
 1. We missed some important information (e.g. promotion) and did not include a respective variable in the model;
@@ -66,25 +124,25 @@ where $\bar{e}$ is the mean of residuals, which is typically assumed to be zero 
 Here is an example in R with the same model as before and the standardised residuals vs fitted values with the 95% bounds:
 
 ```{r}
-plot(adamModel, 2, level=0.95)
+plot(adamModelAir, 2, level=0.95)
 ```
 
 The plot demonstrates that there are some outliers that appear when the fitted values increase. Although the amount of outliers is not big, it would make sense investigating why they happened. Well, we know why - we constructed an incorrect model. We can also see that the LOESS line (red line in the middle) is not straight and has a U-shape. This indicates that there is some non-linearity in the data, which we missed. Given that we deal with time series, plotting residuals vs time is also sometimes helpful:
 
 ```{r}
-plot(adamModel, 8)
+plot(adamModelAir, 8)
 ```
 
 This plot shows us that all the outliers happen at the end of the time series. It also shows us that the variability of the residuals changes over time. These things indicate that we should use multiplicative model instead of the additive one. We can easily fix this by running:
 
 ```{r}
-adamModelMultiplicative <- adam(AirPassengers, "MMM")
+adamModelAirMultiplicative <- adam(AirPassengers, "MMM")
 ```
 
 and analysing the results:
 ```{r}
 par(mfcol=c(2,1))
-plot(adamModelMultiplicative, c(2,8))
+plot(adamModelAirMultiplicative, c(2,8))
 ```
 
 Note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$, the function will plot $\log u_t$ in order to make the plot more readable. We now see that the residuals do not exhibit those issues as discussed above, but we now have 8 observations lying outside the bounds, although all of them are very close to them. Given that the sample contains 144 observations, this means that the 95% interval contains $\frac{144-8}{144} \times 100 \mathrm{\%} \approx 94\mathrm{\%}$ of observations. This is close to the nominal, so we probably do not have real outliers in the data. If this was a real situation, I would still recommend investigating those of the observations that lie further away in order to understand whether they indeed happened at random. But this is a toy example, so we leave it on that.
@@ -93,7 +151,7 @@ In some cases, standardised residuals might not provide the correct information 
 
 ```{r}
 par(mfcol=c(2,1))
-plot(adamModelMultiplicative, c(3,9))
+plot(adamModelAirMultiplicative, c(3,9))
 ```
 
 In many cases the standardised and studentised residuals will look very similar, but in some cases of extreme outliers they might differ and the latter might show outliers better than the former.
@@ -109,26 +167,26 @@ As a side note, in R, there are several methods for extracting residuals:
 There are also automated methods for outliers identification. For example, the package `greybox` has a method `outlierdummy`, which extracts either standardised or studentised residuals and flags those observations that lie outside the constructed interval, automatically creating dummy variables for these observations. Here how it works:
 
 ```{r}
-adamModelOutliers <- outlierdummy(adamModelMultiplicative,
+adamModelAirOutliers <- outlierdummy(adamModelAirMultiplicative,
                                   level=0.95, type="rstandard")
 ```
 
 The method returns several objects (see documentation for details), including the ids of outliers:
 ```{r}
-adamModelOutliers$id
+adamModelAirOutliers$id
 ```
 Based on the output of this method, we can construct a model with explanatory variables to interpolate the outliers and neglect their impact on the model:
 
 ```{r}
-AirPassengersData <- cbind(y=AirPassengers,outliers=adamModelOutliers$outliers)
-adamModelMultiplicativeOutliers <- adam(AirPassengersData, "MMM")
-adamModelMultiplicativeOutliers
+AirPassengersData <- cbind(y=AirPassengers,outliers=adamModelAirOutliers$outliers)
+adamModelAirMultiplicativeOutliers <- adam(AirPassengersData, "MMM")
+adamModelAirMultiplicativeOutliers
 ```
 
 In order to decide, whether the dummy variables help or not, we can use information criteria, comparing the two models:
 ```{r}
-setNames(c(AICc(adamModelMultiplicative),
-           AICc(adamModelMultiplicativeOutliers)),
+setNames(c(AICc(adamModelAirMultiplicative),
+           AICc(adamModelAirMultiplicativeOutliers)),
          c("ETS","ETSX"))
 ```
 Comparing the two values above, I would conclude that the dummy variables do not help and that we do not have outliers in our model.
@@ -143,12 +201,12 @@ A similar mechanism is implemented in `adam()` function, which has `outliers` pa
 
 Here how this works for our case:
 ```{r}
-adamModelMultiplicativeAutoOutliers <- adam(AirPassengers, "MMM",
+adamModelAirMultiplicativeAutoOutliers <- adam(AirPassengers, "MMM",
                                             outliers="select", level=0.95)
-adamModelMultiplicativeAutoOutliers
+adamModelAirMultiplicativeAutoOutliers
 ```
 
-This results in a model that automatically detects `r length(adamModelMultiplicativeAutoOutliers$initial$xreg)` observations as outliers. Given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might lead to overfitting. I would still recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
+This results in a model that automatically detects `r length(adamModelAirMultiplicativeAutoOutliers$initial$xreg)` observations as outliers. Given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might lead to overfitting. I would still recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
 
 ### Final remarks
 @Koehler2012 explored the question of the impact of outliers on ETS performance in terms of forecasting accuracy. They found that if outliers happen at the end of the time series then it is important to take them into account in a model. If they happen much earlier, then their impact on the final forecast will be negligible. Unfortunately, the authors did not explore the impact of outliers on the prediction intervals, and based on my experience I can tell that the main impact of outliers is on the width of the interval.
