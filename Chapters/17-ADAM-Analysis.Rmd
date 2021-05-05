@@ -233,16 +233,17 @@ In order to decide, whether the dummy variables help or not, we can use informat
 setNames(c(AICc(adamModelSeat05), AICc(adamModelSeat06)),
          c("ETSX","ETSXOutliers"))
 ```
-Comparing the two values above, I would conclude that the dummy variables do not help and that we should not include all outliers in the data. Istead of including all of them, we can try the model with the outlier for the observation 170, which corresponds to the eighth outlier (as this one was the main suspect):
+Comparing the two values above, I would conclude that adding dummies improves the model. But instead of including all of them, we could try the model with the outlier for the suspicious observation 170, which corresponds to the fifth outlier:
 
 ```{r}
 adamModelSeat07 <- adam(SeatbeltsWithOutliers,"MNM",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law+outlier8)
+                        formula=drivers~PetrolPrice+kms+front+rear+law+outlier5)
 plot(adamModelSeat07,2)
 adamModelSeat07
 ```
 
-However this model is not better than the previous one (in terms of AICc) and has a different set of outliers. So, we can probably come to conclusion that the outliers in our case happen at random and can be ignored.
+This model seems to be better than the previous ones in terms of AICc, so we would be inclined to use it for further inference.
+
 
 ### An automatic mechanism
 A similar automated mechanism is implemented in `adam()` function, which has `outliers` parameter, defining what to do with outliers if there are any with the following three options:
@@ -259,7 +260,8 @@ adamModelSeat08 <- adam(Seatbelts,"MNM",lags=12,
 adamModelSeat08
 ```
 
-In our case, the function neglects all the outliers, agreeing with what we have found previously. Given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might select unnecessary dummy variables and lead to overfitting. I would still recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
+This automatic procedure will form a matrix that will include original variables together with the outliers, their lags and leads and then select those of them that minimise AIC in a stepwise procedure (as discussed in Section \@ref(ETSXSelection)). In our case, the function throws away some of the important variables and sticks with some of outliers. This might also happen because it could not converge to the optimum on each iteration, so increasing `maxeval` might help. Still, given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might select unnecessary dummy variables and lead to overfitting. I would recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
+
 
 ### Final remarks
 @Koehler2012 explored the question of the impact of outliers on ETS performance in terms of forecasting accuracy. They found that if outliers happen at the end of the time series then it is important to take them into account in a model. If they happen much earlier, then their impact on the final forecast will be negligible. Unfortunately, the authors did not explore the impact of outliers on the prediction intervals, and based on my experience I can tell that the main impact of outliers is on the width of the interval.
