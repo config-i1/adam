@@ -13,15 +13,6 @@ d. No outliers in the model.
 
 All the model diagnostics is aimed at spotting patterns in residuals. If there are some, then something is probably missing in the model. In this chapter we will discuss, which instruments can be used to diagnose different types of assumptions
 
-<!-- In order to make this more actionable, we will consider an example of the following ADAM ETS model: -->
-
-<!-- ```{r} -->
-<!-- adamModelAir <- adam(AirPassengers, "AAN") -->
-<!-- plot(adamModelAir,7) -->
-<!-- ``` -->
-
-<!-- While the original data exhibits multiplicative seasonality and trend, we fit the pure additive non-seasonal model in order to see how it can be then diagnosed and improved upon. -->
-
 In order to make this more actionable, we will consider a conventional regression model on `Seatbelts` data. This can be estimated equally well either with `adam()` from `smooth` or `alm()` from `greybox`. In general, I recommend using `alm()`, when no dynamic elements are present in the model, but for illustrative purposes we will do this with `adam()`:
 ```{r}
 adamModelSeat01 <- adam(Seatbelts,"NNN",formula=drivers~PetrolPrice+kms)
@@ -90,9 +81,67 @@ The uncertainty around the parameter `DriversKilled` is narrow, showing that the
 If we have redundant variables in the model, then the model might overfit the data, leading to narrower prediction intervals and biased forecasts. The parameters of such model are typically unbiased, but inefficient.
 
 
-<!-- ## Model specification: Transformations -->
-<!-- Actuals vs Fitted, -->
-<!-- Rstandard vs Fitted -->
+## Model specification: Transformations
+The question of appropriate transformations for variables in the model is challenging, because it is difficult to decide, what sort of transformation is needed, if needed at all. In many cases, this comes to selecting between additive linear model and a multiplicative one. This implies that we compare the model:
+\begin{equation}
+	y_t = a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + \epsilon_t,
+  (\#eq:additiveModel)
+\end{equation}
+and
+\begin{equation}
+	y_t = \exp\left(a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + \epsilon_t\right) .
+  (\#eq:multiplicativeModel)
+\end{equation}
+The latter model is equivalent to the so called "log-linear" model, but can also include logarithms of explanatory variables instead of the variables themselves.
+
+There are different ways to diagnose the problem with wrong transformations, which sometimes help in detecting it. The first one is the actuals vs fitted plot:
+
+```{r}
+plot(adamModelSeat03,1)
+```
+
+The grey dashed line on the plot corresponds to the situation, when actuals and fitted coincide (100% fit). The red line on the plot above is LOESS line, produced by `lowess()` function in R, smoothing the scatterplot to reflect the potential tendencies in the data. In the ideal situation this red line should coinside with the grey line. In addition the variability around the line should not change with the increase of fitted values. In our case there is a slight U-shape in the red line and an insignificant increase in variability around the middle of the data. This could either be due to pure randomness and thus should be ignored, or could indicate a slight non-linearity in the data. After all, we have constructed pure additive model on the data that exhibits seasonality with multiplicative characteristics, which becomes especially apparent at the end of the series, where the drop in level is accompanied by the decrease of variability of the data:
+
+```{r}
+plot(adamModelSeat03,7)
+```
+
+In order to diagnose this properly, we might use other instruments. One of these is the analysis of standardised residuals. The formula for the standardised residuals will differ depending on the assumed distribution and for some of them comes to the value inside the "$\exp$" part of the [probability density function](#distributions):
+
+1. Normal, $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$: $u_t = \frac{e_t - \bar{e}}{\hat{\sigma}}$;
+2. Laplace, $\epsilon_t \sim \mathcal{Laplace}(0, s)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}}$;
+3. S, $\epsilon_t \sim \mathcal{S}(0, s)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}^2}$;
+4. Generalised Normal, $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}^{\frac{1}{\beta}}}$;
+5. Inverse Gaussian, $1+\epsilon_t \sim \mathcal{IG}(1, s)$: $u_t = \frac{1+e_t}{\bar{e}}$;
+6. Gamma, $1+\epsilon_t \sim \mathcal{\Gamma}(s^{-1}, s)$: $u_t = \frac{1+e_t}{\bar{e}}$;
+7. Log Normal, $1+\epsilon_t \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$: $u_t = \frac{e_t - \bar{e} +\frac{\hat{\sigma}^2}{2}}{\hat{\sigma}}$.
+where $\bar{e}$ is the mean of residuals, which is typically assumed to be zero and $u_t$ is the value of standardised residuals. Note that the scales in the formulae above should be calculated via the formula with the bias correction, i.e. with the division by degrees of freedom, not the number of observations. Also, note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$ and additive error models, the formulae for the standardised residuals will be the same, only the assumptions will change (see Section \@ref(ADAMETSAdditiveDistributions)).
+
+Here is an example of a plot of fitted vs standardised residuals in R:
+```{r adamModelSeat03Resid, fig.cap="Diagnostics of pure additive ETSX model."}
+plot(adamModelSeat03,2)
+```
+
+Given that the scale of the original variable is now removed in the standardised residuals, it might be easier to spot the non-linearity. In our case it is still not apparent, but there is a slight U-shape in LOESS line and a slight change in variance. Another plot that we have already used before is standardised residuals over time:
+
+```{r}
+plot(adamModelSeat03,8)
+```
+
+This plot shows that there is a slight decline in the residuals around year 1977. Still, there is no prominent non-linearity in the residuals, so it is not clear whether any transformations are needed or not.
+
+However, based on my judgment and understanding of the problem, I would expect for the number of injuries and deaths to change proportionally to the change of the level of the data: if after some external interventions the overal level of injuries and deaths would increase, we would expect a percentage decline, not a unit decline with a change of already existing variables in the model. This is why I will try a multiplicative model next:
+```{r adamModelSeat05Resid, fig.cap="Diagnostics of pure multiplicative ETSX model."}
+adamModelSeat05 <- adam(Seatbelts,"MNM",formula=drivers~PetrolPrice+kms+front+rear+law)
+plot(adamModelSeat05,2)
+```
+
+The plot shows that the variability is now slightly more uniform across all fitted values, but the difference between Figures \@ref(fig:adamModelSeat03Resid) and \@ref(fig:adamModelSeat05Resid) is not very prominent. One of potential solutions in this situation is to compare the models in terms of information criteria:
+```{r}
+setNames(c(AICc(adamModelSeat03),AICc(adamModelSeat05)),
+         c("Additive model", "Multiplicative model"))
+```
+Based on this, we would be inclined to select the multiplicative model. My personal judgment in this specifica case agrees with the information criterion. 
 
 
 ## Model specification: Outlier {#DiagnosticsOutliers}
@@ -109,91 +158,94 @@ One of the simplest ways for identifying outliers is based on distributional ass
 
 Given that ADAM framework supports [different distributions](#distributions), the heuristics mentioned above is not appropriate. We need to get proper quantiles for each of the assumed distributions. Luckily, this is not difficult to do, because the quantile functions for all the distributions supported by ADAM either have analytical forms or can be obtained numerically.
 
-Given that we typically make assumptions about the error term, it makes sense to analyse the residuals of the model. And relatively simple way of identifying outliers in this case is via the fitted vs standardised residuals plot. The formula for the standardised residuals should differ depending on the assumed distribution and for some of them comes to the value inside the "$\exp$" part of the [probability density function](#distributions):
-
-1. Normal, $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$: $u_t = \frac{e_t - \bar{e}}{\hat{\sigma}}$;
-2. Laplace, $\epsilon_t \sim \mathcal{Laplace}(0, s)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}}$;
-3. S, $\epsilon_t \sim \mathcal{S}(0, s)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}^2}$;
-4. Generalised Normal, $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}^{\frac{1}{\beta}}}$;
-5. Inverse Gaussian, $1+\epsilon_t \sim \mathcal{IG}(1, s)$: $u_t = \frac{1+e_t}{\bar{e}}$;
-6. Gamma, $1+\epsilon_t \sim \mathcal{\Gamma}(s^{-1}, s)$: $u_t = \frac{1+e_t}{\bar{e}}$;
-7. Log Normal, $1+\epsilon_t \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$: $u_t = \frac{e_t - \bar{e} +\frac{\hat{\sigma}^2}{2}}{\hat{\sigma}}$.
-
-where $\bar{e}$ is the mean of residuals, which is typically assumed to be zero and $u_t$ is the value of standardised residuals. Note that the scales in the formulae above should be calculated via the formula with the bias correction, i.e. with the division by degrees of freedom, not the number of observations. Also, note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$ and additive error models, the formulae for the standardised residuals will be the same, only the assumptions will change (see Section \@ref(ADAMETSAdditiveDistributions)).
-
-Here is an example in R with the same model as before and the standardised residuals vs fitted values with the 95% bounds:
+Here is an example in R with the same multiplicative ETSX model and the standardised residuals vs fitted values with the 95% bounds:
 
 ```{r}
-plot(adamModelAir, 2, level=0.95)
+plot(adamModelSeat05, 2, level=0.95)
 ```
 
-The plot demonstrates that there are some outliers that appear when the fitted values increase. Although the amount of outliers is not big, it would make sense investigating why they happened. Well, we know why - we constructed an incorrect model. We can also see that the LOESS line (red line in the middle) is not straight and has a U-shape. This indicates that there is some non-linearity in the data, which we missed. Given that we deal with time series, plotting residuals vs time is also sometimes helpful:
+Note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$, the function will plot $\log u_t$ in order to make the plot more readable. The plot demonstrates that there are outliers, some of which are further away from the bounds. Although the amount of outliers is not big, it would make sense investigating why they happened. Well, we know why - we constructed an incorrect model. Given that we deal with time series, plotting residuals vs time is also sometimes helpful:
 
 ```{r}
-plot(adamModelAir, 8)
+plot(adamModelSeat05, 8)
 ```
 
-This plot shows us that all the outliers happen at the end of the time series. It also shows us that the variability of the residuals changes over time. These things indicate that we should use multiplicative model instead of the additive one. We can easily fix this by running:
-
-```{r}
-adamModelAirMultiplicative <- adam(AirPassengers, "MMM")
-```
-
-and analysing the results:
-```{r}
-par(mfcol=c(2,1))
-plot(adamModelAirMultiplicative, c(2,8))
-```
-
-Note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$, the function will plot $\log u_t$ in order to make the plot more readable. We now see that the residuals do not exhibit those issues as discussed above, but we now have 8 observations lying outside the bounds, although all of them are very close to them. Given that the sample contains 144 observations, this means that the 95% interval contains $\frac{144-8}{144} \times 100 \mathrm{\%} \approx 94\mathrm{\%}$ of observations. This is close to the nominal, so we probably do not have real outliers in the data. If this was a real situation, I would still recommend investigating those of the observations that lie further away in order to understand whether they indeed happened at random. But this is a toy example, so we leave it on that.
+We see that there is no specific pattern in the outliers, they happen randomly, so they appear not because of the omitted variables or wrong transformations. We have 8 observations lying outside the bounds, which given that the sample size of 192 observations, means that the 95% interval contains $\frac{192-8}{192} \times 100 \mathrm{\%} \approx 95.8\mathrm{\%}$ of observations. This is close to the nominal 95%, but it might make sense to further investigate some of outliers.
 
 In some cases, standardised residuals might not provide the correct information because of the impact of outliers on the scale of distribution (e.g. the estimated variance would increase if there are outliers). In order to address this issue, studentised residuals can be used. They are calculated similarly to the standardised ones, but the scale of distribution is recalculated for each observation by considering errors on all observations but the current one. So, in a general case, this is an iterative procedure which involves looking through $t=\{1,\dots,T\}$ and which should in theory guarantee that the real outliers do not impact the scale of distribution. Here how they can be analysed in R:
 
 ```{r}
 par(mfcol=c(2,1))
-plot(adamModelAirMultiplicative, c(3,9))
+plot(adamModelSeat05, c(3,9))
 ```
 
-In many cases the standardised and studentised residuals will look very similar, but in some cases of extreme outliers they might differ and the latter might show outliers better than the former.
+In many cases (ours included) the standardised and studentised residuals will look very similar, but in some cases of extreme outliers they might differ and the latter might show outliers better than the former. 
 
+Given the situation with outliers in our case, we could investigate when they happen in the original data to better understand whether they need to be taken care of. But instead of manually recording, which of the observations lie beyond the bounds, we can get their ids via the `outlierdummy` method from the package `greybox`, which extracts either standardised or studentised residuals and flags those observations that lie outside the constructed interval, automatically creating dummy variables for these observations. Here how it works:
+```{r}
+adamModelSeat05Outliers <- outlierdummy(adamModelSeat05,
+                                        level=0.95, type="rstandard")
+```
+
+The method returns several objects (see documentation for details), including the ids of outliers:
+```{r}
+adamModelSeat05Outliers$id
+```
+
+These ids can be used to produce additional plots. For example:
+
+```{r}
+plot(actuals(adamModelSeat05))
+points(time(Seatbelts[,"drivers"])[adamModelSeat05Outliers$id],
+       Seatbelts[adamModelSeat05Outliers$id,"drivers"],
+       col="red", pch=16)
+text(time(Seatbelts[,"drivers"])[adamModelSeat05Outliers$id],
+     Seatbelts[adamModelSeat05Outliers$id,"drivers"]+100,
+     adamModelSeat05Outliers$id, col="red")
+```
+
+Among all these points, there is one special that happens on observation 170. This is when the law for seatbelts was introduced and the model cannot capture the change in injuries and deaths correctly.
+
+::: remark
 As a side note, in R, there are several methods for extracting residuals:
 
 - `resid()` or `residuals()` will extract either $e_t$ or $1+e_t$, depending on the distributional assumptions of the model;
 - `rstandard()` will extract the standardised residuals $u_t$;
 - `rstudent()` will do the same for the studentised ones.
 
+`smooth` package also introduces `rmultistep` which extracts multiple steps ahead in sample forecast errors. We do not discuss this method here, but we might come back to it later in this textbook.
+:::
 
 ### Dealing with outliers 
-There are also automated methods for outliers identification. For example, the package `greybox` has a method `outlierdummy`, which extracts either standardised or studentised residuals and flags those observations that lie outside the constructed interval, automatically creating dummy variables for these observations. Here how it works:
+Based on the output of `outlierdummy()` method from the previous example, we can construct a model with explanatory variables to interpolate the outliers and neglect their impact on the model:
 
 ```{r}
-adamModelAirOutliers <- outlierdummy(adamModelAirMultiplicative,
-                                  level=0.95, type="rstandard")
-```
-
-The method returns several objects (see documentation for details), including the ids of outliers:
-```{r}
-adamModelAirOutliers$id
-```
-Based on the output of this method, we can construct a model with explanatory variables to interpolate the outliers and neglect their impact on the model:
-
-```{r}
-AirPassengersData <- cbind(y=AirPassengers,outliers=adamModelAirOutliers$outliers)
-adamModelAirMultiplicativeOutliers <- adam(AirPassengersData, "MMM")
-adamModelAirMultiplicativeOutliers
+SeatbeltsWithOutliers <- cbind(as.data.frame(Seatbelts[,-c(1,7)]),adamModelSeat05Outliers$outliers)
+SeatbeltsWithOutliers$drivers <- ts(SeatbeltsWithOutliers$drivers,
+                                    start=start(Seatbelts),
+                                    frequency=frequency(Seatbelts))
+adamModelSeat06 <- adam(SeatbeltsWithOutliers,"MNM",lags=12,formula=drivers~.)
+adamModelSeat06
 ```
 
 In order to decide, whether the dummy variables help or not, we can use information criteria, comparing the two models:
 ```{r}
-setNames(c(AICc(adamModelAirMultiplicative),
-           AICc(adamModelAirMultiplicativeOutliers)),
-         c("ETS","ETSX"))
+setNames(c(AICc(adamModelSeat05), AICc(adamModelSeat06)),
+         c("ETSX","ETSXOutliers"))
 ```
-Comparing the two values above, I would conclude that the dummy variables do not help and that we do not have outliers in our model.
+Comparing the two values above, I would conclude that the dummy variables do not help and that we should not include all outliers in the data. Istead of including all of them, we can try the model with the outlier for the observation 170, which corresponds to the eighth outlier (as this one was the main suspect):
 
+```{r}
+adamModelSeat07 <- adam(SeatbeltsWithOutliers,"MNM",lags=12,
+                        formula=drivers~PetrolPrice+kms+front+rear+law+outlier8)
+plot(adamModelSeat07,2)
+adamModelSeat07
+```
+
+However this model is not better than the previous one (in terms of AICc) and has a different set of outliers. So, we can probably come to conclusion that the outliers in our case happen at random and can be ignored.
 
 ### An automatic mechanism
-A similar mechanism is implemented in `adam()` function, which has `outliers` parameter, defining what to do with outliers if there are any with three options:
+A similar automated mechanism is implemented in `adam()` function, which has `outliers` parameter, defining what to do with outliers if there are any with the following three options:
 
 1. "ignore" - do nothing;
 2. "use" - create the model with explanatory variables as shown in the previous subsection and see if it is better than the simpler model in terms of an information criterion;
@@ -201,12 +253,13 @@ A similar mechanism is implemented in `adam()` function, which has `outliers` pa
 
 Here how this works for our case:
 ```{r}
-adamModelAirMultiplicativeAutoOutliers <- adam(AirPassengers, "MMM",
-                                            outliers="select", level=0.95)
-adamModelAirMultiplicativeAutoOutliers
+adamModelSeat08 <- adam(Seatbelts,"MNM",lags=12,
+                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        outliers="select",level=0.95)
+adamModelSeat08
 ```
 
-This results in a model that automatically detects `r length(adamModelAirMultiplicativeAutoOutliers$initial$xreg)` observations as outliers. Given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might lead to overfitting. I would still recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
+In our case, the function neglects all the outliers, agreeing with what we have found previously. Given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might select unnecessary dummy variables and lead to overfitting. I would still recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
 
 ### Final remarks
 @Koehler2012 explored the question of the impact of outliers on ETS performance in terms of forecasting accuracy. They found that if outliers happen at the end of the time series then it is important to take them into account in a model. If they happen much earlier, then their impact on the final forecast will be negligible. Unfortunately, the authors did not explore the impact of outliers on the prediction intervals, and based on my experience I can tell that the main impact of outliers is on the width of the interval.
