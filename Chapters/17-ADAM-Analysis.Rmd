@@ -6,8 +6,10 @@ a. No omitted variables;
 b. No redundant variables;
 c. The necessary transformation of the variables are applied;
 d. No outliers in the model.
-2. [The expectation of residuals is zero, no matter what](#assumptionsExpectationOfResiduals);
-3. [Residuals are i.i.d.](#assumptionsResidualsAreIID);
+2. [Residuals are i.i.d.](#assumptionsResidualsAreIID):
+a. They are not autocorrelated;
+b. They are homoscedastic;
+3. [The expectation of residuals is zero, no matter what](#assumptionsExpectationOfResiduals);
 4. [The explanatory variables are not correlated with anything but the response variable](#assumptionsXreg);
 5. [The residuals follow the specified distribution](#assumptionsDistribution).
 
@@ -54,7 +56,7 @@ plot(adamModelSeat02,8)
 This plot shows that the model has not captured seasonality and that there is stil some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model:
 ```{r}
 adamModelSeat03 <- adam(Seatbelts,"ANA",formula=drivers~PetrolPrice+kms+front+rear+law)
-par(mfcol=c(2,1))
+par(mfcol=c(1,2))
 plot(adamModelSeat03,7:8)
 ```
 
@@ -68,7 +70,7 @@ In the example with Seatbelt data, `DriversKilled` would be a redundant variable
 
 ```{r}
 adamModelSeat04 <- adam(Seatbelts,"NNN",formula=drivers~PetrolPrice+kms+front+rear+law+DriversKilled)
-par(mfcol=c(2,1))
+par(mfcol=c(1,2))
 plot(adamModelSeat04,7:8)
 ```
 
@@ -141,10 +143,10 @@ The plot shows that the variability is now slightly more uniform across all fitt
 setNames(c(AICc(adamModelSeat03),AICc(adamModelSeat05)),
          c("Additive model", "Multiplicative model"))
 ```
-Based on this, we would be inclined to select the multiplicative model. My personal judgment in this specifica case agrees with the information criterion. 
+Based on this, we would be inclined to select the multiplicative model. My personal judgment in this specific case agrees with the information criterion.
 
 
-## Model specification: Outlier {#DiagnosticsOutliers}
+## Model specification: Outliers {#DiagnosticsOutliers}
 As we discussed in Section \@ref(assumptionsCorrectModel), one of the important assumptions in forecasting and analytics is the correct specification of the model, which also includes "no outliers in the model" element. Outliers might appear for many different reasons:
 
 1. We missed some important information (e.g. promotion) and did not include a respective variable in the model;
@@ -170,12 +172,12 @@ Note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$, the
 plot(adamModelSeat05, 8)
 ```
 
-We see that there is no specific pattern in the outliers, they happen randomly, so they appear not because of the omitted variables or wrong transformations. We have 8 observations lying outside the bounds, which given that the sample size of 192 observations, means that the 95% interval contains $\frac{192-8}{192} \times 100 \mathrm{\%} \approx 95.8\mathrm{\%}$ of observations. This is close to the nominal 95%, but it might make sense to further investigate some of outliers.
+We see that there is no specific pattern in the outliers, they happen randomly, so they appear not because of the omitted variables or wrong transformations. We have 5 observations lying outside the bounds, which given that the sample size of 192 observations, means that the 95% interval contains $\frac{192-9}{192} \times 100 \mathrm{\%} \approx 95.3\mathrm{\%}$ of observations, which is close to the nominal value.
 
-In some cases, standardised residuals might not provide the correct information because of the impact of outliers on the scale of distribution (e.g. the estimated variance would increase if there are outliers). In order to address this issue, studentised residuals can be used. They are calculated similarly to the standardised ones, but the scale of distribution is recalculated for each observation by considering errors on all observations but the current one. So, in a general case, this is an iterative procedure which involves looking through $t=\{1,\dots,T\}$ and which should in theory guarantee that the real outliers do not impact the scale of distribution. Here how they can be analysed in R:
+In some cases, the outliers might impact the scale of distribution and will lead to wrong standardised residuals, distorting the picture. This is where studentised residuals come into play. They are calculated similarly to the standardised ones, but the scale of distribution is recalculated for each observation by considering errors on all but the current observation. So, in a general case, this is an iterative procedure which involves looking through $t=\{1,\dots,T\}$ and which should in theory guarantee that the real outliers do not impact the scale of distribution. Here how they can be analysed in R:
 
 ```{r}
-par(mfcol=c(2,1))
+par(mfcol=c(1,2))
 plot(adamModelSeat05, c(3,9))
 ```
 
@@ -200,8 +202,8 @@ points(time(Seatbelts[,"drivers"])[adamModelSeat05Outliers$id],
        Seatbelts[adamModelSeat05Outliers$id,"drivers"],
        col="red", pch=16)
 text(time(Seatbelts[,"drivers"])[adamModelSeat05Outliers$id],
-     Seatbelts[adamModelSeat05Outliers$id,"drivers"]+100,
-     adamModelSeat05Outliers$id, col="red")
+     Seatbelts[adamModelSeat05Outliers$id,"drivers"],
+     adamModelSeat05Outliers$id, col="red", pos=2)
 ```
 
 Among all these points, there is one special that happens on observation 170. This is when the law for seatbelts was introduced and the model cannot capture the change in injuries and deaths correctly.
@@ -225,7 +227,6 @@ SeatbeltsWithOutliers$drivers <- ts(SeatbeltsWithOutliers$drivers,
                                     start=start(Seatbelts),
                                     frequency=frequency(Seatbelts))
 adamModelSeat06 <- adam(SeatbeltsWithOutliers,"MNM",lags=12,formula=drivers~.)
-adamModelSeat06
 ```
 
 In order to decide, whether the dummy variables help or not, we can use information criteria, comparing the two models:
@@ -233,16 +234,17 @@ In order to decide, whether the dummy variables help or not, we can use informat
 setNames(c(AICc(adamModelSeat05), AICc(adamModelSeat06)),
          c("ETSX","ETSXOutliers"))
 ```
-Comparing the two values above, I would conclude that the dummy variables do not help and that we should not include all outliers in the data. Istead of including all of them, we can try the model with the outlier for the observation 170, which corresponds to the eighth outlier (as this one was the main suspect):
+Comparing the two values above, I would conclude that adding dummies improves the model. But instead of including all of them, we could try the model with the outlier for the suspicious observation 170, which corresponds to the ninth outlier:
 
 ```{r}
 adamModelSeat07 <- adam(SeatbeltsWithOutliers,"MNM",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law+outlier8)
+                        formula=drivers~PetrolPrice+kms+front+rear+law+outlier9)
 plot(adamModelSeat07,2)
-adamModelSeat07
+AICc(adamModelSeat07)
 ```
 
-However this model is not better than the previous one (in terms of AICc) and has a different set of outliers. So, we can probably come to conclusion that the outliers in our case happen at random and can be ignored.
+This model is slightly worse than both the one with all outliers in terms of AICc, so there are some other dummy variables that improve the fit that might be considered as well, along with the outlier for the observation 170. We could continue the exploration introducing other dummy variables, but in general we should not do that unless we have good reason for that (e.g. we know that something happened that was not captured by the model).
+
 
 ### An automatic mechanism
 A similar automated mechanism is implemented in `adam()` function, which has `outliers` parameter, defining what to do with outliers if there are any with the following three options:
@@ -256,29 +258,34 @@ Here how this works for our case:
 adamModelSeat08 <- adam(Seatbelts,"MNM",lags=12,
                         formula=drivers~PetrolPrice+kms+front+rear+law,
                         outliers="select",level=0.95)
-adamModelSeat08
+AICc(adamModelSeat08)
 ```
 
-In our case, the function neglects all the outliers, agreeing with what we have found previously. Given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might select unnecessary dummy variables and lead to overfitting. I would still recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
+This automatic procedure will form a matrix that will include original variables together with the outliers, their lags and leads and then select those of them that minimise AICc in a stepwise procedure (discussed in Section \@ref(ETSXSelection)). In our case, the function throws away some of the important variables and sticks with some of outliers. This might also happen because it could not converge to the optimum on each iteration, so increasing `maxeval` might help. Still, given that this is an automated approach, it is prone to potential mistakes and needs to be treated with care as it might select unnecessary dummy variables and lead to overfitting. I would recommend exploring the outliers manually, when possible and not to rely too much on the automated procedures.
+
 
 ### Final remarks
 @Koehler2012 explored the question of the impact of outliers on ETS performance in terms of forecasting accuracy. They found that if outliers happen at the end of the time series then it is important to take them into account in a model. If they happen much earlier, then their impact on the final forecast will be negligible. Unfortunately, the authors did not explore the impact of outliers on the prediction intervals, and based on my experience I can tell that the main impact of outliers is on the width of the interval.
 
 
-<!-- ## Zero expectation of the residuals -->
-<!-- No patterns in the residuals -->
-
-
-<!-- ## Residuals are i.i.d. -->
+<!-- ## Residuals are i.i.d.: autocorrelation {#diagnosticsResidualsIIDAuto} -->
 <!-- ACF / PACF -->
+
+
+<!-- ## Residuals are i.i.d.: heteroscedasticity {#diagnosticsResidualsIIDHetero} -->
 <!-- abs and squared residuals  -->
 
 
-<!-- ## Multicollinearity -->
+
+<!-- ### Zero expectation of the error term -->
+<!-- In ADAM framework, this assumption only works for the [additive error models](#ADAMETSPureAdditive). In case of the multiplicative error models, it is changed to "[expectation of the error term is one](#ADAMETSMultiplicativeDistributions)". It does not make sense to check this assumption unconditionally, because it will hold automatically in sample in case of OLS estimation, but cannot be checked in a more general case. This is because it is about the true model and the asymptotic behaviour rather than the model applied to the data. The only part of this assumption that can be checked is whether the conditional expectation of the residuals is equal to zero (or one) or not. In a way, this comes to making sure that [residuals are i.i.d.](#diagnosticsResidualsIID) and that there are no patterns and thus no consequitive parts of the data, where residuals do not have expectation of zero. -->
+
+
+<!-- ## No multicollinearity -->
 <!-- cor, assoc, determ -->
 
 
-<!-- ## Residuals follow some distribution -->
+<!-- ## Residuals follow assumed distribution -->
 <!-- QQ plot -->
 <!-- Shapiro-Wilk and KS tests -->
 
