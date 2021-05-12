@@ -269,9 +269,93 @@ This automatic procedure will form a matrix that will include original variables
 
 
 ## Residuals are i.i.d.: autocorrelation {#diagnosticsResidualsIIDAuto}
-One of the typical characteristics of time series models is the dynamic relation between variables. Even if fundamentally the sales of ice cream on Monday do not impact sales of the same ice cream on Tuesday, they might impact advertising expenses or sales of a competing product on Tuesday, Wednesday or next week. Missing this sort of structure might lead to autocorrelation of residuals, which then would impact the estimates of parameters and final forecasts. Autocorrelations might also arrise due to wrong transformations of variables, where the model would systematically underforecast the actuals, producing autocorrelated residuals. 
+One of the typical characteristics of time series models is the dynamic relation between variables. Even if fundamentally the sales of ice cream on Monday do not impact sales of the same ice cream on Tuesday, they might impact advertising expenses or sales of a competing product on Tuesday, Wednesday or next week. Missing this sort of structure might lead to autocorrelation of residuals, which then would impact the estimates of parameters and final forecasts. Autocorrelations might also arise due to wrong transformations of variables, where the model would systematically underforecast the actuals, producing autocorrelated residuals. 
 
-<!-- ACF / PACF -->
+As an example, we continue with the same seatbelts data, dropping the dynamic part to see what would happen in this case:
+```{r}
+adamModelSeat09 <- adam(Seatbelts,"NNN",lags=12,
+                        formula=drivers~PetrolPrice+kms+front+rear+law)
+AICc(adamModelSeat09)
+```
+This model can be diagnosed by plotting [ACF](#ACF) / [PACF](#PACF) of residuals:
+
+```{r}
+par(mfcol=c(1,2))
+plot(adamModelSeat09,10:11)
+```
+
+In case of `adam()` objects, these plots will always have the range of functions from -1 to 1 and will start from lag 1. The red horizontal lines represent the "non-rejection" region: if the point lie inside the region, then they are not statistically different from zero on the selected `level` (the uncertainty around them is so high that it covers zero). The points with numbers are those that are statistically significantly different from zero. So, the ACF / PACF analysis might show the lags that are statistically significant on the selected level (the default one is 0.95). Given that this is a statistical instrument, we would expect for approximately (1-level)% (e.g. 5%) of lags lie outside these bounds, so it is fine if we don't see all point lying inside them. However, we should not see any patterns there and we might need to investigate the suspicious lags (low orders of up to 3 - 5 and the seasonal lags if they appear). In our example above we can see a wave from observations 10 to 14 on ACF. Such wave typically indicates that seasonality is not taken into account. Lags 1 and 2 on ACF are also suspicious and might indicate that a dynamic element is missing (e.g. MA(1) or MA(2)). Furthermore, we can look at the residuals of the model over time in order to see whether there is anything else missing:
+
+```{r}
+plot(adamModelSeat09,8)
+```
+
+We see that on one hand the residuals still contain seasonality and on the other that they do not look stationary. We could conduct ADF and / or KPSS test to get a formal answer to the stationarity question:
+
+```{r}
+tseries::kpss.test(resid(adamModelSeat09))
+tseries::adf.test(resid(adamModelSeat09))
+```
+The tests have opposite null hypothesis, and in our case we would reject H$_0$ for both of them on 5% significance level. This means that they contradict each other and we need to use our judgment. First I will see what happens with the model, when we do not take differences (it is better not to overdifference series, plus this behaviour might be due to missing AR(1) element), assuming that the residuals are actually stationary and that glitch in the beginning of series happened at random:
+
+```{r}
+adamModelSeat10 <- adam(Seatbelts,"NNN",lags=12,
+                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        orders=list(ma=c(0,1)))
+AICc(adamModelSeat10)
+```
+Adding seasonal MA(1) decreased AICc, so it helps.
+```{r}
+adamModelSeat11 <- adam(Seatbelts,"NNN",lags=12,
+                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        orders=list(ma=c(1,1)))
+AICc(adamModelSeat11)
+```
+Adding the non-seasonal MA(1) further improves the model. Here are the residuals of this new model:
+
+```{r}
+plot(adamModelSeat11,8)
+```
+
+While they are much better behaved then before, there is still an issue with the beginning of the series. We will need to look at ACF / PACF in order to get better information about the potential missing structure:
+```{r}
+par(mfcol=c(1,2))
+plot(adamModelSeat11,10:11)
+```
+
+There are two things we could try: AR(1) because of the significant lag 1 on PACF and MA(2) because of the significant lag 2 on ACF. Let us try and compare:
+
+```{r}
+# ARIMAX(1,0,1)(0,0,1)_12
+adamModelSeat12 <- adam(Seatbelts,"NNN",lags=12,
+                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        orders=list(ar=1,ma=c(1,1)))
+AICc(adamModelSeat12)
+# ARIMAX(1,0,2)(0,0,1)_12
+adamModelSeat13 <- adam(Seatbelts,"NNN",lags=12,
+                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        orders=list(ar=1,ma=c(2,1)))
+AICc(adamModelSeat13)
+```
+From the output above, we can conclude that adding AR(1) improves the model in terms of AICc, while adding MA(2) does not do that. So we should use model 12 for our further analysis:
+
+```{r}
+adamModelSeat12
+par(mfcol=c(1,3))
+plot(adamModelSeat12,c(8,10:11))
+```
+
+The residuals of this model are much better behaved than the ones of the model without the dynamic elements. We can also compare this model directly with the one we constructed earlier, in the previous section:
+
+```{r}
+AICc(adamModelSeat06)
+par(mfcol=c(1,3))
+plot(adamModelSeat06,c(8,10:11))
+```
+
+Both qualitatively and in terms of AICc, that model is better than the new one, so we should use it instead.
+
+As a final word for this section, we have focused our discussion on the visual analysis of time series, ignoring the statistical tests (we only used ADF and KPSS). Yes, there is Durbin-Watson test for AR(1) in residuals, and yes there are Box-Ljung, Box-Pierce and Breusch–Godfrey tests for multiple AR elements. But visual inspection of time series is not less powerful than hypothesis testing. In fact, it makes you think and analyse the model and its assumptions, while the tests are the lazy way out that might lead to wrong conclusions because they have the [standard limitations of any hypothesis tests](#hypothesisTesting). After all, if you fail to reject H$_0$ it does not mean that the effect does not exist. Having said that, the statistical tests become extremely useful when you need to process many time series at the same time and cannot physically do visual inspection of them.
 
 
 <!-- ## Residuals are i.i.d.: heteroscedasticity {#diagnosticsResidualsIIDHetero} -->
@@ -291,3 +375,5 @@ One of the typical characteristics of time series models is the dynamic relation
 <!-- QQ plot -->
 <!-- Shapiro-Wilk and KS tests -->
 
+<!-- ## Model diagnostics on high frequency data -->
+<!-- ## Model diagnostics for intermittent model -->
