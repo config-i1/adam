@@ -1,4 +1,4 @@
-# Model diagnostics
+# Model diagnostics {#diagnostics}
 In this chapter we investigate how ADAM can be diagnosed and improved. The majority of topics will build upon the typical model assumptions discussed in Section \@ref(assumptions). Some of the assumptions cannot be diagnosed properly, but for the others there are some existing and well established instruments. We will consider the following assumptions and discuss how to check whether they are violated or not:
 
 1. [Model is correctly specified](#assumptionsCorrectModel):
@@ -84,7 +84,7 @@ The uncertainty around the parameter `DriversKilled` is narrow, showing that the
 If we have redundant variables in the model, then the model might overfit the data, leading to narrower prediction intervals and biased forecasts. The parameters of such model are typically unbiased, but inefficient.
 
 
-## Model specification: Transformations
+## Model specification: Transformations {#diagnosticsTransformations}
 The question of appropriate transformations for variables in the model is challenging, because it is difficult to decide, what sort of transformation is needed, if needed at all. In many cases, this comes to selecting between additive linear model and a multiplicative one. This implies that we compare the model:
 \begin{equation}
 	y_t = a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + \epsilon_t,
@@ -147,7 +147,7 @@ setNames(c(AICc(adamModelSeat03),AICc(adamModelSeat05)),
 Based on this, we would be inclined to select the multiplicative model. My personal judgment in this specific case agrees with the information criterion.
 
 
-## Model specification: Outliers {#DiagnosticsOutliers}
+## Model specification: Outliers {#diagnosticsOutliers}
 As we discussed in Section \@ref(assumptionsCorrectModel), one of the important assumptions in forecasting and analytics is the correct specification of the model, which also includes "no outliers in the model" element. Outliers might appear for many different reasons:
 
 1. We missed some important information (e.g. promotion) and did not include a respective variable in the model;
@@ -352,7 +352,7 @@ adamModelSeat15 <- adam(Seatbelts,"NNN",lags=12,
 AICc(adamModelSeat15)
 ```
 
-This new constructed SARIMAX(0,1,1)(0,1,1)$_{12}$ model has lower AICc than the previous one and should be used instead. In fact, it is even better than the `r adamModelSeat05$model` (model 5) from the previous section in terms of AICc, and its residuals are much better behaved than the ones of model 5 (we might need to analyse the residuals for the [potential outliers](#DiagnosticsOutliers) in this model though):
+This new constructed SARIMAX(0,1,1)(0,1,1)$_{12}$ model has lower AICc than the previous one and should be used instead. In fact, it is even better than the `r adamModelSeat05$model` (model 5) from the previous section in terms of AICc, and its residuals are much better behaved than the ones of model 5 (we might need to analyse the residuals for the [potential outliers](#diagnosticsOutliers) in this model though):
 
 ```{r}
 par(mfcol=c(1,3))
@@ -367,19 +367,33 @@ As a final word for this section, we have focused our discussion on the visual a
 ## Residuals are i.i.d.: heteroscedasticity {#diagnosticsResidualsIIDHetero}
 Another important assumption for conventional models is that the residuals are homoscedastic, meaning that the variance of the residuals stays the same (no matter what). Typically, this assumption will be violated if the model is not specified correctly. The classical example is the income versus expenditure on meals for different families. If the income is low, then there is not many options what to buy and the variability of expenditures would be low. However, with the increase of the income, the mean expenditures and their variability would increase as well, because there are more options of what to buy, including both cheap and expensive products. If we constructed a basic linear model on such data, then it would violate the assumption of homoscedasticity and as a result will have issues discussed in section \@ref(assumptionsResidualsAreIID). But arguably this would typically appear because of the misspecification of the model. For example, taking logarithms might resolve the issue in many cases, implying that the effect of one variable on the other should be multiplicative rather than the additive. Alternatively, dividing variables by some other variable might (e.g. working with expenses per family member, not per family) resolve the problem as well. Unfortunately, the transformations are not the panacea, so in some cases analyst would need to construct a model, taking the changing variance into account (e.g. GARCH or GAMLSS models).
 
-While in forecasting we are more interested in the holdout performance of models, in econometrics, the parameters of models are typically of the main interest. And, as we discussed [earlier](#assumptionsResidualsAreIID), in case of correctly specified model with heteroscedastic residuals, the estimates of parameters will be unbiased, but inefficient. So, econometricians would use different approaches to diminish the heteroscedasticity effect on parameters: either a different estimator for a model (such as Weighted Least Squares), or a different method for calculation of standard errors of parameters (e.g. Heteroskedasticity-Consistent Standard Errors). This does not resolve the problem, but rather corrects the parameters of the model (i.e. does not heal the illness, but treats the symptoms). Although these approaches typically suffice for the analytical purposes, they do not fix the issues in forecasting.
+While in forecasting we are more interested in the holdout performance of models, in econometrics, the parameters of models are typically of the main interest. And, as we discussed [earlier](#assumptionsResidualsAreIID), in case of correctly specified model with heteroscedastic residuals, the estimates of parameters will be unbiased, but inefficient. So, econometricians would use different approaches to diminish the heteroscedasticity effect on parameters: either a different estimator for a model (such as Weighted Least Squares), or a different method for calculation of standard errors of parameters (e.g. Heteroskedasticity-Consistent Standard Errors). This does not resolve the problem, but rather corrects the parameters of the model (i.e. does not heal the illness, but treats the symptoms). Although these approaches typically suffice for the analytical purposes, they do not fix the issues in forecasting. In this section we will see how the issue can be resolved in some cases.
 
-<!-- ### Detecting heteroscedasticity -->
+### Detecting heteroscedasticity
+Building upon our previous example. We will use the ETSX(A,N,A) model, which [as we remember](#diagnosticsTransformations) has some issues. In order to see if the residuals of the model are homoscedastic, we can plot their values against the fitted:
 
-<!-- Actuals vs fitted -->
+```{r}
+par(mfcol=c(1,2))
+plot(adamModelSeat03,4:5)
+```
+
+These two plots allow detecting specific type of heteroscedasticity, when with the increase of fitted values the residuals variability changes. The plot of absolute residuals vs fitted is more appropriate for models, where the scale parameters is calculated based on absolute values of residuals (e.g. the model with Laplace distribution), while the squared residuals vs fitted shows whether the variance of residuals is stable or not (thus making it more suitable for models with Normal and related distributions). Furthermore, the squared residuals plot might be difficult to read due to outliers, so the first one might help in detecting the heteroscedasticity even, when the scale is supposed to rely on squared errors. What we want to see on these plots, is for all the points to lie in the same corridor for lower and for the higher fitted values and for the red line to be constant. In our case There is a slight increase of the line and the variability of residuals around 1000 is lower than the one around 2000, which might indicate that we have heteroscedasticity in residuals. In our case this is cause by the wrong transformations in the model (see Section \@ref(diagnosticsTransformations)), so the fix of the issue is to use the multiplicative model.
+
+Another diagnostics tool that might become useful in some situations are the plot of absolute and squared standardised residuals versus fitted values. They have a similar idea to the previous plots, but they might change a little because of the standardisation (mean is equal to 0 and scale is equal to 1). These plots become especially useful if the changing variance is modelled explicitly (e.g. via a regression model or a GARCH-type of model. This feature is not yet supported in ADAM):
+
+```{r}
+par(mfcol=c(1,2))
+plot(adamModelSeat03,13:14)
+```
+
+In our case, these plots do not give additional message, we already know that there is a slight heteroscedasticity and that we need to transform the response variable some how (build multiplicative model).
+
+<!-- Residuals vs specific variables -->
+
+There are formal statistical tests for heteroscedasticity, such as White, Breusch-Pagan and Bartlett's. We do not discuss them here for the reason discussed in Section \@ref(diagnosticsResidualsIIDAuto).
+
 
 <!-- Standardised residuals vs fitted -->
-
-<!-- abs and sqr residuals vs fitted -->
-
-<!-- abs and sqr residuals vs explanatory variables -->
-
-<!-- Statistical tests -->
 
 
 
