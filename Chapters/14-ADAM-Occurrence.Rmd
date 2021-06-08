@@ -546,13 +546,13 @@ plot(y)
 This can be done using `adam()` function from `smooth` package, defining the type of occurrence to use. We will try several options and select the one that has the lowest AICc:
 ```{r}
 adamModelsiETS <- vector("list",4)
-adamModelsiETS[[1]] <- adam(y, "MMN", occurrence="odds-ratio",
+adamModelsiETS[[1]] <- adam(y, "MMdN", occurrence="odds-ratio",
                             h=10, holdout=TRUE)
-adamModelsiETS[[2]] <- adam(y, "MMN", occurrence="inverse-odds-ratio",
+adamModelsiETS[[2]] <- adam(y, "MMdN", occurrence="inverse-odds-ratio",
                             h=10, holdout=TRUE)
-adamModelsiETS[[3]] <- adam(y, "MMN", occurrence="direct",
+adamModelsiETS[[3]] <- adam(y, "MMdN", occurrence="direct",
                             h=10, holdout=TRUE)
-adamModelsiETS[[4]] <- adam(y, "MMN", occurrence="general",
+adamModelsiETS[[4]] <- adam(y, "MMdN", occurrence="general",
                             h=10, holdout=TRUE)
 adamModelsiETSAICcs <- setNames(sapply(adamModelsiETS,AICc),
                                 c("odds-ratio","inverse-odds-ratio","direct","general"))
@@ -573,10 +573,10 @@ adamModelsiETS[[i]]$occurrence
 plot(adamModelsiETS[[i]]$occurrence)
 ```
 
-Depending on the generated data, there might be issues in the ETS(M,M,N) model for demand sizes, if the smoothing parameters are large. So, we can try out the ADAM logARIMA(0,2,2) to see how it compares with this model. Given that ARIMA is not yet implemented for the occurrence part of the model, we need to construct it separately and then use in `adam()`:
+Depending on the generated data, there might be issues in the ETS(M,Md,N) model for demand sizes, if the smoothing parameters are large. So, we can try out the ADAM logARIMA(1,1,2) to see how it compares with this model. Given that ARIMA is not yet implemented for the occurrence part of the model, we need to construct it separately and then use in `adam()`:
 
 ```{r}
-oETSModel <- oes(y, "MMN", occurrence=names(adamModelsiETSAICcs)[i],
+oETSModel <- oes(y, "MMdN", occurrence=names(adamModelsiETSAICcs)[i],
                  h=10, holdout=TRUE)
 adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(0,2,2),
                         distribution="dlnorm", h=10, holdout=TRUE)
@@ -587,7 +587,7 @@ plot(adamModeliARIMA,7)
 Comparing the iARIMA model with the previous iETS based on AIC would not be fair, because as soon as the occurrence model is provided to `adam()`, he does not count the parameters estimated in that part towards the overal number of estimated parameters. In order to make the comparison fair, we need to estimate ADAM iETS in the following way:
 
 ```{r}
-adamModelsiETS[[i]] <- adam(y, "MMN", occurrence=oETSModel,
+adamModelsiETS[[i]] <- adam(y, "MMdN", occurrence=oETSModel,
                             h=10, holdout=TRUE)
 adamModelsiETS[[i]]
 plot(adamModelsiETS[[i]],7)
@@ -596,7 +596,7 @@ plot(adamModelsiETS[[i]],7)
 Comparing information criteria, the iETS model is more appropriate for this data. But this might be due to a different distributional assumptions and difficulties estimating ARIMA model. If you want to experiment more with ADAM iARIMA, you might try [fine tuning](#ADAMInitialisationOptAndBack) it for the data either by increasing the `maxeval` or changing the initialisation, for example:
 
 ```{r}
-adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(0,2,2),
+adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(1,1,2),
                         distribution="dinvgauss", h=10, holdout=TRUE, initial="back")
 adamModeliARIMA
 plot(adamModeliARIMA,7)
