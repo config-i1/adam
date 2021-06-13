@@ -482,9 +482,47 @@ However, this plot is much more difficult to analyse than QQ plot, because of th
 There are also formal tests for the distribution of residuals, such as Shapiro-Wilk [@WikipediaShapiroWilk2021] and Kolmogorov-Smirnov [@WikipediaKolmogorovSmirnov2021]. The former tests the hypothesis that residuals follow Normal distribution, while the latter one is much more flexible and allows comparing the empirical distribution with any other (theoretical or empirical). However, I prefer to use visual inspection, when possible instead of doing these tests because, as we discussed earlier in Section \@ref(hypothesisTesting), the null hypothesis is always wrong, and it will inevitably be rejected with the increase of the sample size. Besides, if you fail to reject H$_0$, it does not mean that your variable follows the assumed distribution, it only means that you have not found enough evidence to reject it.
 
 
+## Multicollinearity
+One of the classical issues in econometrics and in statistics in regression context is the issue of multicollinearity. It appears, when either some of explanatory variables are correlated with each other, or their linear combination explains another explanatory variable included in the model. Depending on the strength of this relation and the estimation method used for model construction, the multicollinearity might cause issues of varying severity. For example, in the case, when two variables are perfectly correlated (correlation coefficient is equal to 1 or -1), the model will have perfect multicollinearity and it would not be possible to estimate its parameters. Another example is a case, when an explanatory variable can be perfectly explained by a set of other explanatory variables (resulting in $R^2$ being close to one), which will cause exactly the same issue. Given that the square root of $R^2$ of linear regression is equal to multiple correlation coefficient, these two situations are equivalent and just come to "absolute value of correlation coefficient is equal to 1". Finally, as discussed briefly in Section \@ref(assumptionsXreg), if correlation coefficient is high, but not equal to one, the effect of multicollinearity will lead to [less efficient estimates](#estimatesPropertiesEfficiency) of parameters. The loss of efficiency is in this case proportional to the absolute value of correlation coefficient. All of this tells us how this problem can be diagnosed and that this diagnoses should be carried out before constructing regression model.
 
-<!-- ## No multicollinearity -->
-<!-- cor, assoc, determ -->
+First, we can calculate correlation matrix for the available variables. If they are all numeric, then `cor()` function from `stats` should do the trick (we remove the response variable from consideration):
+
+```{r}
+cor(Seatbelts[,-2])
+```
+
+This matrix tells us that there are some variables that are highly correlated and might reduce efficiency of estimates of parameters of regression model if included in the model together. This applies to `DriversKilled` and `front` and also to `front` and `rear`. However, the values are not very high, so this might mean that there won't be a serious issue in the model. If we have a mix of numerical and categorical variables, then `assoc()` (aka `association()`) function from `greybox` will help. It will detect the categorical variables automatically and will select between correlation and other appropriate measures of association (such as multiple correlation and Cramer's V). In our case, all the variables are numeric, so it would produce a similar matrix. If you want to see this function in action, see what it produces for the `mtcars` data from `datasets`:
+
+```{r eval=FALSE}
+assoc(mtcars)
+```
+
+In order to cover the second situation with linear combination of variables, we can use the `determ()` (aka `determination()`) function from `greybox`:
+
+```{r}
+determ(Seatbelts[,-2])
+```
+
+This function will construct linear regression models for each variable from all the other variables and report the $R^2$ from these models. If there are coefficients of determination close to one, then this might indicate that the variables would cause multicollinearity in the model. In our case, we see that `front` is linearly related to other variables, and we can expect it to cause the reduction of efficiency of estimate of parameters. If we remove the `DriversKilled` from consideration (we do not want to include it in our model anyway), then the picture will change:
+
+```{r}
+determ(Seatbelts[,-c(1,2)])
+```
+
+In this case, the effect multicollinearity will be lower than in the previous situation, but it will still impact the estimates of parameters, making them less efficient than in the ideal situation.
+
+Instead of calculating the coefficients of determination, econometricians prefer to calculate Variance Inflation Factor (VIF), which shows by how many times the estimates of parameters will loose efficiency. Its formula is based on the $R^2$ calculated above:
+\begin{equation*}
+  \mathrm{VIF}_j = \frac{1}{1-R_j^2}
+\end{equation*}
+for each model $j$. Which in our case can be calculated as:
+```{r}
+1/(1-determ(Seatbelts[,-c(1,2)]))
+````
+This is useful when you want to see the specific impact on the variance of parameters, but is difficult to work with, when it comes to model diagnostics. So, I prefer using the determination coefficients instead.
+
+
+
 
 
 <!-- ## Model diagnostics on high frequency data -->
