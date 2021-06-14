@@ -483,7 +483,7 @@ There are also formal tests for the distribution of residuals, such as Shapiro-W
 
 
 ## Multicollinearity
-One of the classical issues in econometrics and in statistics in regression context is the issue of multicollinearity. It appears, when either some of explanatory variables are correlated with each other, or their linear combination explains another explanatory variable included in the model. Depending on the strength of this relation and the estimation method used for model construction, the multicollinearity might cause issues of varying severity. For example, in the case, when two variables are perfectly correlated (correlation coefficient is equal to 1 or -1), the model will have perfect multicollinearity and it would not be possible to estimate its parameters. Another example is a case, when an explanatory variable can be perfectly explained by a set of other explanatory variables (resulting in $R^2$ being close to one), which will cause exactly the same issue. Given that the square root of $R^2$ of linear regression is equal to multiple correlation coefficient, these two situations are equivalent and just come to "absolute value of correlation coefficient is equal to 1". Finally, as discussed briefly in Section \@ref(assumptionsXreg), if correlation coefficient is high, but not equal to one, the effect of multicollinearity will lead to [less efficient estimates](#estimatesPropertiesEfficiency) of parameters. The loss of efficiency is in this case proportional to the absolute value of correlation coefficient. All of this tells us how this problem can be diagnosed and that this diagnoses should be carried out before constructing regression model.
+One of the classical issues in econometrics and in statistics in regression context is the issue of multicollinearity. It appears, when either some of explanatory variables are correlated with each other, or their linear combination explains another explanatory variable included in the model. Depending on the strength of this relation and the estimation method used for model construction, the multicollinearity might cause issues of varying severity. For example, in the case, when two variables are perfectly correlated (correlation coefficient is equal to 1 or -1), the model will have perfect multicollinearity and it would not be possible to estimate its parameters. Another example is a case, when an explanatory variable can be perfectly explained by a set of other explanatory variables (resulting in $R^2$ being close to one), which will cause exactly the same issue. The classical example of this situation is the dummy variables trap, when all values of categorical variable are used in regression together with the constant resulting in the linear relation $\sum_{j=1}^k d_j = 1$. Given that the square root of $R^2$ of linear regression is equal to multiple correlation coefficient, these two situations are equivalent and just come to "absolute value of correlation coefficient is equal to 1". Finally, as discussed briefly in Section \@ref(assumptionsXreg), if correlation coefficient is high, but not equal to one, the effect of multicollinearity will lead to [less efficient estimates](#estimatesPropertiesEfficiency) of parameters. The loss of efficiency is in this case proportional to the absolute value of correlation coefficient. All of this tells us how this problem can be diagnosed and that this diagnoses should be carried out before constructing regression model.
 
 First, we can calculate correlation matrix for the available variables. If they are all numeric, then `cor()` function from `stats` should do the trick (we remove the response variable from consideration):
 
@@ -518,12 +518,22 @@ Instead of calculating the coefficients of determination, econometricians prefer
 for each model $j$. Which in our case can be calculated as:
 ```{r}
 1/(1-determ(Seatbelts[,-c(1,2)]))
-````
-This is useful when you want to see the specific impact on the variance of parameters, but is difficult to work with, when it comes to model diagnostics. So, I prefer using the determination coefficients instead.
+```
+This is useful when you want to see the specific impact on the variance of parameters, but is difficult to work with, when it comes to model diagnostics, because the value of VIF lies between zero and infinity. So, I prefer using the determination coefficients instead, which is always bounded by $(0, 1)$ region and thus easier to interpret.
 
+Furthermore, as you might have noticed, the discussion here was mainly focused on regression models. When it comes to dynamic models, then the situation might differ.
 
+In case of conventional [ARIMA model](#ARIMA), multicollinearity is inevitable by construct, because of the autocorrelations between actual values. This is why sometimes Heteroskedasticity- and autocorrelation-consistent (HAC) estimators of the covariance matrix [see Section 15.4 of @Hanck2020] of parameters are used instead of the standard ones. They are designed to fix the issue and produce standard errors of parameters that are close to those without the issue.
 
+Finally, in case of state space models, and specifically in case of [ETS](#ADAMX), the multicollinearity might not cause as serious issues as in the case of regression. For example, it is possible to use all the values of [categorical variable](#ETSXDynamicCategories), avoiding the trap of dummy variables. The values of categorical variable in this case are considered as changes relative to the baseline. The classical example of this is the seasonal model, for example, ETS(A,A,A), where the seasonal components can be considered as a set of parameters for dummy variables, expanded from the seasonal categorical variable (e.g. months of year variable). If we set $\gamma=0$, thus making the seasonality deterministic, the ETS can still be estimated even though all values of the variable are used. This becomes apparent with the conventional ETS model, for example, from `forecast` package for R:
 
+```{r}
+etsModel <- forecast::ets(AirPassengers, "AAA")
+# Calculate determination coefficients for seasonal states
+determ(etsModel$states[,-c(1:2)])
+```
+
+As we see, the states of the model are almost perfectly correlated, but still the model works and does not have issue that the classical linear regression would have.
 
 <!-- ## Model diagnostics on high frequency data -->
 <!-- ## Model diagnostics for intermittent model -->
