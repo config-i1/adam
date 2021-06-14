@@ -1,10 +1,75 @@
 # A bit of statistics {#statistics}
-Before we move to the dicussion of ETS, ARIMA and ADAM, it makes sense to discuss some of the basics statistical terms and what they mean in the context of forecasting. Although, many of them originate from statistics and econometrics, we need to look at them from a different perspective: we are more interested in the forecasting process rather than in the estimation of parameters. Still, if you do not know statistics and econometrics well and want to have a good source on the topic, I would recommend reading an online book by @Hanck2020.
+Before we move to the discussion of ETS, ARIMA and ADAM, it makes sense to discuss some of the basics statistical terms and what they mean in the context of forecasting. Although, many of them originate from statistics and econometrics, we need to look at them from a different perspective: we are more interested in the forecasting process rather than in the estimation of parameters. Still, if you do not know statistics and econometrics well and want to have a good source on the topic, I would recommend reading an online book by @Hanck2020.
+
+
+## Law of Large Numbers and Central Limit Theorem {#LLNandCLT}
+Consider a case, when you want to understand what is the average height of teenagers living in your town. It is very expensive and time consuming to go from one house to another and ask every single teenager (if you find one), what their hight is. If we could do that, we would get the true mean, true average height of teenagers living in the town. But in reality, it is more practical to ask a sample of teenagers and make conclusions about the "population" (all teenagers in the town) based on this sample. Indeed, you will spend much less time collecting the information about the height of 100 people rather than 100,000. However, when we take a sample of something, the statistics we work with will always differ from the truth: sample mean will never be equal to the true mean, but it can be shown mathematically that it will converge to the truth, when some specific conditions are met and when the sample size increases. If we set up the experiment correctly, then we can expect our statistics to follow some laws.
+
+### Law of Large Numbers
+The first law is called the **Law of Large Numbers** (LLN). It is the theorem saying that (under wide conditions) the average of a variable obtained over the large number of trials will be close to its expected value and will get closer to it with the increase of the sample size. This can be demonstrated with the following example:
+
+```{r}
+obs <- 10000
+# Generate data from normal distribution
+y <- rnorm(obs,100,100)
+# Create sub-samples of 50 and 100 observations
+y30 <- sample(y, 30)
+y1000 <- sample(y, 1000)
+par(mfcol=c(1,2))
+hist(y30, xlab="y")
+abline(v=mean(y30), col="red")
+hist(y1000, xlab="y")
+abline(v=mean(y100), col="red")
+```
+
+What we will typically see on the plots above is that the mean (red line) on the left plot will be further away from the true mean of 100 than in the case of the right plot. Given that this is randomly generated, the situation might differ, but the idea would be that with the increase of the sample size the estimated sample mean will converge to the true one. We can even produce a plot showing how this happens:
+
+```{r eval=FALSE}
+yMean <- vector("numeric",obs)
+for(i in 1:obs){
+    yMean[i] <- mean(sample(y,i))
+}
+plot(yMean, type="l", xlab="Sample size", ylab="Sample mean")
+```
+
+```{r statsSampleMean, fig.cap="Demonstration of Law of Large Numbers", echo=FALSE}
+knitr::include_graphics("images/02-statistics-LLN.png")
+```
+
+We can see from the plot above that with the increase of the sample size the sample mean reaches the true value of 100. This is a graphical demonstration of the Law of Large Numbers: it only tells us about what will happen when the sample size increases. But it is still useful, because it used for many statistical inferences and if it does not work, then the estimate of mean would be incorrect, meaning that we cannot make conclusions about the behaviour in population.
+
+In order for LLN to work, the distribution of variable needs to have finite mean and variance. This is discussed in some detail in the next subsection. 
+
+In summary, what LLN tells us is that if we average things out over a large number of observations, then that average starts looking very similar to the population value. However, this does not say anything about the performance of estimators on small samples.
+
+
+### Central Limit Theorem
+As we have already seen on Figure \@ref(fig:statsSampleMean), the sample mean is not exactly equal to the population mean even when the sample size is very large (thousands of observations). There is always some sort of variability around the population mean. In order to understand how this variability looks like, we could conduct a simple experiment. We could take a random sample of, for instance, 1000 observations several times and record each of the obtained means. We then can see how the variable will be distributed to see if there are any patterns in the behaviour of the estimator:
+
+```{r eval=FALSE}
+nIterations <- 1000
+yMean <- vector("numeric",nIterations)
+for(i in 1:nIterations){
+    yMean[i] <- mean(sample(y,1000))
+}
+hist(yMean, xlab="Sample mean")
+```
+
+There is a theorem that says that the distribution of mean in the experiment above will follow normal distribution under several conditions (discussed later in this section). It is called **Central Limit Theorem** (CLT) and very roughly it says that when independent random variables are added, their normalised sum will asymptotically follow normal distribution, even if the original variables do not follow it. Note that this is the theorem about *what happens with the estimate* (sum in this case), *not with individual observations*. This means that the error term might follow, for example, [Inverse Gaussian distribution](#IGDistribution), but the estimate of its mean (under some conditions) will follow normal distribution. There are different versions of this theorem, built with different assumptions with respect to the random variable and the estimation procedure, but we do not dicuss these details in this textbook.
+
+In order for CLT to hold, the following important assumptions need to be satisfied:
+
+1. **The true value of parameter is not near the bound**. e.g. if the variable follows uniform distribution on (0, $a$) and we want to estimate $a$, then its distribution will not be Normal (because in this case the true value is always approached from below). This assumption is important in our context, because ETS and ARIMA typically have restrictions on their parameters.
+2. **The random variables are identically independent distributed** (i.i.d.). If they are not, then their average might not follow normal distribution (in some conditions it still might).
+3. **The mean and variance of the distribution are finite**. This might seem as a weird issue, but some distributions do not have finite moments, so the CLT will not hold if a variable follows them, just because the sample mean will be all over the plane due to randomness and will not converge to the "true" value. Cauchy distribution is one of such examples.
+
+If these assumptions hold, then CLT will work for the estimate of a parameter, no matter what the distribution of the random variable is. This becomes especially useful, when we want to test a hypothesis or construct a confidence interval for an estimate of a parameter.
+
 
 ## Properties of estimators {#estimatesProperties}
-Before moving forward and discussing distributions and models, it is also quite important to make sure that we understand what **bias**, **efficiency** and **consistency** of estimates of parameters mean. Although there are strict statistical definitions of the aforementioned terms (you can easily find them in Wikipedia or anywhere else), I do not want to copy-paste them here, because there are only a couple of important points worth mentioning in our context.
+Before we move further, it is important to understand the terms **bias**, **efficiency** and **consistency** of estimates of parameters, which are directly related to [LLN and CLT](#LLNandCLT). Although there are strict statistical definitions of the aforementioned terms (you can easily find them in Wikipedia or anywhere else), I do not want to copy-paste them here, because there are only a couple of important points worth mentioning in our context.
 
-Note that all the discussions in this chapter relate to **the estimates of parameters**, not to the distribution of a random variable itself. A common mistake that students make when studying statistics, is that they think that the properties apply to the variable $y$ instead of the estimate of its parameters.
+Note that all the discussions in this chapter relate to **the estimates of parameters**, not to the distribution of a random variable itself. A common mistake that students make when studying statistics, is that they think that the properties apply to the variable $y_t$ instead of the estimate of its parameters (e.g. mean of $y_t$).
 
 
 ### Bias {#estimatesPropertiesBias}
@@ -88,7 +153,7 @@ What we should typically see on this graph, is that the black line should be bel
 
 
 ### Consistency {#estimatesPropertiesConsistency}
-**Consistency** means that our estimates of parameters will get closer to the stable values (true value in the population) with the increase of the sample size. This is important because in the opposite case estimates of parameters will diverge and become less and less realistic. This once again influences both point forecasts and prediction intervals, which will be less meaningful than they should have been. In a way consistency means that with the increase of the sample size the parameters will become more efficient and less biased. This in turn means that the more observations we have, the better.
+**Consistency** means that our estimates of parameters will get closer to the stable values (true value in the population) with the increase of the sample size. This follows directly from [LLN](#LLNandCLT) and is important because in the opposite case estimates of parameters will diverge and become less and less realistic. This once again influences both point forecasts and prediction intervals, which will be less meaningful than they should have been. In a way consistency means that with the increase of the sample size the parameters will become more efficient and less biased. This in turn means that the more observations we have, the better.
 
 An example of inconsistent estimator is Chebyshev (or max norm) metric. It is formulated the following way:
 \begin{equation}
@@ -134,25 +199,10 @@ There is a prejudice in the world of practitioners that the situation in the mar
 
 
 ### Asymptotic normality {#asymptoticNormality}
-Finally, **asymptotic normality** is not critical, but in many cases is a desired, useful property of estimates. What it tells us is that the distribution of the estimate of parameter will be well behaved with a specific mean (typically equal to $\mu$) and a fixed variance. Some of the statistical tests and mathematical derivations rely on this assumption. For example, when one conducts a significance test for parameters of model, this assumption is implied in the process. If the distribution is not Normal, then the confidence intervals constructed for the parameters will be wrong together with the respective t- and p- values.
+Finally, **asymptotic normality** is not critical, but in many cases is a desired, useful property of estimates. What it tells us is that the distribution of the estimate of parameter will be well behaved with a specific mean (typically equal to $\mu$) and a fixed variance. This follows directly from [CLT](#LLNandCLT). Some of the statistical tests and mathematical derivations rely on this assumption. For example, when one conducts a significance test for parameters of model, this assumption is implied in the process. If the distribution is not Normal, then the confidence intervals constructed for the parameters will be wrong together with the respective t- and p- values.
 
 Another important aspect to cover is what the term **asymptotic**, which we have already used, means in our context. Here and after in this book, when this word is used, we refer to an unrealistic hypothetical situation of having all the data in the multiverse, where the time index $t \rightarrow \infty$. While this is impossible in practice, the idea is useful, because asymptotic behaviour of estimators and models is helpful on large samples of data. Besides, even if we deal with small samples, it is good to know what to expect to happen if the sample size increases.
 
-
-### Law of Large Numbers and Central Limit Theorem {#LLNandCLT}
-These are two important statistical notions about what happens asymptotically with an estimate of a parameter. They do not refer to what happens with the actual value or what happens with the error term of the model.
-
-**Law of Large Numbers** (LLN) is a theorem saying that (under wide conditions) the average of a variable obtained over the large number of trials will be close to its expected value and will get closer to it with the increase of the sample size. In a way, it says that the average will be *unbiased* and *consistent* estimate of expected value.
-
-**Central Limit Theorem** (CLT) says that when independent random variables are added, their normalised sum will asymptotically follow normal distribution, even if the original variables do not follow it. Note that this is the theorem about *what happens with the estimate* (sum in this case), *not with individual observations*. This means that the error term might follow, for example, [Inverse Gaussian distribution](#IGDistribution), but the estimate of its mean (under some conditions) will follow normal distribution. There are different versions of this theorem, built with different assumptions with respect to the random variable and the estimation procedure. This theorem directly relates to the [asymptotic normality](#asymptoticNormality) property discussed above.
-
-Another thing to note about CLT is that it holds only, when:
-
-1. **The true value of parameter is not near the bound**. e.g. if the variable follows uniform distribution on (0, $a$) and we want to estimate $a$, then its distribution will not be Normal (because in this case the true value is always approached from below). This assumption is important in our context, because ETS and ARIMA typically have restrictions on their parameters.
-2. **The random variables are identically independent distributed** (i.i.d.). If they are not, then their average might not follow normal distribution (in some conditions it still might).
-3. **The mean and variance of the distribution are finite**. This might seem as a weird issue, but some distributions do not have finite moments, so the CLT will not hold if a variable follows them, just because the sample mean will be all over the plane due to randomness and will not converget to the "true" value. Cauchy distribution is one of such examples.
-
-If these assumptions hold, then CLT will work for the estimate of a parameter, no matter what the distribution of the random variable is. This becomes especially useful, when we want to test a hypothesis or construct a confidence interval for the estimate of parameter.
 
 
 ## Confidence and prediction intervals {#confidenceIntervals}
@@ -384,10 +434,10 @@ Remember that the p-value itself is random and will change if you change the sam
 Finally, a related question to all of this, is *how to select the significance level*. Dave Worthington, a colleague of mine and a Statistics mentor at Lancaster University, has proposed an interesting motivation for that. If you do not have a level, driven by the problem (e.g. we need to satisfy 99% of demand, thus the significance level is 1%), then select the one for your life time. In how many cases in your life would you be ready to make a mistake? Would it be 5%? 3%? 1%? Select something and stick with it. Then over the years you will know that you have made the selected proportion of mistakes, when conducting different statistical test in variaous circumstances.
 
 
+<!-- ## Data visualisation {#visualisation} -->
+
 <!-- ## Correlation and measures of association {#correlations} -->
 
-
-<!-- ## Data visualisation {#visualisation} -->
 
 
 ## Theory of distributions {#distributions}
