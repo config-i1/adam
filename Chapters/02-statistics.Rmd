@@ -7,6 +7,107 @@ Before we move further, we need to agree what the term "estimator" means, which 
 - **Estimator** is the rule for calculating estimates of parameters based on a sample of data. For example, arithmetic mean is an estimator of the population mean. Another example would be method of Ordinary Least Squares, which is a rule for producing estimates of parameters of a regression model and thus an estimator.
 
 
+## Preliminary data analysis {#dataAnalysis}
+One of the basic thing that is worth doing before starting any modelling is the preliminary data analysis. This can be done either using numerical or graphical analysis. The former is useful when you want to have a summary information about the data without trying to find detailed information about it. The latter is useful when you can spend more time, investigating relations and issues in the data. In many cases, they compliment each other.
+
+### Numerical analysis
+In this section we will use the classical `mtcars` dataset from `datasets` package for R. It contains 32 observations with 11 variables. While all the variables are numerical, some of them are in fact categorical variables encoded as binary ones. We can check the description of the dataset in R:
+
+```{r eval=FALSE}
+?mtcars
+```
+
+Judging by the explanation in the R documentation, the following variables are categorical:
+
+1. vs - Engine (0 = V-shaped, 1 = straight),
+2. am - Transmission (0 = automatic, 1 = manual).
+
+In addition, the following variables are integer numeric ones:
+
+1. cyl - Number of cylinders,
+2. hp - Gross horsepower,
+3. gear - Number of forward gears,
+4. carb - Number of carburetors.
+
+All the other variables are continuous numeric.
+
+Takign this into account, we will create a data frame, encoding the categorical variables as factors for further analysis:
+
+```{r}
+mtcarsData <- data.frame(mtcars)
+mtcarsData$vs <- factor(mtcarsData$vs,levels=c(0,1),labels=c("V-shaped","Straight"))
+mtcarsData$am <- factor(mtcarsData$am,levels=c(0,1),labels=c("automatic","manual"))
+```
+
+Given that we only have two options in those variables, it is not compulsory to do this encoding, but it will help us in the further analysis.
+
+We can start with the basic summary statistics. We remember from the scales of information (Section \@ref(scales)) that the nominal variables can be analysed only via frequencies, so this is what we can produce for them:
+
+```{r}
+table(mtcarsData$vs)
+table(mtcarsData$am)
+```
+
+Based on this, we can conclude that the cars with V-shaped engine are met more often in the dataset than the cars with the Straight one. In addition, the automatic transmission prevails in the data. The related statistics which is useful for analysis of categorical variables is called **mode**. It shows which of the values happens most often in the data. Judging by the frequencies above, we can conclude that the mode for the first variable is the value "V-shaped".
+
+All of this is purely descriptive information, which does not provide us much. We could probably get more information if we analysed the contingency table based on these two variables:
+
+```{r}
+table(mtcarsData$vs,mtcarsData$am)
+```
+
+For now, we can only conclude that the cars with V-shaped engine and automatic transmission are met more often than the other cars in the dataset.
+
+Next, we can look at the numerical variables. As we recall from Section \@ref(scales), this scale supports all operations, so we can use quantiles, mean, standard deviation etc. Here how we can analyse, for example, the variable mpg:
+
+```{r}
+setNames(mean(mtcarsData$mpg),"mean")
+quantile(mtcarsData$mpg)
+setNames(median(mtcarsData$mpg),"median")
+```
+
+The output above produces:
+
+1. **Mean** - the average value of mpg in the dataset, $\bar{y}=\frac{1}{n}\sum_{j=1}^n y_j$.
+2. **Quantiles** - the values that show, below which values the respective proportions of the dataset lie. For example, 25% of observations have mpg less than 15.425.
+3. **Median**, which splits the sample in two halves. It corresponds to the 50% quantile.
+
+If median is greater than mean, then this typically means that the distribution of the variable is skewed (it has some rare observations that have large values). This is the case in our case, we can investigate it furtherusing skewness and kurtosis from `timeDate` package:
+
+```{r}
+timeDate::skewness(mtcarsData$mpg)
+timeDate::kurtosis(mtcarsData$mpg)
+```
+
+**Skewness** shows the asymmetry of distribution. If it is greater than zero, then the distribution has the long right tail. If it is equal to zero, then it is symmetric.
+
+**Kurtosis** shows the excess of distribution (fatness of tails) in comparison with the normal distribution. If it is equal to zero, then it is the same as for normal distribution.
+
+Another potentially useful measure is the half moment (`hm` from `greybox`), which returns the complex number:
+```{r}
+hm(mtcarsData$mpg)
+```
+
+It is calculated as: $\mathrm{hm}=\frac{1}{n}\sum_{j=1}^n \sqrt{y_j}$. The real part of this number corresponds to the positive values in comparison with the centre of distribution, while the imaginary shows the negative ones. Given that the imaginary part is greater than the real, we can conclude that the values are more density to the left of the mean of distribution rather than to the right. This corresponds to the positive skewness. The related coefficient based on that is coefficient of asymmetry (`asymmetry` from `greybox`, starting from v1.0.0):
+
+```{r}
+asymmetry(mtcarsData$mpg)
+```
+
+It lies between -1 and 1 and is equal to zero only if the distribution is symmetric. It shows, where the higher density of values is (the negative number means that it is to the left from the centre, while the positive means that it is to the right). The main advantage of hm and complex asymmetry coefficients is that they are robust to outliers and are not as sensitive as the classical skewness coefficient is.
+
+Based on all of this, we can conclude that the distribution of `mpg` is skewed and has the longer right tail. This is expected for such variable, because the cars that have higher mileage are not common in this dataset.
+
+All the conventional statistics discussed above can be produced using the following summary for all variables in the dataset:
+```{r}
+summary(mtcarsData)
+```
+
+
+<!-- ### Graphical analysis -->
+
+
+
 ## Law of Large Numbers and Central Limit Theorem {#LLNandCLT}
 Consider a case, when you want to understand what is the average height of teenagers living in your town. It is very expensive and time consuming to go from one house to another and ask every single teenager (if you find one), what their hight is. If we could do that, we would get the true mean, true average height of teenagers living in the town. But in reality, it is more practical to ask a sample of teenagers and make conclusions about the "population" (all teenagers in the town) based on this sample. Indeed, you will spend much less time collecting the information about the height of 100 people rather than 100,000. However, when we take a sample of something, the statistics we work with will always differ from the truth: sample mean will never be equal to the true mean, but it can be shown mathematically that it will converge to the truth, when some specific conditions are met and when the sample size increases. If we set up the experiment correctly, then we can expect our statistics to follow some laws.
 
@@ -437,106 +538,6 @@ Over the years of teaching statistics, I have seen many different mistakes, rela
 Remember that the p-value itself is random and will change if you change the sample size or the model specification. Always keep this in mind, when conducting statistical tests. All these mistakes typically arise because of the misuse of p-values and hypothesis testing mechanism. This is one of the reasons, why I prefer [confidence intervals](#confidenceIntervals), when possible (as discussed above).
 
 Finally, a related question to all of this, is *how to select the significance level*. Dave Worthington, a colleague of mine and a Statistics mentor at Lancaster University, has proposed an interesting motivation for that. If you do not have a level, driven by the problem (e.g. we need to satisfy 99% of demand, thus the significance level is 1%), then select the one for your life time. In how many cases in your life would you be ready to make a mistake? Would it be 5%? 3%? 1%? Select something and stick with it. Then over the years you will know that you have made the selected proportion of mistakes, when conducting different statistical test in variaous circumstances.
-
-
-## Preliminary data analysis {#dataAnalysis}
-One of the basic thing that is worth doing before starting any modelling is the preliminary data analysis. This can be done either using numerical or graphical analysis. The former is useful when you want to have a summary information about the data without trying to find detailed information about it. The latter is useful when you can spend more time, investigating relations and issues in the data. In many cases, they compliment each other.
-
-### Numerical analysis
-In this section we will use the classical `mtcars` dataset from `datasets` package for R. It contains 32 observations with 11 variables. While all the variables are numerical, some of them are in fact categorical variables encoded as binary ones. We can check the description of the dataset in R:
-
-```{r eval=FALSE}
-?mtcars
-```
-
-Judging by the explanation in the R documentation, the following variables are categorical:
-
-1. vs - Engine (0 = V-shaped, 1 = straight),
-2. am - Transmission (0 = automatic, 1 = manual).
-
-In addition, the following variables are integer numeric ones:
-
-1. cyl - Number of cylinders,
-2. hp - Gross horsepower,
-3. gear - Number of forward gears,
-4. carb - Number of carburetors.
-
-All the other variables are continuous numeric.
-
-Takign this into account, we will create a data frame, encoding the categorical variables as factors for further analysis:
-
-```{r}
-mtcarsData <- data.frame(mtcars)
-mtcarsData$vs <- factor(mtcarsData$vs,levels=c(0,1),labels=c("V-shaped","Straight"))
-mtcarsData$am <- factor(mtcarsData$am,levels=c(0,1),labels=c("automatic","manual"))
-```
-
-Given that we only have two options in those variables, it is not compulsory to do this encoding, but it will help us in the further analysis.
-
-We can start with the basic summary statistics. We remember from the scales of information (Section \@ref(scales)) that the nominal variables can be analysed only via frequencies, so this is what we can produce for them:
-
-```{r}
-table(mtcarsData$vs)
-table(mtcarsData$am)
-```
-
-Based on this, we can conclude that the cars with V-shaped engine are met more often in the dataset than the cars with the Straight one. In addition, the automatic transmission prevails in the data. The related statistics which is useful for analysis of categorical variables is called **mode**. It shows which of the values happens most often in the data. Judging by the frequencies above, we can conclude that the mode for the first variable is the value "V-shaped".
-
-All of this is purely descriptive information, which does not provide us much. We could probably get more information if we analysed the contingency table based on these two variables:
-
-```{r}
-table(mtcarsData$vs,mtcarsData$am)
-```
-
-For now, we can only conclude that the cars with V-shaped engine and automatic transmission are met more often than the other cars in the dataset.
-
-Next, we can look at the numerical variables. As we recall from Section \@ref(scales), this scale supports all operations, so we can use quantiles, mean, standard deviation etc. Here how we can analyse, for example, the variable mpg:
-
-```{r}
-setNames(mean(mtcarsData$mpg),"mean")
-quantile(mtcarsData$mpg)
-setNames(median(mtcarsData$mpg),"median")
-```
-
-The output above produces:
-
-1. **Mean** - the average value of mpg in the dataset, $\bar{y}=\frac{1}{n}\sum_{j=1}^n y_j$.
-2. **Quantiles** - the values that show, below which values the respective proportions of the dataset lie. For example, 25% of observations have mpg less than 15.425.
-3. **Median**, which splits the sample in two halves. It corresponds to the 50% quantile.
-
-If median is greater than mean, then this typically means that the distribution of the variable is skewed (it has some rare observations that have large values). This is the case in our case, we can investigate it furtherusing skewness and kurtosis from `timeDate` package:
-
-```{r}
-timeDate::skewness(mtcarsData$mpg)
-timeDate::kurtosis(mtcarsData$mpg)
-```
-
-**Skewness** shows the asymmetry of distribution. If it is greater than zero, then the distribution has the long right tail. If it is equal to zero, then it is symmetric.
-
-**Kurtosis** shows the excess of distribution (fatness of tails) in comparison with the normal distribution. If it is equal to zero, then it is the same as for normal distribution.
-
-Another potentially useful measure is the half moment (`hm` from `greybox`), which returns the complex number:
-```{r}
-hm(mtcarsData$mpg)
-```
-
-It is calculated as: $\mathrm{hm}=\frac{1}{n}\sum_{j=1}^n \sqrt{y_j}$. The real part of this number corresponds to the positive values in comparison with the centre of distribution, while the imaginary shows the negative ones. Given that the imaginary part is greater than the real, we can conclude that the values are more density to the left of the mean of distribution rather than to the right. This corresponds to the positive skewness. The related coefficient based on that is coefficient of asymmetry (`asymmetry` from `greybox`, starting from v1.0.0):
-
-```{r}
-asymmetry(mtcarsData$mpg)
-```
-
-It lies between -1 and 1 and is equal to zero only if the distribution is symmetric. It shows, where the higher density of values is (the negative number means that it is to the left from the centre, while the positive means that it is to the right). The main advantage of hm and complex asymmetry coefficients is that they are robust to outliers and are not as sensitive as the classical skewness coefficient is.
-
-Based on all of this, we can conclude that the distribution of `mpg` is skewed and has the longer right tail. This is expected for such variable, because the cars that have higher mileage are not common in this dataset.
-
-All the conventional statistics discussed above can be produced using the following summary for all variables in the dataset:
-```{r}
-summary(mtcarsData)
-```
-
-
-<!-- ### Graphical analysis -->
 
 
 <!-- ## Correlation and measures of association {#correlations} -->
