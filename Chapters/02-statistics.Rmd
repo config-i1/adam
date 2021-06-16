@@ -69,10 +69,10 @@ setNames(median(mtcarsData$mpg),"median")
 The output above produces:
 
 1. **Mean** - the average value of mpg in the dataset, $\bar{y}=\frac{1}{n}\sum_{j=1}^n y_j$.
-2. **Quantiles** - the values that show, below which values the respective proportions of the dataset lie. For example, 25% of observations have mpg less than 15.425.
+2. **Quantiles** - the values that show, below which values the respective proportions of the dataset lie. For example, 25% of observations have mpg less than 15.425. The 25%, 50% and 75% quantiles are also called 1st, 2nd and 3rd **quartiles** respectively.
 3. **Median**, which splits the sample in two halves. It corresponds to the 50% quantile.
 
-If median is greater than mean, then this typically means that the distribution of the variable is skewed (it has some rare observations that have large values). This is the case in our case, we can investigate it furtherusing skewness and kurtosis from `timeDate` package:
+If median is greater than mean, then this typically means that the distribution of the variable is skewed (it has some rare observations that have large values). This is the case in our case, we can investigate it further using skewness and kurtosis from `timeDate` package:
 
 ```{r}
 timeDate::skewness(mtcarsData$mpg)
@@ -104,8 +104,141 @@ summary(mtcarsData)
 ```
 
 
-<!-- ### Graphical analysis -->
+### Graphical analysis
+Continuing our example with `mtcars` dataset, we now investigate what plots can be used for different types of data. As discussed earlier, we have two categorical variables: vs and am - and they need to be treated differently than the numerical ones. We can start by producing their barplots:
 
+```{r barplotVS, fig.cap="Barplot for the engine type"}
+barplotVS <- barplot(table(mtcarsData$vs), xlab="Type of engine")
+text(barplotVS,table(mtcarsData$vs)/2,table(mtcarsData$vs),cex=1.25)
+```
+
+This is just a graphical presentation of the contingency table we have already discussed earlier. Note that histograms do not make sense in case of categorical variables, because they assume that variables are numerical and continuous. Barplots are useful when you deal with either categorical variables or integer numerical ones. Here is what we can produce in case of the integer variable `cyl`:
+
+```{r barplotCYL, fig.cap="Barplot for the number of cylinders"}
+barplotCYL <- barplot(table(mtcarsData$cyl), xlab="Number of cylinders")
+text(barplotCYL,table(mtcarsData$cyl)/2,table(mtcarsData$cyl),cex=1.25)
+```
+
+Figure \@ref(fig:barplotCYL) shows that there are three types of cars in the data: with 4, 6 and 8 cylinders. The most frequently met is the car with 8 cylinders. Judging by the plot, half of cars have not more than 6 cylinders (median is equal to 6). All of this can be deducted from the barplot. And here how the histogram would look like for cylinders:
+
+```{r histogramCYL, fig.cap="Histogram for the number of cylinders. Do not do this!"}
+hist(mtcarsData$cyl)
+```
+
+Figure \@ref(fig:histogramCYL) is difficult to read, because on histogram, the bars show frequency at which continuous variable appears in pre-specified bins. In our case we would conclude that the most frequently cars in the dataset are those that have 7.5 - 8 cylinders, which is wrong and misleading. In addition, this basic plot does not have a readable label for x-axis and a meaningful title (in fact, we do not need one, given that we have caption). So, always label your axis and make sure that the text on plots is easy to understand for those people who do not work with the data.
+
+Coming back to categorical variables, we can construct two-dimensional plots to investigate potential relations between variables. We will first try the same barplot as above, but with `vs` and `am` variables:
+
+```{r barplotVSAM, fig.cap="Barplot for the type of engine and transmission"}
+barplot(table(mtcarsData$vs,mtcarsData$am),
+        xlab="Type of transmission", legend.text=levels(mtcarsData$vs))
+```
+
+Figure \@ref(fig:barplotVSAM) provides some information about the distribution of type of engine and transmission. For example, we can say that the most often met car in the dataset is the one with automatic transmission and V-shaped engine. However, it is not possible to say much about the relation between the two variables based on this plot. So, there is an alternative presentation, which uses the heat map (`tableplot()` from `greybox`):
+
+```{r tableplotVSAM, fig.cap="Heat map for the type of engine and transmission"}
+tableplot(mtcarsData$vs,mtcarsData$am,
+          xlab="Type of engine", ylab="Type of transmission")
+```
+
+The idea of this plot is that the darkness of areas shows the frequency of occurrence of each specific value. The numbers inside the box show the proportions for each answer. So, we can conclude (again), that automatic transmission with V-shaped engine is met in 37.5% of cases. On the other hand, the least frequent type of car is the one with V-shaped engine and manual transmission. There might be some tendency in the dataset: the engine and transmission might be related (v-shaped with automatic vs Straigh with manual) - but it is not very well pronounced. The same table plot can be used for the analysis of relations between integer variables (and categorical). Here, for example, the plot between the number of cylinders and the type of engine:
+
+```{r tableplotCYLVS, fig.cap="Heat map for the number of cylinders and the type of engine"}
+tableplot(mtcarsData$cyl,mtcarsData$vs,
+          xlab="Number of cylinders", ylab="Type of engine")
+```
+
+Figure \@ref(fig:tableplotCYLVS) allows making more solid conclusions about the relation between the two variables: we see that with the increase of the number of cylinders, the cars tend to switch from Straight to the V-shaped engines. This has an explanation: the engines with more cylinders need to have a different geometry to fit them all, and the V shape is more suitable for them. The table plot shows clearly this relation between the two variables.
+
+Next, we can analyse the numerical variables. We can start with the basic histogram:
+
+```{r histWeight, fig.cap="Distribution of the weights of cars"}
+hist(mtcarsData$wt, xlab="Weight", main="", probability=TRUE)
+lines(density(mtcarsData$wt), col="red")
+```
+
+The histogram \@ref(fig:histWeight) shows that there is a slight skewness in the data: the cars with weight from 3 to 4 thousands pounds are met more often than the cars with more than 5. The left tail of this distribution is slightly longer than the right one. Note that I have produced the probabilities on the y-axis of the plot in order to add the density curve, which smooths out the frequencies and shows how the distribution looks like.
+
+An alternative presentation of the histogram is the boxplot, which graphically presents quantiles of distribution:
+
+```{r boxWeight, fig.cap="Boxplot of the variable weight"}
+boxplot(mtcarsData$wt, ylab="Weight")
+points(mean(mtcarsData$wt),col="red", pch=16)
+```
+
+This plot has the box in the middle, the whiskers on the sides, points at the top and the red point at the centre. The box shows 1st, 2nd and 3rd quartiles of distribution, thus the black line in the middle is the median. The distance between the 1st and the 3rd quartiles is called "Interquartile range" (IQR) and is used for the calculation of the interval (1st / 3rd quartile $\pm 1.5 \times$IQR), which corresponds roughly to the 99.3% interval (read more about this in Section \@ref(confidenceIntervals)) from Normal distribution and is graphically drawn as the furthest observation in the interval. So, the lower whisker on our plot corresponds to the minimum value in the data, which is still in the interval, while the upper whisker corresponds to the bound of the interval. All the observations that lie beyond the interval are marked as potential outliers. Note that *this does not mean that the values are indeed outliers*, they just lie outside the 99.3% interval of Normal distribution. Finally, the red dot was added by me to show where the mean is. It is lower than median, this implies that there is a slight skewness in the distribution of weight.
+
+There is also a way for producing the plots that would combine elements of histogram, density curve and boxplot. There is a plot called "violin plot". We will use `vioplot()` function from `vioplot` package in order to produce them:
+
+```{r vioWeight, fig.cap="Violin plot together with boxplot of the variable weight"}
+vioplot(mtcarsData$wt, ylab="Weight")
+points(mean(mtcarsData$wt),col="red", pch=16)
+```
+
+Figure \@ref(fig:vioWeight) unites the boxplot and the density curve from the plots above, providing not only information about the quantiles, but also about the shape of the distribution.
+
+Finally, if we want to compare the distribution of a variable with a known theoretical distribution, we can produce the QQ-plot. Here how it looks for Normal distribution:
+
+```{r QQWeight, fig.cap="QQ plot of Normal distribution for variable weight"}
+qqnorm(mtcarsData$wt)
+qqline(mtcarsData$wt)
+```
+
+The idea of the plot on Figure \@ref(fig:QQWeight) is to compare theoretical quantiles with the empirical ones. If the variable would follow the specific distribution, then all the points would lie on the solid line. In our case, they do not: there are points in the right tail that are very far from the line - so we would conclude that the distribution of weight does not look Normal.
+
+So far, we have discussed the univariate analysis of numerical variables, but we can also produce plots showing potential relations between them. We start with the classical scatterplot:
+
+```{r scatterWeightMPG, fig.cap="Scatterplot diagram between weight and mileage"}
+plot(mtcarsData$wt, mtcarsData$mpg, xlab="Weight", ylab="Mileage")
+lines(lowess(mtcarsData$wt, mtcarsData$mpg), col="red")
+```
+
+The plot on Figure \@ref(fig:scatterWeightMPG) shows the observations that have specific weight and mileage. Based on this, we can see if there is a relation between variables or not and what sort of relation this is. In order to simplify analysis, I have added the lowess line to the plot. It smooths the relation between variables, drawing the smooth line through the points and helps in understanding the existing relations in the data. Judging by Figure \@ref(fig:scatterWeightMPG), there is a negative, slightly non-linear relation between the variables: the mileage decreases with reduced speed, when weight of a car increases. This relation makes sense, because heavier cars will consume more fuel and thus drive less on a gallon of petrol.
+
+We could construct similar plots for all the other numerical variables, but not all plots would be helpful. For example, a plot of mileage versus number of forward gears would be very difficult to read (see Figure \@ref(fig:scatterGearMPG)).
+
+```{r scatterGearMPG, fig.cap="Scatterplot diagram between weight and mileage"}
+plot(mtcarsData$gear, mtcarsData$mpg, xlab="Number of gears", ylab="Mileage")
+```
+
+This is because one of the variables is integer and takes only a handful of values. In this case, a boxplot or a violin plot would be more useful:
+
+```{r boxGearMPG, fig.cap="Boxplot of mileage vs number of gears"}
+boxplot(mpg~gear, mtcarsData, xlab="Number of gears", ylab="Mileage")
+points(tapply(mtcarsData$mpg, mtcarsData$gear, mean), col="red", pch=16)
+```
+
+The plot on Figure \@ref(fig:boxGearMPG) is more informative than the one on Figure \@ref(fig:scatterGearMPG): it shows how the distribution of mileage changes with the increase of the numeric variable number of gears. We can also see that the mean value first increases and then goes down slightly. I do not have any good explanation of this phenomenon, but it might be related with how efficient the cars become with the increase fo the number of gears, or this could happen due to some latent, unobserved factors. So, the data tells us that there is a non-linear relation between number of gears and mileage.
+
+Similarly, we can produce violin plots for the same data (see Figure \@ref(vioGearMPG)).
+
+```{r vioGearMPG, fig.cap="Violin plot of mileage vs number of gears"}
+vioplot(mpg~gear, mtcarsData, xlab="Number of gears", ylab="Mileage")
+points(tapply(mtcarsData$mpg, mtcarsData$gear, mean), col="red", pch=16)
+```
+
+Finally, using exactly the same idea with boxplots / violin plots, we can analyse relations between categorical and numerical variables. Figure \@ref(fig:vioAMMPG) shows the relation between transmission type and mileage. We can conclude that the cars with manual transmission tend to have a higher mileage than the ones with the automatic one in our dataset.
+
+```{r vioAMMPG, fig.cap="Violin plot of mileage vs transmission type"}
+vioplot(mpg~am, mtcarsData, xlab="Transmission type", ylab="Mileage")
+points(tapply(mtcarsData$mpg, mtcarsData$am, mean), col="red", pch=16)
+```
+
+Finally, producing plots one by one might be a tedious and challenging task, so it is good to have some instruments for producing several of them together. The `plot()` method will produce scatterplot matrix for numerical variables, but does not deal well with integer and categorical variables:
+
+```{r scatterMatrix, fig.cap="Scatterplot matrix for the mtcars dataset"}
+plot(mtcars)
+```
+
+Figure \@ref(fig:scatterMatrix) is informative for the variables `mpg`, `cyl`, `disp`, `hp`, `drat`, `qsec` and `carb`, but is difficult to read for the others. In order to address this issue, we can use the `spread()` function from `greybox`, which will detect types of variables and produce the necessary plots automatically:
+
+```{r spreadPlot, fig.cap="Spread plot for the mtcars dataset"}
+spread(mtcarsData, lowess=TRUE)
+```
+
+The plot on Figure \@ref(fig:spreadPlot) is the collection of the plots discussed above, so I will not stop on explaining what it shows.
+
+As a final word for this section, when analysing data, it is critically important not to just describe what we see, but also explain why a result or a relationship is meaningful. So, for example, concluding based on Figure \@ref(fig:spreadPlot) that the mileage has a negative relation with displacement is not enough. If you want to analyse the data properly, you need to explain that this relation is meaningful, because with the increase of the size of engine, the fuel consumption will increase as well, and as a result the mileage will go down. Furthermore, the relation is non-linear because the change in decrease will slow down with cars with bigger engines. Inevitably, the car with a gigantic engine will be able to travel a short distance on a gallon of fuel - the mileage will not become negative, so the non-linearity is not an artifact of the data, but an existing phenomenon.
 
 
 ## Law of Large Numbers and Central Limit Theorem {#LLNandCLT}
