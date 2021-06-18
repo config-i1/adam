@@ -48,7 +48,7 @@ table(mtcarsData$vs)
 table(mtcarsData$am)
 ```
 
-Based on this, we can conclude that the cars with V-shaped engine are met more often in the dataset than the cars with the Straight one. In addition, the automatic transmission prevails in the data. The related statistics which is useful for analysis of categorical variables is called **mode**. It shows which of the values happens most often in the data. Judging by the frequencies above, we can conclude that the mode for the first variable is the value "V-shaped".
+These tables are called **contingency tables**, they show the frequency of appearance of values of variables. Based on this, we can conclude that the cars with V-shaped engine are met more often in the dataset than the cars with the Straight one. In addition, the automatic transmission prevails in the data. The related statistics which is useful for analysis of categorical variables is called **mode**. It shows which of the values happens most often in the data. Judging by the frequencies above, we can conclude that the mode for the first variable is the value "V-shaped".
 
 All of this is purely descriptive information, which does not provide us much. We could probably get more information if we analysed the contingency table based on these two variables:
 
@@ -104,7 +104,7 @@ summary(mtcarsData)
 ```
 
 
-### Graphical analysis
+### Graphical analysis {#dataAnalysisGraphical}
 Continuing our example with `mtcars` dataset, we now investigate what plots can be used for different types of data. As discussed earlier, we have two categorical variables: vs and am - and they need to be treated differently than the numerical ones. We can start by producing their barplots:
 
 ```{r barplotVS, fig.cap="Barplot for the engine type."}
@@ -674,8 +674,82 @@ Remember that the p-value itself is random and will change if you change the sam
 Finally, a related question to all of this, is *how to select the significance level*. Dave Worthington, a colleague of mine and a Statistics mentor at Lancaster University, has proposed an interesting motivation for that. If you do not have a level, driven by the problem (e.g. we need to satisfy 99% of demand, thus the significance level is 1%), then select the one for your life time. In how many cases in your life would you be ready to make a mistake? Would it be 5%? 3%? 1%? Select something and stick with it. Then over the years you will know that you have made the selected proportion of mistakes, when conducting different statistical test in variaous circumstances.
 
 
-<!-- ## Correlation and measures of association {#correlations} -->
+## Correlation and measures of association {#correlations}
+Now that we have discussed confidence intervals and hypothesis testing, we can move towards the analysis of relations between variables, in a way continuing the preliminary data analysis that we finished in Section \@ref(dataAnalysis). We continue using the same dataset `mtcarsData` with the two categorical variables, `am` and `vs`.
 
+### Nominal scale
+As discussed in Section \@ref(scales), not all scales support the more advanced operations (such as taking mean in ordinal scale). This means that if we want to analyse relations between variables, we need to use appropriate instrument. The coefficients that show relations between variables are called "**measures of association**". We start their discussions with the simplest scale - nominal.
+
+There are several measures of association for the variables in nominal scale. They are all based on calculating the number of specific values of variables, but use different formulae. The first one is called **contingency coefficient $\phi$** and can only be calculated between variables that have only two values. As the name says, this measure is based on the contingency table. Here is an example:
+
+```{r}
+table(mtcarsData$vs,mtcarsData$am)
+```
+
+The $\phi$ coefficient is calculated as:
+\begin{equation}
+    \phi = \frac{n_{1,1} n_{2,2} - n_{1,2} n_{2,1}}{\sqrt{n_{1,\cdot}n_{2,\cdot}n_{\cdot,1}n_{\cdot,2}}} ,
+    (\#eq:measuresAssociationPhi)
+\end{equation}
+where $n_{i,j}$ is the element of the table on row $i$ and column $j$, $n_{i,\cdot}=\sum_{j}n_{i,j}$ - is the sum in row $i$ and $n_{\cdot,j}=\sum_{i} n_{i,j}$ - is the sum in column $j$. This coefficient lies between -1 and 1 and has a simple interpretation: if will be close to 1, when the elements on diagonal are greater than the off-diagonal ones, implying that there is a relation between variables. The value of -1 can only be obtained, when off-diagonal elements are non-zero, while the diagonal ones are zero. Finally, if the values in the contingency table are distributed evenly, the coefficient will be equal to zero. In our case the value of $\phi$ is:
+
+```{r}
+(12*7 - 6*7)/sqrt(19*13*14*18)
+```
+This is a very low value, so even if the two variables are related, the relation is not well pronounced. In order to see, whether this value is statistically significantly different from zero, we could test a statistical hypothesis (hypothesis testing was discussed in Section \@ref(hypothesisTesting)):
+
+$H_0$: there is no relation between variables
+$H_1$: there is some relation between variables
+
+This can be done using **$\chi^2$ test**, the statistics for which is calculated via:
+\begin{equation}
+    \chi^2 = \sum_{i,j} \frac{n n_{i,j} - n_{i,\cdot} n_{\cdot,j}}{n n_{i,\cdot} n_{\cdot,j}} ,
+    (\#eq:measuresAssociationChi)
+\end{equation}
+where $n$ is the sum of elements in the contingency table. The value calculated based on \@ref(eq:measuresAssociationChi) will follow $\chi^2$ distribution with $(r-1)(c-1)$ degrees of freedom, where $r$ is the number of rows and $c$ is the number of columns in contingency table. This is a proper statistical test, so it should be treated as one. We select my favourite significance level, 1% and can now conduct the test:
+
+```{r}
+chisq.test(table(mtcarsData$vs,mtcarsData$am))
+```
+
+Given that p-value is greater than 1%, we fail to reject the null hypothesis and can conclude that the relation does not seem to be different from zero - we do not find a relation between the variables in our data.
+
+The main limitation of the coefficient $\phi$ is that it only works for the $2\times 2$ tables. In reality we can have variables in nominal scale that take several values and it might be useful to know relations between them. For example, we can have a variable `colour`, which takes values `red`, `green` and `blue` and we would want to know if it is related to the transmission type. We do not have this variable in the data, so just for this example, we will create one (using multinomial distribution):
+
+```{r eval=FALSE}
+colour <- c(1:3) %*% rmultinom(nrow(mtcars), 1,
+                               c(0.4,0.5,0.6))
+colour <- factor(colour, levels=c(1:3),
+                 labels=c("red","green","blue"))
+barplot(table(colour), xlab="Colour")
+```
+
+```{r include=FALSE}
+load("data/measuresOfAssociation.Rdata")
+```
+
+In order to measure relation between the new variable and the `am`, we can use Cramer's V coefficient, which relies on the formula of $\chi^2$ test \@ref(eq:measuresAssociationChi):
+\begin{equation}
+    V = \sqrt{\frac{\chi^2}{n\times \min(r-1, c-1)}} .
+    (\#eq:measuresAssociationCramer)
+\end{equation}
+
+Cramer's V always lies between 0 and 1, becoming close to one only if there is some relation between the two categorical variables. `greybox` package implements this coefficeint in `cramer()` function:
+
+```{r}
+cramer(mtcarsData$am,colour)
+```
+
+The output above shows that the value of the coefficient is approxmately 0.1, which is low, implying that the relation between the two variables is very weak. In addition, the p-value tells us that we fail to reject the null hypothesis on 1% level in the $\chi^2$ test \@ref(eq:measuresAssociationChi), and the relation does not look statistically significant. So we can conclude that according to our data, the two variables are not related (no wonder, we have generated one of them).
+
+The main limitation of Cramer's V is that it is difficult to interpret beyond "there is a relation". Imagine a situation, where the colour would be related to the variable "class" of a car, that can take 5 values. What could we say more than to state the fact that the two are related? After all, in that case you end up with a contingency table of $3\times 5$, and it might not be possible to say how specifically one variable changes with the change of another one. Still, Cramer's V at least provides some information about the relation of two categorical variables.
+
+<!-- ### Ordinal scale -->
+<!-- As discussed in Section \@ref(scales), ordinal scale has more flexibility than the nominal one - its values have natural ordering, which can be used, when we want to measure relations between several variables in ordinal scale. Yes, we can use Cramer's V and $\chi^2$ test, but this way we would not be using all advantages of the scale. So, what can we use in this case? There are three popular measures of association for variables in ordinal scale: -->
+
+<!-- 1. Goodman-Kruskal's $\gamma$, -->
+<!-- 2. Yule's Q, -->
+<!-- 3. Kendall's $\tau$. -->
 
 
 ## Theory of distributions {#distributions}
