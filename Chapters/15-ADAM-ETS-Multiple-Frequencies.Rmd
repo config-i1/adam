@@ -95,7 +95,7 @@ The second option is based on the idea of [dynamic model with categorical variab
 where $q$ is the number of levels in the categorical variable (for weeks of year, this should be 53). The number of parameters to estimate in this case might be greater than the number of harmonics in the first case, but this type of model resolves all three issues as well and does not have the dilema about selecting the number of harmonics.
 
 
-## Dealing with daylight saving and leap years
+## Dealing with daylight saving and leap years {#MultipleFrequenciesDSTandLeap}
 Another problem that arises in case of data with high frequency is the change of local time due to daylight saving (DST). This happens in some countries two times a year: in Spring the time is moved one hour forward (typically at 1am to 2am), while in the Autumn it is moved back one hour. The implications of this are terrifying from forecasting point of view, because one day of year has 23 hours, while the other one has 25 hours, while all the business processes are aligned to the local time. This means that if the conventional seasonal ETS model with $m=24$ is fit to the data, it will only work correctly in a half of year. Well, it will adapt to the new patterns after some times, but this implies that the smoothing parameter $\gamma$ will be higher than needed.
 
 There are two solutions to this problem:
@@ -115,11 +115,13 @@ load("data/adamModelETSMNMTaylor.Rdata")
 In order to see how ADAM can be applied to high frequency data, we will use `taylor` series from `forecast` package. This is half-hourly electricity demand in England and Wales from Monday 5 June 2000 to Sunday 27 August 2000, used in @Taylor2003a.
 
 ```{r}
-y <- forecast::taylor
+library(zoo)
+y <- zoo(forecast::taylor,
+         order.by=as.POSIXct("2000/06/05")+(c(1:length(y))-1)*60*30)
 plot(y)
 ```
 
-The series does not exhibit an obvious trend, but has two seasonal cycles: half-hour of day and day of week. Seasonality seems to be multiplicative. We will try several different models and see how they compare. In all the cases below, we will use backcasting as initialisation of the model. We will use the last 336 observations ($48 \times 7$) as the holdout, just to see whether models perform adequately or not.
+Note that when you have data with [DST or Leap years](#MultipleFrequenciesDSTandLeap), `adam()` will automatically correct the seasonal lags if your data contains specific dates (as `zoo` objects have, for example). The series above does not exhibit an obvious trend, but has two seasonal cycles: half-hour of day and day of week. Seasonality seems to be multiplicative. We will try several different models and see how they compare. In all the cases below, we will use backcasting as initialisation of the model. We will use the last 336 observations ($48 \times 7$) as the holdout, just to see whether models perform adequately or not.
 
 First, it is ADAM ETS(M,N,M) with `lags=c(48,7*48)`:
 ```{r}
@@ -158,16 +160,14 @@ In this specific example, we see that the ADAM ETS(M,N,M)+AR(1) leads to a small
 
 
 ### ADAM ETSX
-Another option of dealing with multiple seasonalities, as discussed above, is ETSX model. We start with a static model, which captures half-hours of day via its seasonal component and days of week frequency via explanatory variable. We will use `temporaldummy()` function from `greybox` package for this. This function works much better, when the data contains proper time stamps and, for example, is of class `zoo` or `xts`. So we will convert the original variable `y` in zoo object:
+Another option of dealing with multiple seasonalities, as discussed above, is ETSX model. We start with a static model, which captures half-hours of day via its seasonal component and days of week frequency via explanatory variable. We will use `temporaldummy()` function from `greybox` package for this. This function works much better, when the data contains proper time stamps and, for example, is of class `zoo` or `xts`:
 ```{r}
-library(zoo)
-y <- zoo(y, order.by=as.POSIXct("2000/06/05")+(c(1:length(y))-1)*60*30)
 x1 <- temporaldummy(y,type="day",of="week",factors=TRUE)
 x2 <- temporaldummy(y,type="hour",of="day",factors=TRUE)
 taylorData <- data.frame(y=y,x1=x1,x2=x2)
 ```
 
-We can now fit the ADAM ETSX model with dummy variables for days of week:
+This function is especially useful when dealing with DST and Leap years (see Section \@ref(MultipleFrequenciesDSTandLeap)), because it will encode the dummy variables based on dates, allowing to sidestep the issue with changing frequency in the data. We can now fit the ADAM ETSX model with dummy variables for days of week:
 ```{r}
 adamModelETSXMNN <- adam(taylorData, "MNN", h=336, holdout=TRUE,
                          initial="back")
