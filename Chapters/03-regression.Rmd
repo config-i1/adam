@@ -2,7 +2,7 @@
 While we do not expect to cover the regression analysis in its fullness, I think that it is important to have some basic understanding of what regression model is, how it can be estimated and used for forecasting. This chapter introduces the regression starting from the simple linear model and then moving to more advanced topics of multiple linear regression, model estimation, regression assumptions, dummy variables, variables transformations, ARDL and model for scale of distribution.
 
 
-## Simple Linear Regression {#simpleLinearRelation}
+## Simple Linear Regression {#simpleLinearRegression}
 When we want to analyse some relations between variables, we can do [graphical](#dataAnalysisGraphical) and [correlations](#correlations) analysis. But this will not provide us sufficient information about what happens with the response variable with the change of explanatory variable. So it makes sense to consider the possible relations between variables, and the basis for this is Simple Linear Regression, which can be represented in the form:
 \begin{equation}
     y_t = a_0 + a_1 x_t + \epsilon_t ,
@@ -26,9 +26,67 @@ text(4,35,paste0(c("mpg=",round(coef(slmMPGWt),2),"wt+et"),collapse=""))
 The line drawn on the plot is the regression line, parameters of which were estimated based on the available data. In this case the intercept $\hat{a}_0=$`r round(coef(slmMPGWt)[1],2)`, meaning that this is where the red line crosses the y-axis, while the parameter of slope $\hat{a}_1=$`r round(coef(slmMPGWt)[2],2)` shows how fast the values change (how steep the line is). I've added hat symbols on the parameters to point out that they were estimated based on a sample of data. If we had all the data in the universe (population) and estimated a correct model on it, we would not need the hats. In simple linear regression, the re line will always go through the cloud of points, showing the averaged out tendencies. The one that we observe above can be summarise as "with the increase of weight, on average the mileage of cars goes down". Note that we might find some specific points, where the increase of weight would not decrease mileage (e.g. the two furthest left points show this), but this can be considered as a random fluctuation, so overall, the average tendency is as described above.
 
 
-<!-- ### Ordinary Least Squares (OLS) {#OLS} -->
+### Ordinary Least Squares (OLS) {#OLS}
+For obvious reasons, we do not have the values of parameters from the population. This means that we will never know what the true intercept and slope are. Luckily, we can estimate them based on the sample of data. There are different ways of doing that, and the most popular one is called "Ordinary Least Squares" method. This is the method that was used in the estimation of the model in Figure \@ref(fig:scatterWeightMPG2). So, how does it work?
 
-<!-- ### Simple linear regression uncertainty -->
+```{r scatterWeightMPG3, fig.cap="Scatterplot diagram between weight and mileage.", echo=FALSE}
+slmMPGWt <- lm(mpg~wt,mtcarsData)
+plot(mtcarsData$wt, mtcarsData$mpg,
+     xlab="Weight", ylab="Mileage",
+     xlim=c(0,6), ylim=c(0,40))
+abline(h=0, col="grey")
+abline(v=0, col="grey")
+abline(slmMPGWt,col="red")
+lines(rep(mtcarsData$wt[20],2),c(fitted(slmMPGWt)[20],mtcarsData$mpg[20]), lty=2)
+text(mtcarsData$wt[20]+0.15,mean(c(fitted(slmMPGWt)[20],mtcarsData$mpg[20])),TeX("$e_t$"))
+points(mtcarsData$wt[20],mtcarsData$mpg[20], pch=16)
+points(mtcarsData$wt[20],fitted(slmMPGWt)[20], pch=3)
+```
+
+When we estimate the simple linear regression model, the model \@ref(eq:SLRFormula) transforms into:
+\begin{equation}
+    y_t = \hat{a}_0 + \hat{a}_1 x_t + e_t .
+    (\#eq:SLRFormulaEstimated)
+\end{equation}
+This is because we do not know the true values of parameters and thus they are substituted by their estimates. This also applies to the error term for which in general $e_t \neq \epsilon_t$ because of the sample estimation. Now consider the same situation with weight vs mileage in Figure \@ref(fig:scatterWeightMPG3) but with some arbitrary line with unknown parameters. Each point on the plot will typically lie above or below the line, and we would be able to calculate the distances from those points to the line. They would correspond to $e_t = y_t - \hat{y}_t$, where $\hat{y}_t$ is the value of the regression line (aka "fitted" value) for each specific value of explanatory variable. For example, for the weight of car of `r mtcarsData$wt[20]` tones, the actual mileage is `r mtcarsData$mpg[20]`, while the fitted value is `r round(fitted(slmMPGWt)[20],3)`. The resulting error (or residual of model) is `r round(residuals(slmMPGWt)[20],3)`. We could collect all these errors of the model for all available cars based on their weights and this would result in a vector of positive and negative values like this:
+
+```{r echo=FALSE}
+residuals(slmMPGWt)
+```
+
+This corresponds to the formula:
+\begin{equation}
+    e_t = y_t - \hat{a}_0 - \hat{a}_1 x_t.
+    (\#eq:SLRFormulaEstimatedError)
+\end{equation}
+If we needed to estimate parameters $\hat{a}_0$ and $\hat{a}_1$ of the model, we would need to minimise those distances by changing the parameters of the model. The problem is that some errors are positive, while the others are negative. If we just sum them up, they will cancel each other out, and we would loose the information about the distance. The simplest way to get rid of sign and keep the distance is by taking squares of each error and calculating Sum of Squared Errors for the whole sample $T$:
+\begin{equation}
+    \mathrm{SSE} = \sum_{t=1}^T e_t^2 .
+    (\#eq:OLSCriterion)
+\end{equation}
+If we now minimise SSE by changing values of parameters $\hat{a}_0$ and $\hat{a}_1$, we will find those parameters that would guarantee that the line goes somehow through the cloud of points. Luckily, we do not need to use any fancy optimisers for this, as this has analytical solution (in order to get it, insert \@ref(eq:SLRFormulaEstimatedError) in \@ref(eq:OLSCriterion) and take derivatives with respect to the parameters $\hat{a}_0$ and $\hat{a}_1$):
+\begin{equation}
+    \begin{aligned}
+        \hat{a}_1 = \frac{\mathrm{cov}(x,y)}{\mathrm{V}(x)} \\
+        \hat{a}_0 = & \bar{y} - \hat{a}_1 \bar{x}
+    \end{aligned} ,
+    (\#eq:OLSSLREstimates)
+\end{equation}
+where $\bar{x}$ is the mean of the explanatory variable $x_t$ and $\bar{y}$ is the mean of the response variables $y_t$. Note that if for some reason $\hat{a}_1=0$ (for example, because the covariance between $x$ and $y$ is zero, implying that they are not correlated), then the intercept $\hat{a}_0 = \bar{y}$, meaning that the global average of the data is the best predictor of the variable $y_t$. This method of estimation of parameters based on the minimisation of SSE, is called "Ordinary Least Squares". It is simple and does not require any specific assumptions: we just minimise the overall distance by changing the values of parameters.
+
+Another thing to note is the connection between the parameter $\hat{a}_1$ and the correlation coefficient. We have already briefly discussed this in Section \@ref(correlationCoefficient), we could estimate two models given the pair of variable $x$ and $y$:
+
+1. Model \@ref(eq:SLRFormulaEstimated);
+2. The inverse model $x_t = \hat{b}_0 + \hat{b}_1 y_t + u_t$.
+
+We could then extract the slope parameters of the two models via \@ref(eq:OLSSLREstimates) and get the value of correlation coefficient as a geometric mean of the two:
+\begin{equation}
+    r_{x,y} = \sign{\hat{b}_1} \sqrt{\hat{a}_1 \hat{b}_1} = \sign{\mathrm{cov}(x,y)} \sqrt{\frac{\mathrm{cov}(x,y)}{\mathrm{V}(x)} \frac{\mathrm{cov}(x,y)}{\mathrm{V}(y)}} = \frac{\mathrm{cov}(x,y)}{\sqrt{V(x)V(y)}} .
+    (\#eq:correlationDerivationPearson)
+\end{equation}
+This is how the correlation coefficient was originally derived.
+
+While we can do some inference based on simple linear regression, we know that the bivariate relations are not often met in practice: typically a variable is influenced by a set of variables, not just by one. This implies that the correct model would typically include many explanatory variables. This is why we will discuss inference in the next section.
 
 
 <!-- ## Multiple Linear Regression {#linearRegression} -->
