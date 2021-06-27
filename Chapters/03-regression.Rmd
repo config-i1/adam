@@ -117,7 +117,7 @@ In order to show how the estimation of multiple linear regression is done, we ne
 \end{equation}
 where $'$ symbol is the transposition. This can then be substituted in \@ref(eq:MLRFormula) to get:
 \begin{equation}
-    y_t = \mathbf{x}_t \boldsymbol{a} + \epsilon_t .
+    y_t = \mathbf{x}'_t \boldsymbol{a} + \epsilon_t .
     (\#eq:MLRFormulaCompacter)
 \end{equation}
 But this is not over yet, we can make it even more compact, if we pack all those values with index $t$ in vectors and matrices:
@@ -159,9 +159,95 @@ plot(mtcarsModel02,1)
 This plot can be used for diagnostic purposes and in ideal situation the red line (LOWESS line) should coincide with the grey one, which would mean that we have correctly capture the tendencies in the data, so that all the regression assumptions are satisfied (see Section \@ref(assumptions)). We will come back to the model diagnostics in Section \@ref(diagnostics).
 
 
-<!-- ### Quality of a fit -->
+### Quality of a fit {#linearRegressionQualityOfFit}
+In order to get a general impression about the performance of the estimated model, we can calculate several in-sample measures, which could provide us insights about the fit of the model.
+
+The first one is based on the OLS criterion, \@ref(eq:OLSCriterion) and is called either "Root Mean Squared Error" (RMSE) or a "standard error" or a "standard deviation of error" of the regression:
+\begin{equation}
+    \mathrm{RMSE} = \sqrt{\frac{1}{T-k} \sum_{t=1}^T e_t^2 }.
+    (\#eq:RMSERegression)
+\end{equation}
+Note that it is divided by the number of degrees of freedom in the model, $T-k$, not on the number of observations. This is needed to correct the in-sample [bias](#estimatesPropertiesBias) of the measure. RMSE does not tell us about the in-sample performance but can be used to compare several models with the same response variable between each other: the lower RMSE is, the better the model fits the data. Note that this measure is not aware of the randomness in [the true model](#modelsMethods) and thus will be equal to zero in a model that fits the data perfectly (thus ignoring the existence of error term). This is a potential issue, as we might end up with a poor model that would seem like the best one.
+
+Here is how this can be calculated for our model, estimated using `alm()` function:
+```{r}
+sigma(mtcarsModel02)
+```
+
+Another measure is called "Coefficient of Determination" and is calculated based on the following sums of squares:
+\begin{equation}
+    \mathrm{R}^2 = 1 - \frac{\mathrm{SSE}}{\mathrm{SST}} = \frac{\mathrm{SSR}}{\mathrm{SST}},
+    (\#eq:Determination)
+\end{equation}
+where $\mathrm{SSE}=\sum_{t=1}^T e_t^2 $ is the OLS criterion defined in \@ref(eq:OLSCriterion),
+\begin{equation}
+    \mathrm{SST}=\sum_{t=1}^T (y_t - \bar{y})^2,
+    (\#eq:SST)
+\end{equation}
+is the total sum of squares (where $\bar{y}$ is the in-sample mean) and
+\begin{equation}
+    \mathrm{SSR}=\sum_{t=1}^T (\hat{y}_t - \bar{y})^2,
+    (\#eq:SSR)
+\end{equation}
+is the sum of squares of the regression line. SSE, as discussed above, shows the overall distance of actual values from the regression line. The SST has an apparent connection with the variance of the response variable:
+\begin{equation}
+    \mathrm{V}(y) = \frac{1}{T-1} \sum_{t=1}^T (y_t - \bar{y})^2 = \frac{1}{T-1} \mathrm{SST} .
+    (\#eq:dataVariance)
+\end{equation}
+Finally, SSR characterises the deviation of the regression line from the mean. In *the linear regression* (this is important! This property might be violated in other models), the three sums are related via the following equation:
+\begin{equation}
+    \mathrm{SST} = \mathrm{SSE} + \mathrm{SSR},
+    (\#eq:SSTSum)
+\end{equation}
+which explains why the coefficient of determination \@ref(eq:Determination) can be calculated using two different formulae. If we want to interpret the coefficient of determination $\mathrm{R}^2$, we can imagine the following situations:
+
+1. The model fits the data in the same way as a straight line (mean). In this case SSE would be equal to SST and SSR would be equal to zero (because $\hat{y}_t=\bar{y}$) and as a result the R$^2$ would be equal to zero.
+2. The model fits the data perfectly, without any errors. In this situation SSE would be equal to zero and SSR would be equal to SST, because the regression would go through all points (i.e. $\hat{y}_t=y_t$). This would make R$^2$ equal to one.
+
+In the linear regression model due to \@ref(eq:SSTSum), the coefficient of determination would always lie between zero and one, where zero means that the model does not explain the data at all and one means that it overfits the data. The value itself is usually interpreted as a percentage of variability in data explained by the model. This definition above provides us an important point about the coefficient of determination: it should not be equal to one, and it is alarming if it is very close to one - because in this situation we are implying that there is no randomness in the data, but this contradicts our definition of the statistical model (see Section \@ref(modelsMethods)). So, in practice we should not maximise R$^2$ and should be careful with models that have very high values of it. At the same time, too low values of R$^2$ are also alarming, as they tell us that the model is not very different from the global mean. So, coefficient of determination in general is not a very good measure for assessing performance of a model.
+
+Here how this measure can be calculated in R based on the estimated model:
+```{r}
+1 - sigma(mtcarsModel02)^2*(nobs(mtcarsModel02)-nparam(mtcarsModel02)) /
+    (var(actuals(mtcarsModel02))*(nobs(mtcarsModel02)-1))
+```
+Note that in this formula we used the relation between SSE and RMSE and between SST and V$(y)$, multiplying the values by $n-k$ and $n-1$ respectively. The resulting value tells us that the model has explained 94.7% deviations in the data.
+
+Based on coefficient of determination, we can also calculate the coefficient of multiple correlation, which we have already discussed in Section \@ref(correlationsMixed):
+\begin{equation}
+    R = \sqrt{R^2} = \sqrt{\frac{\mathrm{SSR}}{\mathrm{SST}}} .
+    (\#eq:multipleCorrelation)
+\end{equation}
+
+Furthermore, the value of coefficient of determination would always increase with the increase of number of variables included in the model. This is because every variable will explain some proportion of the data due to randomness. So, if we add redundant variables, the fit will improve, but the quality of model will decrease. Here is an example:
+```{r}
+mtcarsData$noise <- rnorm(nrow(mtcarsData),0,10)
+mtcarsModel02WithNoise <- alm(mpg~cyl+disp+hp++drat+wt+qsec+gear+carb+noise,
+                                   mtcarsData)
+```
+And here is the value of determination coefficient of the new model:
+```{r}
+1 - sigma(mtcarsModel02WithNoise)^2*(nobs(mtcarsModel02WithNoise)-nparam(mtcarsModel02WithNoise)) /
+    (var(actuals(mtcarsModel02WithNoise))*(nobs(mtcarsModel02WithNoise)-1))
+```
+The value in the new model will always be higher than in the previous one, no matter how we generate the random fluctuations. This means that some sort of penalisation of the number of variables in the model is required in order to make the measure more reasonable. This is what adjusted coefficient of determination is supposed to do:
+\begin{equation}
+    R^2_{adj} = 1 - \frac{\mathrm{MSE}}{\mathrm{V}(y)} = 1 - \frac{(n-1)\mathrm{SSE}}{(n-k)\mathrm{SST}},
+    (\#eq:DeterminationAdjusted)
+\end{equation}
+where MSE is the Mean Squared Error (square of RMSE \@ref(eq:RMSERegression)). So, instead of dividing sums of squares, in the adjusted R$^2$ we divide the entities that are based on degrees of freedom. Given the presence of $k$ in the formula \@ref(eq:DeterminationAdjusted), the coefficient will not necessarily increase with the addition of variables - when the variable does not contribute in the reduction of SSE of model substantially, R$^2$ will not go up.
+
+Here how it can be calculated for a model in R:
+```{r}
+setNames(c(1 - sigma(mtcarsModel02)^2 / var(actuals(mtcarsModel02)),
+           1 - sigma(mtcarsModel02WithNoise)^2 / var(actuals(mtcarsModel02WithNoise))),
+         c("R^2-adj","R^2-adj, Noise"))
+```
+What we hope to see in the output above is that the model with the noise will have a lower value of adjusted R$^2$ than the model without it. However, given that we deal with randomness, if you reproduce this example many times, you will see different situation, including those, where introducing noise still increases the value of the parameter. So, you should not fully trust R$^2_{adj}$ either. When constructing a model or deciding what to include in it, you should always use your judgement - make sure that the variables included in the model are meaningful. Otherwise you can easily overfit the data, which would lead to inaccurate forecasts and inefficient estimates of parameters (see Section \@ref(assumptions) for details).
+
 
 <!-- ### Interpretation of parameters -->
+<!-- Finally, we come to the discussion of parameters of a model. -->
 
 <!-- ## Regression uncertainty -->
 
