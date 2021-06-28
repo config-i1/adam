@@ -261,7 +261,7 @@ Finally, we come to the discussion of parameters of a model. As mentioned earlie
 coef(mtcarsModel02)
 ```
 
-Each of the parameters of this model shows an **average** effect of each variable on the mileage. They have a simple interpretation and show how the response variable will change **on average** with the increase of a variable by 1 unit. For example, the parameter for `wt` (weight) shows that with the increase of weight of a car by 1000 pounds, the mileage would decrease **on average** by `r round(abs(coef(mtcarsModel02)["wt"]),3)` miles per gallon. I have made the word "average" boldface three times in this paragraph for a reason. This is a very important point to keep in mind - the parameters will not tell you how variable will change for any specific observation. They do not show how it will change for each point. The regression model capture average tendencies and thus the word "average" is very important in the interpretation. In each specific case, the increase of weight by 1 will lead to different decreases (and even increases in some cases). But if we take the arithmetic mean of those individual effects, it will be close to the value of the parameter in the model. This however is only possible if all the assumptions of regression hold (see Section \@ref(assumptions)).
+Each of the parameters of this model shows an **average** effect of each variable on the mileage. They have a simple interpretation and show how the response variable will change **on average** with the increase of a variable by 1 unit, keeping all the other variables constant. For example, the parameter for `wt` (weight) shows that with the increase of weight of a car by 1000 pounds, the mileage would decrease **on average** by `r round(abs(coef(mtcarsModel02)["wt"]),3)` miles per gallon, if all the other variables do not change. I have made the word "average" boldface three times in this paragraph for a reason. This is a very important point to keep in mind - the parameters will not tell you how variable will change for any specific observation. They do not show how it will change for each point. The regression model capture average tendencies and thus the word "average" is very important in the interpretation. In each specific case, the increase of weight by 1 will lead to different decreases (and even increases in some cases). But if we take the arithmetic mean of those individual effects, it will be close to the value of the parameter in the model. This however is only possible if all the assumptions of regression hold (see Section \@ref(assumptions)).
 
 
 ## Regression uncertainty
@@ -318,8 +318,34 @@ hist(slmSpeedDistanceBootstrap$coefficients[,2],
 Figure \@ref(fig:slmSpeedDistanceBoot) shows the uncertainty around the estimates of parameters. These distributions look similar to the normal distribution. In fact, if we repeated this example thousands of times, the distribution of estimates of parameters would indeed follow the normal one due to CLT (if the assumptions hold, see Sections \@ref(CLT) and \@ref(assumptions)). As a result, when we work with regression we should take this uncertainty about the parameters into account. This applies to both parameters analysis and forecasting.
 
 
-<!-- ### Confidence intervals -->
-<!-- One additional useful thing is that if we use OLS for estimation (or a maximum likelihood of Normal distribution, see in Section \@ref(likelihoodApproach)), then the following formula can be used to obtain covariance matrix of parameters: -->
+### Confidence intervals
+In order to take this uncertainty into account, we could construct confidence intervals for the estimates of parameters, using the principles discussed in Section \@ref(confidenceIntervals). This way we would hopefully have some idea about the uncertainty of the parameters, and not just rely on average values. If we assume that [CLT](#CLT) holds, we could use the t statistics for the calculation of the quantiles of distribution (we need to use t because we do not know the variance of estimates of parameters). But in order to do that, we need to have variances of estimates of parameters. One of possible ways of getting them would be the bootstrap used in the example above. However, this is a computationally expensive operation, and there is a more efficient procedure, which however only works with linear regression models either estimated using OLS or via Maximum Likelihood Estimation assuming Normal distribution (see Section \@ref(likelihoodApproach)). In these conditions the covariance matrix of parameters can be calculated using the following formula:
+\begin{equation}
+    \mathrm{V}(\hat{\mathbf{a}}) = \frac{1}{T-k} \sum_{t=1}^T e_t^2 \times \left(\mathbf{X}' \mathbf{X}\right)^{-1}.
+    (\#eq:MLRcovarianceMatrix)
+\end{equation}
+This matrix will contain variances of parameters on the diagonal and covariances between the parameters on off-diagonals. In this specific case, we only need the diagonal elements. We can take square root of them to obtain standard errors of parameters, which can then be used to construct confidence intervals for each parameter $j$ via:
+\begin{equation}
+    a_j \in (\hat{a}_j + t_{\alpha/2}(T-k) s_{\hat{a}_j}, \hat{a}_j + t_{1-\alpha/2}(T-k) s_{\hat{a}_j}),
+    (\#eq:MLRcovarianceMatrix)
+\end{equation}
+where $s_{\hat{a}_j}$ is the standard error of the parameter $\hat{a}_j$. All modern software does all these calculations automatically, so we do not need to do them manually. Here is an example:
+
+```{r}
+vcov(slmSpeedDistance)
+```
+This is the covariance matrix of parameters, the diagonal elements of which are then used in the `confint()` method:
+
+```{r}
+confint(slmSpeedDistance)
+```
+The confidence interval for speed above shows, for example, that if we repeat the construction of interval many times, the true value of parameter speed will lie in 95% of cases between 3.08 and 4.78. This gives an idea about the real effect in the population. We can also present all of this in the following summary (this is based on the `alm()` model, the other functions will produce different summaries):
+```{r}
+summary(slmSpeedDistance)
+```
+
+This summary provide all the necessary information about the estimates of parameters: their mean values in the column "Estimate", their standard errors in "Std. Error", the bounds of confidence interval and finally a star if the interval does not contain zero. This typically indicates that we are certain on the selected confidence level (95% in our example) about the sign of the parameter and that the effect really exists.
+
 
 <!-- ### Hypothesis testing -->
 
