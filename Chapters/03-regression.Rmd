@@ -264,9 +264,59 @@ coef(mtcarsModel02)
 Each of the parameters of this model shows an **average** effect of each variable on the mileage. They have a simple interpretation and show how the response variable will change **on average** with the increase of a variable by 1 unit. For example, the parameter for `wt` (weight) shows that with the increase of weight of a car by 1000 pounds, the mileage would decrease **on average** by `r round(abs(coef(mtcarsModel02)["wt"]),3)` miles per gallon. I have made the word "average" boldface three times in this paragraph for a reason. This is a very important point to keep in mind - the parameters will not tell you how variable will change for any specific observation. They do not show how it will change for each point. The regression model capture average tendencies and thus the word "average" is very important in the interpretation. In each specific case, the increase of weight by 1 will lead to different decreases (and even increases in some cases). But if we take the arithmetic mean of those individual effects, it will be close to the value of the parameter in the model. This however is only possible if all the assumptions of regression hold (see Section \@ref(assumptions)).
 
 
-<!-- ## Regression uncertainty -->
+## Regression uncertainty
+Coming back to the example of mileage vs weight of cars, the estimated simple linear regression on the data was `r paste0(c("mpg=",round(coef(slmMPGWt),2),"wt+et"),collapse="")`. But what would happen if we estimate the same model on a different sample of data (e.g. 15 first observations instead of 32)?
 
-<!-- ### Uncertainty of linear regression -->
+```{r scatterWeightMPG4, fig.cap="Weight vs mileage and two regression lines."}
+slmMPGWt <- lm(mpg~wt,mtcarsData)
+slmMPGWt2 <- lm(mpg~wt,mtcarsData,subset=c(1:15))
+plot(mtcarsData$wt, mtcarsData$mpg,
+     xlab="Weight", ylab="Mileage",
+     xlim=c(0,6), ylim=c(0,40))
+abline(h=0, col="grey")
+abline(v=0, col="grey")
+abline(slmMPGWt,col="red")
+text(4,35,paste0(c("mpg=",round(coef(slmMPGWt),2),"wt+et"),collapse=""), col="darkred")
+abline(slmMPGWt2,col="darkblue")
+text(1,20,paste0(c("mpg=",round(coef(slmMPGWt2),2),"wt+et"),collapse=""), col="darkblue")
+legend("bottomleft",legend=c("Small subsample","Full sample"), lwd=1, col=c("blue","red"))
+```
+
+Figure \@ref(fig:scatterWeightMPG4) shows the two lines: the red one corresponds to the larger sample, while the blue one corresponds to the small one. We can see that these lines have different intercepts and slope parameters. So, which one of them is correct? An amateur analyst would say that the one that has more observations is the correct model. But a more experienced statistician would tell you that none of the two is correct. They are both estimated on a sample of data and they both inevitably inherit the uncertainty of the data, making them both incorrect if we compare them to the hypothetical [true model](#modelsMethods). This means that whatever regression model we estimate on a sample of data, it will be incorrect as well.
+
+This uncertainty about the regression line actually comes to the uncertainty of estimates of parameters of the model. In order to see it more clearly, consider the example with Speed and Stopping Distances of Cars dataset from `datasets` package (`?cars`):
+
+```{r scatterSpeedDistance, fig.cap="Speed vs stopping distance of cars"}
+slmSpeedDistance <- alm(dist~speed,cars)
+plot(cars$speed, cars$dist,
+     xlab="Speed", ylab="Stopping Distance")
+abline(h=0, col="grey")
+abline(v=0, col="grey")
+abline(slmSpeedDistance,col="red")
+```
+
+While the linear relation between these variables might be not the the most appropriate, it suffices for demonstration purposes. What we will do for this example is fit the model and then use a simple bootstrap technique to get estimates of parameters of the model. We will do that using `coefbootstrap()` method from `greybox` package. The bootstrap technique implemented in the function applies the same model to subsamples of the original data and returns a matrix with parameters. This way we get an idea about the empirical uncertainty of parameters:
+```{r eval=FALSE}
+slmSpeedDistance <- alm(dist~speed,cars)
+slmSpeedDistanceBootstrap <- coefbootstrap(slmSpeedDistance)
+```
+
+```{r include=FALSE}
+load("data/slmSpeedDistance.Rdata")
+```
+
+Based on that we can plot the histograms of the estimates of parameters.
+
+```{r slmSpeedDistanceBoot, fig.cap="Distribution of bootstrapped parameters of a regression model"}
+par(mfcol=c(1,2))
+hist(slmSpeedDistanceBootstrap$coefficients[,1],
+     xlab="Intercept", main="")
+hist(slmSpeedDistanceBootstrap$coefficients[,2],
+     xlab="Slope", main="")
+```
+
+Figure \@ref(fig:slmSpeedDistanceBoot) shows the uncertainty around the estimates of parameters. These distributions look similar to the normal distribution. In fact, if we repeated this example thousands of times, the distribution of estimates of parameters would indeed follow the normal one due to CLT (if the assumptions hold, see Section \@ref(CLT)). 
+
 
 <!-- ### Confidence intervals -->
 <!-- One additional useful thing is that if we use OLS for estimation (or a maximum likelihood of Normal distribution, see in Section \@ref(likelihoodApproach)), then the following formula can be used to obtain covariance matrix of parameters: -->
