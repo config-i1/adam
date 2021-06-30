@@ -346,9 +346,9 @@ This summary provide all the necessary information about the estimates of parame
 
 
 ### Hypothesis testing
-Another way to look at the uncertainty of parameters is to test a statistical hypothesis. As it was discussed in Section \@ref(hypothesisTesting), I personally think that hypothesis testing is a less useful instrument for these purposes, which might be misleading in some circumstances. Nonetheless, it has its merits and can be helpful if an analyst knows what they are doing. In order to test the hypothesis, we need to follow the procedure, described in Section \@ref(hypothesisTesting).
+Another way to look at the uncertainty of parameters is to test a statistical hypothesis. As it was discussed in Section \@ref(hypothesisTesting), I personally think that hypothesis testing is a less useful instrument for these purposes than the confidence interval and that it might be misleading in some circumstances. Nonetheless, it has its merits and can be helpful if an analyst knows what they are doing. In order to test the hypothesis, we need to follow the procedure, described in Section \@ref(hypothesisTesting).
 
-The classical hypothesis for the parameters is formulated in the following way:
+The classical hypotheses for the parameters are formulated in the following way:
 \begin{equation}
     \begin{aligned}
         \mathrm{H}_0: & a_j = 0 \\
@@ -356,7 +356,20 @@ The classical hypothesis for the parameters is formulated in the following way:
     \end{aligned} .
     (\#eq:regressionHypothesis01)
 \end{equation}
-This formulation of hypotheses comes from the idea that we want to check if the effect estimated by the regression is indeed there (i.e. statistically significantly different from zero). Note however, that as in any other hypothesis testing, if you fail to reject the null hypothesis, this only means that you do not know, we do not have enough evidence to conclude anything. This **does not mean** that there is no effect and that the respective variable can be removed from the model.
+This formulation of hypotheses comes from the idea that we want to check if the effect estimated by the regression is indeed there (i.e. statistically significantly different from zero). Note however, that as in any other hypothesis testing, if you fail to reject the null hypothesis, this only means that you do not know, we do not have enough evidence to conclude anything. This **does not mean** that there is no effect and that the respective variable can be removed from the model. In case of simple linear regression, the null and alternative hypothesis can be represented graphically as shown in Figure \@ref(fig:speedDistanceHypotheses).
+
+```{r speedDistanceHypotheses, fig.cap="Graphical presentation of null and alternative hypothesis in regression context", echo=FALSE}
+slmSpeedDistance <- alm(dist~speed,cars)
+par(mfcol=c(1,2))
+plot(cars$speed, cars$dist,
+     xlab="Speed", ylab="Stopping Distance", main=TeX("H$_0$: $a_j = 0$"))
+abline(h=mean(cars$dist),col="red")
+plot(cars$speed, cars$dist,
+     xlab="Speed", ylab="Stopping Distance", main=TeX("H$_1$: $a_j \\neq 0$"))
+abline(slmSpeedDistance,col="blue")
+```
+
+The graph on the left in Figure \@ref(fig:speedDistanceHypotheses) demonstrates how the true model could look if the null hypothesis was true - it would be just a straight line, parallel to x-axis. The graph on the right demonstrates the alternative situation, when the parameter is not equal to zero. We do not know the true model, and hypothesis testing does not tell us, whether the hypothesis is true or false, but if we have enough evidence to reject H$_0$, then we might conclude that we see an effect of one variable on another in the data. Note, as discussed in Section \@ref(hypothesisTesting), the null hypothesis is always wrong, and it will inevitably be rejected with the increase of sample size.
 
 Given the discussion in the previous subsection, we know that the parameters of regression model will follow normal distribution, as long as all [assumptions](#assumptions) are satisfied (including those for [CLT](#CLT)). We also know that because the standard errors of parameters are estimated, we need to use Student's distribution, which takes the uncertainty about the variance into account. Based on this, we can say that the following statistics will follow t with $T-k$ degrees of freedom:
 \begin{equation}
@@ -365,10 +378,50 @@ Given the discussion in the previous subsection, we know that the parameters of 
 \end{equation}
 After calculating the value and comparing it with the critical t-value on the selected significance level or directly comparing p-value based on \@ref(eq:regressionHypothesisTest01) with the significance level, we can make conclusions about the hypothesis.
 
+The context of regression provides a great example, why we never accept hypothesis and why in the case of "Fail to reject H$_0$", we should not remove a variable (unless we have more fundamental reasons for doing that). Consider an example, where the estimated parameter $\hat{a}_1=0.5$, and its standard error is $s_{\hat{a}_1}=1$, we estimated a simple linear regression on a sample of 30 observations, and we want to test, whether the parameter in the population is zero (i.e. hypothesis \@ref(eq:regressionHypothesis01)) on 1% significance level. Inserting the values in formula \@ref(eq:regressionHypothesisTest01), we get: 
+\begin{equation*}
+    \frac{|0.5 - 0|}{1} = 0.5,
+\end{equation*}
+with the critical value for two-tailed test of $t_{0.01}(30-2)\approx 2.76$. Comparing t-value with the critical one, we would conclude that we fail to reject H$_0$ and thus the parameter is not statistically different from zero. But what would happen if we check another hypothesis:
+\begin{equation*}
+    \begin{aligned}
+        \mathrm{H}_0: & a_1 = 1 \\
+        \mathrm{H}_1: & a_1 \neq 1
+    \end{aligned} .
+\end{equation*}
+The procedure is the same, the calculated t-value is:
+\begin{equation*}
+    \frac{|0.5 - 1|}{1} = 0.5,
+\end{equation*}
+which leads to exactly the same conclusion as before: on 1% significance level, we fail to reject the new H$_0$, so the value is not distinguishable from the parameter of 1. So, which of the two is correct? The correct answer is "we do not know". The non-rejection region just tells us that uncertainty about the parameter is so high that it also include the value of interest (0 in case of the classical regression analysis). If we constructed the confidence interval for this problem, we would not have such confusion, as we would conclude that on 1% significance level the true parameter lies in the region $(-2.26, 3.26)$ and can be any of these numbers.
 
+In R, if you want to test the hypothesis for parameters, I would recommend using `lm()` function for regression:
+```{r}
+lmSpeedDistance <- lm(dist~speed,cars)
+summary(lmSpeedDistance)
+```
 
-<!-- t-value -->
-<!-- F-value -->
+This output tells us that when we consider the parameter for the variable speed, we reject the standard H$_0$ on the pre-selected 1% significance level (comparing the level with p-value in the last column of the output). Note that we should first select the significance level and only then conduct the test, otherwise we would be bending reality for our needs.
+
+Finally, in regression context, we can test another hypothesis, which becomes useful, when a lot of parameters of the model are very close to zero and seem to be insignificant on the selected level:
+\begin{equation}
+    \begin{aligned}
+        \mathrm{H}_0: & a_1 = a_2 = \dots = a_{k-1} = 0 \\
+        \mathrm{H}_1: & a_1 \neq 0 \vee a_2 \neq 0 \vee \dots \vee a_{k-1} \neq 0
+    \end{aligned} ,
+    (\#eq:regressionHypothesis02)
+\end{equation}
+which translates into normal language as "H$_0$: all parameters (except for intercept) are equal to zero; H$_1$: at least one parameter is not equal to zero". This is tested based on F statistics with $k-1$, $T-k$ degrees of freedom and is reported, for example, by `lm()` (see the last line in the previous output). This hypothesis is not very useful, when the parameter are significant and coefficient of determination is high. It only becomes useful in difficult situations of poor fit. The test on its own does not tell if the model is adequate or not. And the F value and related p-value is not comparable with respective values of other models. Graphically, this test checks, whether in the true model the slope of the straight line on the plot of actuals vs fitted is different from zero. An example with the same stopping distance model is provided in Figure \@ref(fig:speedDistanceHypothesesF).
+
+```{r speedDistanceHypothesesF, fig.cap="Graphical presentation of F test for regression model", echo=FALSE}
+testModel <- alm(actuals(slmSpeedDistance)~fitted(slmSpeedDistance))
+plot(fitted(slmSpeedDistance), actuals(slmSpeedDistance),
+     xlab="Fitted", ylab="Actuals")
+abline(testModel,col="blue")
+abline(h=mean(actuals(slmSpeedDistance)),col="red")
+```
+
+What the test is tries to get insight about, is whether in the true model the blue line coincides with the red line (i.e. the slope is equal to zero, which is only possible, when all parameters are zero). If we have enough evidence to reject the null hypothesis, then this means that the slopes are different on the selected significance level.
 
 
 <!-- ### Variance of regression -->
