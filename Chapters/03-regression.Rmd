@@ -413,7 +413,7 @@ Finally, in regression context, we can test another hypothesis, which becomes us
 \end{equation}
 which translates into normal language as "H$_0$: all parameters (except for intercept) are equal to zero; H$_1$: at least one parameter is not equal to zero". This is tested based on F statistics with $k-1$, $T-k$ degrees of freedom and is reported, for example, by `lm()` (see the last line in the previous output). This hypothesis is not very useful, when the parameter are significant and coefficient of determination is high. It only becomes useful in difficult situations of poor fit. The test on its own does not tell if the model is adequate or not. And the F value and related p-value is not comparable with respective values of other models. Graphically, this test checks, whether in the true model the slope of the straight line on the plot of actuals vs fitted is different from zero. An example with the same stopping distance model is provided in Figure \@ref(fig:speedDistanceHypothesesF).
 
-```{r speedDistanceHypothesesF, fig.cap="Graphical presentation of F test for regression model", echo=FALSE}
+```{r speedDistanceHypothesesF, fig.cap="Graphical presentation of F test for regression model.", echo=FALSE}
 testModel <- alm(actuals(slmSpeedDistance)~fitted(slmSpeedDistance))
 plot(fitted(slmSpeedDistance), actuals(slmSpeedDistance),
      xlab="Fitted", ylab="Actuals")
@@ -424,7 +424,91 @@ abline(h=mean(actuals(slmSpeedDistance)),col="red")
 What the test is tries to get insight about, is whether in the true model the blue line coincides with the red line (i.e. the slope is equal to zero, which is only possible, when all parameters are zero). If we have enough evidence to reject the null hypothesis, then this means that the slopes are different on the selected significance level.
 
 
-<!-- ### Variance of regression -->
+### Regression model uncertainty
+Given the uncertainty of estimates of parameters, the regression line itself and the points around it will be uncertain. This means that in some cases we should not just consider the predicted values of the regression $\hat{y}_t$, but also the uncertainty around them.
+
+The uncertainty of the regression line builds upon the uncertainty of parameters and can be measured via the conditional variance in the following way:
+\begin{equation}
+    \mathrm{V}(\hat{y}_t| \mathbf{x}_t) = \mathrm{V}(\hat{a}_0 + \hat{a}_1 x_{1,t} + \hat{a}_2 x_{2,t} + \dots + \hat{a}_{k-1} x_{k-1,t}) ,
+    (\#eq:regressionLineUncertaintyVariance01)
+\end{equation}
+which after some simplifications leads to:
+\begin{equation}
+    \mathrm{V}(\hat{y}_t| \mathbf{x}_t) = \sum_{j=0}^{k-1} \mathrm{V}(\hat{a}_j) x^2_{j,t} + 2 \sum_{j=1}^{k-1} \sum_{i=0}^{j-1}  \mathrm{cov}(\hat{a}_i,\hat{a}_j) x_{i,t} x_{j,t} ,
+    (\#eq:regressionLineUncertaintyVariance02)
+\end{equation}
+where $x_{0,t}=1$. As we see, the variance of the regression line involves variances and covariances of parameters. This variance can then be used in the construction of the confidence interval for the regression line. Given that each estimate of parameter $\hat{a}_j$ will follow normal distribution with a fixed mean and variance due to [CLT](#CLT), the predicted value $\hat{y}_t$ will follow normal distribution as well. This can be used in the construction of the confidence interval, in a manner similar to the one discussed in Section \@ref(confidenceIntervals):
+\begin{equation}
+    \mu \in (\hat{y}_t + t_{\alpha/2}(T-k) s_{\hat{y}_t}, \hat{y}_t + t_{1-\alpha/2}(T-k) s_{\hat{y}_t}),
+    (\#eq:confidenceIntervalRegression)
+\end{equation}
+where $s_{\hat{y}_t}=\sqrt{\mathrm{V}(\hat{y}_t| \mathbf{x}_t)}$.
+
+In R, this interval can be constructed via the function `predict()` with `interval="confidence"`. Note that it can be produced not only for the in-sample value, but for the holdout as well. Here is an example with `alm()` function:
+```{r speedDistanceConfidenceInterval, fig.cap="Fitted values and confidence interval for the stopping distance model."}
+slmSpeedDistanceCI <- predict(slmSpeedDistance,interval="confidence")
+plot(slmSpeedDistanceCI, main="")
+```
+
+The same fitted values and interval can be presented differently on the actuals vs fitted plot:
+```{r speedDistanceConfidenceIntervalAvsF, fig.cap="Actuals vs Fitted and confidence interval for the stopping distance model."}
+plot(fitted(slmSpeedDistance),actuals(slmSpeedDistance),
+     xlab="Fitted",ylab="Actuals")
+abline(a=0,b=1,col="blue",lwd=2)
+lines(sort(fitted(slmSpeedDistance)),
+      slmSpeedDistanceCI$lower[order(fitted(slmSpeedDistance))], 
+      col="red")
+lines(sort(fitted(slmSpeedDistance)),
+      slmSpeedDistanceCI$upper[order(fitted(slmSpeedDistance))], 
+      col="red")
+```
+
+Figure \@ref(fig:speedDistanceConfidenceIntervalAvsF) demonstrates the actuals vs fitted plot, together with the 95% confidence interval around the line, demonstrating where the line would be expected to be in 95% of the cases if we re-estimate the model many times. We also see that the uncertainty of the regression line is lower in the middle of the data, but expands in the tails. Conceptually, this happens because the regression line, estimated via OLS, always passes through the average point of the data $(\bar{x},\bar{y})$ and the variability in this point is lower than the variability in the tails.
+
+If we are not interested in the uncertainty of the regression line, but rather in the uncertainty of the observations, we can refer to prediction interval. The variance in this case is:
+\begin{equation}
+    \mathrm{V}(y_t| \mathbf{x}_t) = \mathrm{V}(\hat{a}_0 + \hat{a}_1 x_{1,t} + \hat{a}_2 x_{2,t} + \dots + \hat{a}_{k-1} x_{k-1,t} + e_t) ,
+    (\#eq:regressionLineUncertaintyVariance03)
+\end{equation}
+which can be simplified to:
+\begin{equation}
+    \mathrm{V}(y_t| \mathbf{x}_t) = \mathrm{V}(\hat{y}_t| \mathbf{x}_t) + \hat{\sigma}^2,
+    (\#eq:regressionLineUncertaintyVariance04)
+\end{equation}
+where $\hat{\sigma}^2$ is the variance of the residuals $e_t$. As we see from the formula \@ref(eq:regressionLineUncertaintyVariance04), the variance in this case is larger, which will result in wider interval than the confidence one. We can use normal distribution for the construction of the interval in this case (using formula similar to \@ref(eq:confidenceIntervalRegression)), as long as we can assume that $\epsilon_t \sim \mathcal{N}(0,\sigma^2)$.
+
+In R, this can be done via the very same `predict()` function with `interval="prediction"`:
+```{r}
+slmSpeedDistancePI <- predict(slmSpeedDistance,interval="prediction")
+```
+Based on this, we can construct graphs similar to \@ref(fig:speedDistanceConfidenceInterval) and \@ref(fig:speedDistanceConfidenceIntervalAvsF).
+
+
+```{r speedDistancePI, fig.cap="Fitted values and prediction interval for the stopping distance model.", echo=FALSE}
+par(mfcol=c(1,2))
+plot(slmSpeedDistancePI)
+plot(fitted(slmSpeedDistance),actuals(slmSpeedDistance),
+     xlab="Fitted",ylab="Actuals",main="Actuals vs Fitted for the variable dist")
+abline(a=0,b=1,col="blue",lwd=2)
+lines(sort(fitted(slmSpeedDistance)),
+      slmSpeedDistancePI$lower[order(fitted(slmSpeedDistance))], 
+      col="red")
+lines(sort(fitted(slmSpeedDistance)),
+      slmSpeedDistancePI$upper[order(fitted(slmSpeedDistance))], 
+      col="red")
+```
+
+Figure \@ref(fig:speedDistancePI) shows the prediction interval for values over observations and for actuals vs fitted. As we see, the interval is wider in this case, covering only 95% of observations (there are 2 observations outside it).
+
+In forecasting, prediction interval has a bigger importance than the confidence interval. This is because we are typically interested in capturing the uncertainty about the observations, not about the estimate of a line. Typically, the prediction interval would be constructed for some holdout data, which we did not have at the model estimation phase. In the example with stopping distance, we could see what would happen if the speed of a car was, for example, 30mph:
+
+```{r speedDistanceForecast, fig.cap="Forecast of the stopping distance for the speed of 30mph."}
+slmSpeedDistanceForecast <- predict(slmSpeedDistance,newdata=data.frame(speed=30),
+                                    interval="prediction")
+plot(slmSpeedDistanceForecast)
+```
+
+Figure \@ref(fig:speedDistanceForecast) shows the point forecast (the expected stopping distance if the speed of car was 30mph) and the 95% prediction interval (we expect that in 95% of the cases, the cars will have the stopping distance between `r paste(round(c(slmSpeedDistanceForecast$lower,slmSpeedDistanceForecast$upper),3),collapse=" and ")` feet.
 
 
 <!-- ## Dummy variables {#dummyVariables} -->
