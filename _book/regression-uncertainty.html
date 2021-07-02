@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-07-01" />
+<meta name="date" content="2021-07-02" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -253,6 +253,7 @@ div.csl-indent {
 <ul>
 <li class="chapter" data-level="3.3.1" data-path="regression-uncertainty.html"><a href="regression-uncertainty.html#confidence-intervals"><i class="fa fa-check"></i><b>3.3.1</b> Confidence intervals</a></li>
 <li class="chapter" data-level="3.3.2" data-path="regression-uncertainty.html"><a href="regression-uncertainty.html#hypothesis-testing"><i class="fa fa-check"></i><b>3.3.2</b> Hypothesis testing</a></li>
+<li class="chapter" data-level="3.3.3" data-path="regression-uncertainty.html"><a href="regression-uncertainty.html#regression-model-uncertainty"><i class="fa fa-check"></i><b>3.3.3</b> Regression model uncertainty</a></li>
 </ul></li>
 <li class="chapter" data-level="3.4" data-path="likelihoodApproach.html"><a href="likelihoodApproach.html"><i class="fa fa-check"></i><b>3.4</b> Likelihood Approach</a>
 <ul>
@@ -713,13 +714,90 @@ which leads to exactly the same conclusion as before: on 1% significance level, 
 \end{equation}\]</span>
 which translates into normal language as “H<span class="math inline">\(_0\)</span>: all parameters (except for intercept) are equal to zero; H<span class="math inline">\(_1\)</span>: at least one parameter is not equal to zero.” This is tested based on F statistics with <span class="math inline">\(k-1\)</span>, <span class="math inline">\(T-k\)</span> degrees of freedom and is reported, for example, by <code>lm()</code> (see the last line in the previous output). This hypothesis is not very useful, when the parameter are significant and coefficient of determination is high. It only becomes useful in difficult situations of poor fit. The test on its own does not tell if the model is adequate or not. And the F value and related p-value is not comparable with respective values of other models. Graphically, this test checks, whether in the true model the slope of the straight line on the plot of actuals vs fitted is different from zero. An example with the same stopping distance model is provided in Figure <a href="regression-uncertainty.html#fig:speedDistanceHypothesesF">3.9</a>.</p>
 <div class="figure"><span id="fig:speedDistanceHypothesesF"></span>
-<img src="adam_files/figure-html/speedDistanceHypothesesF-1.png" alt="Graphical presentation of F test for regression model" width="672" />
+<img src="adam_files/figure-html/speedDistanceHypothesesF-1.png" alt="Graphical presentation of F test for regression model." width="672" />
 <p class="caption">
-Figure 3.9: Graphical presentation of F test for regression model
+Figure 3.9: Graphical presentation of F test for regression model.
 </p>
 </div>
 <p>What the test is tries to get insight about, is whether in the true model the blue line coincides with the red line (i.e. the slope is equal to zero, which is only possible, when all parameters are zero). If we have enough evidence to reject the null hypothesis, then this means that the slopes are different on the selected significance level.</p>
-<!-- ### Variance of regression -->
+</div>
+<div id="regression-model-uncertainty" class="section level3" number="3.3.3">
+<h3><span class="header-section-number">3.3.3</span> Regression model uncertainty</h3>
+<p>Given the uncertainty of estimates of parameters, the regression line itself and the points around it will be uncertain. This means that in some cases we should not just consider the predicted values of the regression <span class="math inline">\(\hat{y}_t\)</span>, but also the uncertainty around them.</p>
+<p>The uncertainty of the regression line builds upon the uncertainty of parameters and can be measured via the conditional variance in the following way:
+<span class="math display" id="eq:regressionLineUncertaintyVariance01">\[\begin{equation}
+    \mathrm{V}(\hat{y}_t| \mathbf{x}_t) = \mathrm{V}(\hat{a}_0 + \hat{a}_1 x_{1,t} + \hat{a}_2 x_{2,t} + \dots + \hat{a}_{k-1} x_{k-1,t}) ,
+    \tag{3.27}
+\end{equation}\]</span>
+which after some simplifications leads to:
+<span class="math display" id="eq:regressionLineUncertaintyVariance02">\[\begin{equation}
+    \mathrm{V}(\hat{y}_t| \mathbf{x}_t) = \sum_{j=0}^{k-1} \mathrm{V}(\hat{a}_j) x^2_{j,t} + 2 \sum_{j=1}^{k-1} \sum_{i=0}^{j-1}  \mathrm{cov}(\hat{a}_i,\hat{a}_j) x_{i,t} x_{j,t} ,
+    \tag{3.28}
+\end{equation}\]</span>
+where <span class="math inline">\(x_{0,t}=1\)</span>. As we see, the variance of the regression line involves variances and covariances of parameters. This variance can then be used in the construction of the confidence interval for the regression line. Given that each estimate of parameter <span class="math inline">\(\hat{a}_j\)</span> will follow normal distribution with a fixed mean and variance due to <a href="LLNandCLT.html#CLT">CLT</a>, the predicted value <span class="math inline">\(\hat{y}_t\)</span> will follow normal distribution as well. This can be used in the construction of the confidence interval, in a manner similar to the one discussed in Section <a href="confidenceIntervals.html#confidenceIntervals">2.4</a>:
+<span class="math display" id="eq:confidenceIntervalRegression">\[\begin{equation}
+    \mu \in (\hat{y}_t + t_{\alpha/2}(T-k) s_{\hat{y}_t}, \hat{y}_t + t_{1-\alpha/2}(T-k) s_{\hat{y}_t}),
+    \tag{3.29}
+\end{equation}\]</span>
+where <span class="math inline">\(s_{\hat{y}_t}=\sqrt{\mathrm{V}(\hat{y}_t| \mathbf{x}_t)}\)</span>.</p>
+<p>In R, this interval can be constructed via the function <code>predict()</code> with <code>interval="confidence"</code>. Note that it can be produced not only for the in-sample value, but for the holdout as well. Here is an example with <code>alm()</code> function:</p>
+<div class="sourceCode" id="cb121"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb121-1"><a href="regression-uncertainty.html#cb121-1" aria-hidden="true" tabindex="-1"></a>slmSpeedDistanceCI <span class="ot">&lt;-</span> <span class="fu">predict</span>(slmSpeedDistance,<span class="at">interval=</span><span class="st">&quot;confidence&quot;</span>)</span>
+<span id="cb121-2"><a href="regression-uncertainty.html#cb121-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(slmSpeedDistanceCI, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<div class="figure"><span id="fig:speedDistanceConfidenceInterval"></span>
+<img src="adam_files/figure-html/speedDistanceConfidenceInterval-1.png" alt="Fitted values and confidence interval for the stopping distance model." width="672" />
+<p class="caption">
+Figure 3.10: Fitted values and confidence interval for the stopping distance model.
+</p>
+</div>
+<p>The same fitted values and interval can be presented differently on the actuals vs fitted plot:</p>
+<div class="sourceCode" id="cb122"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb122-1"><a href="regression-uncertainty.html#cb122-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">fitted</span>(slmSpeedDistance),<span class="fu">actuals</span>(slmSpeedDistance),</span>
+<span id="cb122-2"><a href="regression-uncertainty.html#cb122-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab=</span><span class="st">&quot;Fitted&quot;</span>,<span class="at">ylab=</span><span class="st">&quot;Actuals&quot;</span>)</span>
+<span id="cb122-3"><a href="regression-uncertainty.html#cb122-3" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">a=</span><span class="dv">0</span>,<span class="at">b=</span><span class="dv">1</span>,<span class="at">col=</span><span class="st">&quot;blue&quot;</span>,<span class="at">lwd=</span><span class="dv">2</span>)</span>
+<span id="cb122-4"><a href="regression-uncertainty.html#cb122-4" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">sort</span>(<span class="fu">fitted</span>(slmSpeedDistance)),</span>
+<span id="cb122-5"><a href="regression-uncertainty.html#cb122-5" aria-hidden="true" tabindex="-1"></a>      slmSpeedDistanceCI<span class="sc">$</span>lower[<span class="fu">order</span>(<span class="fu">fitted</span>(slmSpeedDistance))], </span>
+<span id="cb122-6"><a href="regression-uncertainty.html#cb122-6" aria-hidden="true" tabindex="-1"></a>      <span class="at">col=</span><span class="st">&quot;red&quot;</span>)</span>
+<span id="cb122-7"><a href="regression-uncertainty.html#cb122-7" aria-hidden="true" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">sort</span>(<span class="fu">fitted</span>(slmSpeedDistance)),</span>
+<span id="cb122-8"><a href="regression-uncertainty.html#cb122-8" aria-hidden="true" tabindex="-1"></a>      slmSpeedDistanceCI<span class="sc">$</span>upper[<span class="fu">order</span>(<span class="fu">fitted</span>(slmSpeedDistance))], </span>
+<span id="cb122-9"><a href="regression-uncertainty.html#cb122-9" aria-hidden="true" tabindex="-1"></a>      <span class="at">col=</span><span class="st">&quot;red&quot;</span>)</span></code></pre></div>
+<div class="figure"><span id="fig:speedDistanceConfidenceIntervalAvsF"></span>
+<img src="adam_files/figure-html/speedDistanceConfidenceIntervalAvsF-1.png" alt="Actuals vs Fitted and confidence interval for the stopping distance model." width="672" />
+<p class="caption">
+Figure 3.11: Actuals vs Fitted and confidence interval for the stopping distance model.
+</p>
+</div>
+<p>Figure <a href="regression-uncertainty.html#fig:speedDistanceConfidenceIntervalAvsF">3.11</a> demonstrates the actuals vs fitted plot, together with the 95% confidence interval around the line, demonstrating where the line would be expected to be in 95% of the cases if we re-estimate the model many times. We also see that the uncertainty of the regression line is lower in the middle of the data, but expands in the tails. Conceptually, this happens because the regression line, estimated via OLS, always passes through the average point of the data <span class="math inline">\((\bar{x},\bar{y})\)</span> and the variability in this point is lower than the variability in the tails.</p>
+<p>If we are not interested in the uncertainty of the regression line, but rather in the uncertainty of the observations, we can refer to prediction interval. The variance in this case is:
+<span class="math display" id="eq:regressionLineUncertaintyVariance03">\[\begin{equation}
+    \mathrm{V}(y_t| \mathbf{x}_t) = \mathrm{V}(\hat{a}_0 + \hat{a}_1 x_{1,t} + \hat{a}_2 x_{2,t} + \dots + \hat{a}_{k-1} x_{k-1,t} + e_t) ,
+    \tag{3.30}
+\end{equation}\]</span>
+which can be simplified to:
+<span class="math display" id="eq:regressionLineUncertaintyVariance04">\[\begin{equation}
+    \mathrm{V}(y_t| \mathbf{x}_t) = \mathrm{V}(\hat{y}_t| \mathbf{x}_t) + \hat{\sigma}^2,
+    \tag{3.31}
+\end{equation}\]</span>
+where <span class="math inline">\(\hat{\sigma}^2\)</span> is the variance of the residuals <span class="math inline">\(e_t\)</span>. As we see from the formula <a href="regression-uncertainty.html#eq:regressionLineUncertaintyVariance04">(3.31)</a>, the variance in this case is larger, which will result in wider interval than the confidence one. We can use normal distribution for the construction of the interval in this case (using formula similar to <a href="regression-uncertainty.html#eq:confidenceIntervalRegression">(3.29)</a>), as long as we can assume that <span class="math inline">\(\epsilon_t \sim \mathcal{N}(0,\sigma^2)\)</span>.</p>
+<p>In R, this can be done via the very same <code>predict()</code> function with <code>interval="prediction"</code>:</p>
+<div class="sourceCode" id="cb123"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb123-1"><a href="regression-uncertainty.html#cb123-1" aria-hidden="true" tabindex="-1"></a>slmSpeedDistancePI <span class="ot">&lt;-</span> <span class="fu">predict</span>(slmSpeedDistance,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>)</span></code></pre></div>
+<p>Based on this, we can construct graphs similar to <a href="regression-uncertainty.html#fig:speedDistanceConfidenceInterval">3.10</a> and <a href="regression-uncertainty.html#fig:speedDistanceConfidenceIntervalAvsF">3.11</a>.</p>
+<div class="figure"><span id="fig:speedDistancePI"></span>
+<img src="adam_files/figure-html/speedDistancePI-1.png" alt="Fitted values and prediction interval for the stopping distance model." width="672" />
+<p class="caption">
+Figure 3.12: Fitted values and prediction interval for the stopping distance model.
+</p>
+</div>
+<p>Figure <a href="regression-uncertainty.html#fig:speedDistancePI">3.12</a> shows the prediction interval for values over observations and for actuals vs fitted. As we see, the interval is wider in this case, covering only 95% of observations (there are 2 observations outside it).</p>
+<p>In forecasting, prediction interval has a bigger importance than the confidence interval. This is because we are typically interested in capturing the uncertainty about the observations, not about the estimate of a line. Typically, the prediction interval would be constructed for some holdout data, which we did not have at the model estimation phase. In the example with stopping distance, we could see what would happen if the speed of a car was, for example, 30mph:</p>
+<div class="sourceCode" id="cb124"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb124-1"><a href="regression-uncertainty.html#cb124-1" aria-hidden="true" tabindex="-1"></a>slmSpeedDistanceForecast <span class="ot">&lt;-</span> <span class="fu">predict</span>(slmSpeedDistance,<span class="at">newdata=</span><span class="fu">data.frame</span>(<span class="at">speed=</span><span class="dv">30</span>),</span>
+<span id="cb124-2"><a href="regression-uncertainty.html#cb124-2" aria-hidden="true" tabindex="-1"></a>                                    <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>)</span>
+<span id="cb124-3"><a href="regression-uncertainty.html#cb124-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(slmSpeedDistanceForecast)</span></code></pre></div>
+<div class="figure"><span id="fig:speedDistanceForecast"></span>
+<img src="adam_files/figure-html/speedDistanceForecast-1.png" alt="Forecast of the stopping distance for the speed of 30mph." width="672" />
+<p class="caption">
+Figure 3.13: Forecast of the stopping distance for the speed of 30mph.
+</p>
+</div>
+<p>Figure <a href="regression-uncertainty.html#fig:speedDistanceForecast">3.13</a> shows the point forecast (the expected stopping distance if the speed of car was 30mph) and the 95% prediction interval (we expect that in 95% of the cases, the cars will have the stopping distance between 66.492 and 134.294 feet.</p>
 <!-- ## Dummy variables {#dummyVariables} -->
 <!-- ### Interpretation of parameters -->
 <!-- ## Variables transformations -->
