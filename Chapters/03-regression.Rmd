@@ -161,11 +161,13 @@ plot(fitted(mtcarsModel01),actuals(mtcarsModel01))
 The same plot is produced via `plot()` method if we use `alm()` function from `greybox` instead:
 
 ```{r mtcarsModel02Plot, fig.cap="Actuals vs fitted values for multiple linear regression model on mtcars data."}
-mtcarsModel02 <- alm(mpg~cyl+disp+hp++drat+wt+qsec+gear+carb, mtcars)
+mtcarsModel02 <- alm(mpg~cyl+disp+hp++drat+wt+qsec+gear+carb, mtcars, loss="MSE")
 plot(mtcarsModel02,1)
 ```
 
-This plot can be used for diagnostic purposes and in ideal situation the red line (LOWESS line) should coincide with the grey one, which would mean that we have correctly capture the tendencies in the data, so that all the regression assumptions are satisfied (see Section \@ref(assumptions)). We will come back to the model diagnostics in Section \@ref(diagnostics).
+We use `loss="MSE"` in this case, to make sure that the model is estimated via OLS. We will discuss the default estimation method in `alm()`, likelihood, in Section \@ref(likelihoodApproach).
+
+The plot on Figure \@ref(fig:mtcarsModel02Plot) can be used for diagnostic purposes and in ideal situation the red line (LOWESS line) should coincide with the grey one, which would mean that we have correctly capture the tendencies in the data, so that all the regression assumptions are satisfied (see Section \@ref(assumptions)). We will come back to the model diagnostics in Section \@ref(diagnostics).
 
 
 ### Quality of a fit {#linearRegressionQualityOfFit}
@@ -232,7 +234,7 @@ Furthermore, the value of coefficient of determination would always increase wit
 ```{r}
 mtcarsData$noise <- rnorm(nrow(mtcarsData),0,10)
 mtcarsModel02WithNoise <- alm(mpg~cyl+disp+hp++drat+wt+qsec+gear+carb+noise,
-                                   mtcarsData)
+                                   mtcarsData, loss="MSE")
 ```
 And here is the value of determination coefficient of the new model:
 ```{r}
@@ -287,7 +289,7 @@ Figure \@ref(fig:scatterWeightMPG4) shows the two lines: the red one corresponds
 This uncertainty about the regression line actually comes to the uncertainty of estimates of parameters of the model. In order to see it more clearly, consider the example with Speed and Stopping Distances of Cars dataset from `datasets` package (`?cars`):
 
 ```{r scatterSpeedDistance, fig.cap="Speed vs stopping distance of cars", echo=FALSE}
-slmSpeedDistance <- alm(dist~speed,cars)
+slmSpeedDistance <- alm(dist~speed, cars, loss="MSE")
 plot(cars$speed, cars$dist,
      xlab="Speed", ylab="Stopping Distance")
 abline(slmSpeedDistance,col="red")
@@ -295,7 +297,6 @@ abline(slmSpeedDistance,col="red")
 
 While the linear relation between these variables might be not the the most appropriate, it suffices for demonstration purposes. What we will do for this example is fit the model and then use a simple bootstrap technique to get estimates of parameters of the model. We will do that using `coefbootstrap()` method from `greybox` package. The bootstrap technique implemented in the function applies the same model to subsamples of the original data and returns a matrix with parameters. This way we get an idea about the empirical uncertainty of parameters:
 ```{r eval=FALSE}
-slmSpeedDistance <- alm(dist~speed,cars)
 slmSpeedDistanceBootstrap <- coefbootstrap(slmSpeedDistance)
 ```
 
@@ -359,7 +360,6 @@ The classical hypotheses for the parameters are formulated in the following way:
 This formulation of hypotheses comes from the idea that we want to check if the effect estimated by the regression is indeed there (i.e. statistically significantly different from zero). Note however, that as in any other hypothesis testing, if you fail to reject the null hypothesis, this only means that you do not know, we do not have enough evidence to conclude anything. This **does not mean** that there is no effect and that the respective variable can be removed from the model. In case of simple linear regression, the null and alternative hypothesis can be represented graphically as shown in Figure \@ref(fig:speedDistanceHypotheses).
 
 ```{r speedDistanceHypotheses, fig.cap="Graphical presentation of null and alternative hypothesis in regression context", echo=FALSE}
-slmSpeedDistance <- alm(dist~speed,cars)
 par(mfcol=c(1,2))
 plot(cars$speed, cars$dist,
      xlab="Speed", ylab="Stopping Distance", main=TeX("H$_0$: $a_j = 0$"))
@@ -475,7 +475,7 @@ which can be simplified to (if assumptions of regression model hold, see Section
     \mathrm{V}(y_t| \mathbf{x}_t) = \mathrm{V}(\hat{y}_t| \mathbf{x}_t) + \hat{\sigma}^2,
     (\#eq:regressionLineUncertaintyVariance04)
 \end{equation}
-where $\hat{\sigma}^2$ is the variance of the residuals $e_t$. As we see from the formula \@ref(eq:regressionLineUncertaintyVariance04), the variance in this case is larger, which will result in wider interval than the confidence one. We can use normal distribution for the construction of the interval in this case (using formula similar to \@ref(eq:confidenceIntervalRegression)), as long as we can assume that $\epsilon_t \sim \mathcal{N}(0,\sigma^2)$.
+where $\hat{\sigma}^2$ is the variance of the residuals $e_t$. As we see from the formula \@ref(eq:regressionLineUncertaintyVariance04), the variance in this case is larger than \@ref(eq:regressionLineUncertaintyVariance02), which will result in wider interval than the confidence one. We can use normal distribution for the construction of the interval in this case (using formula similar to \@ref(eq:confidenceIntervalRegression)), as long as we can assume that $\epsilon_t \sim \mathcal{N}(0,\sigma^2)$.
 
 In R, this can be done via the very same `predict()` function with `interval="prediction"`:
 ```{r}
@@ -511,9 +511,141 @@ plot(slmSpeedDistanceForecast)
 Figure \@ref(fig:speedDistanceForecast) shows the point forecast (the expected stopping distance if the speed of car was 30mph) and the 95% prediction interval (we expect that in 95% of the cases, the cars will have the stopping distance between `r paste(round(c(slmSpeedDistanceForecast$lower,slmSpeedDistanceForecast$upper),3),collapse=" and ")` feet.
 
 
-<!-- ## Dummy variables {#dummyVariables} -->
+## Regression with categorical variables {#dummyVariables}
+So far we assumed that the explanatory variables in the model are numerical. But is it possible to include somehow in regression model variables in categorical scales, for example, colour and size of t-shirts? Yes, it is. This is done using so called "dummy variables".
 
-<!-- ### Interpretation of parameters -->
+As we remember from Section \@ref(scales), the variables in categorical scale do not have distance or natural zero. This means that if we encode the values in numbers (e.g. "red" - "1", "green" - "2", "blue" - "3"), then these numbers will not have any proper mathematical meaning - they will only represent specific values (and order in case of ordinal scale), but we would be limited in operations with these values. In order to overcome this limitation, we could create a set of dummy variables, each of which would be equal to one if the value of the original variable is equal to a specific value and zero otherwise. Consider the example with colours, where we have three types of t-shirts to sell:
+
+1. Red,
+2. Green,
+3. Blue.
+
+Every t-shirt in our dataset would have one of these colours, and based on this we could create three dummy variables:
+
+1. colourRed, which would be equal to one if the t-shirt is Red and zero otherwise,
+2. colourGreen: 1 if the t-shirt is Green and 0 otherwise,
+3. colourBlue: 1 if the t-shirt is Blue and 0 otherwise.
+
+These dummy variables can then be added to a model instead of the original variable colour, resulting, for example, in the model:
+\begin{equation}
+    sales_t = a_0 + a_1 price_t + a_2 colourRed_t + a_3 colourGreen_t + \epsilon_t .
+    (\#eq:regressionDummies01)
+\end{equation}
+Notice that I have only included two dummy variables out of the three. This is because we do not need to have all of them to be able to say what colour of t-shirt we have: if it is not Red and not Green, then it must be Blue. Furthermore, while some models and estimation methods could handle all the dummy variables in the model, the linear regression cannot be estimated via the conventional methods if they are all in. This is exactly because of this situation with "not Red, not Green". If we introduce all three, the model will have so called "dummy variables trap", implying perfect multicollinearity (see Subsection \@ref(assumptionsXreg)), because of the functional relation between variables:
+\begin{equation}
+    colourBlue_t = 1 - colourRed_t - colourGreen_t \text{ for all } t .
+    (\#eq:regressionDummies02)
+\end{equation}
+This is a general rule: if you have created a set of dummy variables from a categorical one, then one of them needs to be dropped, in order not to have the dummy variables trap.
+
+So, what does the inclusion of dummy variables in the regression model means? We can see that on the following example of artificial data:
+
+```{r}
+tShirts <- cbind(rnorm(150,20,2),0,0,0)
+tShirts[1:50,2] <- 1
+tShirts[1:50+50,3] <- 1
+tShirts[1:50+50*2,4] <- 1
+tShirts <- cbind(1000 + tShirts %*% c(-2.5, 30, -20, 50) + rnorm(150,0,5), tShirts)
+colnames(tShirts) <- c("sales","price","colourRed","colourGreen","colourBlue")
+```
+
+We can produce spread plot to see how the data looks like:
+
+```{r tShirtsSpread, fig.cap="Spread plot of t-shirts data."}
+spread(tShirts)
+```
+
+Figure \@red(fig:tShirtsSpread) demonstrates that the sales differ depending on the type of colour (the boxplots). The scatterplot between sales and price is not very clear, but there are actually three theoretical lines on that plot. We can enlarge the plot and draw them:
+
+```{r tShirtsScatterPlot, fig.cap="Scatterplot of Sales vs Price of t-shirts of different colour."}
+plot(tShirts[,2:1])
+abline(a=1000+30, b=-2.5, col="red")
+abline(a=1000-20, b=-2.5, col="green")
+abline(a=1000+50, b=-2.5, col="blue")
+```
+
+Now, if we want to construct the regression that would take these differences into account, we need to estimate the model \@ref(eq:regressionDummies01):
+
+```{r}
+tShirtsALM <- alm(sales~price+colourRed+colourGreen, tShirts, loss="MSE")
+summary(tShirtsALM)
+```
+
+Notice that the intercept in this model is not 1000, as we used in the generation of the data, but is `r round(coef(tShirtsALM)[1],0)`. This is because it now also contains the effect of blue colour on sales in it. So, the sales of blue coloured t-shirt is now the baseline category, and each dummy variable now represents the shifts of sales, when we switch from one colour to another. For example, we can say that *the sales of red colour t-shirt are on average lower than the sales of the blue one by approximately `r abs(round(coef(tShirtsALM)[3],0))` units*. What dummy variables do in the model is just shift the line from one level to another. This becomes clear if we consider special cases of models for the three t-shirts:
+
+1. For the blue t-shirt, our model is: `r paste0(c("sales=",round(coef(tShirtsALM)[1],2),round(coef(tShirtsALM)[2],2),"price+et"),collapse="")`. This is because both `colourRed` and `colourGreen` are zero in this case;
+2. For the red t-shirt the model is: `r paste0(c("sales=",round(coef(tShirtsALM)[1],2),"+",round(coef(tShirtsALM)[3],2),round(coef(tShirtsALM)[2],2),"price+et"),collapse="")` or `r paste0(c("sales=",round(coef(tShirtsALM)[1],2)+round(coef(tShirtsALM)[3],2),round(coef(tShirtsALM)[2],2),"price+et"),collapse="")`;
+3. Finally, for the green one, the model is: `r paste0(c("sales=",round(coef(tShirtsALM)[1],2),"+",round(coef(tShirtsALM)[4],2),round(coef(tShirtsALM)[2],2),"price+et"),collapse="")` or `r paste0(c("sales=",round(coef(tShirtsALM)[1],2)+round(coef(tShirtsALM)[4],2),round(coef(tShirtsALM)[2],2),"price+et"),collapse="")`.
+
+In a way, we could have constructed three different regression models for the sub-samples of data, and in the ideal situation (all the data in the world) we would get the same set of estimates of parameters. However, this would be a costly procedure from the statistical perspective, because three separate models will have lower number of degrees of freedom, then the model with dummy variables. Thus, the estimates of parameters will be more uncertain in those three models than in one model `tShirtsALM`.
+
+One thing that we can remark is that the estimated parameters differ from the ones we used in the data generation. This is because the intercepts of the three models above intersect the y-axis in the points `r round(coef(tShirtsALM)[1],2)`, `r round(coef(tShirtsALM)[1],2)+round(coef(tShirtsALM)[3],2)` and `r round(coef(tShirtsALM)[1],2)+round(coef(tShirtsALM)[4],2)` respectively. Furthermore, in general it is not possible to extract the specific effect of blue colour on sales based on the estimates of parameters, unless we impose some restrictions on parameters. The closest we can get to the true parameters is if we normalise them (assuming that there is some baseline and that the colours build upon it and add up to zero):
+
+```{r}
+colourParameters <- c(coef(tShirtsALM)[3:4]+coef(tShirtsALM)[1],coef(tShirtsALM)[1])
+names(colourParameters)[3] <- "colourBlue";
+colourParameters - mean(colourParameters)
+```
+The meaning of these effects is that on average they change the baseline sales of colourless t-shirts according to these values. For example, the specific increase of sales due to the red colour of t-shirt is `r round(colourParameters[1] - mean(colourParameters),0)` units. In general, it is not worth bothering with these specific effects, and we can just stick with parameters of model, keeping in mind that we only have effects comparative to the selected baseline category.
+
+In R, we can also work with factor variables, without a need to expand variables in a set of dummies - the program will do the expansion automatically and drop the first level of the variable. In order to see how it works, we create a data frame with the factor variable `colour`:
+
+```{r}
+tShirtsDataFrame <- as.data.frame(tShirts[,1:2])
+tShirtsDataFrame$colour <- factor(c("Red","Green","Blue")[tShirts[,3:5] %*% c(1:3)])
+spread(tShirtsDataFrame)
+```
+
+Notice that the "Blue" was automatically set as the first level, because `factor()` function would sort labels alphabetically unless the levels are provided explicitly. The estimated model in this case will be exactly the same as the `tShirts` model above:
+
+```{r}
+tShirtsDataFrameALM <- alm(sales~price+colour, tShirtsDataFrame, loss="MSE")
+summary(tShirtsDataFrameALM)
+```
+
+Finally, it is recommended in general not to drop dummy variables one by one, if for some reason you decide that some of them are not helping. If, for example, we decide not to include `colourRed` and only have the model with `colourGreen`, then the meaning of the dummy variables will change - we will not be able to distinguish the Blue from Red. Furthermore, while some dummy variables might not seem important (or significant) in regression, their combination might be improving the model, and dropping some of them might be damaging for the model in terms of its predictive power. So, it is more common either to include all levels (but one) of categorical variable or not to include any of them.
+
+
+### Categorical variables for the slope
+In reality, we can have more complicated situations, when the change of price would lead to different changes in sales for different types of t-shirts. In this case, we are talking about an **interaction effect** between price and colour. The following artificial example demonstrates the situation:
+```{r}
+tShirtsInteraction <- cbind(rnorm(150,20,2),0,0,0)
+tShirtsInteraction[1:50,2] <- tShirtsInteraction[1:50,1]
+tShirtsInteraction[1:50+50,3] <- tShirtsInteraction[1:50+50,1]
+tShirtsInteraction[1:50+50*2,4] <- tShirtsInteraction[1:50+50*2,1]
+tShirtsInteraction <- cbind(1000 + tShirtsInteraction %*% c(-2.5, -1.5, -0.5, -4) + rnorm(150,0,5), tShirtsInteraction)
+colnames(tShirtsInteraction) <- c("sales","price","price:colourRed","price:colourGreen","price:colourBlue")
+```
+This artificial data can be plotted in the following way to show the effect:
+```{r tShirtsInteractionScatterPlot, fig.cap="Scatterplot of Sales vs Price of t-shirts of different colour, interaction effect."}
+plot(tShirtsInteraction[,2:1])
+abline(a=1000, b=-2.5-1.5, col="red")
+abline(a=1000, b=-2.5-0.5, col="green")
+abline(a=1000, b=-2.5-4, col="blue")
+```
+
+The plot on Figure \@ref(fig:tShirtsInteractionScatterPlot) shows that there are three categories of data and that for each of it, the price effect will be different: the increase in price by one unit leads to the faster reduction of sales for the blue t-shirts than for the others. Compare this with Figure \@ref(fig:tShirtsScatterPlot), where we had the difference only in intercepts. This implies a different model:
+\begin{equation}
+    sales_t = a_0 + a_1 price_t + a_2 price_t \times colourRed_t + a_3 price_t \times colourGreen_t + \epsilon_t .
+    (\#eq:regressionDummies03)
+\end{equation}
+Notice that we still include only two dummy variables out of three in order to avoid the dummy variables trap. What is new in this case is the multiplication of price by the dummy variables. This trick allows changing the slope of price, depending on the colour of t-shirt. For example, here what the model \@ref(eq:regressionDummies03) would look like for the three types of colours:
+
+1. Red colour: $sales_t = a_0 + a_1 price_t + a_2 price_t + \epsilon_t$ or $sales_t = a_0 + (a_1 + a_2) price_t + \epsilon_t$;
+2. Green colour: $sales_t = a_0 + a_1 price_t + a_3 price_t + \epsilon_t$ or $sales_t = a_0 + (a_1 + a_3) price_t + \epsilon_t$;
+3. Blue colour: $sales_t = a_0 + a_1 price_t + \epsilon_t$.
+
+In R, the interaction effect can be introduced explicitly in the formula via `:` symbol if you have a proper factor variable:
+```{r}
+tShirtsInteractionDataFrame <- as.data.frame(tShirtsInteraction[,1:2])
+tShirtsInteractionDataFrame$colour <- tShirtsDataFrame$colour
+# Fit the model
+tShirtsInteractionDataFrameALM <- alm(sales~price+price:colour,
+                                      tShirtsInteractionDataFrame, loss="MSE")
+summary(tShirtsInteractionDataFrameALM)
+```
+
+Note that the interpretation of parameters in such model will be different, because now the `price` shows the baseline effect for the blue t-shirts, while the interaction effects show how this effect will change for other colours. So, for example, in order to see what would be the effect of price change on sales of red t-shirts, we need to sum up the parameter for `price` and `price:colourRed`. We then can say that if price of red t-shirt increases by £1, the sales will decrease on average by `r abs(round(sum(coef(tShirtsInteractionDataFrameALM)[c(2,4)]),2))` units.
 
 
 <!-- ## Variables transformations -->
