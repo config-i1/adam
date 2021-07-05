@@ -584,13 +584,13 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ##   method            from
 ##   as.zoo.data.frame zoo</code></pre>
 <div class="sourceCode" id="cb305"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb305-1"><a href="ADAMMultipleFrequenciesExamples.html#cb305-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(y)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-164-1.png" width="672" /></p>
+<p><img src="adam_files/figure-html/unnamed-chunk-165-1.png" width="672" /></p>
 <p>Note that when you have data with <a href="MultipleFrequenciesDSTandLeap.html#MultipleFrequenciesDSTandLeap">DST or Leap years</a>, <code>adam()</code> will automatically correct the seasonal lags if your data contains specific dates (as <code>zoo</code> objects have, for example). The series above does not exhibit an obvious trend, but has two seasonal cycles: half-hour of day and day of week. Seasonality seems to be multiplicative. We will try several different models and see how they compare. In all the cases below, we will use backcasting as initialisation of the model. We will use the last 336 observations (<span class="math inline">\(48 \times 7\)</span>) as the holdout, just to see whether models perform adequately or not.</p>
 <p>First, it is ADAM ETS(M,N,M) with <code>lags=c(48,7*48)</code>:</p>
 <div class="sourceCode" id="cb306"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb306-1"><a href="ADAMMultipleFrequenciesExamples.html#cb306-1" aria-hidden="true" tabindex="-1"></a>adamModelETSMNM <span class="ot">&lt;-</span> <span class="fu">adam</span>(y, <span class="st">&quot;MNM&quot;</span>, <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">48</span>,<span class="dv">336</span>), <span class="at">initial=</span><span class="st">&quot;back&quot;</span>,</span>
 <span id="cb306-2"><a href="ADAMMultipleFrequenciesExamples.html#cb306-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">h=</span><span class="dv">336</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb306-3"><a href="ADAMMultipleFrequenciesExamples.html#cb306-3" aria-hidden="true" tabindex="-1"></a>adamModelETSMNM</span></code></pre></div>
-<pre><code>## Time elapsed: 0.21 seconds
+<pre><code>## Time elapsed: 0.2 seconds
 ## Model estimated using adam() function: ETS(MNM)[48, 336]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 25798.77
@@ -610,8 +610,8 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## sCE: -481.882%; Asymmetry: -57.2%; sMAE: 2.564%; sMSE: 0.126%
 ## MASE: 1.167; RMSSE: 1.111; rMAE: 0.113; rRMSE: 0.128</code></pre>
 <div class="sourceCode" id="cb308"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb308-1"><a href="ADAMMultipleFrequenciesExamples.html#cb308-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelETSMNM,<span class="dv">7</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-165-1.png" width="672" /></p>
-<p>As you might notice the model was constructed in 0.21 seconds, and while it might not be the most accurate model for the data, it fits the data well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of multistep estimators, for example <a href="multistepLosses.html#multistepLossesGTMSE">GTMSE</a>:</p>
+<p><img src="adam_files/figure-html/unnamed-chunk-166-1.png" width="672" /></p>
+<p>As you might notice the model was constructed in 0.2 seconds, and while it might not be the most accurate model for the data, it fits the data well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of multistep estimators, for example <a href="multistepLosses.html#multistepLossesGTMSE">GTMSE</a>:</p>
 <div class="sourceCode" id="cb309"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb309-1"><a href="ADAMMultipleFrequenciesExamples.html#cb309-1" aria-hidden="true" tabindex="-1"></a>adamModelETSMNMGTMSE <span class="ot">&lt;-</span> <span class="fu">adam</span>(y, <span class="st">&quot;MNM&quot;</span>, <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">48</span>,<span class="dv">336</span>), <span class="at">initial=</span><span class="st">&quot;back&quot;</span>,</span>
 <span id="cb309-2"><a href="ADAMMultipleFrequenciesExamples.html#cb309-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">h=</span><span class="dv">336</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">loss=</span><span class="st">&quot;GTMSE&quot;</span>)</span></code></pre></div>
 <p>This time the function will take much more time (on my computer it takes around 1.5 minutes), but hopefully will produce more accurate forecasts due to shrinkage of smoothing parameters:</p>
@@ -697,7 +697,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## MASE: 2.74; RMSSE: 2.194; rMAE: 0.266; rRMSE: 0.253</code></pre>
 <p>The resulting model produces the biased forecasts (they are consistently higher than needed). This is mainly because the smoothing parameter <span class="math inline">\(\alpha\)</span> is too high and the model changes the level to frequently. We can see that in the plot of the state:</p>
 <div class="sourceCode" id="cb319"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb319-1"><a href="ADAMMultipleFrequenciesExamples.html#cb319-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelETSXMNN<span class="sc">$</span>states[,<span class="dv">1</span>], <span class="at">ylab=</span><span class="st">&quot;Level&quot;</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-173-1.png" width="672" /></p>
+<p><img src="adam_files/figure-html/unnamed-chunk-174-1.png" width="672" /></p>
 <p>As we see, the level component not only contains the level, but also absorbed seasonality, which causes the issue with forecasting accuracy. However, the obtained value did not happen due to randomness - this is what the model does, when seasonality is fixed and is not allowed to evolve over time. In order to reduce the sensitivity of the model, we can shrink the smoothing parameter using a multistep estimator (discussed in Section <a href="multistepLosses.html#multistepLosses">14.3</a>). Note however that these estimators are typically slower than the conventional ones, so they might take more computational time:</p>
 <div class="sourceCode" id="cb320"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb320-1"><a href="ADAMMultipleFrequenciesExamples.html#cb320-1" aria-hidden="true" tabindex="-1"></a>adamModelETSXMNNGTMSE <span class="ot">&lt;-</span> <span class="fu">adam</span>(taylorData, <span class="st">&quot;MNN&quot;</span>, <span class="at">h=</span><span class="dv">336</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb320-2"><a href="ADAMMultipleFrequenciesExamples.html#cb320-2" aria-hidden="true" tabindex="-1"></a>                              <span class="at">initial=</span><span class="st">&quot;back&quot;</span>, <span class="at">loss=</span><span class="st">&quot;GTMSE&quot;</span>)</span>
@@ -741,7 +741,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## ME: 145.779; MAE: 829.688; RMSE: 1055.461
 ## sCE: 165.538%; Asymmetry: 27%; sMAE: 2.804%; sMSE: 0.127%
 ## MASE: 1.276; RMSSE: 1.118; rMAE: 0.124; rRMSE: 0.129</code></pre>
-<p><img src="adam_files/figure-html/unnamed-chunk-177-1.png" width="672" /></p>
+<p><img src="adam_files/figure-html/unnamed-chunk-178-1.png" width="672" /></p>
 <p>We can see an improvement in comparison with the previous model, so the seasonal states do change over time, which means that the deterministic seasonality is not appropriate in our example. However, in some other cases it might be more suitable, producing more accurate forecasts than the models assuming stochastic seasonality (i.e. via multiple seasonal ETS / ARIMA models).</p>
 </div>
 <div id="adam-arima" class="section level3" number="15.4.3">
@@ -751,7 +751,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <span id="cb324-2"><a href="ADAMMultipleFrequenciesExamples.html#cb324-2" aria-hidden="true" tabindex="-1"></a>                       <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)),</span>
 <span id="cb324-3"><a href="ADAMMultipleFrequenciesExamples.html#cb324-3" aria-hidden="true" tabindex="-1"></a>                       <span class="at">h=</span><span class="dv">336</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb324-4"><a href="ADAMMultipleFrequenciesExamples.html#cb324-4" aria-hidden="true" tabindex="-1"></a>adamModelARIMA</span></code></pre></div>
-<pre><code>## Time elapsed: 0.2 seconds
+<pre><code>## Time elapsed: 0.19 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.76
@@ -772,7 +772,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## sCE: 56.027%; Asymmetry: 18.6%; sMAE: 1.262%; sMSE: 0.029%
 ## MASE: 0.574; RMSSE: 0.529; rMAE: 0.056; rRMSE: 0.061</code></pre>
 <div class="sourceCode" id="cb326"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb326-1"><a href="ADAMMultipleFrequenciesExamples.html#cb326-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelARIMA,<span class="dv">7</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-178-1.png" width="672" /></p>
+<p><img src="adam_files/figure-html/unnamed-chunk-179-1.png" width="672" /></p>
 <p>This model is directly comparable with ADAM ETS via information criteria, and as we can see is worse than ADAM ETS(M,N,M)+AR(1) and multiple seasonal ETS(M,N,M) in terms of AICc. But it is better in terms of RMSSE, producing more accurate forecasts. We could analyse the residuals of this model and iteratively test, whether the addition of AR terms and halfhour of day seasonality improves the accuracy of the model. We could also try ARIMA models with different distributions, compare them and select the most appropriate one. The reader is encouraged to do this task on their own.</p>
 
 </div>
