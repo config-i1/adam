@@ -1,5 +1,5 @@
 # Regression analysis {#regression}
-While we do not expect to cover the regression analysis in its fullness, I think that it is important to have some basic understanding of what regression model is, how it can be estimated and used for forecasting. This chapter introduces the regression starting from the simple linear model and then moving to more advanced topics of multiple linear regression, model estimation, regression assumptions, dummy variables, variables transformations, ARDL and model for scale of distribution.
+While we do not expect to cover the regression analysis in its fullness, I think that it is important to have some basic understanding of what regression model is, how it can be estimated and used for forecasting. This chapter introduces the regression starting from the simple linear model and then moving to more advanced topics of multiple linear regression, model estimation, regression assumptions, dummy variables, variables transformations, likelihood approach and model for scale of distribution.
 
 
 ## Simple Linear Regression {#simpleLinearRegression}
@@ -650,9 +650,198 @@ summary(tShirtsInteractionDataFrameALM)
 Note that the interpretation of parameters in such model will be different, because now the `price` shows the baseline effect for the blue t-shirts, while the interaction effects show how this effect will change for other colours. So, for example, in order to see what would be the effect of price change on sales of red t-shirts, we need to sum up the parameter for `price` and `price:colourRed`. We then can say that if price of red t-shirt increases by £1, the sales will decrease on average by `r abs(round(sum(coef(tShirtsInteractionDataFrameALM)[c(2,4)]),2))` units.
 
 
-<!-- ## Variables transformations -->
+## Variables transformations
+So far we have discussed linear regression models, where the response variable linearly depends on a set of explanatory variables. These models work well in many contexts, especially when the response variable is measured in high volumes (e.g. sales in thousands of units). However, in reality the relations between variables can be non-linear. Consider, for example, the stopping distance vs speed of the car, the case we have discussed in the previous sections. This sort of relation in reality is non-linear. We know from physics that the distance travelled by car is proportional to the mass of car, the squared speed and inversely proportional to the breaking force:
+\begin{equation}
+    distance \propto \frac{mass}{2 breaking} \times speed^2.
+    (\#eq:speedDistanceFormula)
+\end{equation}
+If we use the linear function instead, then we might fail in capturing the relation correctly. Here is how the linear regression looks like, when applied to the data (Figure \@ref(fig:speedDistanceExtrapolation)).
 
-<!-- ### Interpretation of parameters -->
+```{r speedDistanceExtrapolation, fig.cap="Speed vs stopping distance and a linear model", echo=FALSE}
+plot(cars, xlab="Speed", ylab="Stopping distance", xlim=c(0,30), ylim=c(-20,120))
+abline(h=0, col="grey")
+abline(v=0, col="grey")
+abline(slmSpeedDistance, col="red")
+```
+
+The model on the plot in Figure \@ref(fig:speedDistanceExtrapolation) is misleading, because it predicts that the stopping distance of a car, travelling with speed less than 4mph will be negative. Furthermore, the modelunderestimates the real stopping distance for cars with higher speed. If a decision is made based on this model, then it will be inevitably wrong and might potentially lead to serious repercussions in terms of road safety. Given the relation \@ref(eq:speedDistanceFormula), we should consider a non-linear model. In this specific case, we should consider the model of the type:
+\begin{equation}
+    distance = a_0 speed^{a_1} \times (1+\epsilon).
+    (\#eq:speedDistanceModel)
+\end{equation}
+The multiplication of speed by the error term is necessary, because the effect of randomness will have an increasing variability with the increase of speed: if the speed is low, then the random factors (such as road conditions, breaks condition etc) will not have a strong effect on distance, while in case of the high speed these random factors might lead either to the serious decrease or increase of distance (a car on a slippery road, stopping from 50mph will have much longer distance than the same car on a dry road). Note that I have left the parameter $a_1$ in \ref(eq:speedDistanceModel) and did not set it equal to two. This is done for the case we want to estimate the parameter based on the data. The problem with the model \@ref(eq:speedDistanceModel) is that it is difficult to estimate due to the non-linearity. In order to resolve this problem, we can linearise it by taking logarithms of both sides, which will lead to:
+\begin{equation}
+    \log (distance) = \log a_0 + a_1 \log (speed) + \log(1+\epsilon).
+    (\#eq:speedDistanceModelLogs)
+\end{equation}
+If we substituted every element with $\log$ in \@ref(eq:speedDistanceModelLogs) by other names (e.g. $\log(a_0)=b_0$ and $\log(speed)=x$), it would be easier to see that this is a linear model, which can be estimated via [OLS](#OLS). This type of model is called "log-log", reflecting that it has logarithms on both sides. Even the data will be much better behaved if we use logarithms in this situation (see Figure \@ref(fig:speedDistanceLogs)).
+
+```{r speedDistanceLogs, fig.cap="Speed vs stopping distance in logarithms", echo=FALSE}
+slmSpeedDistanceModel01 <- alm(log(dist)~log(speed), cars, loss="MSE")
+plot(log(cars), xlab="log(Speed)", ylab="log(Stopping distance)")
+abline(slmSpeedDistanceModel01,col="red")
+```
+
+What we want to see on Figure \@ref(fig:speedDistanceLogs) is the linear relation between the variables with points having fixed variance. However, in our case we can notice that the variance of the stopping distances does not seem to be stable: the variability around 2.0 is higher than the variability around 3.0. This might cause issues in the model due to violation of assumptions (see Section \@ref(assumptions)). For now, we acknowledge the issue but do not aim to fix it. And here how the model \@ref(eq:speedDistanceModelLogs) can be estimated using R:
+```{r eval=FALSE}
+slmSpeedDistanceModel01 <- alm(log(dist)~log(speed), cars, loss="MSE")
+```
+
+The values of parameters of this model will have a different meaning than the parameters of the linear model. Consider the example with the model above:
+```{r}
+summary(slmSpeedDistanceModel01)
+```
+
+The value of parameter for the variable `log(speed)` now does not represent the marginal effect of speed on distance, but rather shows the elasticity, i.e. if the speed of a car increases by 1%, the travel distance will increase on average by `r round(coef(slmSpeedDistanceModel01)[2],2)`%.
+
+In order to analyse the fit of the model on the original data, we would need to produce fitted values and exponentiate them. Note that in this case they would correspond to geometric rather than arithmetic means:
+
+```{r speedDistanceLogExp, fig.cap="Speed vs stopping distance and the log-log model fit."}
+plot(cars, xlab="Speed", ylab="Stopping distance")
+lines(cars$speed,exp(fitted(slmSpeedDistanceModel01)),col="red")
+```
+
+The resulting model in Figure \@ref(fig:speedDistanceLogExp) is the power function, which exhibits the increase in speed of change of one parameter with a linear change of another one. Note that technically speaking, the log-log model only makes sense, when the data is strictly positive. If it also contains zeroes (the speed is zero, thus the stopping distance is zero), then some other transformations might be in order. For example, we could square the speed in the model and try constructing the linear model, aligning it better with the physical model \@ref(eq:speedDistanceFormula):
+\begin{equation}
+    distance = a_0 + a_1 speed^2 + \epsilon .
+    (\#eq:speedDistanceModelSquare)
+\end{equation}
+The issue of this model would be that the error term is additive and thus the model would assume that the variability of the error does not change with the speed, which is not realistic.
+
+```{r speedDistanceSquare, fig.cap="Speed squared vs stopping distance", echo=FALSE}
+slmSpeedDistanceModel02 <- alm(dist~I(speed^2), cars, loss="MSE")
+plot(cars$speed^2, cars$dist, xlab="Speed^2", ylab="Stopping distance")
+lines(c(-10:30)^2,coef(slmSpeedDistanceModel02)[1]+coef(slmSpeedDistanceModel02)[2]*c(-10:30)^2,col="red")
+```
+ 
+Figure \@ref(fig:speedDistanceSquare) demonstrates the scatterplot for squared speed vs stopping distances. While we see that the relation between variables is closer to linear, the problem with variance is not resolved. If we want to estimate this model, we can use the following command in R:
+```{r eval=FALSE}
+slmSpeedDistanceModel02 <- alm(dist~I(speed^2), cars, loss="MSE")
+```
+
+Note that we use `I()` in the formula to tell R to square the variable - it will not do the necessary transformation otherwise. Also note that in our specific case we did not include the non-transformed speed variable, because we know that the lowest distance should be, when speed is zero. But this might not be the case in other cases, so in general instead of the formula used above we should use: `y~x+I(x^2)`. Furthermore, if we know for sure that the intercept is not needed (i.e. we know that the distance will be zero, when speed is zero), then we can remove it and estimate the model:
+```{r}
+slmSpeedDistanceModel03 <- alm(dist~I(speed^2)-1, cars, loss="MSE")
+```
+`alm()` function will complain about the exclusion of the intercept, but it should estimate the model nonetheless. The fit of the model to the data would be similar in its shape to the one from the log-log model (see Figure \@ref(fig:speedDistanceSquare02)).
+
+```{r speedDistanceSquare02, fig.cap="Speed squared vs stopping distance with models with speed^2", echo=FALSE}
+plot(cars$speed, cars$dist, xlab="Speed", ylab="Stopping distance",
+     xlim=c(0,25))
+lines(c(-10:30), coef(slmSpeedDistanceModel02)[1] +
+        coef(slmSpeedDistanceModel02)[2]*c(-10:30)^2, col="red")
+lines(c(-10:30), coef(slmSpeedDistanceModel03)[1]*c(-10:30)^2, col="blue")
+legend("topleft",legend=c("Model 2","Model 3"), lwd=1, col=c("red","blue"))
+```
+
+The plot in Figure \@ref(fig:speedDistanceSquare02) demonstrates how the two models fit the data. The Model 2, as we see goes through the origin, which makes sense from the physical point of view. However, because of that it might fit the data worse than the Model 1 does. Still, it it better to have a more meaningful model than the one that potentially overfits the data.
+
+Another way to introduce the squares in the model is to take square root of distance. This would potentially align better with the physical model of stopping distance \@ref(eq:speedDistanceFormula):
+\begin{equation}
+    \sqrt{distance} = a_0 + a_1 speed + \epsilon ,
+    (\#eq:speedDistanceModelSqrt)
+\end{equation}
+which will be equivalent to:
+\begin{equation}
+    distance = (a_0 + a_1 speed + \epsilon)^2 .
+    (\#eq:speedDistanceModelSqrt2)
+\end{equation}
+The good news is, the error term in this model will change with the change of speed due to the interaction effect, cause by the square of the sum in \@ref(eq:speedDistanceModelSqrt2). And, similar to the previous models, the parameter $a_0$ might not be needed. Graphically, this transformation is present on Figure \@ref(fig:speedDistanceSqrt).
+
+```{r speedDistanceSqrt, fig.cap="Speed vs square root of stopping distance.", echo=FALSE}
+slmSpeedDistanceModel04 <- alm(sqrt(dist)~speed, cars, loss="MSE")
+plot(cars$speed, sqrt(cars$dist), xlab="Speed", ylab="sqrt(Stopping distance)")
+abline(slmSpeedDistanceModel04, col="red")
+```
+
+As the plot in Figure \@ref(fig:speedDistanceSqrt) demonstrates, the relation has become linear and the variance seems to be constant, no matter what the speed is. This means that the proposed model might be more appropriate to the data than the previous ones. This is how we can estimate this model:
+```{r eval=FALSE}
+slmSpeedDistanceModel04 <- alm(sqrt(dist)~speed, cars, loss="MSE")
+```
+Similar to the Model 2 with squares, we will also consider the model without intercept on the grounds that if we capture the relation correctly, the zero speed should result in zero distance.
+```{r}
+slmSpeedDistanceModel05 <- alm(sqrt(dist)~speed-1, cars, loss="MSE")
+```
+Finally, we can see how both models will fit the original data (squaring the fitted values to get to the original scale):
+```{r speedDistanceSqrt02, fig.cap="Speed squared vs stopping distance with Square Root models.", echo=FALSE}
+plot(cars$speed, cars$dist, xlab="Speed", ylab="Stopping distance",
+     xlim=c(0,25))
+lines(c(-10:30), predict(slmSpeedDistanceModel04,
+                         newdata=data.frame(speed=c(-10:30)))$mean^2, col="red")
+lines(c(-10:30), predict(slmSpeedDistanceModel05,
+                         newdata=data.frame(speed=c(-10:30)))$mean^2, col="blue")
+legend("topleft",legend=c("Model 4","Model 5"), lwd=1, col=c("red","blue"))
+```
+
+Subjectively, I would say that Model 5 is the most appropriate from all the models under consideration: it corresponds to the physical model on one hand, and has constant variance on the other one. Its parameter contains some average information about the mass of cars and their breaking forces (this is based on the formula \@ref(eq:speedDistanceFormula)). We could say based on this model that with the increase of speed by 1mph, the stopping distance would increase on average by `r round(coef(slmSpeedDistanceModel05),4)`$^2 \approx$`r round(coef(slmSpeedDistanceModel05)^2,2)` feet. This effect would vary in 95% of cases from `r round(confint(slmSpeedDistanceModel05)[2]^2,2)` to `r round(confint(slmSpeedDistanceModel05)[3]^2,2)` feet, depending on various circumstances.
+
+
+<!-- ### Types of variables transformations -->
+<!-- Summarising this section, we discuss several possible types of transformations of variables in regression models. -->
+
+
+
+
+## Typical assumptions of statistical models {#assumptions}
+In order for a statistical model to work adequately and not to fail on data, several assumptions about it, when it is *applied* to the data, should hold. If they do not, then the model might lead to biased or inefficient estimates of parameters and forecasts. Here we briefly discuss the main of them, united in three big groups:
+
+1. Model is correctly specified;
+2. Residuals are independent and identicaly distributed (i.i.d.);
+3. The explanatory variables are not correlated with anything but the response variable;
+
+In Section \@ref(diagnostics) we also discuss how to diagnose the constructed models and fix the issues in cases, when the assumptions are violated.
+
+### Model is correctly specified {#assumptionsCorrectModel}
+This implies that:
+
+1. We have not omitted important variables in the model (underfitting the data);
+2. We do not have redundant variables in the model (overfitting the data);
+3. The necessary transformation of the variables are applied;
+4. We do not have outliers in the model.
+
+(1): if there are some important variables that we did not include in the model, then the estimates of the parameters might be *biased* and in some cases quite seriously (e.g. positive sign instead of the negative one). This also means that the point forecasts from the model might be *biased* as well (systematic under or over forecasting).
+
+(2): if there are redundant variables that are not needed in the model, then the estimates of parameters and point forecasts might be *unbiased*, but *inefficient.* This implies that the variance of parameters can be lower than needed and the prediction intervals can be narrower than needed.
+
+(3): this means that, for example, instead of using a multiplicative model, we apply an additive one. The estimates of parameters and the point forecasts might be *biased* in this case as well: the model will produce linear trajectory of the forecast, when a non-linear one is needed.
+
+(4): in a way, this is similar to (1), the presence of outliers might mean that we have missed some important information, meaning that the estimates of parameters and forecasts would be *biased* as well. There can be other reasons for outliers as well. For example, we might be using a wrong distributional assumptions. If so, this would imply that the prediction intervals from the model are narrower than needed.
+
+
+### Residuals are i.i.d. {#assumptionsResidualsAreIID}
+There are five assumptions in this group:
+
+1. There is no autocorrelation in the residuals;
+2. The residuals are homoscedastic;
+3. The expectation of residuals is zero, no matter what;
+4. The variable follows the specified distribution;
+5. More generally speaking, distribution of residuals does not change over time.
+
+(1): we expect that the model captures all the important aspects, so if the residuals are autocorrelated, then something is neglected by the applied model. Typically, this leads to *inefficient* estimates of parameters and in some cases they can also become *biased*. As a result, the point forecasts can be less accurate than expected and the prediction intervals might be wrong (wider or narrower than needed).
+
+(2): if this is violated, then we say that there is a **heteroscedasticity** in the model. This means that with a change of variable, the variance of the residuals changes as well. If the model neglects this, then typically the estimates of parameters become *inefficient* and prediction intervals are wrong: they are wider than needed in some cases and narrower than needed in the other ones.
+
+(3): while in sample, this holds automatically in many cases (e.g. when using Least Squares method for regression model estimation), this assumption might be violated in the holdout sample. In this case the point forecasts would be *biased*, because they typically do not take the non-zero mean of forecast error into account, and the prediction interval might be off as well, because of the wrong estimation of the scale of distribution (e.g. variance is higher than needed). This assumption also implies that the expectation of residuals is zero even conditional on the explanatory variables in the model. If it is not, then this might mean that there is still some important information omitted in the applied model.
+
+Note that some models in ADAM framework assume that the expectation of residuals is equal to one instead of zero (e.g. multiplicative error models). The idea of the assumption stays the same, it is only the value that changes.
+
+(4): in some cases we are interested in using methods that imply specific distributional assumptions about the model and its residuals. For example, it is assumed in the classical linear model that the error term follows Normal distribution. Estimating this model using MLE with the probability density function of Normal distribution or via minimisation of [Mean Squared Error](#errorMeasures) (MSE) would give *efficient* and *consistent* estimates of parameters. If the assumption of normality does not hold, then the estimates might be *inefficient* and in some cases *inconsistent*. When it comes to forecasting, the main issue in the wrong distributional assumption appears, when prediction intervals are needed: they might rely on a wrong distribution and be narrower or wider than needed. Finally, if we deal with the wrong distribution, then the model selection mechanism might be flawed and would lead to the selection of an inappropriate model.
+
+(5): this assumption aligns with (4), but in this specific context implies that all the parameters of distribution stay the same and the shape of distribution does not change. If the former is violated then we might have one of the issues discussed above. If the latter is violated then we might produce *biased* forecasts and underestimate / overestimate the uncertainty about the future.
+
+
+### The explanatory variables are not correlated with anything but the response variable {#assumptionsXreg}
+There are two cases here as well:
+
+1. No multicollinearity;
+2. No endogeneity;
+
+(1): the effect of **multicollinearity** implies that the variables included in the model are linearly dependent from each other. In this case, it becomes difficult to distinguish the effect of one variables from the other one. As a result, the estimates of parameters become *inefficient* and might become *biased* in some sever cases. In case of forecasting, the effect is not as straight forward, and in some cases might not damage the point forecasts, but can lead to prediction intervals of an incorrect width. It is important to note that this is in a way an assumption about the estimation of the model rather than the model itself: it is unreasonable to assume that explanatory variables are independent - reality is more complicated than we would want it to be, so inevitably some variables will be correlated. The main issue of multicollinearity comes to the difficulties in the model estimation in a sample. If we had all the data in the world, then the issue would not exist.
+
+(2): **endogeneity** applies to the situation, when the dependent variable $y_t$ influences the explanatory variable $x_t$ in the model on the same observation. The relation in this case becomes bi-directional, meaning that the basic model is not appropriate in this situation any more. The parameters and forecasts will typically be *biased*, and a different estimation method is needed or maybe a different model would need to be constructed in order to fix this.
+
+In many cases, in our discussions in this textbook, we assume that all of these assumptions hold. In some of the cases, we will say explicitly, which are violated and what needs to be done in those situations. In Section \@ref(diagnostics) we will discuss how these assumptions can be checked and how the issues caused by their violation can be fixed.
 
 
 ## Likelihood Approach {#likelihoodApproach}
@@ -834,69 +1023,6 @@ If we know that in the same simple linear regression $\beta_1 = \frac{\beta_0}{\
 We will come back to the number of parameters later in this textbook, when we discuss specific models.
 
 A final note: typically, the standard maximum likelihood estimators for the scale, shape and shift parameters are biased in small samples and do not coincide with the OLS estimators. For example, in case of Normal distribuiton, OLS estimate of variance has $T-k$ in the denominator, while the likelihood one has just $T$. This needs to be taken into account, when the variance is used in forecasting.
-
-
-
-
-## Typical assumptions of statistical models {#assumptions}
-In order for a statistical model to work adequately and not to fail on data, several assumptions about it, when it is *applied* to the data, should hold. If they do not, then the model might lead to biased or inefficient estimates of parameters and forecasts. Here we briefly discuss the main of them, united in three big groups:
-
-1. Model is correctly specified;
-2. Residuals are independent and identicaly distributed (i.i.d.);
-3. The explanatory variables are not correlated with anything but the response variable;
-
-In Section \@ref(diagnostics) we also discuss how to diagnose the constructed models and fix the issues in cases, when the assumptions are violated.
-
-### Model is correctly specified {#assumptionsCorrectModel}
-This implies that:
-
-1. We have not omitted important variables in the model (underfitting the data);
-2. We do not have redundant variables in the model (overfitting the data);
-3. The necessary transformation of the variables are applied;
-4. We do not have outliers in the model.
-
-(1): if there are some important variables that we did not include in the model, then the estimates of the parameters might be *biased* and in some cases quite seriously (e.g. positive sign instead of the negative one). This also means that the point forecasts from the model might be *biased* as well (systematic under or over forecasting).
-
-(2): if there are redundant variables that are not needed in the model, then the estimates of parameters and point forecasts might be *unbiased*, but *inefficient.* This implies that the variance of parameters can be lower than needed and the prediction intervals can be narrower than needed.
-
-(3): this means that, for example, instead of using a multiplicative model, we apply an additive one. The estimates of parameters and the point forecasts might be *biased* in this case as well: the model will produce linear trajectory of the forecast, when a non-linear one is needed.
-
-(4): in a way, this is similar to (1), the presence of outliers might mean that we have missed some important information, meaning that the estimates of parameters and forecasts would be *biased* as well. There can be other reasons for outliers as well. For example, we might be using a wrong distributional assumptions. If so, this would imply that the prediction intervals from the model are narrower than needed.
-
-
-### Residuals are i.i.d. {#assumptionsResidualsAreIID}
-There are five assumptions in this group:
-
-1. There is no autocorrelation in the residuals;
-2. The residuals are homoscedastic;
-3. The expectation of residuals is zero, no matter what;
-4. The variable follows the specified distribution;
-5. More generally speaking, distribution of residuals does not change over time.
-
-(1): we expect that the model captures all the important aspects, so if the residuals are autocorrelated, then something is neglected by the applied model. Typically, this leads to *inefficient* estimates of parameters and in some cases they can also become *biased*. As a result, the point forecasts can be less accurate than expected and the prediction intervals might be wrong (wider or narrower than needed).
-
-(2): if this is violated, then we say that there is a **heteroscedasticity** in the model. This means that with a change of variable, the variance of the residuals changes as well. If the model neglects this, then typically the estimates of parameters become *inefficient* and prediction intervals are wrong: they are wider than needed in some cases and narrower than needed in the other ones.
-
-(3): while in sample, this holds automatically in many cases (e.g. when using Least Squares method for regression model estimation), this assumption might be violated in the holdout sample. In this case the point forecasts would be *biased*, because they typically do not take the non-zero mean of forecast error into account, and the prediction interval might be off as well, because of the wrong estimation of the scale of distribution (e.g. variance is higher than needed). This assumption also implies that the expectation of residuals is zero even conditional on the explanatory variables in the model. If it is not, then this might mean that there is still some important information omitted in the applied model.
-
-Note that some models in ADAM framework assume that the expectation of residuals is equal to one instead of zero (e.g. multiplicative error models). The idea of the assumption stays the same, it is only the value that changes.
-
-(4): in some cases we are interested in using methods that imply specific distributional assumptions about the model and its residuals. For example, it is assumed in the classical linear model that the error term follows Normal distribution. Estimating this model using MLE with the probability density function of Normal distribution or via minimisation of [Mean Squared Error](#errorMeasures) (MSE) would give *efficient* and *consistent* estimates of parameters. If the assumption of normality does not hold, then the estimates might be *inefficient* and in some cases *inconsistent*. When it comes to forecasting, the main issue in the wrong distributional assumption appears, when prediction intervals are needed: they might rely on a wrong distribution and be narrower or wider than needed. Finally, if we deal with the wrong distribution, then the model selection mechanism might be flawed and would lead to the selection of an inappropriate model.
-
-(5): this assumption aligns with (4), but in this specific context implies that all the parameters of distribution stay the same and the shape of distribution does not change. If the former is violated then we might have one of the issues discussed above. If the latter is violated then we might produce *biased* forecasts and underestimate / overestimate the uncertainty about the future.
-
-
-### The explanatory variables are not correlated with anything but the response variable {#assumptionsXreg}
-There are two cases here as well:
-
-1. No multicollinearity;
-2. No endogeneity;
-
-(1): the effect of **multicollinearity** implies that the variables included in the model are linearly dependent from each other. In this case, it becomes difficult to distinguish the effect of one variables from the other one. As a result, the estimates of parameters become *inefficient* and might become *biased* in some sever cases. In case of forecasting, the effect is not as straight forward, and in some cases might not damage the point forecasts, but can lead to prediction intervals of an incorrect width. It is important to note that this is in a way an assumption about the estimation of the model rather than the model itself: it is unreasonable to assume that explanatory variables are independent - reality is more complicated than we would want it to be, so inevitably some variables will be correlated. The main issue of multicollinearity comes to the difficulties in the model estimation in a sample. If we had all the data in the world, then the issue would not exist.
-
-(2): **endogeneity** applies to the situation, when the dependent variable $y_t$ influences the explanatory variable $x_t$ in the model on the same observation. The relation in this case becomes bi-directional, meaning that the basic model is not appropriate in this situation any more. The parameters and forecasts will typically be *biased*, and a different estimation method is needed or maybe a different model would need to be constructed in order to fix this.
-
-In many cases, in our discussions in this textbook, we assume that all of these assumptions hold. In some of the cases, we will say explicitly, which are violated and what needs to be done in those situations. In Section \@ref(diagnostics) we will discuss how these assumptions can be checked and how the issues caused by their violation can be fixed.
 
 
 <!-- ## ARDL model -->
