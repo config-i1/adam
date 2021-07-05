@@ -709,7 +709,7 @@ The resulting model in Figure \@ref(fig:speedDistanceLogExp) is the power functi
 \end{equation}
 The issue of this model would be that the error term is additive and thus the model would assume that the variability of the error does not change with the speed, which is not realistic.
 
-```{r speedDistanceSquare, fig.cap="Speed squared vs stopping distance", echo=FALSE}
+```{r speedDistanceSquare, fig.cap="Speed squared vs stopping distance.", echo=FALSE}
 slmSpeedDistanceModel02 <- alm(dist~I(speed^2), cars, loss="MSE")
 plot(cars$speed^2, cars$dist, xlab="Speed^2", ylab="Stopping distance")
 lines(c(-10:30)^2,coef(slmSpeedDistanceModel02)[1]+coef(slmSpeedDistanceModel02)[2]*c(-10:30)^2,col="red")
@@ -726,7 +726,7 @@ slmSpeedDistanceModel03 <- alm(dist~I(speed^2)-1, cars, loss="MSE")
 ```
 `alm()` function will complain about the exclusion of the intercept, but it should estimate the model nonetheless. The fit of the model to the data would be similar in its shape to the one from the log-log model (see Figure \@ref(fig:speedDistanceSquare02)).
 
-```{r speedDistanceSquare02, fig.cap="Speed squared vs stopping distance with models with speed^2", echo=FALSE}
+```{r speedDistanceSquare02, fig.cap="Speed squared vs stopping distance with models with speed^2.", echo=FALSE}
 plot(cars$speed, cars$dist, xlab="Speed", ylab="Stopping distance",
      xlim=c(0,25))
 lines(c(-10:30), coef(slmSpeedDistanceModel02)[1] +
@@ -793,13 +793,89 @@ which is now closer to what we need. We can say that if speed increases by 1mph,
     \frac{\mathrm{d}^2 distance}{\mathrm{d}^2 speed} = 2 a_1 .
     (\#eq:speedDistanceModelSqrt5)
 \end{equation}
-The meaning of the second derivative is that it shows the change of change of distance with a change of change of speed by 1. This implies a tricky interpretation of the parameter. Based on the summary above, the only thing we can conclude is that when the change of speed increases by 1mph, the change of distance will increase by `r round(coef(slmSpeedDistanceModel05),4)*2` feet. This is not a very helpful interpretation, but this is the best we have for the parameter $a_1$ in the Model 5.
+The meaning of the second derivative is that it shows the change of change of distance with a change of change of speed by 1. This implies a tricky interpretation of the parameter. Based on the summary above, the only thing we can conclude is that when the change of speed increases by 1mph, the change of distance will increase by `r round(coef(slmSpeedDistanceModel05),4)*2` feet. An alternative interpretation would be based on the model \@ref(eq:speedDistanceModelSqrt): with the increase of speed of car by 1mph, the square roo tof stopping distance would increase by `r round(coef(slmSpeedDistanceModel05),4)` square root feet. Neither of these two interpretations are very helpful, but this is the best we have for the parameter $a_1$ in the Model 5.
 <!-- The more useful interpretation would be related to equation \@ref(eq:speedDistanceModelSqrt4), if we know a specific speed. For example, if a car drives with the speed of 30mph, then an increase in speed by 1mph would on average lead to `r round(coef(slmSpeedDistanceModel05)*30,4)*2` 23 feet increase in stopping distance. -->
 
-<!-- ### Types of variables transformations -->
-<!-- Summarising this section, we discuss several possible types of transformations of variables in regression models. -->
+### Types of variables transformations
+Having considered this case study, we can summarise the possible types of transformations of variables in regression models and what they would mean. Here, we only discuss monotonic transformations, i.e. those that guarantee that if $x$ was increasing before transformations, it would be increasing after transformations as well.
 
+1. Linear model: $y = a_0 + a_1 x + \epsilon$. As discussed earlier, in this model, $a_1$ can be interpreted as a marginal effect of x on y. The typical interpretation is that with the increase of $x$ by 1 unit, $y$ will change on average by $a_1$ units. In case of dummy variables, their interpretation is that the specific category of product will have a different (higher or lower) impact on $y$ by $a_1$ units. e.g. "sales of red mobile phones are on average higher than the sales of the blue ones by 100 units".
+2. Log-Log model, or power model or a multiplicative model: $\log y = a_0 + a_1 \log x + \log (1+\epsilon)$. It is equivalent to $y = a_0 x^{a_1} (1+\epsilon)$. The parameter $a_1$ is interpreted as elasticity: If $x$ increases by 1%, the response variable $y$ changes on average by $a_1$%. Depending on the value of $a_1$, this model can capture non-linear relations with slowing down or accelerating changes. Figure \@ref(fig:transformationsExamples01) demonstrates several examples of artificial data with different values of $a_1$.
 
+```{r transformationsExamples01, fig.cap="Examples of log-log relations with different values of elasticity parameter.", echo=FALSE}
+par(mfcol=c(2,2))
+plot(c(1:100), 1.5*c(1:100)^0.5 * rlnorm(100,0,0.1),
+     xlab="x", ylab="y", main=TeX("$a_1=0.5$"))
+lines(1.5*c(1:100)^0.5, col="red")
+plot(c(1:100), 1.5*c(1:100)^{-0.5} * rlnorm(100,0,0.1),
+     xlab="x", ylab="y", main=TeX("$a_1=-0.5$"))
+lines(1.5*c(1:100)^{-0.5}, col="red")
+plot(c(1:100), 1.5*c(1:100)^2 * rlnorm(100,0,0.1),
+     xlab="x", ylab="y", main=TeX("$a_1=2$"))
+lines(1.5*c(1:100)^2, col="red")
+plot(c(1:100), 1.5*c(1:100)^{-2} * rlnorm(100,0,0.1),
+     xlab="x", ylab="y", main=TeX("$a_1=-2$"))
+lines(1.5*c(1:100)^{-2}, col="red")
+```
+
+As discussed earlier, this model can only be applied to positive data. If there are zeroes in the data, then logarithm will be equal to $-\infty$ and it would not be possible to estimate the model correctly.
+
+3. Log-linear or exponential model: $\log y = a_0 + a_1 x + \log (1+\epsilon)$ is equivalent to $y = a_0 \exp(a_1 x) (1+\epsilon)$. The parameter $a_1$ will control the change of speed of growth / decline in the model. If variable $x$ increases by 1 unit, then the variable $y$ will change on average by $(\exp(a_1)-1)\times 100$%. If the value of $a_1$ is small (roughly $a_1 \in (-0.2, 0.2)$), then due to one of the limits the interpretation can be simplified to: when $x$ increases by 1 unit, the variable $y$ will change on average by $a_1\times 100$%. The exponent is in general a dangerous function as it exhibits either explosive (when $a_1 > 0$) or implosive (when $a_1 < 0$) behaviour. This is shown in Figure \@ref(fig:transformationsExamples02), where the values of $a_1$ are -0.05 and 0.05, and we can see how fast the value of $y$ changes with the increase of $x$.
+
+```{r transformationsExamples02, fig.cap="Examples of log-linear relations with two values of slope parameter.", echo=FALSE}
+par(mfcol=c(1,2))
+plot(c(1:100), 1.5*exp(0.05*c(1:100)) * rlnorm(100,0,0.1),
+     xlab="x", ylab="y", main=TeX("$a_1=0.05$"))
+lines(1.5*exp(0.05*c(1:100)), col="red")
+plot(c(1:100), 1.5*exp(-0.05*c(1:100)) * rlnorm(100,0,0.1),
+     xlab="x", ylab="y", main=TeX("$a_1=-0.05$"))
+lines(1.5*exp(-0.05*c(1:100)), col="red")
+```
+If $x$ is a [dummy variable](#dummyVariables), then its interpretation is slightly different: the presence of the effect $x$ leads on average to the change of variable $y$ by $a_1 \times 100$%. e.g. "sales of red laptops are on average 15% higher than sales of blue laptops".
+
+4. Linear-log: $y = a_0 + a_1 \log x + \epsilon$. This is just a logarithmic transform of explanatory variable. The parameter $a_1$ in this case regulates the direction and speed of change. If $x$ increases by 1%, then $y$ will change on average by $\frac{a_1}{100}$ units. Figure \@ref(fig:transformationsExamples03) shows two cases of relations with positive and negative slope parameters.
+
+```{r transformationsExamples03, fig.cap="Examples of linear-log relations with two values of slope parameter.", echo=FALSE}
+par(mfcol=c(1,2))
+plot(c(1:100), 5+1.5*log(c(1:100)) +rnorm(100,0,0.5),
+     xlab="x", ylab="y", main=TeX("$a_1=1.5$"))
+lines(5 +1.5*log(c(1:100)), col="red")
+plot(c(1:100), 5-1.5*log(c(1:100)) +rnorm(100,0,0.5),
+     xlab="x", ylab="y", main=TeX("$a_1=-1.5$"))
+lines(5 -1.5*log(c(1:100)), col="red")
+```
+
+The logarithmic model assumes that the increase in $x$ always leads on average to the slow down of the value of $y$.
+
+5. Square root: $y = a_0 + a_1 \sqrt x + \epsilon$. The relation between $y$ and $x$ in this model looks similar to the on in linear-log model, but the with a lower speed of change: the square root represents the slow down in the change and might be suitable for cases of diminishing returns of scale in various real life problems. There is no specific interpretation for the parameter $a_1$ in this model - it will show how the response variable $y$ will change on average wih increase of square root of $x$ by one. Figure \@ref(fig:transformationsExamples04) demonstrates square root relations for two cases, with parameters $a_1=1.5$ and $a_1=-1.5$.
+
+```{r transformationsExamples04, fig.cap="Examples of linear - square root relations with two values of slope parameter.", echo=FALSE}
+par(mfcol=c(1,2))
+plot(c(1:100), 5+1.5*sqrt(c(1:100)) +rnorm(100,0,0.5),
+     xlab="x", ylab="y", main=TeX("$a_1=1.5$"))
+lines(5 +1.5*sqrt(c(1:100)), col="red")
+plot(c(1:100), 5-1.5*sqrt(c(1:100)) +rnorm(100,0,0.5),
+     xlab="x", ylab="y", main=TeX("$a_1=-1.5$"))
+lines(5 -1.5*sqrt(c(1:100)), col="red")
+```
+
+6. Quadratic equation: $y = a_0 + a_1 x + a_2 x^2 + \epsilon$. This relation demonstrates increase or decrease with an acceleration due to the present of squared $x$. This model has an extremum (either a minimum or a maximum), when $x=\frac{-a_1}{2 a_2}$. This means that the growth in the data will be changed by decline or vice versa with the increase of $x$. This makes the model potentially prone to overfitting, so it needs to be used with care. Note that in general the quadratic equation should include both $x$ and $x^2$, unless we know that the extremum should be at the point $x=0$ (see the example with Model 5 in the previous section). Furthrmore, this model is close to the one with square root of $y$: $\sqrt y = a_0 + a_1 x + \epsilon$, with the main difference being that the latter formulation assumes that the variability of the error term will change together with the change of $x$ (so called "heteroscedasticity" effect, see Section \@ref(assumptionsResidualsAreIID)). This model was used in the examples with stopping distance above. Figure \@ref(fig:transformationsExamples05) shows to classical examples: with branches of the function going down and going up.
+
+```{r transformationsExamples05, fig.cap="Examples of linear-log relations with two values of slope parameter.", echo=FALSE}
+par(mfcol=c(1,2))
+plot(c(1:100), 400-20*c(1:100)+0.2*c(1:100)^2 +rnorm(100,0,10),
+     xlab="x", ylab="y", main=TeX("$a_1=-20$, $a_2=0.2$"))
+lines(400-20*c(1:100)+0.2*c(1:100)^2, col="red")
+plot(c(1:100), 400+20*c(1:100)-0.2*c(1:100)^2 +rnorm(100,0,10),
+     xlab="x", ylab="y", main=TeX("$a_1=20$, $a_2=-0.2$"))
+lines(400+20*c(1:100)+-.2*c(1:100)^2, col="red")
+```
+
+7. Polynomial: $y = a_0 + a_1 x + a_2 x^2 + \dots \ a_k x^k + \epsilon$. This is a more general model than the quadratic one, introducing $k$ polynomials. This is not used very often in analytics, because any data can be approximated by a high order polynomial, and because the branches of polynomial will inevitably lead to infinite increase / decrease, which is not a common tendency in practice.
+
+8. Box-Cox or power transform: $\frac{y^\lambda -1}{\lambda} = a_0 + a_1 x + \epsilon$. This type of transform can be applied to either response variable or any of explanatory variables and can be considered as something more general than linear, log-linear, quadratic and square root models. This is because with different values of $\lambda$, the transformation would revert to one of the above. For example, with $\lambda=1$, we end up with a linear model, just with a different intercept. If $\lambda=0.5$, then we end up with square root, and when $\lambda \rightarrow 0$, then the relation becomes equivalent to logarithmic. The choice of $\lambda$ might be a challenging task on its own, however it can be estimated via [likelihood](#likelihoodApproach). If estimated and close to either 0, 0.5, 1 or 2, then typically a respective transformation should be applied instead of Box-Cox. For example, if $\lambda=0.49$, then taking square root might be a preferred option.
+
+In this subsection we discussed the basic types of variables transformations on examples with simple linear regression. The more complicated models with multiple explanatory variables and complex transformations can be considered as well. However, whatever transformation is considered, it needs to be meaningful and come from the theory, not from the data. Otherwise we may overfit the data, which will lead to a variety of issues, some of which are discussed in Section \@ref(assumptionsCorrectModel).
 
 
 ## Typical assumptions of statistical models {#assumptions}
