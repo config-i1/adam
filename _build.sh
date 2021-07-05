@@ -10,6 +10,10 @@ sleep 3
 
 git commit -am "New version of adam compiled. Step 1"
 
+git push
+
 sleep 3
+
+git commit -am "New version of adam compiled. Step 2"
 
 git push
