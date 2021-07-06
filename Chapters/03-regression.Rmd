@@ -650,7 +650,7 @@ summary(tShirtsInteractionDataFrameALM)
 Note that the interpretation of parameters in such model will be different, because now the `price` shows the baseline effect for the blue t-shirts, while the interaction effects show how this effect will change for other colours. So, for example, in order to see what would be the effect of price change on sales of red t-shirts, we need to sum up the parameter for `price` and `price:colourRed`. We then can say that if price of red t-shirt increases by £1, the sales will decrease on average by `r abs(round(sum(coef(tShirtsInteractionDataFrameALM)[c(2,4)]),2))` units.
 
 
-## Variables transformations
+## Variables transformations {#variablesTransformations}
 So far we have discussed linear regression models, where the response variable linearly depends on a set of explanatory variables. These models work well in many contexts, especially when the response variable is measured in high volumes (e.g. sales in thousands of units). However, in reality the relations between variables can be non-linear. Consider, for example, the stopping distance vs speed of the car, the case we have discussed in the previous sections. This sort of relation in reality is non-linear. We know from physics that the distance travelled by car is proportional to the mass of car, the squared speed and inversely proportional to the breaking force:
 \begin{equation}
     distance \propto \frac{mass}{2 breaking} \times speed^2.
@@ -878,30 +878,112 @@ lines(400+20*c(1:100)+-.2*c(1:100)^2, col="red")
 In this subsection we discussed the basic types of variables transformations on examples with simple linear regression. The more complicated models with multiple explanatory variables and complex transformations can be considered as well. However, whatever transformation is considered, it needs to be meaningful and come from the theory, not from the data. Otherwise we may overfit the data, which will lead to a variety of issues, some of which are discussed in Section \@ref(assumptionsCorrectModel).
 
 
-## Typical assumptions of statistical models {#assumptions}
-In order for a statistical model to work adequately and not to fail on data, several assumptions about it, when it is *applied* to the data, should hold. If they do not, then the model might lead to biased or inefficient estimates of parameters and forecasts. Here we briefly discuss the main of them, united in three big groups:
+## Statistical models assumptions {#assumptions}
+In order for a statistical model to work adequately and not to fail, when applied to a data, several assumptions about it should hold. If they do not, then the model might lead to [biased or inefficient estimates of parameters](#estimatesProperties) and inaccurate forecasts. In this section we discuss the main assumptions, united in three big groups:
 
-1. Model is correctly specified;
-2. Residuals are independent and identicaly distributed (i.i.d.);
-3. The explanatory variables are not correlated with anything but the response variable;
+1. [Model is correctly specified](#assumptionsCorrectModel);
+2. [Residuals are independent and identically distributed (i.i.d.)](#assumptionsResidualsAreIID);
+3. [The explanatory variables are not correlated with anything but the response variable](#assumptionsXreg).
 
-In Section \@ref(diagnostics) we also discuss how to diagnose the constructed models and fix the issues in cases, when the assumptions are violated.
+We do not aim to explain why the violation of assumptions would lead to the discussed problem, and refer a curious reader to econometrics textbooks [for example @Hanck2020]. In Section \@ref(diagnostics), we also discuss how to diagnose the constructed dynamic models and fix the issues in cases, when the assumptions are violated.
 
 ### Model is correctly specified {#assumptionsCorrectModel}
-This implies that:
+This is one of the fundamental group of assumptions, which can be summarised as "we have included everything necessary in the model in the correct form". It implies that:
 
 1. We have not omitted important variables in the model (underfitting the data);
 2. We do not have redundant variables in the model (overfitting the data);
-3. The necessary transformation of the variables are applied;
+3. The necessary transformations of the variables are applied;
 4. We do not have outliers in the model.
 
-(1): if there are some important variables that we did not include in the model, then the estimates of the parameters might be *biased* and in some cases quite seriously (e.g. positive sign instead of the negative one). This also means that the point forecasts from the model might be *biased* as well (systematic under or over forecasting).
+#### 1. Omitted variables
+If there are some important variables that we did not include in the model, then the estimates of the parameters might be *biased* and in some cases quite seriously (e.g. positive sign instead of the negative one). A classical example of model with omitted important variables is [simple linear regression](#simpleLinearRegression), which by definition includes only one explanatory variable. Making decisions based on such model might not be wise, as it might mislead about the significance and sign of effects. Yes, we use simple linear regression for educational purposes, to understand how the model works and what it implies, but it is not sufficient on its own. Finally, when it comes to forecasting, omitting important variables is equivalent to underfitting the data, ignoring significant aspects of the model. This means that the point forecasts from the model might be *biased* (systematic under or over forecasting), the variance of the error term will be higher than needed, which will result in wider than necessary [prediction interval](#confidenceIntervalsPrediction).
 
-(2): if there are redundant variables that are not needed in the model, then the estimates of parameters and point forecasts might be *unbiased*, but *inefficient.* This implies that the variance of parameters can be lower than needed and the prediction intervals can be narrower than needed.
+In some cases, it is possible to diagnose the violation of this assumption. In order to do that an analyst needs to analyse a variety of plots of residuals vs fitted, vs time (if we deal with time series), and vs omitted variables. Consider an example with `mtcars` data and a simple linear regression:
+```{r}
+mtcarsSLR <- alm(mpg~wt, mtcars, loss="MSE")
+```
 
-(3): this means that, for example, instead of using a multiplicative model, we apply an additive one. The estimates of parameters and the point forecasts might be *biased* in this case as well: the model will produce linear trajectory of the forecast, when a non-linear one is needed.
+Based on the preliminary analysis that we have conducted in Sections \@ref(dataAnalysis) and \@ref(correlations), this model omits important variables. And there are several basic plots that might allow us diagnosing the violation of this assumption.
 
-(4): in a way, this is similar to (1), the presence of outliers might mean that we have missed some important information, meaning that the estimates of parameters and forecasts would be *biased* as well. There can be other reasons for outliers as well. For example, we might be using a wrong distributional assumptions. If so, this would imply that the prediction intervals from the model are narrower than needed.
+```{r diagnostics01, fig.cap="Diagnostics of omitted variables."}
+par(mfcol=c(1,2))
+plot(mtcarsSLR,c(1,2))
+```
+
+Figure \@ref(fig:diagnostics01) demonstrates actuals vs fitted and fitted vs standardised residuals. The standardised residuals are the residuals from the model that are divided by their standard deviation, thus removing the scale. What we want to see on the first plot in Figure \@ref(fig:diagnostics01), is for all the point lie around the grey line and for the LOWESS line to coincide with the grey line. That would mean that the relations are captured correctly and all the observations are explained by the model. As for the second plot, we want to see the same, but it just presents that information in a different format, which is sometimes easier to analyse. In both plot of Figure \@ref(fig:diagnostics01), we can see that there are still some patterns left: the LOWESS line has a u-shaped form, which in general means that something is wrong with model specification. In order to investigate if there are any omitted variables, we construct a spread plot of residuals vs all the variables not included in the model (Figure \@ref(fig:diagnostics02)).
+
+```{r diagnostics02, fig.cap="Diagnostics of omitted variables."}
+spread(data.frame(residuals=resid(mtcarsSLR), mtcars[,-c(1,6)]))
+```
+
+What we want to see in Figure \@ref(fig:diagnostics02) is the absence of any patterns in plots of residuals vs variables. However, we can see that there are still many relations. For example, with the increase of the number of cylinders, the mean of residuals decreases. This might indicate that the variable is needed in the model. And indeed, we can imagine a situation, where mileage of a car (the response variable in our model) would depend on the number of cylinders because the bigger engines will have more cylinders and consume more fuel, so it makes sense to include this variable in the model as well.
+
+**Note that we do not suggest to start modelling from simple linear relation!** You should construct a model that you think is suitable for the problem, and the example above is provided only for illustrative purposes.
+
+
+#### 2. Redundant variables
+If there are redundant variables that are not needed in the model, then the estimates of parameters and point forecasts might be *unbiased*, but *inefficient*. This implies that the variance of parameters can be lower than needed and thus the prediction intervals will be narrower than needed. There are no good instruments for diagnosing this issue, so judgment is needed, when deciding what to include in the model.
+
+#### 3. Transformations
+This assumption implies that we have taken all possible non-linearities into account. If, for example, instead of using a multiplicative model, we apply an additive one, the estimates of parameters and the point forecasts might be *biased*. This is because the model will produce linear trajectory of the forecast, when a non-linear one is needed. This was discussed in detail in Section \@ref(variablesTransformations). The diagnostics of this assumption is similar to the diagnostics shown above for the omitted variables: construct actuals vs fitted and residuals vs fitted in order to see if there are any patterns in the plots. Take the multiple regression model for mtcars, which includes several variables, but is additive in its form:
+```{r}
+mtcarsALM01 <- alm(mpg~wt+qsec+am, mtcars, loss="MSE")
+```
+Arguably, the model includes important variables (although there might be some others that could improve it), but the residuals will show some patterns, because the model should be multiplicative (see Figure \@ref(fig:diagnostics03)), because mileage should not reduce linearly with increase of those variables. In order to understand that, ask yourself, whether the mileage can be negative and whether weight and other variables can be non-positive (a car with $wt=0$ just does not exist).
+
+```{r diagnostics03, fig.cap="Diagnostics of necessary transformations in linear model."}
+par(mfcol=c(1,2))
+plot(mtcarsALM01,c(1,2))
+```
+
+Figure \@ref(fig:diagnostics03) demonstrates the u-shaped pattern in the residuals, which is one of the indicators of a wrong model specification, calling for a non-linear transformation. We can try a model in logarithms:
+```{r}
+mtcarsALM02 <- alm(log(mpg)~log(wt)+log(qsec)+am, mtcars, loss="MSE")
+```
+And see what would happen with the diagnostics of the model in logarithms:
+
+```{r diagnostics04, fig.cap="Diagnostics of necessary transformations in log-log model."}
+par(mfcol=c(1,2))
+plot(mtcarsALM02,c(1,2))
+```
+
+Figure \@ref(fig:diagnostics04) demonstrates that while the LOWESS lines do not coincide with the grey lines, the residuals do not have obvious patterns. The fact that the LOWESS line starts from below, when fitted values are low in our case only shows that we do not have enough observations with low actual values. As a result, LOWESS is impacted by 2 observations that lie below the grey line. This demonstrates that LOWESS lines should be taken with a pinch of salt and we should abstain from finding patterns in randomness, when possible. Overall, the log-log model is more appropriate to this data than the linear one.
+
+
+#### 4. Outliers
+In a way, this assumption is similar to the first one with omitted variables. The presence of outliers might mean that we have missed some important information, implying that the estimates of parameters and forecasts would be *biased*. There can be other reasons for outliers as well. For example, we might be using a wrong distributional assumption. If so, this would imply that the prediction interval from the model is narrower than necessary. The diagnostics of outliers comes to producing standardised residuals vs fitted, to studentised vs fitted and to Cook's distance plot. While we are already familiar with the first one, the other two need to be explained in more detail.
+
+Studentised residuals are the residuals that are calculated in the same way as the standardised ones, but removing the value of each residual. For example, the studentised residual on observation 25 would be calculated as the raw residual divided by standard deviation of residuals, calculated without this 25th observation. This way we diminish the impact of potential serious outliers on the standard deviation, making it easier to spot the outliers.
+
+As for the Cook's distance, its idea is to calculate measures for each observation showing how influential they are in terms of impact on the estimates of parameters of the model. If there is an influential outlier, then it would distort the values of parameters, causing bias.
+
+```{r diagnostics05, fig.cap="Diagnostics of outliers."}
+par(mfcol=c(1,2))
+plot(mtcarsALM02,c(2,3))
+```
+
+Figure \@ref(fig:diagnostics05) demonstrates standardised and studentised residuals vs fitted values for the log-log model on mtcars data. We can see that the plots are very similar, which already indicates that there are no strong outliers in the residuals. The bounds produced on the plots correspond to the 95% prediction interval, so by definition it should contain $0.95\times 32 \approx 30$ observations. Indeed, there are only two observations: 15 and 25 - that lie outside the bounds. Technically, we would suspect that they are outliers, but they do not lie far away from the bounds and their number meets our expectations, so we can conclude that there are no outliers in the data.
+
+```{r diagnostics06, fig.cap="Cook's distance plot."}
+plot(mtcarsALM02,12)
+```
+
+Finally, we produce Cook's distance over observations in Figure \@ref(fig:diagnostics06). The x-axis says "Time", because `alm()` function is tailored for time series data, but this can be renamed into "observations". The plot shows how influential the outliers are. If there were some significantly influential outliers in the data, then the plot would draw red lines, corresponding to 0.5, 0.75 and 0.95 quantiles of Fisher's distribution, and the line of those outliers would be above the red lines. Consider the following example for demonstration purposes:
+```{r}
+mtcarsData[28,6] <- 4
+mtcarsALM03 <- alm(log(mpg)~log(wt)+log(qsec)+am, mtcarsData, loss="MSE")
+```
+This way, we intentionally create an influential outlier (the car should have the minimum weight in the dataset, and now it has a very high one). 
+
+```{r diagnostics07, fig.cap="Cook's distance plot for the data with influential outlier."}
+plot(mtcarsALM03, 12, ylim=c(0,1.5), xlab="Observations", main="")
+```
+
+Figure \@ref(fig:diagnostics07) shows how Cook's distance will look in this case - it detects that there is an influential outlier, which is above the norm. We can compare the parameters of the new and the old models to see how the introduction of one outlier leads tobias in the estimates of parameters:
+```{r}
+rbind(coef(mtcarsALM02),
+      coef(mtcarsALM03))
+```
 
 
 ### Residuals are i.i.d. {#assumptionsResidualsAreIID}
