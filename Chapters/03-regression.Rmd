@@ -895,7 +895,7 @@ This is one of the fundamental group of assumptions, which can be summarised as 
 3. The necessary transformations of the variables are applied;
 4. We do not have outliers in the model.
 
-#### 1. Omitted variables
+#### Omitted variables
 If there are some important variables that we did not include in the model, then the estimates of the parameters might be *biased* and in some cases quite seriously (e.g. positive sign instead of the negative one). A classical example of model with omitted important variables is [simple linear regression](#simpleLinearRegression), which by definition includes only one explanatory variable. Making decisions based on such model might not be wise, as it might mislead about the significance and sign of effects. Yes, we use simple linear regression for educational purposes, to understand how the model works and what it implies, but it is not sufficient on its own. Finally, when it comes to forecasting, omitting important variables is equivalent to underfitting the data, ignoring significant aspects of the model. This means that the point forecasts from the model might be *biased* (systematic under or over forecasting), the variance of the error term will be higher than needed, which will result in wider than necessary [prediction interval](#confidenceIntervalsPrediction).
 
 In some cases, it is possible to diagnose the violation of this assumption. In order to do that an analyst needs to analyse a variety of plots of residuals vs fitted, vs time (if we deal with time series), and vs omitted variables. Consider an example with `mtcars` data and a simple linear regression:
@@ -921,10 +921,10 @@ What we want to see in Figure \@ref(fig:diagnostics02) is the absence of any pat
 **Note that we do not suggest to start modelling from simple linear relation!** You should construct a model that you think is suitable for the problem, and the example above is provided only for illustrative purposes.
 
 
-#### 2. Redundant variables
+#### Redundant variables
 If there are redundant variables that are not needed in the model, then the estimates of parameters and point forecasts might be *unbiased*, but *inefficient*. This implies that the variance of parameters can be lower than needed and thus the prediction intervals will be narrower than needed. There are no good instruments for diagnosing this issue, so judgment is needed, when deciding what to include in the model.
 
-#### 3. Transformations
+#### Transformations
 This assumption implies that we have taken all possible non-linearities into account. If, for example, instead of using a multiplicative model, we apply an additive one, the estimates of parameters and the point forecasts might be *biased*. This is because the model will produce linear trajectory of the forecast, when a non-linear one is needed. This was discussed in detail in Section \@ref(variablesTransformations). The diagnostics of this assumption is similar to the diagnostics shown above for the omitted variables: construct actuals vs fitted and residuals vs fitted in order to see if there are any patterns in the plots. Take the multiple regression model for mtcars, which includes several variables, but is additive in its form:
 ```{r}
 mtcarsALM01 <- alm(mpg~wt+qsec+am, mtcars, loss="MSE")
@@ -950,7 +950,7 @@ plot(mtcarsALM02,c(1,2))
 Figure \@ref(fig:diagnostics04) demonstrates that while the LOWESS lines do not coincide with the grey lines, the residuals do not have obvious patterns. The fact that the LOWESS line starts from below, when fitted values are low in our case only shows that we do not have enough observations with low actual values. As a result, LOWESS is impacted by 2 observations that lie below the grey line. This demonstrates that LOWESS lines should be taken with a pinch of salt and we should abstain from finding patterns in randomness, when possible. Overall, the log-log model is more appropriate to this data than the linear one.
 
 
-#### 4. Outliers
+#### Outliers
 In a way, this assumption is similar to the first one with omitted variables. The presence of outliers might mean that we have missed some important information, implying that the estimates of parameters and forecasts would be *biased*. There can be other reasons for outliers as well. For example, we might be using a wrong distributional assumption. If so, this would imply that the prediction interval from the model is narrower than necessary. The diagnostics of outliers comes to producing standardised residuals vs fitted, to studentised vs fitted and to Cook's distance plot. While we are already familiar with the first one, the other two need to be explained in more detail.
 
 Studentised residuals are the residuals that are calculated in the same way as the standardised ones, but removing the value of each residual. For example, the studentised residual on observation 25 would be calculated as the raw residual divided by standard deviation of residuals, calculated without this 25th observation. This way we diminish the impact of potential serious outliers on the standard deviation, making it easier to spot the outliers.
@@ -979,7 +979,7 @@ This way, we intentionally create an influential outlier (the car should have th
 plot(mtcarsALM03, 12, ylim=c(0,1.5), xlab="Observations", main="")
 ```
 
-Figure \@ref(fig:diagnostics07) shows how Cook's distance will look in this case - it detects that there is an influential outlier, which is above the norm. We can compare the parameters of the new and the old models to see how the introduction of one outlier leads tobias in the estimates of parameters:
+Figure \@ref(fig:diagnostics07) shows how Cook's distance will look in this case - it detects that there is an influential outlier, which is above the norm. We can compare the parameters of the new and the old models to see how the introduction of one outlier leads to bias in the estimates of parameters:
 ```{r}
 rbind(coef(mtcarsALM02),
       coef(mtcarsALM03))
@@ -995,17 +995,81 @@ There are five assumptions in this group:
 4. The variable follows the assumed distribution;
 5. More generally speaking, distribution of residuals does not change over time.
 
-(1): we expect that the model captures all the important aspects, so if the residuals are autocorrelated, then something is neglected by the applied model. Typically, this leads to *inefficient* estimates of parameters and in some cases they can also become *biased*. As a result, the point forecasts can be less accurate than expected and the prediction intervals might be wrong (wider or narrower than needed).
 
-(2): if this is violated, then we say that there is a **heteroscedasticity** in the model. This means that with a change of variable, the variance of the residuals changes as well. If the model neglects this, then typically the estimates of parameters become *inefficient* and prediction intervals are wrong: they are wider than needed in some cases and narrower than needed in the other ones.
+#### No autocorrelations
+This assumption only applied to time series data, and in a way comes to capturing correctly the dynamic relations between variables. The term "autocorrelation" refers to the situation, when variable is correlated with itself from the past. If the residuals are autocorrelated, then something is neglected by the applied model. Typically, this leads to *inefficient* estimates of parameters, which in some cases might also become *biased*. The model with autocorrelated residuals might produce inaccurate point forecasts and prediction intervals of a wrong width (wider or narrower than needed).
 
-(3): while in sample, this holds automatically in many cases (e.g. when using Least Squares method for regression model estimation), this assumption might be violated in the holdout sample. In this case the point forecasts would be *biased*, because they typically do not take the non-zero mean of forecast error into account, and the prediction interval might be off as well, because of the wrong estimation of the scale of distribution (e.g. variance is higher than needed). This assumption also implies that the expectation of residuals is zero even conditional on the explanatory variables in the model. If it is not, then this might mean that there is still some important information omitted in the applied model.
+There are several ways of diagnosing the problem, including visual analysis and statistical tests. In order to show some of them, we consider the `Seatbelts` data from `datasets` package for R. We fit a basic model, predicting monthly totals of car drivers in the Great Britain killed or seriously injured in car accidents:
+```{r}
+SeatbeltsALM01 <- alm(drivers~PetrolPrice+kms+front+rear+law, Seatbelts)
+```
+In order to do graphical diagnose, we can produce plots of standardised / studentised residuals over time:
 
-Note that some models in ADAM framework assume that the expectation of residuals is equal to one instead of zero (e.g. multiplicative error models). The idea of the assumption stays the same, it is only the value that changes.
+```{r diagnostics06, fig.cap="Standardised residuals over time."}
+plot(SeatbeltsALM01,8,main="")
+```
 
-(4): in some cases we are interested in using methods that imply specific distributional assumptions about the model and its residuals. For example, it is assumed in the classical linear model that the error term follows Normal distribution. Estimating this model using MLE with the probability density function of Normal distribution or via minimisation of [Mean Squared Error](#errorMeasures) (MSE) would give *efficient* and *consistent* estimates of parameters. If the assumption of normality does not hold, then the estimates might be *inefficient* and in some cases *inconsistent*. When it comes to forecasting, the main issue in the wrong distributional assumption appears, when prediction intervals are needed: they might rely on a wrong distribution and be narrower or wider than needed. Finally, if we deal with the wrong distribution, then the model selection mechanism might be flawed and would lead to the selection of an inappropriate model.
+If the assumption is not violated, then the plot in Figure \@ref(fig:diagnostics06) would not contain any patterns. However, we can see that, first, there is a seasonality in the residuals and second, the expectation (captured by the red LOWESS line) changes over time. This indicates that there might be some autocorrelation in residuals caused by omitted components. We do not aim to resolve the issue now, it is discussed in more detail in Section \@ref(diagnosticsResidualsIIDAuto).
 
-(5): this assumption aligns with (4), but in this specific context implies that all the parameters of distribution stay the same and the shape of distribution does not change. If the former is violated then we might have one of the issues discussed above. If the latter is violated then we might produce *biased* forecasts and underestimate / overestimate the uncertainty about the future.
+The other instrument for diagnostics is ACF / PACF plots, which are produced in `alm()` via the following command:
+
+```{r diagnostics07, fig.cap="ACF and PACF of the residuals of a model."}
+par(mfcol=c(1,2))
+plot(SeatbeltsALM01,c(10,11),main="")
+```
+
+These are discussed in more detail in Sections \@ref(ACF) and \@ref(PACF).
+
+
+#### Homoscedastic residuals
+In general, we assume that the variance of residuals is constant. If this is violated, then we say that there is a **heteroscedasticity** in the model. This means that with a change of a variable, the variance of the residuals will change as well. If the model neglects this, then typically the estimates of parameters become *inefficient* and prediction intervals are wrong: they are wider than needed in some cases (e.g.m when the volume of data is low) and narrower than needed in the other ones (e.g. on high volume data).
+
+Typically, this assumption will be violated if the model is not specified correctly. The classical example is the income versus expenditure on meals for different families. If the income is low, then there is not many options what to buy and the variability of expenditures would be low. However, with the increase of the income, the mean expenditures and their variability would increase as well, because there are more options of what to buy, including both cheap and expensive products. If we constructed a basic linear model on such data, then it would violate the assumption of homoscedasticity and as a result will have the issues discussed above. But arguably this would typically appear because of the misspecification of the model. For example, taking logarithms might resolve the issue in many cases, implying that the effect of one variable on the other should be multiplicative rather than the additive. Alternatively, dividing variables by some other variable (e.g. working with expenses per family member, not per family) might resolve the problem as well. Unfortunately, the transformations are not the panacea, so in some cases analyst would need to construct a model, taking the changing variance into account (e.g. GARCH or GAMLSS models). This is discussed in Section \@ref(almScaleModel).
+
+While in forecasting we are more interested in the holdout performance of models, in econometrics, the parameters of models are typically of the main interest. And, as we discussed earlier, in case of correctly specified model with heteroscedastic residuals, the estimates of parameters will be unbiased, but inefficient. So, econometricians would use different approaches to diminish the heteroscedasticity effect on parameters: either a different estimator for a model (such as Weighted Least Squares), or a different method for calculation of standard errors of parameters (e.g. Heteroskedasticity-Consistent Standard Errors). This does not resolve the problem, but rather corrects the parameters of the model (i.e. does not heal the illness, but treats the symptoms). Although these approaches typically suffice for the analytical purposes, they do not fix the issues in forecasting.
+
+The diagnostics of heteroscedasticity can be done via plotting absolute and / or squared residuals against the fitted values.
+
+```{r diagnostics08, fig.cap="Detecting heteroscedasticity. Model 1."}
+par(mfcol=c(1,2))
+plot(mtcarsALM01,4:5)
+```
+
+If your model assumes that residuals follow a distribution related to the Normal one, then you should focus on the plot of squared residuals vs fitted, as this would be closer related to the variance of the distribution. In the example of mtcars model in Figure \@ref(fig:diagnostics08) we see that the variance of residuals increases with the increase of Fitted values (the LOWESS line increases and the overall variability around 1200 is lower than the one around 2000). This indicates that the residuals are heteroscedastic. One of the possible solutions of the problem is taking the logarithms, as we have done in the model `mtcarsALM02`:
+
+```{r diagnostics09, fig.cap="Detecting heteroscedasticity. Model 2."}
+par(mfcol=c(1,2))
+plot(mtcarsALM02,4:5)
+```
+
+While the LOWESS lines on plots in Figure \@ref(fig:diagnostics09) demonstrate some dynamics, the variability of residuals does not change significantly with the increase of fitted value, so non-linear transformation seems to fix the issue in our example. If it would not, then we would need to consider either some other transformations or finding out, which of the variables causes heteroscedasticity and then modelling it explicitly via the scale model (Section \@ref(almScaleModel)).
+
+
+#### Mean of residuals
+While in sample, this holds automatically in many cases (e.g. when using Least Squares method for regression model estimation), this assumption might be violated in the holdout sample. In this case the point forecasts would be *biased*, because they typically do not take the non-zero mean of forecast error into account, and the prediction interval might be off as well, because of the wrong estimation of the scale of distribution (e.g. variance is higher than needed). This assumption also implies that the expectation of residuals is zero even conditional on the explanatory variables in the model. If it is not, then this might mean that there is still some important information omitted in the applied model.
+
+Note that some models assume that the expectation of residuals is equal to one instead of zero (e.g. multiplicative error models). The idea of the assumption stays the same, it is only the value that changes.
+
+The diagnostics of the problem would be similar to the case of non-linear transformations or autocorrelations: plotting residuals vs fitted or residuals vs time and trying to find patterns. If the mean of residuals changes either with the change of fitted values of with time, then the conditional expectation of residuals is not zero, and something is missing in the model.
+
+
+#### Distributional assumptions {#assumptionsDistribution}
+In some cases we are interested in using methods that imply specific distributional assumptions about the model and its residuals. For example, it is assumed in the classical linear model that the error term follows Normal distribution. Estimating this model using MLE with the probability density function of Normal distribution or via minimisation of [Mean Squared Error](#errorMeasures) (MSE) would give *efficient* and *consistent* estimates of parameters. If the assumption of normality does not hold, then the estimates might be *inefficient* and in some cases *inconsistent*. When it comes to forecasting, the main issue in the wrong distributional assumption appears, when prediction intervals are needed: they might rely on a wrong distribution and be narrower or wider than needed. Finally, if we deal with the wrong distribution, then the model selection mechanism might be flawed and would lead to the selection of an inappropriate model.
+
+The most efficient way of diagnosing this, is constructing QQ-plot of residuals (discussed in Section \@ref(dataAnalysisGraphical)).
+
+```{r diagnostics10, fig.cap="QQ-plot of residuals of model 2 for mtcars dataset."}
+plot(mtcarsALM02,6)
+```
+
+Figure \@ref(fig:diagnostics10) shows that all the points lie close to the line (with minor fluctuations around it), so we can conclude that the residuals follow the normal distribution. In comparison, Figure \@ref(fig:diagnostics11) demonstrates how residuals would look in case of a wrong distribution. Although the values lie not too far from ths straight line, there are several observations in the tails that are further away than needed. Comparing the two plots, we would select the on in Figure \@ref(fig:diagnostics10), as the residuals are better behaved.
+
+```{r diagnostics11, fig.cap="QQ-plot of residuals of model 1 for mtcars dataset."}
+plot(mtcarsALM01,6)
+```
+
+#### Distribution does not change
+This assumption aligns with the Subsection \@ref(assumptionsDistribution), but in this specific context implies that all the parameters of distribution stay the same and the shape of distribution does not change. If the former is violated then we might have one of the issues discussed above. If the latter is violated then we might produce *biased* forecasts and underestimate / overestimate the uncertainty about the future. The diagnosis of this comes to analysing QQ-plots, similar to Subsection \@ref(assumptionsDistribution).
 
 
 ### The explanatory variables are not correlated with anything but the response variable {#assumptionsXreg}
@@ -1204,4 +1268,4 @@ A final note: typically, the standard maximum likelihood estimators for the scal
 
 <!-- ## ARDL model -->
 
-<!-- ## Scale model -->
+<!-- ## Scale model {#almScaleModel} -->
