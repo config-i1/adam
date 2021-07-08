@@ -1,18 +1,18 @@
 # Model diagnostics {#diagnostics}
-In this chapter we investigate how ADAM can be diagnosed and improved. The majority of topics will build upon the typical model assumptions discussed in Section \@ref(assumptions). Some of the assumptions cannot be diagnosed properly, but for the others there are some existing and well established instruments. We will consider the following assumptions and discuss how to check whether they are violated or not:
+In this chapter we investigate how ADAM can be diagnosed and improved. The majority of topics will build upon the typical model assumptions discussed in Section 12 of @SvetunkovSBA textbook. Some of the assumptions cannot be diagnosed properly, but for the others there are some existing and well established instruments. We will consider the following assumptions and discuss how to check whether they are violated or not:
 
-1. [Model is correctly specified](#assumptionsCorrectModel):
-a. No omitted variables;
-b. No redundant variables;
-c. The necessary transformation of the variables are applied;
-d. No outliers in the model.
-2. [Residuals are i.i.d.](#assumptionsResidualsAreIID):
-a. They are not autocorrelated;
-b. They are homoscedastic;
-c. The expectation of residuals is zero, no matter what;
-d. The residuals follow the specified distribution;
+1. Model is correctly specified:
+a. [No omitted variables](#diagnosticsOmitted);
+b. [No redundant variables](#diagnosticsRedundant);
+c. [The necessary transformation of the variables are applied](#diagnosticsTransformations);
+d. [No outliers in the model](#diagnosticsOutliers).
+2. Residuals are i.i.d.:
+a. [They are not autocorrelated](#diagnosticsResidualsIIDAuto);
+b. [They are homoscedastic](#diagnosticsResidualsIIDHetero);
+c. [The expectation of residuals is zero, no matter what](#diagnosticsResidualsIIDExpectation);
+d. [The residuals follow the specified distribution](#diagnosticsResidualsIIDDistribution);
 e. The distribution of residuals does not change over time.
-3. [The explanatory variables are not correlated with anything but the response variable](#assumptionsXreg);
+3. [The explanatory variables are not correlated with anything but the response variable](#diagnosticsMulticollinearity);
 
 All the model diagnostics is aimed at spotting patterns in residuals. If there are some, then something is probably missing in the model. In this chapter we will discuss, which instruments can be used to diagnose different types of assumptions
 
@@ -64,7 +64,7 @@ plot(adamModelSeat03,7:8)
 This is much better. There is no apparent missing structure in the data and no apparent omitted variables. We can now move to the next steps of diagnostics.
 
 
-## Model specification: Redundant variables
+## Model specification: Redundant variables {#diagnosticsRedundant}
 While there are some ways of testing for omitted variables, the redundant ones are very difficult to diagnose. Yes, we could look at the [significance of variables](#hypothesisTesting) or compare models with and without some variables based on [information criteria](#informationCriteria), but even if our approaches say that a variable is not significant, this does not mean that it is not needed in the model. There can be many reasons, why a test would fail to reject H$_0$ and AIC would prefer a model without the variable under consideration. So, it comes to using judgment, trying to figure out whether a variable is needed in the model or not.
 
 In the example with Seatbelt data, `DriversKilled` would be a redundant variable. Let's see what happens with the model in this case:
@@ -417,7 +417,7 @@ So, we can conclude that the multiplicative model resolves the issue with hetero
 There are formal statistical tests for heteroscedasticity, such as White [@WikipediaWhite2021], Breusch-Pagan [@WikipediaBreuschPagan2021] and Bartlett's [@WikipediaBartlett2021] tests. We do not discuss them here for the reason outlined in Section \@ref(diagnosticsResidualsIIDAuto).
 
 
-## Residuals are i.i.d.: zero expectation
+## Residuals are i.i.d.: zero expectation {#diagnosticsResidualsIIDExpectation}
 In ADAM framework, this assumption only works for the [additive error models](#ADAMETSPureAdditive). In case of the multiplicative error models, it is changed to "[expectation of the error term is equal to one](#ADAMETSMultiplicativeDistributions)". It does not make sense to check this assumption unconditionally, because it does not mean anything in sample. Yes, it will hold automatically in sample in case of OLS estimation, and the observed mean of the residuals might not be equal to zero in other cases, but this does not give any useful information. In fact, when we work with exponential smoothing models, the in sample residuals being equal to zero might imply for some of them that the final values of components are identical to the initial ones. For example, in case of [ETS(A,N,N)](#SESandETS), we can use the measurement equation from \@ref(eq:ETSANN) to express the final value of level via the previous values up until $t=0$:
 \begin{equation}
   \begin{aligned}
@@ -437,7 +437,7 @@ There is also an effect related to this, which is called "endogeneity". Accordin
 <!-- The assumption for the h steps ahead? -->
 
 
-## Residuals are i.i.d.: distributional assumptions
+## Residuals are i.i.d.: distributional assumptions {#diagnosticsResidualsIIDDistribution}
 Finally, we come to the distributional assumptions of ADAM. As discussed earlier (for example, in Section \@ref(ADAMETSEstimationLikelihood)), ADAM framework supports several distributions, and the specific parts of assumptions will change depending on the type of the error term in the model. Given that, it is relatively straightforward to see if the residuals of the model follow the assumed distribution or not. There exist several tools for that.
 
 The simplest one is called Quantile-Quantile (QQ) plot. It produces a figure with theoretical vs actual quantiles and shows, whether they are close to each other or not. Here is, for example, how the QQ plot will look for one of the previous models, assuming Normal distribution:
@@ -483,7 +483,7 @@ However, this plot is much more difficult to analyse than QQ plot, because of th
 There are also formal tests for the distribution of residuals, such as Shapiro-Wilk [@WikipediaShapiroWilk2021] and Kolmogorov-Smirnov [@WikipediaKolmogorovSmirnov2021]. The former tests the hypothesis that residuals follow Normal distribution, while the latter one is much more flexible and allows comparing the empirical distribution with any other (theoretical or empirical). However, I prefer to use visual inspection, when possible instead of doing these tests because, as we discussed earlier in Section \@ref(hypothesisTesting), the null hypothesis is always wrong, and it will inevitably be rejected with the increase of the sample size. Besides, if you fail to reject H$_0$, it does not mean that your variable follows the assumed distribution, it only means that you have not found enough evidence to reject it.
 
 
-## Multicollinearity
+## Multicollinearity {#diagnosticsMulticollinearity}
 <!-- One of the classical issues in econometrics and in statistics in regression context is the issue of multicollinearity. In a way, this has nothing to do with classical assumptions of linear regression, because it is unreasonable to assume that the explanatory variables have some specific relation between them - they are what they are, and multicollinearity mainly causes issues with estimation of the parameters of model, not with its structure. But it is an issue nonetheless, so it is worth exploring. -->
 
 <!-- Multicollinearity appears, when either some of explanatory variables are correlated with each other (see Section \@ref(correlationCoefficient)), or their linear combination explains another explanatory variable included in the model. Depending on the strength of this relation and the estimation method used for model construction, the multicollinearity might cause issues of varying severity. For example, in the case, when two variables are perfectly correlated (correlation coefficient is equal to 1 or -1), the model will have perfect multicollinearity and it would not be possible to estimate its parameters. Another example is a case, when an explanatory variable can be perfectly explained by a set of other explanatory variables (resulting in $R^2$ being close to one), which will cause exactly the same issue. The classical example of this situation is the dummy variables trap (see Section \@ref(dummyVariables)), when all values of categorical variable are included in regression together with the constant resulting in the linear relation $\sum_{j=1}^k d_j = 1$. Given that the square root of $R^2$ of linear regression is equal to multiple correlation coefficient, these two situations are equivalent and just come to "absolute value of correlation coefficient is equal to 1". Finally, as discussed briefly in Section \@ref(assumptionsXreg), if correlation coefficient is high, but not equal to one, the effect of multicollinearity will lead to [less efficient estimates](#estimatesPropertiesEfficiency) of parameters. The loss of efficiency is in this case proportional to the absolute value of correlation coefficient. All of this tells us how this problem can be diagnosed and that this diagnoses should be carried out before constructing regression model. -->
