@@ -10,8 +10,6 @@ sleep 3
 
 git commit -am "New version of adam compiled"
 
-git commit -am "New version of adam compiled"
-
-git push
+git commit -am "New version of adam compiled" || true
 
 git push
