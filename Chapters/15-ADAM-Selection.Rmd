@@ -80,7 +80,7 @@ While ETS has 30 models to choose from, ARIMA has many more options. For example
 a. Calculate ACF of residuals of the model;
 b. Find the highest value of autocorrelation coefficient that corresponds to the multiple of the respective seasonal lag $m_j$;
 c. Define, what should be the order of MA based on the lag of the autocorrelation coefficient on the previous step and include it in the ARIMA model;
-d. Calculate IC, and if it is lower than for the previous best model, leave the new MA order;
+d. Calculate IC, and if it is lower than for the previous best model, keep the new MA order;
 e. Repeat (a) - (d) while there is an improvement in IC;
 f. Do steps (a) - (e) for AR order, substituting ACF with PACF of the residuals of the best model;
 g. Move to the next seasonal lag;
@@ -91,11 +91,16 @@ As you can see, this algorithm relies on the idea of Box-Jenkins methodology, bu
 In order to start the algorithm, you would need to provide a parameter `select=TRUE` in the `orders`. Here is an example with Box-Jenkins data:
 ```{r}
 adamARIMAModel <- adam(BJsales, model="NNN", orders=list(ar=3,i=2,ma=3,select=TRUE),
-                       silent=FALSE, h=10, holdout=TRUE)
+                       h=10, holdout=TRUE)
+```
+In this example, `orders=list(ar=3,i=2,ma=3,select=TRUE)` tells function that the maximum orders to check are $p\leq 3$, $d\leq 2$ $q\leq 3$. The resulting model is `r adamARIMAModel$model` and has the following fit:
+```{r}
+plot(adamARIMAModel,7)
 adamARIMAModel
 ```
 
-In this example, `orders=list(ar=3,i=2,ma=3,select=TRUE)` tells function that the maximum orders to check are $p\leq 3$, $d\leq 2$ $q\leq 3$.
+Note that when optimal initials are used, the resulting model will be parsimonious. If we want to have a more flexible model, we can use a different initialisation, and in some cases the algorithm will select a model with higher orders of AR, I and MA.
+
 
 ### ETS + ARIMA restrictions
 Based on the relation between [ARIMA and ETS](#ARIMAandETS), when selecting ARIMA orders, we do not need to test some of combinations of models. For example, if we already consider ETS(A,N,N), then we do not need to check ARIMA(0,1,1) model. The recommendations for what to skip in different circumstances have been discussed in Section \@ref(ETSAndARIMA). Still there are different ways how to construct an ETS + ARIMA model, with different sequence between ETS selection / ARIMA selection. We suggest to start with ETS, then go to the selection of ARIMA orders. This way, we are building upon the robust forecasting model and see if it can be improved further by introducing elements that are not there. Note that given the complexity of the task of estimating all parameters for ETS and ARIMA, it is advised to use backcasting (see Section \@ref(ADAMInitialisationOptAndBack)) for the initialisation of the model if a model selection is required for ETS + ARIMA. Here is an example in R:
@@ -157,7 +162,7 @@ We can see that the sink regression model has a higher AICc value than the model
 <!-- For example, we can see from the summary of the model that the introduction of law has reduced the number of accidents with drivers by approximately 23.79%. However, this is an average effect, and the true one lies somewhere between -34.06% and -13.53% (with the 95% confidence). -->
 
 
-<!-- ## Combining models -->
+## Combination of models in ADAM
 
 
 <!-- ## Pooling -->
