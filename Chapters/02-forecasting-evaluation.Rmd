@@ -11,7 +11,7 @@ When you understand how your system works and what sort of forecasts you should 
 ## Measuring accuracy of point forecasts {#errorMeasures}
 We start with a setting in which we are interested in point forecasts only. In this case we typically start by splitting the available data into train and test sets, apply the models under consideration to the former and produce forecasts on the latter, not showing that part to the models. This is called the "fixed origin" approach: we fix the point in time from which to produce forecasts, we produce them, calculate some sort of error measures and compare the models.
 
-There are different error measures that can be used in this case. Which measure ought to be used depends on the specific need. Here we briefly discuss the most important meaures and refer to [@Davydenko2013; @SvetunkovAccuracy2019; @SvetunkovAPEs2017] for the gory details.
+There are different error measures that can be used in this case. Which measure ought to be used depends on the specific need. Here we briefly discuss the most important measures and refer to [@Davydenko2013; @SvetunkovAccuracy2019; @SvetunkovAPEs2017] for the gory details.
 
 The most important error measures are Root Mean Squared Error (RMSE):
 \begin{equation}
@@ -25,7 +25,14 @@ and Mean Absolute Error (MAE):
 \end{equation}
 where $y_{t+j}$ is the actual value $j$ steps ahead from the holdout, $\hat{y}_{t+j}$ is the $j$ steps ahead point forecast (conditional expectation of the model) and $h$ is the forecast horizon. As you see, these error measures aggregate the performance of competing forecasting methods across the forecasting horizon, averaging out the specific performances on each $j$. If this information needs to be retained, then the summation can be dropped to obtain just "SE" and "AE".
 
-It is well-known [see, for example, @Kolassa2016] that **RMSE is minimised by the mean value** of a distribution, and **MAE is minimised by the median**. So, when selecting between the two, you should consider this property. This means, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand.
+It is well-known [see, for example, @Kolassa2016] that **RMSE is minimised by the mean value** of a distribution, and **MAE is minimised by the median**. So, when selecting between the two, you should consider this property. This means, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand, because zero forecast will minimise MAE, when the sample contains more than 50% of zeroes.
+
+Another error measure that has been used in some cases is Root Mean Squared Logarithmic Error (RMSLE):
+\begin{equation}
+    \mathrm{RMSLE} = \frac{1}{h} \sum_{j=1}^h \left( \log y_{t+j} - \log \hat{y}_{t+j} \right)^2 .
+    (\#eq:RMSLE)
+\end{equation}
+It assumes that the actual values and the forecasts are positive and is minimised by geometric mean.
 
 The main advantage of these error measures is that they are very simple and have a clear interpretations: they are the "average" distances between the point forecasts and the observed values. They are perfect if you work with only one time series. However, they are not suitable, when you have several time series and want to see the performance of methods across them. This is mainly because they are scale dependent and contain specific units: if you measures sales of apples in pounds, then MAE and RMSE will show the error in pounds. And, as we know, you should not add up pounds of apples with pounds of oranges - the result might not make sense.
 
@@ -64,7 +71,6 @@ There is no "best" error measure. All have advantages and disadvantages. For exa
 4. sMAE avoids the disadvantages of MAPE has an interpretation close to it, but breaks down when the data has a trend.
 
 When comparing different forecasting methods it can make sense to calculate several of the error measures for comparison. The choice of metric might depend on the specific needs of the forecaster. Here's a few rules of thumb, however: If you want a robust measure that works consistently, but you do not care about the interpretation, then go with MASE. If you want an interpretation, then either go with rMAE, or sMAE (just keep in mind that if you decide to use rMAE or any other relative measure, you might get attacked by its creator, Andrey Davydenko, who might blame you for stealing his creation, even if you put a reference to his work). You should typically avoid MAPE and other percentage error measures because they are highly influenced by the actual values you have in the holdout. Furthermore, similar to the measures above, there have been proposed RMSE-based scaled and relative error metrics, which would measure the performance of methods in terms of means rather than medians. Here is a brief list of some of them:
-
 1. RMSSE - Root Mean Squared Scaled Error:
 \begin{equation}
     \mathrm{RMSSE} = \sqrt{\frac{1}{h} \sum_{j=1}^h \frac{(y_{t+j} - \hat{y}_{t+j})^2}{\bar{\Delta}_y^2}} ;
@@ -80,6 +86,8 @@ When comparing different forecasting methods it can make sense to calculate seve
     \mathrm{sRMSE} = \frac{\mathrm{RMSE}}{\bar{y}} .
     (\#eq:sRMSE)
 \end{equation}
+
+Similarly, RMSSLE, rRMSLE and sRMSLE can be proposed, using the same principles as in \@ref(eq:RMSSE), \@ref(eq:rRMSE) and \@ref(eq:sRMSE).
 
 Finally, when aggregating the performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors - this way you will know which of the methods fails seriously and which does a consistently good job.
 
@@ -123,16 +131,16 @@ where $l_{t+j}$ is the lower bound and $u_{t+j}$ is the upper bound of the inter
     (\#eq:MIS)
 \end{equation}
 where $\alpha$ is the significance level. If the actual values lie outside of the interval, they get penalised with a ratio of $\frac{2}{\alpha}$, proportional to the distance from the interval bound. At the same time the width of the interval positively influences the value of the measure: the wider the interval, the higher the score. The ideal model with $\mathrm{MIS}=0$ should have all the actual values in the holdout lying on the bounds of the interval and $u_{t+j}=l_{t+j}$, implying that the bounds coincide with each other and that there is no uncertainty about the future (which is not possible in the real life).
-4. **Pinball loss** [@Koenker1978], which measures the accuracy of models in terms of specific quantiles (this is usually applied to different quantiles produced from the model, not just to the lower and upper bounds of 95% interval):
+4. **Pinball Score** [@Koenker1978], which measures the accuracy of models in terms of specific quantiles (this is usually applied to different quantiles produced from the model, not just to the lower and upper bounds of 95% interval):
 \begin{equation}
-    \mathrm{pinball} = (1 -\alpha) \sum_{y_{t+j} < q_{t+j}, j=1,\dots,h } |y_{t+j} -q_{t+j}| + \alpha \sum_{y_{t+j} \geq q_{t+j} , j=1,\dots,h } |y_{t+j} -q_{t+j}|,
+    \mathrm{PS} = (1 -\alpha) \sum_{y_{t+j} < q_{t+j}, j=1,\dots,h } |y_{t+j} -q_{t+j}| + \alpha \sum_{y_{t+j} \geq q_{t+j} , j=1,\dots,h } |y_{t+j} -q_{t+j}|,
     (\#eq:pinball)
 \end{equation}
-where $q_{t+j}$ is the value of the specific quantile of the distribution. What pinball shows, is how well we capture the specific quantile in the data. The lower the value of pinball is, the closer the bound is to the specific quantile of the holdout distribution. If the pinball is equal to zero, then we have done the perfect job in hitting that specific quantile. The main issue with pinball loss is that it is very difficult to assess the quantiles correctly on small samples. For example, in order to get a better idea of how the 0.975 quantile performs, we would need to have at least 40 observations, so that 39 of them would be expected to lie below this bound $\left(\frac{39}{40} = 0.975\right)$. In fact, the quantiles are not always uniquely defined [see, for example, @Taylor2020], which makes the measurement difficult.
+where $q_{t+j}$ is the value of the specific quantile of the distribution. What PS shows, is how well we capture the specific quantile in the data. The lower the value of pinball is, the closer the bound is to the specific quantile of the holdout distribution. If the PS is equal to zero, then we have done the perfect job in hitting that specific quantile. The main issue with PS is that it is very difficult to assess the quantiles correctly on small samples. For example, in order to get a better idea of how the 0.975 quantile performs, we would need to have at least 40 observations, so that 39 of them would be expected to lie below this bound $\left(\frac{39}{40} = 0.975\right)$. In fact, the quantiles are not always uniquely defined [see, for example, @Taylor2020], which makes the measurement difficult.
 
 Similar to the pinball function, it is possible to propose the expectile-based score, but while it has nice statistical properties [@Taylor2020], it is more difficult to interpret.
 
-Range, MIS and pinball loss are unit-dependent. In order to be able to aggregate them over several time series they need to be scaled (as we did with MAE and RMSE in [previous section](#errorMeasures)) either via division by the in-sample mean or in-sample mean absolute differences in order to obtain the scaled counterparts of the measures or via division by the values from the benchmark model in order to obtain the relative one.
+Range, MIS and PS are unit-dependent. In order to be able to aggregate them over several time series they need to be scaled (as we did with MAE and RMSE in [previous section](#errorMeasures)) either via division by the in-sample mean or in-sample mean absolute differences in order to obtain the scaled counterparts of the measures or via division by the values from the benchmark model in order to obtain the relative one.
 
 If you are interested in the overall performance of the model, then MIS provides this information. However, it does not show what specifically happens inside and is difficult to interpret. Coverage and range are easier to interpret but only give information about the specific prediction interval and typically must be traded off against each other (i.e. one can either cover more or have a narrower interval). Academics prefer the pinball for the purposes of uncertainty assessment, as it shows more detailed information about the predictive distribution from each model, but, while it is easier to interpret than MIS, it is still not as straightforward as coverage and range. So, the selection of the measure, again, depends on your specific situation and on the understanding of statistics by decision makers.
 
@@ -166,6 +174,31 @@ setNames(c(mean(model1$holdout > model1Forecast$lower & model1$holdout < model1F
          c("Model 1", "Model 2"))
 ```
 These measures do not tell much in terms of performance of models, when only applied to one time series. In order to see a proper difference, we need to apply models to a set of time series, produce forecasts, calculate measures and then look at their aggregate performance, e.g. via mean / median or quantiles.
+
+
+## How to choose appropriate error measure {#errorMeasuresSelection}
+While in general the selection of error measure should be dictated by the specific problem at hand, there are some guidelines that might be helpful in the process. I have summarised them in the flowchart in Figure \@ref(fig:errorMeasuresFlowChart).
+
+```{r errorMeasuresFlowChart, out.width="75%", fig.cap="Error measures selection flowchart.", echo=FALSE}
+if (knitr:::is_latex_output()) {
+    knitr::asis_output('\\includegraphics{./images/errorMeasuresFlowChart.pdf}')
+} else {
+    knitr::include_graphics("./images/errorMeasuresFlowChart.gif")
+}
+```
+
+The flowchart does not provide the excessive options, and is a simplification of the possible process. It does not discuss the quantile and interval measures in detail, as there are many more of them, and the idea is to list the most important ones. The aim of the flowchart is to provide a basic idea that the selection can be done based on:
+
+1. Number of time series under consideration. If there is several of them and you need to aggregate the error measure, then you need to use either scaled or relative ones;
+2. What specifically you want to measure: point forecasts, quantiles, prediction interval or something else;
+3. Whether the interpretability of the error measure is important or not. If not, then scaled measures similar to @Hyndman2006 can be used;
+4. Whether the data is stationary or not. If it is then it is safe to use scaled measures similar to @Petropoulos2015, because the division by in-sample mean would be meaningful;
+5. Whether the data is intermittent or not. If it is and you are interested in point forecasts, then you should use RMSE based measures - other measures might recommend zero forecast as the best one;
+6. What you need (denoted as "What do you like?" in the flowchart). If you are interested in mean performance then use RMSE based measures.
+
+The point forecast related error measures have been discussed in Section \@ref(errorMeasures), while the interval and quantile ones - in Section \@ref(uncertainty).
+
+You can also download this flowchart in pdf format via [this link](./images/errorMeasuresFlowChart-v2.pdf).
 
 
 ## Rolling origin {#rollingOrigin}
