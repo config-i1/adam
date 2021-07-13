@@ -193,12 +193,13 @@ div.csl-indent {
 <ul>
 <li class="chapter" data-level="2.2.1" data-path="uncertainty.html"><a href="uncertainty.html#example-in-r"><i class="fa fa-check"></i><b>2.2.1</b> Example in R</a></li>
 </ul></li>
-<li class="chapter" data-level="2.3" data-path="rollingOrigin.html"><a href="rollingOrigin.html"><i class="fa fa-check"></i><b>2.3</b> Rolling origin</a>
+<li class="chapter" data-level="2.3" data-path="errorMeasuresSelection.html"><a href="errorMeasuresSelection.html"><i class="fa fa-check"></i><b>2.3</b> How to choose appropriate error measure</a></li>
+<li class="chapter" data-level="2.4" data-path="rollingOrigin.html"><a href="rollingOrigin.html"><i class="fa fa-check"></i><b>2.4</b> Rolling origin</a>
 <ul>
-<li class="chapter" data-level="2.3.1" data-path="rollingOrigin.html"><a href="rollingOrigin.html#principles-of-rolling-origin"><i class="fa fa-check"></i><b>2.3.1</b> Principles of Rolling origin</a></li>
-<li class="chapter" data-level="2.3.2" data-path="rollingOrigin.html"><a href="rollingOrigin.html#rolling-origin-in-r"><i class="fa fa-check"></i><b>2.3.2</b> Rolling origin in R</a></li>
+<li class="chapter" data-level="2.4.1" data-path="rollingOrigin.html"><a href="rollingOrigin.html#principles-of-rolling-origin"><i class="fa fa-check"></i><b>2.4.1</b> Principles of Rolling origin</a></li>
+<li class="chapter" data-level="2.4.2" data-path="rollingOrigin.html"><a href="rollingOrigin.html#rolling-origin-in-r"><i class="fa fa-check"></i><b>2.4.2</b> Rolling origin in R</a></li>
 </ul></li>
-<li class="chapter" data-level="2.4" data-path="statisticalTests.html"><a href="statisticalTests.html"><i class="fa fa-check"></i><b>2.4</b> Statistical comparison of forecasts</a></li>
+<li class="chapter" data-level="2.5" data-path="statisticalTests.html"><a href="statisticalTests.html"><i class="fa fa-check"></i><b>2.5</b> Statistical comparison of forecasts</a></li>
 </ul></li>
 <li class="chapter" data-level="3" data-path="tsDecomposition.html"><a href="tsDecomposition.html"><i class="fa fa-check"></i><b>3</b> From time series components to ETS</a>
 <ul>
@@ -488,7 +489,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <div id="errorMeasures" class="section level2" number="2.1">
 <h2><span class="header-section-number">2.1</span> Measuring accuracy of point forecasts</h2>
 <p>We start with a setting in which we are interested in point forecasts only. In this case we typically start by splitting the available data into train and test sets, apply the models under consideration to the former and produce forecasts on the latter, not showing that part to the models. This is called the “fixed origin” approach: we fix the point in time from which to produce forecasts, we produce them, calculate some sort of error measures and compare the models.</p>
-<p>There are different error measures that can be used in this case. Which measure ought to be used depends on the specific need. Here we briefly discuss the most important meaures and refer to <span class="citation">(<a href="#ref-Davydenko2013" role="doc-biblioref">Davydenko and Fildes, 2013</a>; <a href="#ref-SvetunkovAccuracy2019" role="doc-biblioref">Svetunkov, 2019</a>, <a href="#ref-SvetunkovAPEs2017" role="doc-biblioref">2017</a>)</span> for the gory details.</p>
+<p>There are different error measures that can be used in this case. Which measure ought to be used depends on the specific need. Here we briefly discuss the most important measures and refer to <span class="citation">(<a href="#ref-Davydenko2013" role="doc-biblioref">Davydenko and Fildes, 2013</a>; <a href="#ref-SvetunkovAccuracy2019" role="doc-biblioref">Svetunkov, 2019</a>, <a href="#ref-SvetunkovAPEs2017" role="doc-biblioref">2017</a>)</span> for the gory details.</p>
 <p>The most important error measures are Root Mean Squared Error (RMSE):
 <span class="math display" id="eq:RMSE">\[\begin{equation}
     \mathrm{RMSE} = \sqrt{\frac{1}{h} \sum_{j=1}^h \left( y_{t+j} - \hat{y}_{t+j} \right)^2 },
@@ -500,31 +501,37 @@ and Mean Absolute Error (MAE):
     \tag{2.2}
 \end{equation}\]</span>
 where <span class="math inline">\(y_{t+j}\)</span> is the actual value <span class="math inline">\(j\)</span> steps ahead from the holdout, <span class="math inline">\(\hat{y}_{t+j}\)</span> is the <span class="math inline">\(j\)</span> steps ahead point forecast (conditional expectation of the model) and <span class="math inline">\(h\)</span> is the forecast horizon. As you see, these error measures aggregate the performance of competing forecasting methods across the forecasting horizon, averaging out the specific performances on each <span class="math inline">\(j\)</span>. If this information needs to be retained, then the summation can be dropped to obtain just “SE” and “AE.”</p>
-<p>It is well-known <span class="citation">(see, for example, <a href="#ref-Kolassa2016" role="doc-biblioref">Kolassa, 2016</a>)</span> that <strong>RMSE is minimised by the mean value</strong> of a distribution, and <strong>MAE is minimised by the median</strong>. So, when selecting between the two, you should consider this property. This means, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand.</p>
+<p>It is well-known <span class="citation">(see, for example, <a href="#ref-Kolassa2016" role="doc-biblioref">Kolassa, 2016</a>)</span> that <strong>RMSE is minimised by the mean value</strong> of a distribution, and <strong>MAE is minimised by the median</strong>. So, when selecting between the two, you should consider this property. This means, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand, because zero forecast will minimise MAE, when the sample contains more than 50% of zeroes.</p>
+<p>Another error measure that has been used in some cases is Root Mean Squared Logarithmic Error (RMSLE):
+<span class="math display" id="eq:RMSLE">\[\begin{equation}
+    \mathrm{RMSLE} = \frac{1}{h} \sum_{j=1}^h \left( \log y_{t+j} - \log \hat{y}_{t+j} \right)^2 .
+    \tag{2.3}
+\end{equation}\]</span>
+It assumes that the actual values and the forecasts are positive and is minimised by geometric mean.</p>
 <p>The main advantage of these error measures is that they are very simple and have a clear interpretations: they are the “average” distances between the point forecasts and the observed values. They are perfect if you work with only one time series. However, they are not suitable, when you have several time series and want to see the performance of methods across them. This is mainly because they are scale dependent and contain specific units: if you measures sales of apples in pounds, then MAE and RMSE will show the error in pounds. And, as we know, you should not add up pounds of apples with pounds of oranges - the result might not make sense.</p>
 <p>In order to tackle this issue, different error scaling techniques have been proposed, resulting in a zoo of error measures:</p>
 <ol style="list-style-type: decimal">
 <li>MAPE - Mean Absolute Percentage Error:
 <span class="math display" id="eq:MAPE">\[\begin{equation}
  \mathrm{MAPE} = \frac{1}{h} \sum_{j=1}^h \frac{y_{t+j} - \hat{y}_{t+j}}{y_{t+j}},
- \tag{2.3}
+ \tag{2.4}
 \end{equation}\]</span></li>
 <li>MASE - Mean Absolute Scaled Error <span class="citation">(<a href="#ref-Hyndman2006" role="doc-biblioref">Hyndman and Koehler, 2006</a>)</span>:
 <span class="math display" id="eq:MASE">\[\begin{equation}
  \mathrm{MASE} = \frac{1}{h} \sum_{j=1}^h \frac{|y_{t+j} - \hat{y}_{t+j}|}{\bar{\Delta}_y},
- \tag{2.4}
+ \tag{2.5}
 \end{equation}\]</span>
 where <span class="math inline">\(\bar{\Delta}_y = \frac{1}{t-1}\sum_{j=2}^t |\Delta y_{j}|\)</span> is the mean absolute value of the first differences <span class="math inline">\(\Delta y_{j}=y_j-y_{j-1}\)</span> of the in-sample data;</li>
 <li>rMAE - Relative Mean Absolute Error <span class="citation">(<a href="#ref-Davydenko2013" role="doc-biblioref">Davydenko and Fildes, 2013</a>)</span>:
 <span class="math display" id="eq:rMAE">\[\begin{equation}
  \mathrm{rMAE} = \frac{\mathrm{MAE}_a}{\mathrm{MAE}_b},
- \tag{2.5}
+ \tag{2.6}
 \end{equation}\]</span>
 where <span class="math inline">\(\mathrm{MAE}_a\)</span> is the mean absolute error of the model under consideration and <span class="math inline">\(\mathrm{MAE}_b\)</span> is the MAE of the benchmark model;</li>
 <li>sMAE - scaled Mean Absolute Error <span class="citation">(<a href="#ref-Petropoulos2015" role="doc-biblioref">Petropoulos and Kourentzes, 2015</a>)</span>:
 <span class="math display" id="eq:sMAE">\[\begin{equation}
  \mathrm{sMAE} = \frac{\mathrm{MAE}}{\bar{y}},
- \tag{2.6}
+ \tag{2.7}
 \end{equation}\]</span>
 where <span class="math inline">\(\bar{y}\)</span> is the mean of the in-sample data.</li>
 <li>and others.</li>
@@ -536,24 +543,23 @@ where <span class="math inline">\(\bar{y}\)</span> is the mean of the in-sample 
 <li>rMAE avoids the disadvantages of MAPE, has a simple interpretation (it shows by how much one model is better than the other), but fails, when either <span class="math inline">\(\mathrm{MAE}_a\)</span> or <span class="math inline">\(\mathrm{MAE}_b\)</span> for a specific time series is equal to zero;</li>
 <li>sMAE avoids the disadvantages of MAPE has an interpretation close to it, but breaks down when the data has a trend.</li>
 </ol>
-<p>When comparing different forecasting methods it can make sense to calculate several of the error measures for comparison. The choice of metric might depend on the specific needs of the forecaster. Here’s a few rules of thumb, however: If you want a robust measure that works consistently, but you do not care about the interpretation, then go with MASE. If you want an interpretation, then either go with rMAE, or sMAE (just keep in mind that if you decide to use rMAE or any other relative measure, you might get attacked by its creator, Andrey Davydenko, who might blame you for stealing his creation, even if you put a reference to his work). You should typically avoid MAPE and other percentage error measures because they are highly influenced by the actual values you have in the holdout. Furthermore, similar to the measures above, there have been proposed RMSE-based scaled and relative error metrics, which would measure the performance of methods in terms of means rather than medians. Here is a brief list of some of them:</p>
-<ol style="list-style-type: decimal">
-<li>RMSSE - Root Mean Squared Scaled Error:
+<p>When comparing different forecasting methods it can make sense to calculate several of the error measures for comparison. The choice of metric might depend on the specific needs of the forecaster. Here’s a few rules of thumb, however: If you want a robust measure that works consistently, but you do not care about the interpretation, then go with MASE. If you want an interpretation, then either go with rMAE, or sMAE (just keep in mind that if you decide to use rMAE or any other relative measure, you might get attacked by its creator, Andrey Davydenko, who might blame you for stealing his creation, even if you put a reference to his work). You should typically avoid MAPE and other percentage error measures because they are highly influenced by the actual values you have in the holdout. Furthermore, similar to the measures above, there have been proposed RMSE-based scaled and relative error metrics, which would measure the performance of methods in terms of means rather than medians. Here is a brief list of some of them:
+1. RMSSE - Root Mean Squared Scaled Error:
 <span class="math display" id="eq:RMSSE">\[\begin{equation}
- \mathrm{RMSSE} = \sqrt{\frac{1}{h} \sum_{j=1}^h \frac{(y_{t+j} - \hat{y}_{t+j})^2}{\bar{\Delta}_y^2}} ;
- \tag{2.7}
-\end{equation}\]</span></li>
-<li>rRMSE - Relative Root Mean Squared Error:
+    \mathrm{RMSSE} = \sqrt{\frac{1}{h} \sum_{j=1}^h \frac{(y_{t+j} - \hat{y}_{t+j})^2}{\bar{\Delta}_y^2}} ;
+    \tag{2.8}
+\end{equation}\]</span>
+3. rRMSE - Relative Root Mean Squared Error:
 <span class="math display" id="eq:rRMSE">\[\begin{equation}
- \mathrm{rRMSE} = \frac{\mathrm{RMSE}_a}{\mathrm{RMSE}_b} ;
- \tag{2.8}
-\end{equation}\]</span></li>
-<li>sRMSE - scaled Root Mean Squared Error:
+    \mathrm{rRMSE} = \frac{\mathrm{RMSE}_a}{\mathrm{RMSE}_b} ;
+    \tag{2.9}
+\end{equation}\]</span>
+4. sRMSE - scaled Root Mean Squared Error:
 <span class="math display" id="eq:sRMSE">\[\begin{equation}
- \mathrm{sRMSE} = \frac{\mathrm{RMSE}}{\bar{y}} .
- \tag{2.9}
-\end{equation}\]</span></li>
-</ol>
+    \mathrm{sRMSE} = \frac{\mathrm{RMSE}}{\bar{y}} .
+    \tag{2.10}
+\end{equation}\]</span></p>
+<p>Similarly, RMSSLE, rRMSLE and sRMSLE can be proposed, using the same principles as in <a href="errorMeasures.html#eq:RMSSE">(2.8)</a>, <a href="errorMeasures.html#eq:rRMSE">(2.9)</a> and <a href="errorMeasures.html#eq:sRMSE">(2.10)</a>.</p>
 <p>Finally, when aggregating the performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors - this way you will know which of the methods fails seriously and which does a consistently good job.</p>
 <div id="demonstration-in-r" class="section level3" number="2.1.1">
 <h3><span class="header-section-number">2.1.1</span> Demonstration in R</h3>
@@ -566,15 +572,15 @@ where <span class="math inline">\(\bar{y}\)</span> is the mean of the in-sample 
 <span id="cb3-6"><a href="errorMeasures.html#cb3-6" aria-hidden="true" tabindex="-1"></a>               <span class="fu">actuals</span>(model1)),</span>
 <span id="cb3-7"><a href="errorMeasures.html#cb3-7" aria-hidden="true" tabindex="-1"></a>      <span class="fu">measures</span>(model1<span class="sc">$</span>holdout, model2<span class="sc">$</span>forecast,</span>
 <span id="cb3-8"><a href="errorMeasures.html#cb3-8" aria-hidden="true" tabindex="-1"></a>               <span class="fu">actuals</span>(model1)))</span></code></pre></div>
-<pre><code>##             ME      MAE      MSE         MPE       MAPE        sCE       sMAE
-## [1,] 0.7238286 6.122670 55.98989 0.001915201 0.05989321 0.07282693 0.06160232
-## [2,] 1.8634219 6.014315 59.45845 0.013334563 0.05811812 0.18748539 0.06051212
-##             sMSE      MASE     RMSSE     rMAE     rRMSE       rAME   asymmetry
-## [1,] 0.005667899 0.5731766 0.5553357 0.380118 0.4216588 0.04493796 -0.06462262
-## [2,] 0.006019024 0.5630329 0.5722787 0.373391 0.4345234 0.11568814  0.16095609
+<pre><code>##            ME      MAE      MSE         MPE       MAPE       sCE       sMAE
+## [1,] 1.313026 7.615448 68.61107 0.006363344 0.07590389 0.1323758 0.07677695
+## [2,] 1.847703 7.658932 70.32615 0.011717261 0.07594173 0.1862805 0.07721534
+##             sMSE      MASE     RMSSE      rMAE     rRMSE      rAME asymmetry
+## [1,] 0.006973728 0.7311699 0.6280130 0.9166977 0.7548849 0.1794885 0.1557766
+## [2,] 0.007148051 0.7353448 0.6358138 0.9219321 0.7642616 0.2525780 0.2457325
 ##            sPIS
-## [1,] 0.68867460
-## [2,] 0.07784584</code></pre>
+## [1,] -0.6398810
+## [2,] -0.9271509</code></pre>
 <p>The default benchmark methods for relative measures above is Na"ive.</p>
 </div>
 </div>
