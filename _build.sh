@@ -12,7 +12,7 @@ git commit -am "New version of adam compiled"
 
 git push
 
-git add *
+git add * || true
 
 git commit -am "New version of adam compiled" || true
 
