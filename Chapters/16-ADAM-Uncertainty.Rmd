@@ -82,4 +82,72 @@ From the summary above, we can see that the parameter $\theta_2$ is close to zer
 This estimate of uncertainty via confidence intervals might also be useful to see what can happen with the estimates of parameters if the sample size increases: will they change substantially or not. If they do, then the decisions made on Monday based on the available data might differ seriously from the decisions made on Tuesday. So, in the ideal world we would want to have as lower confidence intervals as possible.
 
 
+## Conditional variance with uncertain parameters
+We now consider two special cases with pure additive state space models: 1. When the values of the initial state vector are unknown; 2. When the parameters of the model (e.g. smoothing or AR/MA parameters) are estimated on a sample of data - and discuss analytical formulae for the conditional variance for the two cases. This variance can then be used for the construction of confidence interval of the fitted line and / or for the confidence / prediction interval for the holdout period. We do not cover the more realistic case, when both initials and parameters are estimated, because there is no closed analytical form for this due to potential correlations between the estimates of parameters.
+
+### Estimated initial state
+First, we need to recall the recursive relations discussed in \@ref(stabilityConditionAdditiveError), specifically formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04). Just to simplify all the derivations in this section, we consider the non-seasonal case, for which all elements of $\boldsymbol{l}$ are equal to one. This can be ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N) or ARIMA models. The recursive relation from the observation first observation till the end of sample can be written as:
+\begin{equation}
+    \mathbf{v}_{t} = \mathbf{D}^{t} \mathbf{v}_{0} + \sum_{j=0}^{t-1} \mathbf{D}^{j} y_{t - j} ,
+  (\#eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal01)
+\end{equation}
+where $\mathbf{D}=\mathbf{F} - \mathbf{g}\mathbf{w}'$. The formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal01) shows that the most recent value of the state vector depends on the initial value $\mathbf{v}_{0}$ and on the linear combination of actual values. **Note** that we assume in this part that the matrix $\mathbf{D}$ is known, i.e. the smoothing parameters are not estimated. Although this is an unrealistic assumption, it helps in showing how the variance of initial state would influence the variance at the end of sample. If we now take the variance conditional on the actual values $y_{t - j}$ for all $j=\{0, \dots, t-1 \}$, then we will have (due to independence of two terms in \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal01)):
+\begin{equation}
+    \mathrm{V}(\mathbf{v}_{t} | y_1, y_2, \dots y_t) = \mathrm{V}\left( \mathbf{D}^{t} \mathbf{v}_{0} \right) + \mathrm{V}\left(\sum_{j=0}^{t-1} \mathbf{D}^{j} y_{t - j} | y_1, y_2, \dots y_t \right) .
+  (\#eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal02)
+\end{equation}
+The reason why we condition the variance on actual values, is because they are given to us and we want to see how different initial states would lead to the changes in the model fit given these values and thus how the uncertainty will propagate from $j=1$ to $j=t$. In the formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal02), the right-hand side is equal to zero, because all actual values are known and $\mathbf{D}$ does not have any uncertainty due to the assumption above. This leads to the following covariance matrix of states on observation $t$:
+\begin{equation}
+    \mathrm{V}(\mathbf{v}_{t} | y_1, y_2, \dots y_t) = \mathbf{D}^{t} \mathrm{V}\left( \mathbf{v}_{0} \right) \left(\mathbf{D}^{t}\right)' .
+  (\#eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal03)
+\end{equation}
+Inserting the values of matrix $\mathbf{D}$, we can then get the variance \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal03). For example, for ETS(A,N,N), the conditional variance of the state on observation $t$ is:
+\begin{equation}
+    \mathrm{V}(l_{t} | y_1, y_2, \dots y_t) = (1-\alpha)^{t} \mathrm{V}\left( l_{0} \right) (1-\alpha)^{t} .
+  (\#eq:ETSADAMStateSpacePureAdditiveRecursionANN)
+\end{equation}
+As the formula above shows, if the smoothing parameter lies between zero and one, then the uncertainty of the initial level will not have a big impact on the uncertainty on observation $t$. If we use admissible bounds (see Section \@ref(ETSParametersBounds)), then the smoothing parameters might lie in the region (1, 2) and thus the impact of the variance of the initial state will increase with the increase of the sample size $t$.
+
+Now that we have the variance of the state, we can also calculate the variance of the fitted values (or one step ahead in-sample forecast). In the pure additive model, the fitted values are calculated as:
+\begin{equation}
+    \hat{y}_t = \mu_{t|t-1} = \mathbf{w}' \mathbf{v}_{t-1}.
+  (\#eq:ETSADAMStateSpacePureAdditiveFitted)
+\end{equation}
+The variance conditional on all actual observations will then be:
+\begin{equation}
+    \mathrm{V}(\hat{y}_t | y_1, y_2, \dots y_t) = \mathrm{V}\left( \mathbf{w}' \mathbf{v}_{t-1} \right) ,
+  (\#eq:ETSADAMStateSpacePureAdditiveFittedVariance01)
+\end{equation}
+which after inserting \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal03) in \@ref(eq:ETSADAMStateSpacePureAdditiveFittedVariance01) leads to:
+\begin{equation}
+    \mathrm{V}(\hat{y}_t | y_1, y_2, \dots y_t) = \mathbf{w}' \mathbf{D}^{t-1} \mathrm{V}\left( \mathbf{v}_{0} \right) \left(\mathbf{D}^{t-1}\right)' \mathbf{w} .
+  (\#eq:ETSADAMStateSpacePureAdditiveFittedVariance02)
+\end{equation}
+This variance can then be used in the calculation of the confidence interval for the fitted values, assuming that the estimates of initials state follow normal distribution (CLT).
+
+Finally, the variance of initial states will also impact the conditional h steps ahead variance from the model. This can be seen from the recursion \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion05), which in case of non-seasonal models simplifies to:
+\begin{equation}
+    y_{t+h} = \mathbf{w}' \mathbf{F}^{h-1} \mathbf{v}_{t} + \mathbf{w}' \sum_{j=1}^{h-1} \mathbf{F}^{j-1} \mathbf{g} \epsilon_{t+h-j} + \epsilon_{t+h} .
+  (\#eq:ETSADAMStateSpacePureAdditiveForecastVariance01)
+\end{equation}
+Taking the variance of $y_{t+h}$ conditional on the all the information until the observation $t$ (all actual values) leads to:
+\begin{equation}
+    \mathrm{V}( y_{t+h} | y_1, y_2, \dots y_t) = \mathbf{w}' \mathbf{F}^{h-1} \mathbf{D}^{t-1} \mathrm{V}\left( \mathbf{v}_{0} \right) \left(\mathbf{D}^{t-1}\right)' (\mathbf{F}')^{h-1} \mathbf{w} + \left( \left(\mathbf{w}' \sum_{j=1}^{h-1} \mathbf{F}^{j-1} \mathbf{g} \mathbf{g}' (\mathbf{F}')^{j-1} \mathbf{w} \right) + 1 \right) \sigma^2 .
+  (\#eq:ETSADAMStateSpacePureAdditiveForecastVariance02)
+\end{equation}
+This formula can then be used for the construction of prediction intervals of the model, for example using formula \@ref(eq:ETSADAMStateSpacePureAdditivePredictionInterval). Note that the construction of prediction intervals will be discussed later in Section \@ref(predictionIntervalsConstruction).
+
+As a final note, it is also possible to derive the variances for the seasonal models, the only thing that would change in this situation is that the matrices $\mathbf{F}$, $\mathbf{w}$ and $\mathbf{g}$ will be split into submatrices, similar to how it was done in Section \@ref(adamETSPureAdditiveRecursive).
+
+
+<!-- ### Estimated parameters of ADAM model -->
+
+
+
+<!-- ## Uncertain fitted values and point forecasts -->
+
+
+<!-- ## Prediction and confidence intervals construction {#predictionIntervalsConstruction} -->
+
+
 
