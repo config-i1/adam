@@ -4,4 +4,82 @@ So far, when we discussed forecasts from ADAM models, we have assumed that the s
 In this chapter we focus on discussion of uncertainty about the estimates of parameters of ADAM models, starting from dealing with confidence intervals for them and ending with producing forecasts that take that uncertainty into account.
 
 
-<!-- ## Confidence intervals for parameters -->
+## Covariance matrix of parameters {#ADAMUncertaintyVCOV}
+One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of covariance matrix of parameters. The covariance matrix that is typically calculated in regression context is based on the assumption of normality and can be derived base don maximum likelihood estimates of parameters. It relies on the "Fisher Information", which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point in order to understand what impact each of parameters has on it. If we calculate the Hessian matrix and have Fisher Information, then using Cramer-Rao bound [@WikipediaCramerRaoBound], the true variance of parameters will be greater or equal to the inverse of Fisher Information:
+\begin{equation}
+    \mathrm{V}(\theta_j) \geq \frac{1}{\mathrm{FI}(\theta_j)} ,
+    (\#eq:FICovariance)
+\end{equation}
+where $\theta_j$ is the parameter under consideration. The property \@ref(eq:FICovariance) can then be used for the calculation of the covariance matrix of parameters. While in case with regression this calculation has an analytical solution, in case of ETS and ARIMA, this can only be done via numeric methods, because the models rely on recursive relations.
+
+In R, an efficient calculation of Hessian can be done via `hessian()` function from `pracma` package. There is a method `vcov()` that does all the calculations, estimating the negative Hessian inside `adam()` and then inverts the result. Here is an example of how this works:
+```{r}
+adamModel <- adam(BJsales, h=10, holdout=TRUE)
+adamModelVcov <- vcov(adamModel)
+adamModelVcov
+```
+The precision of estimate will depend on the closeness of the likelihood function to its maximum in the estimated parameters. If the likelihood was not properly maximised, and the function stopped prematurely, then the covariance matrix might be incorrect and contain errors. Our of curiosity, we could calculate the correlation matrix of the estimated parameters:
+```{r}
+adamModelVcov / sqrt(diag(adamModelVcov) %*% t(diag(adamModelVcov)))
+```
+This matrix does not provide much useful analytical information, but demonstrates that the estimates of initial level and trend of the `r adamModel$model` model applied to this data are negatively correlated. The values from this matrix can then be used for a variety of purposes, including calculation of confidence intervals of parameters, construction of confidence interval for the fitted value and point forecasts and finally the construction of more adequate prediction intervals.
+
+In some cases the `vcov()` method would complain that the Fisher Information cannot be inverted. This typically means that the `adam()` failed to reach the maximum of the likelihood function
+
+Note that this method only works, when `loss="likelihood"` or when the loss is aligned with the assumed distribution (e.g. `loss="MSE"` and `distribution="dnorm"`). In all the other cases, other approaches (such as bootstrapt) would need to be used for the estimation of the covariance matrix of parameters.
+
+
+### Bootstrapped covariance matrix
+An alternative way of constructing the matrix is via the bootstrap. The one that is implemented in `smooth` is based on `coefboostrap()` method from `greybox` package, which implements the modified case resampling. It is less efficient than the Fisher Information method in terms of computational time and works only for larger samples. The algorithm implemented in the function uses a continuous sub-sample of the original data, starting from the original point $t=1$ (if backcasting is used (see Section \@ref(ADAMInitialisationOptAndBack)), then the starting point will be allowed to differ). This sub-sample is then used for the re-estimation of `adam()` in order to get the empirical estimates of parameters. The procedure is repeated `nsim` times, which for `adam()` is by default equal to 100. This approach is far from ideal and will typically lead to underestimated variance of initials, but it does not break the structure of the data and allows obtaining relatively fast results without imposing any additional assumptions on the model and the data. I personally recommend using it in case of the initialisation via backcasting.
+
+Here is an example of how the function work on the data above - it is possible to speed up the process by doing parallel calculations:
+```{r}
+adamModelBoot <- coefbootstrap(adamModel,parallel=TRUE)
+adamModelBoot
+```
+The covariance matrix can then be extracted from the result via `adamModelBoot$vcov`. The same procedure is used in `vcov()` method if `bootstrap=TRUE`:
+```{r}
+vcov(adamModel, bootstrap=TRUE, parallel=TRUE)
+```
+
+
+## Confidence intervals for parameters
+As discussed in Section 5.1 of @SvetunkovSBA, if several important [assumptions](#diagnostics) are satisfied and CLT holds, then the distribution of estimates of parameters will follow the Normal one, which will allow us constructing confidence intervals for them. In case of ETS and ARIMA models in ADAM framework, the estimated parameters include smoothing parameters, ARMA parameters and initial values. In case of explanatory variables, the pool of parameters is increased by the coefficients for those variables. And in case of intermittent state space model, the parameters will also include the elements of the occurrence part of the model. The CLT should work if consistent [estimators](#ADAMETSEstimation) are used (e.g. MSE or Likelihood), if the parameters do not lie near the bounds, the model is correctly specified and moments of the distribution of error term are finite.
+
+In case of ETS and ARIMA, the parameters are bounded and the estimates might lie near the bounds. This means that the distribution of estimates might not be normal. However, given that the bounds are typically fixed and are forced by the optimiser, the estimates of parameters will follow rectified normal distribution [@WikipediaRectifiedNormal]. This is important because knowing the distribution, we can derive the confidence intervals for the parameters. First, we would need to use t-statistics for this purposes, because we would need to estimate the standard errors of parameters. The confidence intervals will be constructed in the conventional way in this case, using the formula (see Section 5.1 of @SvetunkovSBA):
+\begin{equation}
+    \mu \in (\hat{\theta_j} + t_{\alpha/2}(df) s_{\theta_j}, \hat{\theta_j} + t_{1-\alpha/2}(df) s_{\theta_j}), 
+    (\#eq:confidenceInterval)
+\end{equation}
+where $t_{\alpha/2}(df)$ is Student's t-statistics for $df=T-k$ degrees of freedom ($T$ is the sample size and $k$ is the number of estimated parameters) and $\alpha$ is the significance level. Second, after constructing the intervals, we can cut their values with the bounds of parameters, thus imposing rectified distribution. An example would be the ETS(A,N,N) model, for which the smoothing parameter is typically restricted by (0, 1) region and thus the confidence interval should not go beyond these bounds as well.
+
+In order to construct the interval, we need to know the standard errors of parameters. Luckily, they can be calculated as square roots of the diagonal of the covariance matrix of parameters (discussed in Section \@ref(ADAMUncertaintyVCOV)):
+```{r}
+sqrt(diag(adamModelVcov))
+```
+Based on these values and the formula \@ref(eq:confidenceInterval) we can produce confidence intervals for parameters of any ADAM model:
+```{r}
+confint(adamModel, level=0.99)
+```
+In order to have the bigger picture, we can produce the summary of the model, which will include the table above:
+```{r}
+summary(adamModel, level=0.99)
+```
+The output above shows the estimates of parameters and their 99% confidence intervals. For example, based on this output we can conclude that the uncertainty about the estimate of the initial trend is very big, and in the "true model" it could be either positive or negative (or even close to zero). At the same time, the estimate of the initial level in 99% of the cases will lie between 194.56 and 208.06. Just as a reminder, here how the model fit looks for ADAM on this data:
+
+```{r}
+plot(adamModel,7)
+```
+
+As another example, we can have a similar summary for ARIMA models in ADAM:
+```{r}
+adamModelARIMA <- adam(BJsales, "NNN", h=10, holdout=TRUE,
+                       order=list(ar=3,i=2,ma=3,select=TRUE))
+summary(adamModelARIMA)
+```
+From the summary above, we can see that the parameter $\theta_2$ is close to zero, and the interval around it is wide. So, we can expect that it might change sign if the sample size increases or become even closer to zero. Given that the model above was estimated with the optimisation of initial states, we see in the summary above the values for the ARIMA states and their confidence intervals. If we used `initial="backcasting"`, the summary would not include them.
+
+This estimate of uncertainty via confidence intervals might also be useful to see what can happen with the estimates of parameters if the sample size increases: will they change substantially or not. If they do, then the decisions made on Monday based on the available data might differ seriously from the decisions made on Tuesday. So, in the ideal world we would want to have as lower confidence intervals as possible.
+
+
+
