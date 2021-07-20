@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-07-19" />
+<meta name="date" content="2021-07-20" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -32,7 +32,7 @@
   
   
 <link rel="prev" href="confidence-intervals-for-parameters.html"/>
-<link rel="next" href="references.html"/>
+<link rel="next" href="adamRefitted.html"/>
 <script src="libs/header-attrs-2.9/header-attrs.js"></script>
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
@@ -474,6 +474,7 @@ div.csl-indent {
 <li class="chapter" data-level="16.3.1" data-path="conditional-variance-with-uncertain-parameters.html"><a href="conditional-variance-with-uncertain-parameters.html#estimated-initial-state"><i class="fa fa-check"></i><b>16.3.1</b> Estimated initial state</a></li>
 <li class="chapter" data-level="16.3.2" data-path="conditional-variance-with-uncertain-parameters.html"><a href="conditional-variance-with-uncertain-parameters.html#estimated-parameters-of-adam-model"><i class="fa fa-check"></i><b>16.3.2</b> Estimated parameters of ADAM model</a></li>
 </ul></li>
+<li class="chapter" data-level="16.4" data-path="adamRefitted.html"><a href="adamRefitted.html"><i class="fa fa-check"></i><b>16.4</b> Multi-scenarios for ADAM states</a></li>
 </ul></li>
 <li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
 <li class="divider"></li>
@@ -521,7 +522,7 @@ The reason why we condition the variance on actual values, is because they are g
 \end{equation}\]</span>
 Inserting the values of matrix <span class="math inline">\(\mathbf{D}\)</span>, we can then get the variance <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal03">(16.5)</a>. For example, for ETS(A,N,N), the conditional variance of the state on observation <span class="math inline">\(t\)</span> is:
 <span class="math display" id="eq:ETSADAMStateSpacePureAdditiveRecursionANN">\[\begin{equation}
-    \mathrm{V}(l_{t} | y_1, y_2, \dots y_t) = (1-\alpha)^{t} \mathrm{V}\left( l_{0} \right) (1-\alpha)^{t} .
+    \mathrm{V}(\hat{l}_{t} | y_1, y_2, \dots y_t) = (1-\alpha)^{t} \mathrm{V}\left( \hat{l}_{0} \right) (1-\alpha)^{t} .
   \tag{16.6}
 \end{equation}\]</span>
 As the formula above shows, if the smoothing parameter lies between zero and one, then the uncertainty of the initial level will not have a big impact on the uncertainty on observation <span class="math inline">\(t\)</span>. If we use admissible bounds (see Section <a href="ETSParametersBounds.html#ETSParametersBounds">4.6</a>), then the smoothing parameters might lie in the region (1, 2) and thus the impact of the variance of the initial state will increase with the increase of the sample size <span class="math inline">\(t\)</span>.</p>
@@ -571,7 +572,7 @@ Unfortunately, there is no closed form for the formula <a href="conditional-vari
 \end{equation}\]</span>
 The variance of the sum in <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANN02">(16.13)</a> can be expanded as:
 <span class="math display" id="eq:ETSADAMStateSpacePureAdditiveRecursionANN03">\[\begin{equation}
-    \mathrm{V} \left(\sum_{j=1}^{h-1} \hat{\alpha} \epsilon_{t+h-j} \right) = \sum_{j=1}^h \mathrm{V} \left(\hat{\alpha} \epsilon_{t+h-j}\right) + 2 \sum_{j=2}^{h-1} \sum_{i=1}^{j-1} \mathrm{cov}(\hat{\alpha} \epsilon_{t+j},\hat{\alpha} \epsilon_{t+i}).
+    \mathrm{V} \left(\sum_{j=1}^{h-1} \hat{\alpha} \epsilon_{t+h-j} \right) = \sum_{j=1}^h \mathrm{V} \left(\hat{\alpha} \epsilon_{t+h-j}\right) + 2 \sum_{j=2}^{h-1} \sum_{i=1}^{j-1} \mathrm{cov}(\hat{\alpha} \epsilon_{t+h-j},\hat{\alpha} \epsilon_{t+h-i}).
   \tag{16.14}
 \end{equation}\]</span>
 Each variance in left-hand side of <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANN03">(16.14)</a> can be expressed via:
@@ -581,32 +582,31 @@ Each variance in left-hand side of <a href="conditional-variance-with-uncertain-
 \end{equation}\]</span>
 Given that the expectation of error term is assumed to be zero, this simplifies to:
 <span class="math display" id="eq:ETSADAMStateSpacePureAdditiveRecursionANN05">\[\begin{equation}
-    \mathrm{V} \left(\hat{\alpha} \epsilon_{t+h-j}\right) = (\mathrm{V} (\hat{\alpha}) + \hat{\alpha}^2) \sigma^2.
+    \mathrm{V} \left(\hat{\alpha} \epsilon_{t+h-j}\right) = \left(\mathrm{V} (\hat{\alpha}) + \hat{\alpha}^2 \right) \sigma^2.
   \tag{16.16}
 \end{equation}\]</span>
 As for the covariances in <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANN03">(16.14)</a>, after the expansion it can be shown that each of them is equal to:
 <span class="math display" id="eq:ETSADAMStateSpacePureAdditiveRecursionANN06">\[\begin{equation}
-    \sum_{i=1}^{j-1} \mathrm{cov}(\hat{\alpha} \epsilon_{t+j},\hat{\alpha} \epsilon_{t+i}) = \mathrm{V}(\hat{\alpha}) \mathrm{cov}(\epsilon_{t+h-i},\epsilon_{t+h-j}) + \hat{\alpha}^2 \mathrm{cov}(\epsilon_{t+h-i},\epsilon_{t+h-j}) + \mathrm{E}(\epsilon_{t+h-i}) \mathrm{E}(\epsilon_{t+h-j}) \mathrm{V}(\hat{\alpha}).
+    \begin{aligned}
+    \sum_{i=1}^{j-1} \mathrm{cov}(\hat{\alpha} \epsilon_{t+j},\hat{\alpha} \epsilon_{t+i}) = &amp; \mathrm{V}(\hat{\alpha}) \mathrm{cov}(\epsilon_{t+h-i},\epsilon_{t+h-j}) + \hat{\alpha}^2 \mathrm{cov}(\epsilon_{t+h-i},\epsilon_{t+h-j}) \\
+    &amp; + \mathrm{E}(\epsilon_{t+h-i}) \mathrm{E}(\epsilon_{t+h-j}) \mathrm{V}(\hat{\alpha}).
+    \end{aligned}
   \tag{16.17}
 \end{equation}\]</span>
 Given the assumptions of the model, the autocovariances of error terms should all be equal to zero, and the expectation of the error term should be equal to zero as well, which means that the value in <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANN06">(16.17)</a> will be equal to zero as well. Based on that, each variance in <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANN03">(16.14)</a> can be represented as:
 <span class="math display" id="eq:ETSADAMStateSpacePureAdditiveRecursionANN07">\[\begin{equation}
-    \mathrm{V} \left(\sum_{j=1}^{h-1} \hat{\alpha} \epsilon_{t+h-j} \right) = (h-1) (\mathrm{V} (\hat{\alpha}) + \hat{\alpha}^2) \sigma^2 .
+    \mathrm{V} \left(\sum_{j=1}^{h-1} \hat{\alpha} \epsilon_{t+h-j} \right) = (h-1) (\mathrm{V} \left(\hat{\alpha}) + \hat{\alpha}^2 \right) \sigma^2 .
   \tag{16.18}
 \end{equation}\]</span>
 Inserting <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANN07">(16.18)</a> in <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANN02">(16.13)</a>, we get the final conditional h steps ahead variance of the model:
 <span class="math display" id="eq:ETSADAMStateSpacePureAdditiveRecursionANNFinal">\[\begin{equation}
-    \sigma^2_h = \left((h-1) (\mathrm{V} (\hat{\alpha}) + \hat{\alpha}^2) + 1\right) \sigma^2,
+    \sigma^2_h = \left((h-1) (\mathrm{V} \left(\hat{\alpha}) + \hat{\alpha}^2 \right) + 1\right) \sigma^2,
   \tag{16.19}
 \end{equation}\]</span>
 which looks similar to the one in formula <a href="pureAdditiveExpectationAndVariance.html#eq:ETSADAMStateSpaceANNRecursionMeanAndVariance">(5.14)</a> from Section <a href="pureAdditiveExpectationAndVariance.html#pureAdditiveExpectationAndVariance">5.3</a>, but now has the variance of the smoothing parameters in it.</p>
-<p>Unfortunately, the conditional variances for the other models are more complicated due to the introduction of convolutions of parameters. Furthermore, the formula <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANNFinal">(16.19)</a> only focuses on the conditional variance given the known <span class="math inline">\(l_t\)</span>, but does not take into account the uncertainty of <span class="math inline">\(l_t\)</span> given the fitted values from <span class="math inline">\(j=1\)</span> to <span class="math inline">\(j=t\)</span>. Given the complexity of the problem, in the next section, we introduce a technique that allows correctly propagating the uncertainty of parameters and initial values to the forecasts of the model.</p>
-<!-- ## Uncertain fitted values and point forecasts -->
-<!-- ## Prediction and confidence intervals construction {#predictionIntervalsConstruction} -->
-
+<p>Unfortunately, the conditional variances for the other models are more complicated due to the introduction of convolutions of parameters. Furthermore, the formula <a href="conditional-variance-with-uncertain-parameters.html#eq:ETSADAMStateSpacePureAdditiveRecursionANNFinal">(16.19)</a> only focuses on the conditional variance given the known <span class="math inline">\(l_t\)</span>, but does not take into account the uncertainty of <span class="math inline">\(l_t\)</span> for the fitted values in sample. Given the complexity of the problem, in the next section, we introduce a technique that allows correctly propagating the uncertainty of parameters and initial values to the forecasts of the model.</p>
 </div>
 </div>
-<!-- </div> -->
 
             </section>
 
@@ -614,7 +614,7 @@ which looks similar to the one in formula <a href="pureAdditiveExpectationAndVar
         </div>
       </div>
 <a href="confidence-intervals-for-parameters.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-<a href="references.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="adamRefitted.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
