@@ -192,10 +192,47 @@ which looks similar to the one in formula \@ref(eq:ETSADAMStateSpaceANNRecursion
 Unfortunately, the conditional variances for the other models are more complicated due to the introduction of convolutions of parameters. Furthermore, the formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionANNFinal) only focuses on the conditional variance given the known $l_t$, but does not take into account the uncertainty of $l_t$ for the fitted values in sample. Given the complexity of the problem, in the next section, we introduce a technique that allows correctly propagating the uncertainty of parameters and initial values to the forecasts of the model.
 
 
-<!-- ## Uncertain fitted values and point forecasts -->
+## Multi-scenarios for ADAM states {#adamRefitted}
+As discussed in the previous sections, it is difficult to capture the impact of the uncertainty about the parameters on the states of the model and as a result difficult to take it into account on the forecasting stage. Furthermore, so far we have only discussed pure additive models, for which it is at least possible to do some derivations. When it comes to models with multiplicative components, it becomes close to impossible to demonstrate how the uncertainty propagates over time. In order to overcome these limitations, we develop a simulation-based approach that relies on the selected model form.
 
+The idea of the approach is to get the covariance matrix of the parameters of the selected model (see Section \@ref(ADAMUncertaintyVCOV)) and then generate $n$ sets of parameters randomly from rectified multivariate normal distribution using the matrix and the values of estimated parameters. After that the model is applied to the data with each combination of generated parameters, states, fitted values and residuals are extracted from it to get their distribution. This way we propagate the uncertainty about the parameters from the first observation to the last. The final states can also be used to produce point forecasts and prediction intervals based each set of parameters. These scenarios allow producing more adequate prediction intervals from the model and / or confidence intervals for the fitted values, states and conditional expectations. All of this is done without additional assumptions (as it is done in bagging), relying fully on the model. However, the approach is computationally expensive, as it requires fitting all the $n$ models to the data, although no estimation is needed for them. If the uncertainty about the model needs to be taken into account, then the combination of models can be used, as described in Section \@ref(ADAMCombinations).
 
-<!-- ## Prediction and confidence intervals construction {#predictionIntervalsConstruction} -->
+`smooth` package has the method `refit()` that implements this approach for `adam()` models. This works with ADAM ETS, ARIMA, regression and any combination between them. Here is an example in R:
 
+```{r adamETSRefitted, fig.cap="Refitted ADAM ETS(M,M,M) model on AirPassengers data."}
+adamModelETS <- adam(AirPassengers, "MMM", h=10, holdout=TRUE)
+adamModelETSRefitted <- refit(adamModelETS)
+plot(adamModelETSRefitted)
+```
 
+Figure \@ref(fig:adamETSRefitted) demonstrates how the approach works on the example of `AirPassengers` data and ETS(M,M,M) model. The grey areas around the fitted line show quantiles from the fitted values, forming confidence intervals of width 95%, 80%, 60%, 40% and 20%. They show how the fitted value would vary, if the estimates of parameters would different from the estimated ones. Note that there was a warning about the covariance matrix of parameters, which typically arises if the optimal value of the loss function was not reached. If this happens, I would recommend tuning the optimiser (see Section \@ref(ADAMInitialisation)). For example, we could try more iterations via setting `maxeval` parameter or reestimating the model, providing the estimates of parameters in `B`. If these fail and the bounds from the `refit()` are too wide, then it might make sense considering backcasting for the initialisation.
 
+As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on artificial, non-seasonal data (see Figure \@ref(fig:adamARIMARefitted):
+```{r eval=FALSE}
+y <- rnorm(200,100,10)
+adamModelARIMA1 <- adam(y, "NNN", h=10, holdout=TRUE,
+                       orders=c(0,1,1))
+adamModelARIMARefitted1 <- refit(adamModelARIMA1)
+plot(adamModelARIMARefitted1)
+```
+
+```{r adamARIMARefitted, fig.cap="Refitted ADAM ARIMA(0,1,1) model on artificial data.", echo=FALSE}
+load("data/adamRefitted.Rdata")
+plot(adamModelARIMARefitted1)
+```
+
+Note that the more complicated the fitted model is, the more difficult it is to optimise it and thus the more difficult it is to get accurate estimates of covariance matrix of parameters. This might result in highly uncertain states and thus fitted values. The safer approach in this case is using bootstrap for the estimation of covariance matrix, but this is more computationally expensive and would only work on longer time series. See example in R (and Figure \@ref(fig:adamARIMARefitted200)):
+
+```{r eval=FALSE}
+adamModelARIMA2 <- adam(y, "NNN", h=10, holdout=TRUE,
+                       orders=c(0,1,1))
+adamModelARIMARefitted2 <- refit(adamModelARIMA2, bootstrap=TRUE,
+                                nsim=1000, parallel=TRUE)
+plot(adamModelARIMARefitted2)
+```
+
+```{r adamARIMARefitted200, fig.cap="Refitted ADAM ARIMA(0,1,1) model on artificial data, bootstrapped covariance matrix.", echo=FALSE}
+plot(adamModelARIMARefitted2)
+```
+
+The approach described in this section is still a work in progress. While it works in theory, there are still computational difficulties with the calculation of Hessian matrix. If the covariance matrix is not estimated accurately, it might contain high variances, leading to the higher than needed uncertainty of the model. This will then result in unreasonable confidence bounds and finally lead to extremely wide prediction intervals.
