@@ -434,7 +434,20 @@ There are different ways to diagnose the issue. The first one is the already dis
 
 There is also an effect related to this, which is called "endogeneity". According to econometrics literature it implies that the residuals are correlated with some variables. This becomes equivalent to the situation when the expectation of residuals changes with the change of a variable. The most prominent cause of this is the omitted variables (discussed in Section \@ref(diagnosticsOmitted)), which can be sometimes diagnosed by looking at correlations between the residuals and omitted variables. While econometricians propose using other estimation methods (such as Instrumental Variables) in order to diminish the effect of endogeneity, the forecasters cannot allow themselves doing that, because we need to fix the problem in order to get more adequate forecasts. Unfortunately, there is no universal recipe for the solution of this problem, but in some cases transforming variables, adding the omitted ones or substituting them by [proxies](https://en.wikipedia.org/wiki/Proxy_(statistics)) (if we the variables are unavailable) might resolve the problem.
 
-<!-- The assumption for the h steps ahead? -->
+### Multistep forecast errors have zero mean {#diagnosticsResidualsIIDExpectationMultiple}
+This follows from the previous assumption if the model is correctly specified and its residuals are i.i.d. In that situation, we would expect the multiple steps ahead forecast errors to have zero mean. In practice, this might be violated if there are some structural changes or level shifts that are not taken into account by the model. The only thing to note is that this approach requires setting of the forecast horizon $h$. This should typically come from the task itself and the decisions made based on that.
+
+The diagnostics of this assumption can be done using `rmultistep()` method for `adam()`. This method would apply the estimated model and produce multiple steps ahead forecasts from each in-sample observation to the horizon $h$, stacking the forecast errors by rows. Whether we apply additive or multiplicative error model, the method will report the residual $e_t$.
+
+```{r}
+adamModelSeat05ResidMulti <- rmultistep(adamModelSeat05,h=12)
+colnames(adamModelSeat05ResidMulti) <- c(1:12)
+boxplot(adamModelSeat05ResidMulti,xlab="horizon")
+abline(h=0,col="red")
+points(apply(adamModelSeat05ResidMulti,2,mean),col="red",pch=16)
+```
+
+As the plot in the Figure above demonstrates, the mean of the residuals increases with the increase of the horizon, thus implying that some information has not been taken into account by the model.
 
 
 ## Residuals are i.i.d.: distributional assumptions {#diagnosticsResidualsIIDDistribution}
