@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-07-21" />
+<meta name="date" content="2021-07-22" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -32,7 +32,7 @@
   
   
 <link rel="prev" href="ADAMForecasting.html"/>
-<link rel="next" href="references.html"/>
+<link rel="next" href="prediction-intervals.html"/>
 <script src="libs/header-attrs-2.9/header-attrs.js"></script>
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
@@ -486,6 +486,11 @@ div.csl-indent {
 <li class="chapter" data-level="17.1.1" data-path="ADAMForecastingExpectation.html"><a href="ADAMForecastingExpectation.html#ADAMForecastingExpectationSimulations"><i class="fa fa-check"></i><b>17.1.1</b> Simulating demand trajectories</a></li>
 <li class="chapter" data-level="17.1.2" data-path="ADAMForecastingExpectation.html"><a href="ADAMForecastingExpectation.html#demonstration-in-r-1"><i class="fa fa-check"></i><b>17.1.2</b> Demonstration in R</a></li>
 </ul></li>
+<li class="chapter" data-level="17.2" data-path="prediction-intervals.html"><a href="prediction-intervals.html"><i class="fa fa-check"></i><b>17.2</b> Prediction intervals</a>
+<ul>
+<li class="chapter" data-level="17.2.1" data-path="prediction-intervals.html"><a href="prediction-intervals.html#approximate-prediction-intervals"><i class="fa fa-check"></i><b>17.2.1</b> Approximate prediction intervals</a></li>
+<li class="chapter" data-level="17.2.2" data-path="prediction-intervals.html"><a href="prediction-intervals.html#ADAMForecastingPISimulations"><i class="fa fa-check"></i><b>17.2.2</b> Simulated prediction intervals</a></li>
+</ul></li>
 </ul></li>
 <li class="chapter" data-level="" data-path="references.html"><a href="references.html"><i class="fa fa-check"></i>References</a></li>
 <li class="divider"></li>
@@ -523,12 +528,12 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <li>Take expectations for each horizon from 1 to <span class="math inline">\(h\)</span>.</li>
 </ol>
 <p>A thing to note that in case of multiplicative trend or multiplicative seasonality, it makes sense to take trimmed mean instead of the basic arithmetic one. The reason for this is because the models with these components might exhibit explosive behaviour and thus the expectation might become unrealistic. I suggest using 1% trimming, although this does not have any scientific merit and is only based on my personal expertise.</p>
-<p>The simulation-based approach is universal, no matter what model is used and can be applied to any ETS, ARIMA, regression model or their combination (including dynamic ETSX, intermittent demand and multiple frequency models). Furthermore, instead of taking expectations on step 3, one can take geometric means, medians or any desired quantile. This is discussed in some detail later in Section <a href="#ADAMForecastingPISimulations"><strong>??</strong></a>.</p>
+<p>The simulation-based approach is universal, no matter what model is used and can be applied to any ETS, ARIMA, regression model or their combination (including dynamic ETSX, intermittent demand and multiple frequency models). Furthermore, instead of taking expectations on step 3, one can take geometric means, medians or any desired quantile. This is discussed in some detail later in Section <a href="prediction-intervals.html#ADAMForecastingPISimulations">17.2.2</a>.</p>
 <p>The main issue with this approach is that the conditional expectation and any other statistic calculated based on this, will differ with every new simulation run. If <span class="math inline">\(n\)</span> is small then these values will be less stable (vary more with the new runs). But they will reach some asymptotic values with the increase of the value of <span class="math inline">\(n\)</span>, staying random nonetheless. However, this is in a way a good thing, because this randomness reflects the uncertain nature of these statistics in sample. Another limitation is the computational time and memory usage: the more iterations we want to produce, the more calculations and more memory will need to be done. Luckily, time complexity in this situation should be linear: <span class="math inline">\(O(h \times n)\)</span>.</p>
 </div>
 <div id="demonstration-in-r-1" class="section level3" number="17.1.2">
 <h3><span class="header-section-number">17.1.2</span> Demonstration in R</h3>
-<p>In order to demonstrate how the approach works, we consider an artificial case of ETS(M,M,N) model with <span class="math inline">\(l_t=1000\)</span>, <span class="math inline">\(b_t=0.95\)</span>, <span class="math inline">\(\alpha=0.1\)</span>, <span class="math inline">\(\beta=0.01\)</span>, and <span class="math inline">\(\Gamma\)</span> distribution for error term with scale <span class="math inline">\(s=0.05\)</span>. We generate 1000 scenarios from this model for the horizon of <span class="math inline">\(h=10\)</span> using <code>sim.es()</code> function from <code>smooth</code> package:</p>
+<p>In order to demonstrate how the approach works, we consider an artificial case of ETS(M,M,N) model with <span class="math inline">\(l_t=1000\)</span>, <span class="math inline">\(b_t=0.95\)</span>, <span class="math inline">\(\alpha=0.1\)</span>, <span class="math inline">\(\beta=0.01\)</span>, and Gamma distribution for error term with scale <span class="math inline">\(s=0.05\)</span>. We generate 1000 scenarios from this model for the horizon of <span class="math inline">\(h=10\)</span> using <code>sim.es()</code> function from <code>smooth</code> package:</p>
 <div class="sourceCode" id="cb347"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb347-1"><a href="ADAMForecastingExpectation.html#cb347-1" aria-hidden="true" tabindex="-1"></a>nsim <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
 <span id="cb347-2"><a href="ADAMForecastingExpectation.html#cb347-2" aria-hidden="true" tabindex="-1"></a>h <span class="ot">&lt;-</span> <span class="dv">10</span></span>
 <span id="cb347-3"><a href="ADAMForecastingExpectation.html#cb347-3" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fl">0.1</span></span>
@@ -553,26 +558,8 @@ Figure 17.1: Data generated from 1000 ETS(M,M,N) models.
 </p>
 </div>
 <p>Based on the plot in Figure <a href="ADAMForecastingExpectation.html#fig:adamForecastSimulated">17.1</a>, we can see what the conditional h steps ahead expectation will be (black line) and what the 95% prediction interval will be for the data based on the ETS(M,M,N) model with the parameters mentioned above.</p>
-<!-- ## Prediction intervals -->
-<!-- ### Parametric -->
-<!-- ### Approximate -->
-<!-- ### Simulated {#ADAMForecastingPISimulations} -->
-<!-- ### Semiparametric -->
-<!-- As discussed in Section \@ref(diagnosticsResidualsIIDExpectationMultiple), it is possible to produce the in-sample multistep forecast errors. -->
-<!-- ### Nonparametric -->
-<!-- ### Empirical -->
-<!-- ### Reforecast -->
-<!-- ### Confidence -->
-<!-- ### Constructing intervals for intermittent model -->
-<!-- ### Upper / Lower bounds -->
-<!-- ### Cumulative over the horizon forecats -->
-<!-- 1. Point forecasts, example with pure additive model.  -->
-<!-- 2. Prediction intervals. What happens with pure additive model. -->
-<!-- 3. Other models -->
-
 </div>
 </div>
-<!-- </div> -->
 
             </section>
 
@@ -580,7 +567,7 @@ Figure 17.1: Data generated from 1000 ETS(M,M,N) models.
         </div>
       </div>
 <a href="ADAMForecasting.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-<a href="references.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="prediction-intervals.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
