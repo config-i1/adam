@@ -21,7 +21,7 @@ The main issue with this approach is that the conditional expectation and any ot
 
 
 ### Demonstration in R
-In order to demonstrate how the approach works, we consider an artificial case of ETS(M,M,N) model with $l_t=1000$, $b_t=0.95$, $\alpha=0.1$, $\beta=0.01$, and $\Gamma$ distribution for error term with scale $s=0.05$. We generate 1000 scenarios from this model for the horizon of $h=10$ using `sim.es()` function from `smooth` package:
+In order to demonstrate how the approach works, we consider an artificial case of ETS(M,M,N) model with $l_t=1000$, $b_t=0.95$, $\alpha=0.1$, $\beta=0.01$, and Gamma distribution for error term with scale $s=0.05$. We generate 1000 scenarios from this model for the horizon of $h=10$ using `sim.es()` function from `smooth` package:
 ```{r}
 nsim <- 1000
 h <- 10
@@ -48,18 +48,47 @@ lines(apply(y$data,1,quantile,0.975),
 Based on the plot in Figure \@ref(fig:adamForecastSimulated), we can see what the conditional h steps ahead expectation will be (black line) and what the 95% prediction interval will be for the data based on the ETS(M,M,N) model with the parameters mentioned above.
 
 
+## Prediction intervals
+As discussed in Section 5.2 of @SvetunkovSBA, prediction interval is needed in order to reflect the uncertainty about the data. In theory, the 95% prediction interval will cover the actual values in 95% of the cases, if it is recreated for different samples of data many time, given that the model is correctly specified. The specific formula for prediction interval will vary with the assumed distribution. For example, for the Normal distribution (assuming that $y_{t+j} \sim \mathcal{N}(\mu_{y, t+j}, \sigma^2)$) we will have the classical one:
+\begin{equation}
+    y_{t+j} \in (\hat{y}_{t+j} + z_{\alpha/2} \hat{\sigma}^2, \hat{y}_{t+j} + z_{1-\alpha/2} \hat{\sigma}^2),
+    (\#eq:predictionInterval)
+\end{equation}
+where $\hat{y}_{t+j}$ is the j steps ahead forecast from the model, $\hat{\sigma}^2$ is the estimate of the variance of the error term and $z$ is z-statistics (providing quantile of standard normal distribution) for the selected significance level $\alpha$. This type of prediction interval can be called **parametric**. It assumes a specific distribution and relies on the other assumptions about the constructed model (such as residuals are i.i.d., see Section \@ref(diagnostics)). Note that the interval produced via \@ref(eq:predictionInterval) corresponds to two quantiles from normal distribution and can be written in a more general form as:
+\begin{equation}
+    y_{t+j} \in \left(q \left(\hat{y}_{t+j},\hat{\sigma}^2,\frac{\alpha}{2}\right), q\left(\hat{y}_{t+j},\hat{\sigma}^2,1-\frac{\alpha}{2}\right)\right),
+    (\#eq:predictionIntervalGeneral)
+\end{equation}
+where $q(\cdot)$ is a quantile function of an assumed distribution, $\hat{y}_{t+j}$ acts as a location and $\hat{\sigma}^2$ acts as a scale of distribution. Using this general formula \@ref(eq:predictionIntervalGeneral) for prediction intervals, we can construct them for other distributions as long as they support convolution (addition of random variables following that distribution). In ADAM framework, this works for all pure additive models that have error term that follows one of the below:
 
-<!-- ## Prediction intervals -->
+1. Normal: $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$, thus $y_{t+j} \sim \mathcal{N}(\mu_{y, t+j}, \sigma^2)$;
+2. Laplace: $\epsilon_t \sim \mathcal{Laplace}(0, s)$ and $y_{t+j} \sim \mathcal{Laplace}(\mu_{y, t+j}, s)$;
+3. S: $\epsilon_t \sim \mathcal{S}(0, s)$, $y_{t+j} \sim \mathcal{S}(\mu_{y, t+j}, s)$;
+4. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$, so that $y_{t+j} \sim \mathcal{GN}(\mu_{y, t+j}, s, \beta)$.
 
-<!-- ### Parametric -->
+If a model has multiplicative components or relies on a different distribution, then the several steps ahead actual value will not necessarily follow the assumed distribution and the formula \@ref(eq:predictionIntervalGeneral) will produce incorrect intervals. For example, if we work with a pure multiplicative ETS model, ETS(M,N,N), assuming that $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$, the 2 steps ahead actual value will be expressed via the past values as:
+\begin{equation}
+    y_{t+2} = l_{t+1} (1+\epsilon_{t+2}) = l_{t} (1+\alpha \epsilon_{t+1}) (1+\epsilon_{t+2}) ,
+    (\#eq:ETSMNN2Steps)
+\end{equation}
+which introduces the product of normal distributions and thus $y_{t+2}$ does not follow Normal distribution any more. In those cases, we might have several options of what to use in order to produce intervals. They are discussed in the subsections below.
 
-<!-- ### Approximate -->
 
-<!-- ### Simulated {#ADAMForecastingPISimulations} -->
+### Approximate prediction intervals
+Even if the actual multisteps value does not follow the assumed distribution, in some cases we can use approximations: the produced prediction interval will not be too far from the correct one. The main idea behind the approximate intervals is to rely on the same distribution for $y_{t+j}$ as for the error term, even though we know that the variable will not follow it. In case of multiplicative error models, the limit \@ref(eq:limitOf1x) can be used to motivate the usage of that assumption. For example, in case of the ETS(M,N,N) model, we know that $y_{t+2}$ will not follow normal distribution, but if the variance of the error term is low (e.g. $\sigma^2 < 0.05$) and the smoothing parameter $\alpha$ is close to zero, then the normal distribution would be a fine approximation of the real one. This will become clear, if we expand the brackets in \@ref(eq:ETSMNN2Steps):
+\begin{equation}
+    y_{t+2} = l_{t} (1 + \alpha \epsilon_{t+1} + \epsilon_{t+2} + \alpha \epsilon_{t+1} \epsilon_{t+2}) .
+    (\#eq:ETSMNN2Steps2)
+\end{equation}
+With the conditions discussed above (low $\alpha$, low variance) the term $\alpha \epsilon_{t+1} \epsilon_{t+2}$ will be close to zero, thus making the sum of normal distributions dominate in the formula \@ref(eq:ETSMNN2Steps2). The advantage of this approach is in its speed: you only need to know the scale parameter of the error term and the conditional location (e.g. conditional expectation). The disadvantage of the approach is that it becomes inaccurate with the increase of parameters and scale of the model. The rule of thumb, when to use this approach: if the smoothing parameters are all below 0.1 (in case of ARIMA this is equivalent to MA terms being negative and AR terms being close to zero) and the scale of distribution is below 0.05, the differences between the proper interval and the approximate one should be negligible.
+
+
+### Simulated prediction intervals {#ADAMForecastingPISimulations}
+This approach relies on the idea discussed in Section \@ref(ADAMForecastingExpectationSimulations). It is universal and supports any distribution, because it only assumes that the error term follows a distribution (no need for the actual value to do that as well), and the simulate paths are produced based on the generated values and assumed model. After generating $n$ paths, one can take the desired quantiles to get the bounds of the interval. The main issue of the approach is that it is time consuming (slower than the approximate intervals) and might be highly inaccurate if the number of iterations $n$ is low. This approach is used as a default in `adam()` for the non-additive models.
 
 
 <!-- ### Semiparametric -->
-<!-- As discussed in Section \@ref(diagnosticsResidualsIIDExpectationMultiple), it is possible to produce the in-sample multistep forecast errors. -->
+<!-- As discussed in Section \@ref(diagnosticsResidualsIIDExpectationMultiple), it is possible to produce the in-sample multistep forecast errors.  -->
 
 <!-- ### Nonparametric -->
 
