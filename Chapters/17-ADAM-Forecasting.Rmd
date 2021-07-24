@@ -51,12 +51,12 @@ Based on the plot in Figure \@ref(fig:adamForecastSimulated), we can see what th
 ## Prediction intervals
 As discussed in Section 5.2 of @SvetunkovSBA, prediction interval is needed in order to reflect the uncertainty about the data. In theory, the 95% prediction interval will cover the actual values in 95% of the cases, if it is recreated for different samples of data many time, given that the model is correctly specified. The specific formula for prediction interval will vary with the assumed distribution. For example, for the Normal distribution (assuming that $y_{t+j} \sim \mathcal{N}(\mu_{y, t+j}, \sigma^2)$) we will have the classical one:
 \begin{equation}
-    y_{t+j} \in (\hat{y}_{t+j} + z_{\alpha/2} \hat{\sigma}^2, \hat{y}_{t+j} + z_{1-\alpha/2} \hat{\sigma}^2),
+    y_{t+j} \in (\hat{y}_{t+j} + z_{\alpha/2} \hat{\sigma}_j^2, \hat{y}_{t+j} + z_{1-\alpha/2} \hat{\sigma}_j^2),
     (\#eq:predictionInterval)
 \end{equation}
-where $\hat{y}_{t+j}$ is the j steps ahead forecast from the model, $\hat{\sigma}^2$ is the estimate of the variance of the error term and $z$ is z-statistics (providing quantile of standard normal distribution) for the selected significance level $\alpha$. This type of prediction interval can be called **parametric**. It assumes a specific distribution and relies on the other assumptions about the constructed model (such as residuals are i.i.d., see Section \@ref(diagnostics)). Note that the interval produced via \@ref(eq:predictionInterval) corresponds to two quantiles from normal distribution and can be written in a more general form as:
+where $\hat{y}_{t+j}$ is the j steps ahead forecast from the model, $\hat{\sigma}_j^2$ is the estimate of the $j$ steps ahead variance of the error term (for example, calculated via the formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVariance)) and $z$ is z-statistics (providing quantile of standard normal distribution) for the selected significance level $\alpha$. This type of prediction interval can be called **parametric**. It assumes a specific distribution and relies on the other assumptions about the constructed model (such as residuals are i.i.d., see Section \@ref(diagnostics)). Note that the interval produced via \@ref(eq:predictionInterval) corresponds to two quantiles from normal distribution and can be written in a more general form as:
 \begin{equation}
-    y_{t+j} \in \left(q \left(\hat{y}_{t+j},\hat{\sigma}^2,\frac{\alpha}{2}\right), q\left(\hat{y}_{t+j},\hat{\sigma}^2,1-\frac{\alpha}{2}\right)\right),
+    y_{t+j} \in \left(q \left(\hat{y}_{t+j},\hat{\sigma}_j^2,\frac{\alpha}{2}\right), q\left(\hat{y}_{t+j},\hat{\sigma}_j^2,1-\frac{\alpha}{2}\right)\right),
     (\#eq:predictionIntervalGeneral)
 \end{equation}
 where $q(\cdot)$ is a quantile function of an assumed distribution, $\hat{y}_{t+j}$ acts as a location and $\hat{\sigma}^2$ acts as a scale of distribution. Using this general formula \@ref(eq:predictionIntervalGeneral) for prediction intervals, we can construct them for other distributions as long as they support convolution (addition of random variables following that distribution). In ADAM framework, this works for all pure additive models that have error term that follows one of the below:
@@ -87,12 +87,27 @@ With the conditions discussed above (low $\alpha$, low variance) the term $\alph
 This approach relies on the idea discussed in Section \@ref(ADAMForecastingExpectationSimulations). It is universal and supports any distribution, because it only assumes that the error term follows a distribution (no need for the actual value to do that as well), and the simulate paths are produced based on the generated values and assumed model. After generating $n$ paths, one can take the desired quantiles to get the bounds of the interval. The main issue of the approach is that it is time consuming (slower than the approximate intervals) and might be highly inaccurate if the number of iterations $n$ is low. This approach is used as a default in `adam()` for the non-additive models.
 
 
-<!-- ### Semiparametric -->
-<!-- As discussed in Section \@ref(diagnosticsResidualsIIDExpectationMultiple), it is possible to produce the in-sample multistep forecast errors.  -->
+### Semiparametric
+The three approaches above assume that the residuals of the applied model are [i.i.d.](#diagnostics). If this assumption is violated (for example, the residuals are autocorrelated), then the intervals might be miscalibrated (i.e. producing wrong values). In this case, we might need to use different approaches. One of this is the construction of **semiparametric** prediction intervals. This approach relies on the in-sample multistep forecast errors, discussed in Section \@ref(diagnosticsResidualsIIDExpectationMultiple). After producing $e_{t+j|t}$ for all in sample values of $t$ and for $j=1,\dots,h$, we can use these errors to calculate the respective h steps ahead conditional variances $\sigma_j^2$ for $j=1,\dots,h$. These values can then be inserted in the formula \@ref(eq:predictionIntervalGeneral) to get the desired prediction intervals. The approach works well in case of pure additive models, as it relies on specific assumed distribution. However, it might have limitations similar to those discussed earlier for the mixed models and for the models with positively defined distributions (such as Log Normal, Gamma and Inverse Gaussian).
 
-<!-- ### Nonparametric -->
 
-<!-- ### Empirical -->
+### Nonparametric
+In the cases, when some of assumptions might be violated and when we cannot rely on the parametric distributions, we can use **nonparametric** approach, proposed by @Taylor1999. The authors proposed using the multistep forecast errors in order to construct the following quantile regression model:
+\begin{equation}
+    \hat{e}_{t+j} = a_0 + a_1 j + a_2 j^2,
+    (\#eq:IntervalsQuantileReg)
+\end{equation}
+for each of the bounds of the interval. The motivation behind the polynomial in \@ref(eq:IntervalsQuantileReg) is because typically the multisteps conditional variance will involve square of forecast horizon. The main issue with this approach is that the polynomial has an extremum, which might appear sometime in the future, so, for example, the upper bound of the interval would increase until that point and then start decreasing. In order to overcome this limitation, I propose using the power function instead:
+\begin{equation}
+    \hat{e}_{t+j} = a_0 j^a_1 .
+    (\#eq:IntervalsQuantileRegIS)
+\end{equation}
+This way, the bounds will always change monotonically, and the parameter $a_1$ will control the speed of expansion of the interval. The model \@ref(eq:IntervalsQuantileRegIS) is estimated using quantile regression for the upper and the lower bounds separately as @Taylor1999 recommend. This approach does not require any assumptions about the model and works as long as there is enough observations in sample (so that the matrix of forecast errors contains more rows than columns). The main limitation of this approach is that it relies on quantile regression and thus will have the same issues as, for example, pinball score has (see discussion in Section \@ref(uncertainty)): the quantiles are not always uniquely defined. Another limitation is that we assume that the quantiles will follow the model \@ref(eq:IntervalsQuantileRegIS), which might be violated in some real life cases.
+
+
+### Empirical
+Another alternative to the parametric intervals uses the same matrix of multistep forecast errors as discussed earlier. The **empirical** approach is simpler than the approaches discussed above and does not rely on any assumptions. The idea behind it is to just take quantiles of the forecast errors for each forecast horizon $j=1,\dots,h$. These quantiles are then added to the point forecast if the error term is additive or are multiplied by it in case of the multiplicative one. @Kourentzes2021TBA show that the empirical prediction intervals perform on average better than the other approaches. So, in general I would recommend producing empirical intervals if it was not for the computational difficulties related to the multistep forecast errors: if you have an additive model and believe that the assumptions are satisfied, then parametric interval will be as accurate, but faster. Furthermore, in cases of small samples, the approach will be unreliable due to the same problem with quantiles discussed earlier.
+
 
 <!-- ### Reforecast -->
 
