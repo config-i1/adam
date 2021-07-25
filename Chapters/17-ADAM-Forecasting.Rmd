@@ -20,6 +20,10 @@ The simulation-based approach is universal, no matter what model is used and can
 The main issue with this approach is that the conditional expectation and any other statistic calculated based on this, will differ with every new simulation run. If $n$ is small then these values will be less stable (vary more with the new runs). But they will reach some asymptotic values with the increase of the value of $n$, staying random nonetheless. However, this is in a way a good thing, because this randomness reflects the uncertain nature of these statistics in sample. Another limitation is the computational time and memory usage: the more iterations we want to produce, the more calculations and more memory will need to be done. Luckily, time complexity in this situation should be linear: $O(h \times n)$.
 
 
+### Explanatory variables
+If the model contains explanatory variables, then the h steps ahead conditional expectations should rely us them in the calculation. The main challenge in this situation is that in some cases the future values might not be known. Both cases have been discussed in the Section \@ref(ADAMXConventionalConditionalMoments). Practically speaking, if the user provide the holdout sample values of explanatory variables, then `forecast.adam()` method will use them in forecasting. If they are not provided, then the function will produce forecasts for each of the explanatory variables via `adam()` function and use the conditional h steps ahead expectations in forecasting.
+
+
 ### Demonstration in R
 In order to demonstrate how the approach works, we consider an artificial case of ETS(M,M,N) model with $l_t=1000$, $b_t=0.95$, $\alpha=0.1$, $\beta=0.01$, and Gamma distribution for error term with scale $s=0.05$. We generate 1000 scenarios from this model for the horizon of $h=10$ using `sim.es()` function from `smooth` package:
 ```{r}
@@ -80,7 +84,7 @@ Even if the actual multisteps value does not follow the assumed distribution, in
     y_{t+2} = l_{t} (1 + \alpha \epsilon_{t+1} + \epsilon_{t+2} + \alpha \epsilon_{t+1} \epsilon_{t+2}) .
     (\#eq:ETSMNN2Steps2)
 \end{equation}
-With the conditions discussed above (low $\alpha$, low variance) the term $\alpha \epsilon_{t+1} \epsilon_{t+2}$ will be close to zero, thus making the sum of normal distributions dominate in the formula \@ref(eq:ETSMNN2Steps2). The advantage of this approach is in its speed: you only need to know the scale parameter of the error term and the conditional location (e.g. conditional expectation). The disadvantage of the approach is that it becomes inaccurate with the increase of parameters and scale of the model. The rule of thumb, when to use this approach: if the smoothing parameters are all below 0.1 (in case of ARIMA this is equivalent to MA terms being negative and AR terms being close to zero) and the scale of distribution is below 0.05, the differences between the proper interval and the approximate one should be negligible.
+With the conditions discussed above (low $\alpha$, low variance) the term $\alpha \epsilon_{t+1} \epsilon_{t+2}$ will be close to zero, thus making the sum of normal distributions dominate in the formula \@ref(eq:ETSMNN2Steps2). The advantage of this approach is in its speed: you only need to know the scale parameter of the error term and the conditional location (e.g. conditional expectation). The disadvantage of the approach is that it becomes inaccurate with the increase of parameters and scale of the model. The rule of thumb, when to use this approach: if the smoothing parameters are all below 0.1 (in case of ARIMA this is equivalent to MA terms being negative and AR terms being close to zero) or the scale of distribution is below 0.05, the differences between the proper interval and the approximate one should be negligible.
 
 
 ### Simulated {#ADAMForecastingPISimulations}
@@ -113,6 +117,94 @@ Another alternative to the parametric intervals uses the same matrix of multiste
 So far, **all the intervals discussed above** relied on an unrealistic assumption that the parameters of the model are known. This is one of the reasons, why the intervals produced for ARIMA and ETS are typically narrower than expected [see, for example results of competition in @Athanasopoulos2011]. But as we discussed in Section \@ref(ADAMUncertainty), there are ways of capturing the uncertainty of estimated parameters of the model and propagating it to the future uncertainty (i.e. to conditional h steps ahead variance). As discussed in Section \@ref(adamRefitted), the more general approach is to create many in-sample model paths based on randomly generated parameters of the model. This way we can obtain a variety of states for the final in-sample observation $T$ and then use those values in the construction of final prediction intervals. The simplest and most general way of producing intervals in this case is using simulations (as discussed earlier in Subsection \@ref(ADAMForecastingPISimulations)). The intervals produced via this approach will be wider than the conventional ones, and their width will be proportional to the uncertainty around the parameters. This also means that the intervals might become too wide if the uncertainty is not captured correctly (see discussion in Section \@ref(adamRefitted)). One of the main limitations of the approach is its computational time: it will be proportional to the number of simulation paths for both refitted model and prediction intervals.
 
 It is also theoretically possible to use other approaches for the intervals construction (e.g. "empirical" one for each of the set of parameters of the model), but they would be even more computationally expensive than the approach described above and will have the limitations as discussed above (i.e. non-uniqueness of quantiles, sample size requirements).
+
+
+### Explanatory variables
+In all the cases described above, when constructing prediction intervals for model with explanatory variables, we would assume that their values are known in the future. Even if they are note provided by the user and need to be forecasted, the produced conditional expectations will be used for all the calculations. This is not entirely correct approach as was shown in Section \@ref(ADAMXConventionalConditionalMomentsRandom), but it speeds up the calculation process and typically produces adequate results.
+
+
+### Example in R
+All the types of intervals discussed in this Section are implemented for the `adam()` models in `smooth` package. In order to demonstrate how they work and differ we consider the example with ETS model on `BJSales` data:
+```{r}
+adamModel <- adam(BJsales, h=10, holdout=TRUE)
+modelType(adamModel)
+```
+The model selected above is ETS(`r substr(modelType(adamModel),1,1)`,`r substr(modelType(adamModel),2,nchar(modelType(adamModel))-1)`,`r substr(modelType(adamModel),nchar(modelType(adamModel)),nchar(modelType(adamModel)))`). In order to make sure that the parametric intervals are suitable, we can do model diagnostics (see Section \@ref(diagnostics)), shown in Figure \@ref(fig:adamModelDiagnostics).
+
+```{r adamModelDiagnostics, fig.cap="Diagnostics of the ADAM model on BJSales data."}
+par(mfcol=c(2,3))
+plot(adamModel,c(2,4,6,8,10:11))
+```
+
+The residuals of the model do not exhibit any serious issues, so, given that this is pure additive model, we can conclude that the parametric intervals would be appropriate for this situation and produce the plot with them (see Figure \@ref(fig:adamModelPIParam)).
+
+```{r adamModelPIParam, fig.cap="Parametric prediction intervals for ADAM on BJSales data."}
+plot(forecast(adamModel,h=10,interval="parametric"))
+```
+
+The only thing that these intervals do not take into account is the uncertainty about the parameters, so we can construct the respective intervals either via `reforecast()` function or using the same `forecast()`, but with the option `interval="complete"`. Note that this is a computationally expensive operation (both in terms of time and memory), so the more iterations you set up, the longer it will take and more memory it will consume.
+
+```{r adamModelPIComplete, fig.cap="Parametric prediction intervals for ADAM on BJSales data."}
+plot(forecast(adamModel,h=10,interval="complete",nsim=100))
+```
+
+The resulting complete parametric interval shown in Figure \@ref(fig:adamModelPIComplete), will not be substantially different from the parametric one. This is because the smoothing parameters of the model are high, thus the model forgets the initial states fast and the uncertainty does not propagate to the last observation as much as in the case of lower values of parameters:
+```{r}
+summary(adamModel)
+```
+
+Figure \@ref(fig:adamModelPIRefitted) demonstrates what happens with the fitted values, when we take the uncertainty into account.
+
+```{r adamModelPIRefitted, fig.cap="Refitted values for ADAM on BJSales data."}
+plot(refit(adamModel))
+```
+
+In order to make things more complicated and interesting, we introduce explanatory variable with lags and leads of the indicator `BJsales.lead`:
+
+```{r}
+BJsalesData <- cbind(as.data.frame(BJsales),xregExpander(BJsales.lead,c(-3:3)))
+colnames(BJsalesData)[1] <- "y"
+adamModelX <- adam(BJsalesData, "YYY", h=10, holdout=TRUE, regressors="select")
+```
+
+In order to make the task more complicated, I have asked the function specifically to do the selection between pure multiplicative models (see Section \@ref(ETSSelection)). In this case, we will construct several different types of prediction intervals and compare them:
+
+```{r}
+adamModelPI <- vector("list",6)
+intervalType <- c("approximate","semiparametric","nonparametric","simulated","empirical","complete")
+for(i in 1:6){
+  adamModelPI[[i]] <- forecast(adamModelX,h=10,interval=intervalType[i])
+}
+```
+
+These can be plotted in one Figure \@ref(fig:adamModelXPI6Plots).
+
+```{r adamModelXPI6Plots, fig.cap="Different prediction intervals for ADAM ETS(M,N,N) on BJSales data"}
+par(mfcol=c(3,2))
+for(i in 1:6){
+  plot(adamModelPI[[i]],main=paste0(intervalType[i]," interval"))
+}
+```
+
+The thing to notice is how the width and shape of intervals change depending on the used approach. The approximate and simulated intervals look very similar, because the selected model is ETSX(M,N,N) with standard error of `r round(sigma(adamModelX),3)` (thus the approximation works well). The complete interval is similar as well because the estimated smoothing parameters $\alpha=1$ (thus the forgetting happens instantaneously). It has a slightly different shape because the number of iterations for the interval was low (`nsim=100` for `interval="complete"` by default). The semiparametric interval is the widest as it calculates the forecast errors directly, but still uses the normal approximation. Both nonparametric and empirical are skewed, because the in-sample forecast errors followed skewed distributions (see Figure \@ref(fig:adamModelXForecastErrors)).
+
+```{r adamModelXForecastErrors, fig.cap="Distribution of in-sample multistep forecast errors from ADAM ETSX(M,N,N) model on BJSales data."}
+adamModelXForecastErrors <- rmultistep(adamModelX,h=10)
+boxplot(adamModelXForecastErrors)
+abline(h=0,col="red")
+```
+
+Analysing the plot \@ref(fig:adamModelXPI6Plots), it might be difficult to select the most appropriate type of prediction interval. But the model diagnostics (Section \@ref(diagnostics)) might help in this situation:
+
+1. If the residuals look i.i.d. and model does not omit important variables, then choose between parametric approximate and simulated intervals, choose:
+a. "parametric" in case of pure additive model,
+b. "approximate" in other cases, when the standard error is lower than 0.05 or smoothing parameters are close to zero,
+c. "simulated" if you deal with non-additive model with high values of standard error and smoothing parameters,
+d. "complete parametric" when the smoothing parameters of the model are close to zero, and you want to take the uncertainty about the parameters into account;
+2. If residuals seem to follow the assumed distribution, but are not i.i.d., then "semiparametric" approach might help. Note that this only works on samples of $T>>h$;
+3. If residuals do not follow the assumed distribution, but your sample is still longer than the forecast horizon, then use either "empirical" or "nonparametric" intervals.
+
+Finally, `forecast.adam()` will automatically select between "parametric", "approximate" and "simulated" if you ask for `interval="prediction"`.
 
 
 <!-- ## Other aspects of forecast uncertainty -->
