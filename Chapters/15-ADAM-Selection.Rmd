@@ -90,7 +90,8 @@ As you can see, this algorithm relies on the idea of Box-Jenkins methodology, bu
 
 In order to start the algorithm, you would need to provide a parameter `select=TRUE` in the `orders`. Here is an example with Box-Jenkins data:
 ```{r}
-adamARIMAModel <- adam(BJsales, model="NNN", orders=list(ar=3,i=2,ma=3,select=TRUE),
+adamARIMAModel <- adam(BJsales, model="NNN",
+                       orders=list(ar=3,i=2,ma=3,select=TRUE),
                        h=10, holdout=TRUE)
 ```
 In this example, `orders=list(ar=3,i=2,ma=3,select=TRUE)` tells function that the maximum orders to check are $p\leq 3$, $d\leq 2$ $q\leq 3$. The resulting model is `r adamARIMAModel$model` and has the following fit:
@@ -106,9 +107,11 @@ Note that when optimal initials are used, the resulting model will be parsimonio
 Based on the relation between [ARIMA and ETS](#ARIMAandETS), when selecting ARIMA orders, we do not need to test some of combinations of models. For example, if we already consider ETS(A,N,N), then we do not need to check ARIMA(0,1,1) model. The recommendations for what to skip in different circumstances have been discussed in Section \@ref(ETSAndARIMA). Still there are different ways how to construct an ETS + ARIMA model, with different sequence between ETS selection / ARIMA selection. We suggest to start with ETS, then go to the selection of ARIMA orders. This way, we are building upon the robust forecasting model and see if it can be improved further by introducing elements that are not there. Note that given the complexity of the task of estimating all parameters for ETS and ARIMA, it is advised to use backcasting (see Section \@ref(ADAMInitialisationOptAndBack)) for the initialisation of the model if a model selection is required for ETS + ARIMA. Here is an example in R:
 
 ```{r}
-adamETSARIMAModel <- adam(AirPassengers, model="PPP",
-                          orders=list(ar=c(3,3),i=c(2,1),ma=c(3,3),select=TRUE),
-                          h=10, holdout=TRUE, initial="back")
+adamETSARIMAModel <-
+    adam(AirPassengers, model="PPP",
+         orders=list(ar=c(3,3),i=c(2,1),ma=c(3,3),select=TRUE),
+         h=10, holdout=TRUE, initial="back")
+
 adamETSARIMAModel
 plot(adamETSARIMAModel,7)
 ```
@@ -145,16 +148,20 @@ SeatbeltsData <- Seatbelts[,c("drivers","kms","PetrolPrice","law")]
 We have already [had a look at this data earlier](#ETSXRExample), so we can move directly to the selection part:
 
 ```{r}
-adamModelETSXMNMSelect <- adam(SeatbeltsData,"MNM",h=12,holdout=TRUE,regressors="select")
-plot(forecast(adamModelETSXMNMSelect,h=12,interval="prediction"))
+adamModelETSXMNMSelect <- adam(SeatbeltsData, "MNM",
+                               h=12, holdout=TRUE,
+                               regressors="select")
+plot(forecast(adamModelETSXMNMSelect, h=12, interval="prediction"))
 summary(adamModelETSXMNMSelect)
 ```
 
 Note that the function might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality.
 
 Based on the summary from the model, we can see that neither `kms`, nor `PetrolPrice` improve the model in terms of AICc. We could check them manually in order to see if the selection worked out well in our case (construct sink regression as a benchmark):
+
 ```{r}
-adamModelETSXMNMSink <- adam(SeatbeltsData,"MNM",h=12,holdout=TRUE)
+adamModelETSXMNMSink <- adam(SeatbeltsData, "MNM",
+                             h=12, holdout=TRUE)
 summary(adamModelETSXMNMSink)
 ```
 
@@ -184,6 +191,7 @@ plot(adamETSCCN,7)
 ```
 
 In the example above, the function will estimate all non-seasonal models, extract AICc for each of them and then calculate weights, which we can extract for further analysis:
+
 ```{r}
 round(adamETSCCN$ICw,3)
 ```
@@ -194,6 +202,7 @@ plot(forecast(adamETSCCN,h=10,interval="prediction"))
 ```
 
 What the function does in this case is produces forecasts and prediction intervals from each model and then uses original weights to combine them. In fact, each individual model can be extracted and used separately, if needed. Here is an example with ETS(A,Ad,N) model from the estimated pool:
+
 ```{r}
 plot(forecast(adamETSCCN$models$AAdN,h=10,interval="prediction"))
 ```
@@ -201,7 +210,10 @@ plot(forecast(adamETSCCN$models$AAdN,h=10,interval="prediction"))
 Alternatively, if we do not need to consider all ETS models, we can provide the pool of models, including a model with "C" in its name. Here is an example of how pure additive models can be combined:
 
 ```{r adamETSCCNPureAdditive}
-adamETSCCNPureAdditive <- adam(BJsales, c("CCN","ANN","AAN","AAdN"), h=10, holdout=TRUE, ic="AICc")
+adamETSCCNPureAdditive <- adam(BJsales, 
+                               c("CCN","ANN","AAN","AAdN"), 
+                               h=10, holdout=TRUE,
+                               ic="AICc")
 plot(adamETSCCNPureAdditive,7)
 ```
 
@@ -221,10 +233,16 @@ BJsalesData <- cbind(as.data.frame(BJsales),
 
 # Apply models
 adamModelsPool <- vector("list",3)
-adamModelsPool[[1]] <- adam(BJsales, "ZZN", h=10, holdout=TRUE, ic="BICc")
-adamModelsPool[[2]] <- adam(BJsales, "NNN", orders=list(ar=3,i=2,ma=3,select=TRUE),
-                            h=10, holdout=TRUE, ic="BICc")
-adamModelsPool[[3]] <- adam(BJsalesData, "MMN", h=10, holdout=TRUE, ic="BICc",
+adamModelsPool[[1]] <- adam(BJsales, "ZZN",
+                            h=10, holdout=TRUE,
+                            ic="BICc")
+adamModelsPool[[2]] <- adam(BJsales, "NNN",
+                            orders=list(ar=3,i=2,ma=3,select=TRUE),
+                            h=10, holdout=TRUE,
+                            ic="BICc")
+adamModelsPool[[3]] <- adam(BJsalesData, "MMN",
+                            h=10, holdout=TRUE,
+                            ic="BICc",
                             regressors="select")
 
 # Extract BICc values
@@ -232,7 +250,8 @@ adamModelsICs <- sapply(adamModelsPool,BICc)
 
 # Calculate weights
 adamModelsICWeights <- adamModelsICs - min(adamModelsICs)
-adamModelsICWeights[] <- exp(-0.5*adamModelsICWeights)/sum(exp(-0.5*adamModelsICWeights))
+adamModelsICWeights[] <- exp(-0.5*adamModelsICWeights) /
+    sum(exp(-0.5*adamModelsICWeights))
 names(adamModelsICWeights) <- c("ETS","ARIMA","ETSX")
 round(adamModelsICWeights,3)
 ```
@@ -241,13 +260,19 @@ These weights can then be used for the combination of the fitted values, forecas
 ```{r}
 adamModelsPoolForecasts <- vector("list",3)
 for(i in 1:3){
-    adamModelsPoolForecasts[[i]] <- forecast(adamModelsPool[[i]], h=10, interval="pred")
+    adamModelsPoolForecasts[[i]] <- forecast(adamModelsPool[[i]],
+                                             h=10, interval="pred")
 }
-finalForecast <- cbind(sapply(adamModelsPoolForecasts,"[[","mean") %*% adamModelsICWeights,
-                       sapply(adamModelsPoolForecasts,"[[","lower") %*% adamModelsICWeights,
-                       sapply(adamModelsPoolForecasts,"[[","upper") %*% adamModelsICWeights)
-colnames(finalForecast) <- c("Mean","Lower bound (2.5%)", "Upper bound (97.5%)")
-finalForecast <- ts(finalForecast, start=start(adamModelsPoolForecasts[[i]]$mean))
+finalForecast <- cbind(sapply(adamModelsPoolForecasts,
+                              "[[","mean") %*% adamModelsICWeights,
+                       sapply(adamModelsPoolForecasts,
+                              "[[","lower") %*% adamModelsICWeights,
+                       sapply(adamModelsPoolForecasts,
+                              "[[","upper") %*% adamModelsICWeights)
+colnames(finalForecast) <- c("Mean", "Lower bound (2.5%)",
+                             "Upper bound (97.5%)")
+finalForecast <- ts(finalForecast,
+                    start=start(adamModelsPoolForecasts[[i]]$mean))
 finalForecast
 ```
 

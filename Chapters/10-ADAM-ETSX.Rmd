@@ -316,7 +316,7 @@ This case becomes useful in making the connection between the ETSX and the conve
 \begin{equation}
   \begin{aligned}
     & y_{t} = & l_{t-1} + s_{1,t} quarterOfYear_{1,t} + s_{2,t} quarterOfYear_{2,t} \\
-            & + s_{3,t} quarterOfYear_{3,t} + s_{4,t} quarterOfYear_{4,t} + \epsilon_t \\
+            & & + s_{3,t} quarterOfYear_{3,t} + s_{4,t} quarterOfYear_{4,t} + \epsilon_t \\
     & l_t = & l_{t-1} + \alpha \epsilon_t \\
     & s_{i,t} = & s_{i,t-1} + \left \lbrace \begin{aligned}
                   &\delta \epsilon_t \text{ for each } i \in \{1, \dots, 4\}, \text{ if } quarterOfYear_{i,t}\neq 0 \\
@@ -351,8 +351,9 @@ plot(SeatbeltsData)
 It is apparent that the `drivers` variable exhibits seasonality, but does not seem to have a trend. The type of seasonality is difficult to determine, but we will assume that it is multiplicative. So a simple ETS(M,N,M) model applies to the data will produce the following (we will withhold the last 12 observations for the forecast evaluation):
 
 ```{r}
-adamModelETSMNM <- adam(SeatbeltsData[,"drivers"],"MNM",h=12,holdout=TRUE)
-plot(forecast(adamModelETSMNM,h=12,interval="prediction"))
+adamModelETSMNM <- adam(SeatbeltsData[,"drivers"], "MNM",
+                        h=12, holdout=TRUE)
+plot(forecast(adamModelETSMNM, h=12, interval="prediction"))
 ```
 
 This simple model already does a fine job in fitting and forecasting the data, although the forecast is biased and is lower than needed because of the sudden drop in the level of series, which can only be explained by the introduction of the new law in the UK in 1983, making the seatbelts compulsory for drivers. Due to the sudden drop, the smoothing parameter for the level of series is higher than needed, leading to wider intervals and less accurate forecasts, here is the output of the model:
@@ -367,9 +368,9 @@ spread(SeatbeltsData)
 
 The plot on Figure \@ref(fig:driversSpread) shows that there is a negative relation between `kms` and `drivers`: the higher the distance driven, the lower the total of car drivers killed or seriously injuried. A similar relation is observed between the PetrolPrice and drivers (when the prices are high, people tend to drive less, thus causing less incidents). Interestingly, the increase of both variables causes the variance of the response variable to decrease (heteroscedasticity effect). Using multiplicative error model and including the variables in logarithms in this case might address this potential issue. Note that we do not need to take the logarithm of `drivers`, as we already use the model with multiplicative error. Finally, the legislation of a new law seems to have caused the decrease in the number of causalities. In order to have a better model in terms of explanatory and predictive power, we should include all three variables in the model. This is how we can make it in ADAM:
 ```{r}
-adamModelETSXMNM <- adam(SeatbeltsData,"MNM",h=12,holdout=TRUE,
+adamModelETSXMNM <- adam(SeatbeltsData, "MNM", h=12, holdout=TRUE,
                          formula=drivers~log(kms)+log(PetrolPrice)+law)
-plot(forecast(adamModelETSXMNM,h=12,interval="prediction"))
+plot(forecast(adamModelETSXMNM, h=12, interval="prediction"))
 ```
 
 The parameter `formula` in general is not compulsory and can either be substituted by `formula=drivers~.` or dropped completely - the function would fit the model of the first variable in the matrix from everything else. We need it in our case, because we introduce log-transformations of some of explanatory variables. The forecast from the second model is slightly more accurate and, what is even more important, the prediction interval is narrower, because now the model takes the external information into account. Here is the summary of the second model:
@@ -380,9 +381,10 @@ adamModelETSXMNM
 
 The model with explanatory variables is already more precise than the simple univariate ETS(M,N,M) (e.g. MASE on the holdout is lower), but we could try introducing the update of the parameters for the explanatory variables, just to see how it works (it might be unnecessary for this data):
 ```{r}
-adamModelETSXMNMD <- adam(SeatbeltsData,"MNM",h=12,holdout=TRUE,
-                          formula=drivers~log(kms)+log(PetrolPrice)+law,regressors="adapt")
-plot(forecast(adamModelETSXMNMD,h=12,interval="prediction"))
+adamModelETSXMNMD <- adam(SeatbeltsData, "MNM", h=12, holdout=TRUE,
+                          formula=drivers~log(kms)+log(PetrolPrice)+law,
+                          regressors="adapt")
+plot(forecast(adamModelETSXMNMD, h=12, interval="prediction"))
 ```
 
 In this specific case, the difference between the ETSX and ETSX{D} models is infinitesimal in terms of the accuracy of final forecasts and prediction intervals. Here is the output of the model:
@@ -400,9 +402,15 @@ Based on that, we can point out that the introduction of the law reduced on aver
 
 Finally, `adam()` has some shortcuts in cases, when a matrix of variables is provided with no formula, assuming that the necessary expansion has already been done. This leads to the decrease in computational time of the function and becomes especially useful when working on large samples of data. Here is an example with ETSX(M,N,N):
 ```{r eval=FALSE}
-SeatbeltsDataExpanded <- ts(model.frame(drivers~log(kms)+log(PetrolPrice)+law,
-                                               SeatbeltsData),
-                            start=start(SeatbeltsData), frequency=frequency(SeatbeltsData))
-colnames(SeatbeltsDataExpanded) <- make.names(colnames(SeatbeltsDataExpanded))
-adamModelETSXMNMExpanded <- adam(SeatbeltsDataExpanded,"MNM",lags=12,h=12,holdout=TRUE)
+# Create matrix for the model
+SeatbeltsDataExpanded <-
+  ts(model.frame(drivers~log(kms)+log(PetrolPrice)+law,
+              SeatbeltsData),
+  start=start(SeatbeltsData), frequency=frequency(SeatbeltsData))
+# Fix the names of variables
+colnames(SeatbeltsDataExpanded) <-
+  make.names(colnames(SeatbeltsDataExpanded))
+# Apply the model
+adamModelETSXMNMExpanded <- adam(SeatbeltsDataExpanded, "MNM",
+                                 lags=12, h=12, holdout=TRUE)
 ```

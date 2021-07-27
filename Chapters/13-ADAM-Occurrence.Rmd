@@ -37,7 +37,8 @@ where $\hat{p}_t$ is the in-sample conditional one step ahead expectation of the
 
 In order to demonstrate the difference between specific types of oETS models, we will use the following artificial data:
 ```{r artificialData}
-y <- ts(c(rpois(20,0.25),rpois(20,0.5),rpois(20,1),rpois(20,2),rpois(20,3),rpois(20,5)))
+y <- ts(c(rpois(20,0.25), rpois(20,0.5), rpois(20,1),
+          rpois(20,2), rpois(20,3), rpois(20,5)))
 ```
 
 Here how the data looks like:
@@ -67,7 +68,8 @@ where $T_1$ is the number of non-zero observations and $T$ is the number of all 
 The occurrence part of the model, oETS$_F$ can be constructed using `oes()` function from `smooth` package:
 
 ```{r oETSFExample1}
-oETSFModel1 <- oes(y, occurrence="fixed", h=10, holdout=TRUE)
+oETSFModel1 <- oes(y, h=10, holdout=TRUE,
+                   occurrence="fixed")
 oETSFModel1
 plot(oETSFModel1)
 ```
@@ -110,7 +112,8 @@ Finally, in order to estimate the model \@ref(eq:oETSOddsMNNEstimated), the like
 
 The occurrence part of the model oETS$_O$ is constructed using the very same `oes()` function, but also allows specifying the ETS model to use. For example, here is the oETS$_O$(M,M,N) model:
 ```{r oETSOExample1}
-oETSOModel <- oes(y, model="MMN", occurrence="odds-ratio", h=10, holdout=TRUE)
+oETSOModel <- oes(y, model="MMN", h=10, holdout=TRUE,
+                  occurrence="odds-ratio")
 oETSOModel
 plot(oETSOModel)
 ```
@@ -152,7 +155,8 @@ where $e_{b,t}$ is the proxy for the unobservable error term $\epsilon_{b,t}$ an
 
 The function `oes()` implements the oETS$_I$ model as well. For example, here is the oETS$_I$(M,M,N) model:
 ```{r oETSIExample1}
-oETSIModel <- oes(y, model="MMN", occurrence="inverse-odds-ratio", h=10, holdout=TRUE)
+oETSIModel <- oes(y, model="MMN", h=10, holdout=TRUE,
+                  occurrence="inverse-odds-ratio")
 oETSIModel
 plot(oETSIModel)
 ```
@@ -227,7 +231,8 @@ where all the parameters have already been defined in previous subsections. More
 
 There is a separate function for the oETS$_G$ model, called `oesg()`. It has twice more parameters than `oes()`, because it allows fine tuning of the models for the both variables $a_t$ and $b_t$. This gives an additional flexibility. For example, here is how we can use ETS(M,N,N) for the $a_t$ and ETS(A,A,N) for the $b_t$, resulting in oETS$_G$(M,N,N)(A,A,N):
 ```{r oETSGExample1}
-oETSGModel1 <- oesg(y, modelA="MNN", modelB="AAN", h=10, holdout=TRUE)
+oETSGModel1 <- oesg(y, modelA="MNN", modelB="AAN",
+                    h=10, holdout=TRUE)
 oETSGModel1
 plot(oETSGModel1)
 ```
@@ -299,7 +304,8 @@ When it comes to initialising the oETS$_D$ model, the values are calculated dire
 
 Here's an example of the application of the oETS$_D$(M,M,N) to the same artificial data:
 ```{r oETSDExample1}
-oETSDModel <- oes(y, model="MMN", occurrence="d", h=10, holdout=TRUE)
+oETSDModel <- oes(y, model="MMN", h=10, holdout=TRUE,
+                  occurrence="direct")
 oETSDModel
 plot(oETSDModel)
 ```
@@ -544,16 +550,18 @@ plot(y)
 This can be done using `adam()` function from `smooth` package, defining the type of occurrence to use. We will try several options and select the one that has the lowest AICc:
 ```{r}
 adamModelsiETS <- vector("list",4)
-adamModelsiETS[[1]] <- adam(y, "MMdN", occurrence="odds-ratio",
-                            h=10, holdout=TRUE)
-adamModelsiETS[[2]] <- adam(y, "MMdN", occurrence="inverse-odds-ratio",
-                            h=10, holdout=TRUE)
-adamModelsiETS[[3]] <- adam(y, "MMdN", occurrence="direct",
-                            h=10, holdout=TRUE)
-adamModelsiETS[[4]] <- adam(y, "MMdN", occurrence="general",
-                            h=10, holdout=TRUE)
-adamModelsiETSAICcs <- setNames(sapply(adamModelsiETS,AICc),
-                                c("odds-ratio","inverse-odds-ratio","direct","general"))
+adamModelsiETS[[1]] <- adam(y, "MMdN", h=10, holdout=TRUE,
+                            occurrence="odds-ratio")
+adamModelsiETS[[2]] <- adam(y, "MMdN", h=10, holdout=TRUE,
+                            occurrence="inverse-odds-ratio")
+adamModelsiETS[[3]] <- adam(y, "MMdN", h=10, holdout=TRUE,
+                            occurrence="direct")
+adamModelsiETS[[4]] <- adam(y, "MMdN", h=10, holdout=TRUE,
+                            occurrence="general")
+adamModelsiETSAICcs <-
+    setNames(sapply(adamModelsiETS,AICc),
+             c("odds-ratio", "inverse-odds-ratio",
+               "direct", "general"))
 adamModelsiETSAICcs
 ```
 
@@ -574,10 +582,12 @@ plot(adamModelsiETS[[i]]$occurrence)
 Depending on the generated data, there might be issues in the ETS(M,Md,N) model for demand sizes, if the smoothing parameters are large. So, we can try out the ADAM logARIMA(1,1,2) to see how it compares with this model. Given that ARIMA is not yet implemented for the occurrence part of the model, we need to construct it separately and then use in `adam()`:
 
 ```{r}
-oETSModel <- oes(y, "MMdN", occurrence=names(adamModelsiETSAICcs)[i],
-                 h=10, holdout=TRUE)
-adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(1,1,2),
-                        distribution="dlnorm", h=10, holdout=TRUE)
+oETSModel <- oes(y, "MMdN", h=10, holdout=TRUE,
+                 occurrence=names(adamModelsiETSAICcs)[i])
+adamModeliARIMA <- adam(y, "NNN", h=10, holdout=TRUE,
+                        occurrence=oETSModel,
+                        orders=c(1,1,2),
+                        distribution="dlnorm")
 adamModeliARIMA
 plot(adamModeliARIMA,7)
 ```
@@ -585,8 +595,8 @@ plot(adamModeliARIMA,7)
 Comparing the iARIMA model with the previous iETS based on AIC would not be fair, because as soon as the occurrence model is provided to `adam()`, he does not count the parameters estimated in that part towards the overal number of estimated parameters. In order to make the comparison fair, we need to estimate ADAM iETS in the following way:
 
 ```{r}
-adamModelsiETS[[i]] <- adam(y, "MMdN", occurrence=oETSModel,
-                            h=10, holdout=TRUE)
+adamModelsiETS[[i]] <- adam(y, "MMdN", h=10, holdout=TRUE,
+                            occurrence=oETSModel)
 adamModelsiETS[[i]]
 plot(adamModelsiETS[[i]],7)
 ```
@@ -594,8 +604,9 @@ plot(adamModelsiETS[[i]],7)
 Comparing information criteria, the iETS model is more appropriate for this data. But this might be due to a different distributional assumptions and difficulties estimating ARIMA model. If you want to experiment more with ADAM iARIMA, you might try [fine tuning](#ADAMInitialisationOptAndBack) it for the data either by increasing the `maxeval` or changing the initialisation, for example:
 
 ```{r}
-adamModeliARIMA <- adam(y, "NNN", occurrence=oETSModel, orders=c(1,1,2),
-                        distribution="dgamma", h=10, holdout=TRUE, initial="back")
+adamModeliARIMA <- adam(y, "NNN", h=10, holdout=TRUE,
+                        occurrence=oETSModel, orders=c(1,1,2),
+                        distribution="dgamma", initial="back")
 adamModeliARIMA
 plot(adamModeliARIMA,7)
 ```
@@ -603,7 +614,8 @@ plot(adamModeliARIMA,7)
 Finally, we can produce point and interval forecasts from either of the model via the `forecast()` method. Here is an example:
 
 ```{r}
-adamiETSForecasts <- forecast(adamModelsiETS[[i]],h=10,interval="prediction",nsim=10000)
+adamiETSForecasts <- forecast(adamModelsiETS[[i]], h=10,
+                              interval="prediction", nsim=10000)
 plot(adamiETSForecasts)
 ```
 

@@ -122,16 +122,19 @@ In order to see how ADAM can be applied to high frequency data, we will use `tay
 ```{r}
 library(zoo)
 y <- zoo(forecast::taylor,
-         order.by=as.POSIXct("2000/06/05")+(c(1:length(forecast::taylor))-1)*60*30)
+         order.by=as.POSIXct("2000/06/05")+
+           (c(1:length(forecast::taylor))-1)*60*30)
 plot(y)
 ```
 
 Note that when you have data with [DST or Leap years](#MultipleFrequenciesDSTandLeap), `adam()` will automatically correct the seasonal lags if your data contains specific dates (as `zoo` objects have, for example). The series above does not exhibit an obvious trend, but has two seasonal cycles: half-hour of day and day of week. Seasonality seems to be multiplicative. We will try several different models and see how they compare. In all the cases below, we will use backcasting as initialisation of the model. We will use the last 336 observations ($48 \times 7$) as the holdout, just to see whether models perform adequately or not.
 
 First, it is ADAM ETS(M,N,M) with `lags=c(48,7*48)`:
+
 ```{r}
-adamModelETSMNM <- adam(y, "MNM", lags=c(1,48,336), initial="back",
-                        h=336, holdout=TRUE)
+adamModelETSMNM <- adam(y, "MNM", lags=c(1,48,336),
+                        h=336, holdout=TRUE,
+                        initial="back")
 adamModelETSMNM
 plot(adamModelETSMNM,7)
 ```
@@ -139,10 +142,13 @@ plot(adamModelETSMNM,7)
 As you might notice the model was constructed in `r round(adamModelETSMNM$timeElapsed,2)` seconds, and while it might not be the most accurate model for the data, it fits the data well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of multistep estimators, for example [GTMSE](#multistepLossesGTMSE):
 
 ```{r eval=FALSE}
-adamModelETSMNMGTMSE <- adam(y, "MNM", lags=c(1,48,336), initial="back",
-                             h=336, holdout=TRUE, loss="GTMSE")
+adamModelETSMNMGTMSE <- adam(y, "MNM", lags=c(1,48,336),
+                             h=336, holdout=TRUE,
+                             initial="back", loss="GTMSE")
 ```
+
 This time the function will take much more time (on my computer it takes around 1.5 minutes), but hopefully will produce more accurate forecasts due to shrinkage of smoothing parameters:
+
 ```{r}
 adamModelETSMNMGTMSE
 ```
@@ -150,8 +156,10 @@ adamModelETSMNMGTMSE
 Comparing, for example, RMSSE of the two models, we can conclude that the one with TMSE was more accurate than the one estimated using the conventional likelihood.
 
 Another potential way of improvement for the model is the inclusion of AR(1) term, as for example done by @Taylor2010. This will take more time, but might lead to some improvements in the accuracy:
+
 ```{r eval=FALSE}
-adamModelETSMNMAR <- adam(y, "MNM", lags=c(1,48,336), initial="back", orders=c(1,0,0),
+adamModelETSMNMAR <- adam(y, "MNM", lags=c(1,48,336),
+                          initial="back", orders=c(1,0,0),
                           h=336, holdout=TRUE, maxeval=1000)
 ```
 
@@ -166,6 +174,7 @@ In this specific example, we see that the ADAM ETS(M,N,M)+AR(1) leads to a small
 
 ### ADAM ETSX
 Another option of dealing with multiple seasonalities, as discussed above, is ETSX model. We start with a static model, which captures half-hours of day via its seasonal component and days of week frequency via explanatory variable. We will use `temporaldummy()` function from `greybox` package for this. This function works much better, when the data contains proper time stamps and, for example, is of class `zoo` or `xts`:
+
 ```{r}
 x1 <- temporaldummy(y,type="day",of="week",factors=TRUE)
 x2 <- temporaldummy(y,type="hour",of="day",factors=TRUE)
@@ -173,6 +182,7 @@ taylorData <- data.frame(y=y,x1=x1,x2=x2)
 ```
 
 This function is especially useful when dealing with DST and Leap years (see Section \@ref(MultipleFrequenciesDSTandLeap)), because it will encode the dummy variables based on dates, allowing to sidestep the issue with changing frequency in the data. We can now fit the ADAM ETSX model with dummy variables for days of week:
+
 ```{r eval=FALSE}
 adamModelETSXMNN <- adam(taylorData, "MNN", h=336, holdout=TRUE,
                          initial="back")
@@ -192,7 +202,8 @@ plot(adamModelETSXMNN$states[,1], ylab="Level")
 
 As we see, the level component not only contains the level, but also absorbed seasonality, which causes the issue with forecasting accuracy. However, the obtained value did not happen due to randomness - this is what the model does, when seasonality is fixed and is not allowed to evolve over time. In order to reduce the sensitivity of the model, we can shrink the smoothing parameter using a multistep estimator (discussed in Section \@ref(multistepLosses)). Note however that these estimators are typically slower than the conventional ones, so they might take more computational time:
 ```{r eval=FALSE}
-adamModelETSXMNNGTMSE <- adam(taylorData, "MNN", h=336, holdout=TRUE,
+adamModelETSXMNNGTMSE <- adam(taylorData, "MNN",
+                              h=336, holdout=TRUE,
                               initial="back", loss="GTMSE")
 adamModelETSXMNNGTMSE
 ```
@@ -203,8 +214,10 @@ adamModelETSXMNNGTMSE
 
 While the performance of model with GTMSE has improved due to the shrinkage of $\alpha$ to zero, the seasonal states are still deterministic and do not adapt to the changes in data. We could adapt them via `regressors="adapt"`, but then we would be constructing the ETS(M,N,M)[48,336] model but in a less efficient way. Alternatively, we could assume that one of the seasonal states is deterministic and, for example, construct the ETSX(M,N,M) model:
 ```{r eval=FALSE}
-adamModelETSXMNMGTMSE <- adam(taylorData, "MNM", lags=48, h=336, holdout=TRUE,
-                              initial="back", loss="GTMSE", formula=y~x1)
+adamModelETSXMNMGTMSE <- adam(taylorData, "MNM", lags=48,
+                              h=336, holdout=TRUE,
+                              initial="back", loss="GTMSE",
+                              formula=y~x1)
 adamModelETSXMNMGTMSE
 plot(adamModelETSXMNMGTMSE,7)
 ```

@@ -21,7 +21,8 @@ Here is an example of how this method works on different time series. We start w
 ```{r SESExample1}
 y <- rnorm(100,100,10)
 ourModel <- es(y, model="ANN", h=10, persistence=0)
-plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+plot(ourModel, 7, main=paste0("SES with alpha=",
+                              ourModel$persistence))
 ```
 
 The SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Here is an example:
@@ -29,31 +30,40 @@ The SES works well in this case, capturing the deterministic level of the series
 ```{r SESExample2}
 y <- c(rnorm(50,100,10),rnorm(50,130,10))
 ourModel <- es(y, model="ANN", h=10, persistence=0.1)
-plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+plot(ourModel, 7, main=paste0("SES with alpha=",
+                              ourModel$persistence))
 ```
 
 With $\hat{\alpha}=0.1$, it manages to get to the new level, but now the method starts adapting to noise a little bit - it follows the peaks and troughs and repeats them, but with much smaller magnitude. If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise:
+
 ```{r echo=FALSE}
 par(mfcol=c(3,1))
 ourModel <- es(y, model="ANN", h=10, persistence=0.2)
-plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+plot(ourModel, 7, main=paste0("SES with alpha=",
+                              ourModel$persistence))
 ourModel <- es(y, model="ANN", h=10, persistence=0.3)
-plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+plot(ourModel, 7, main=paste0("SES with alpha=",
+                              ourModel$persistence))
 ourModel <- es(y, model="ANN", h=10, persistence=0.5)
-plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+plot(ourModel, 7, main=paste0("SES with alpha=",
+                              ourModel$persistence))
 ```
 
 If we set $\hat{\alpha}=1$, we will end up with Naive forecasting method, which is not appropriate for our example:
+
 ```{r echo=FALSE}
 par(mfcol=c(1,1))
 ourModel <- es(y, model="ANN", h=10, persistence=1)
-plot(ourModel, 7, main=paste0("SES with alpha=",ourModel$persistence))
+plot(ourModel, 7, main=paste0("SES with alpha=",
+                              ourModel$persistence))
 ```
 
 So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE:
+
 ```{r SESExample3}
 ourModel <- es(y, model="ANN", h=10, loss="MSE")
-plot(ourModel, 7, main=paste0("SES with alpha=",round(ourModel$persistence,3)))
+plot(ourModel, 7, main=paste0("SES with alpha=",
+                              round(ourModel$persistence,3)))
 ```
 
 This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$, but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting.
@@ -76,8 +86,10 @@ or equivalently:
   (\#eq:BrownMethodExponential3)
 \end{equation}
 Now each actual observation has a weight infront of it. For the most recent observation it is $\hat{\alpha}$, for the previous one it is $\hat{\alpha} (1 -\hat{\alpha})$, then $\hat{\alpha} (1 -\hat{\alpha})^2$ etc. These form the geometric series or an exponential curve. Here, for example, how it looks, when $\hat{\alpha} =0.25$ for a sample of 30 observations:
+
 ```{r}
-plot(0.25*(1-0.25)^c(0:30), type="b", xlab="Time lags", ylab="Weights")
+plot(0.25*(1-0.25)^c(0:30), type="b", 
+     xlab="Time lags", ylab="Weights")
 ```
 
 This explains the name "exponential". The term "smoothing" comes from the idea that the parameter $\hat{\alpha}$ should be selected so that the method smoothes the original time series.
@@ -129,6 +141,7 @@ cancelling out $e_t$ and shifting everything by one step ahead, we obtain the er
 But now, the main benefit of having the model \@ref(eq:ETSANN) instead of just the method \@ref(eq:SESErrorCorrection) is in having a flexible framework, which allows adding other components, selecting the most appropriate ones, estimating parameters in a [consistent](#intro) way, producing prediction intervals etc.
 
 In order to see the data that corresponds to the ETS(A,N,N) we can use `sim.es()` function from smooth package. Here are several examples with different smoothing parameters:
+
 ```{r}
 y <- vector("list",6)
 initial <- 1000
@@ -157,16 +170,19 @@ When it comes to the application of this model to the data, the point forecast c
 this holds because it is [assumed](#assumptions) that $\text{E}(\epsilon_t)=0$, which implies that the conditional h steps ahead expectation of the level in the model is $\text{E}(l_{t+h}|t)=l_t+\alpha\sum_{j=1}^{h-1}\epsilon_{t+j} = l_t$.
 
 Here is an example with automatic parameter estimation in ETS(A,N,N) using `es()` function from `smooth` package:
+
 ```{r ETSANNExample}
 y <- sim.es("ANN", 120, 1, 12, persistence=0.3, initial=1000)
 es(y$data, "ANN", h=12, interval=TRUE, holdout=TRUE, silent=FALSE)
 ```
 
 As we see, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected, because we deal with an in-sample estimation. Also, notice that with such a high smoothing parameter, the prediction interval is widening with the increase of the forecast horizon. If the smoothing parameter would be lower, then the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with $\alpha=0.01$:
+
 ```{r ETSANNExamplealpha0.1}
 ourModel <- es(y$data, "ANN", h=12, interval=TRUE,
                holdout=TRUE, silent=FALSE, persistence=0.01)
 ```
+
 In this case, the prediction interval is wider than needed and the forecast is biased - the model does not keep up to the fast changing time series. So, it is important to correctly estimate the smoothing parameters not only to approximate the data, but also to produce less biased point forecast and more appropriate prediction interval.
 
 ### ETS(M,N,N)
@@ -219,9 +235,11 @@ Finally, the point forecast of ETS(M,N,N) corresponds to the conditional h steps
 \end{equation}
 
 And here is an example with the ETS(M,N,N) data, which is very similar to the ETS(A,N,N) one:
+
 ```{r ETSMNNExample}
 y <- sim.es("MNN", 120, 1, 12, persistence=0.3, initial=1000)
-ourModel <- es(y$data, "MNN", h=12, interval=TRUE, holdout=TRUE, silent=FALSE)
+ourModel <- es(y$data, "MNN", h=12, holdout=TRUE,
+               interval=TRUE, silent=FALSE)
 ourModel
 ```
 
@@ -244,6 +262,7 @@ This is also sometimes known as local trend model and is formulated as ETS(A,N,N
 where $\beta$ is the smoothing parameter for the trend component. It has a similar idea as ETS(A,N,N): the states evolve over time, and the speed of their change depends on the values of $\alpha$ and $\beta$. 
 
 Here is an example of the data that corresponds to the ETS(A,A,N) model:
+
 ```{r}
 y <- sim.es("AAN", 120, 1, 12, persistence=c(0.3,0.1),
             initial=c(1000,20), mean=0, sd=20)
@@ -258,14 +277,17 @@ The point forecast h steps ahead from this model is a straight line with a slope
   (\#eq:ETSAANForecast)
 \end{equation}
 This becomes apparent if one takes the conditional expectations E$(l_{t+h}|t)$ and E$(b_{t+h}|t)$ in the second and third equations of \@ref(eq:ETSAAN). Graphically it will look like this:
+
 ```{r}
 esModel <- es(y, h=10, silent=FALSE)
 ```
 
 If you want to experiment with the model and see how its parameters influence the fit and forecast, you can use the following R code:
+
 ```{r eval=FALSE}
 esModel <- es(y$data, h=10, silent=FALSE, persistence=c(0.2,0.1))
 ```
+
 where `persistence` is the vector of smoothing parameters (first $\alpha$, then $\beta$).
 
 
@@ -280,6 +302,7 @@ This is the model that underlies Damped trend method [@Roberts1982]:
   (\#eq:ETSAAdN)
 \end{equation}
 where $\phi$ is the dampening parameter, typically lying between 0 and 1. If it is equal to zero, then the model \@ref(eq:ETSAAdN) reduces to \@ref(eq:ETSANN). If it is equal to one, then it becomes equivalent to \@ref(eq:ETSAAN). The dampening parameter slows down the trend, making it non-linear. The typical data that corresponds to ETS(A,Ad,N) is:
+
 ```{r}
 y <- sim.es("AAdN", 120, 1, 12, persistence=c(0.3,0.1),
             initial=c(1000,20), phi=0.95, mean=0, sd=20)
@@ -292,6 +315,7 @@ The point forecast from this model is a bit more complicated:
   (\#eq:ETSAANForecast)
 \end{equation}
 It corresponds to the slowing down trajectory:
+
 ```{r}
 esModel <- es(y, h=10, silent=FALSE)
 ```
@@ -309,6 +333,7 @@ Finaly, this is an exotic model with additive error and trend, but multiplicativ
   (\#eq:ETSAAM)
 \end{equation}
 where $s_t$ is the seasonal component and $\gamma$ is its smoothing parameter. This is one of the potentially unstable models, which due to the mix of components might produce unreasonable forecasts. Still, it might work on the strictly positive high level data. Here how the data for this model can look like:
+
 ```{r}
 y <- sim.es("AAM", 120, 1, 4, persistence=c(0.3,0.1,0.2),
             initial=c(1000,20), initialSeason=c(0.9,1.1,0.8,1.2),

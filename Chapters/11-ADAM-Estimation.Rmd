@@ -204,17 +204,23 @@ The MLE of parameters of ADAM ETS models makes them comparable with each other i
 `adam()` function in smooth package has the parameter `distribution`, which allows selecting between several options discussed in this chapter, based on the respective density functions (see the list above with `dnorm()` etc). Here is a brief example in R with ADAM ETS(M,A,M) applied to the `AirPassengers` data with several distributions:
 ```{r}
 adamModel <- vector("list",5)
-adamModel[[1]] <- adam(AirPassengers, "MAM", distribution="dnorm", h=12, holdout=TRUE)
-adamModel[[2]] <- adam(AirPassengers, "MAM", distribution="dlaplace", h=12, holdout=TRUE)
-adamModel[[3]] <- adam(AirPassengers, "MAM", distribution="dgnorm", h=12, holdout=TRUE)
-adamModel[[4]] <- adam(AirPassengers, "MAM", distribution="dinvgauss", h=12, holdout=TRUE)
-adamModel[[5]] <- adam(AirPassengers, "MAM", distribution="dgamma", h=12, holdout=TRUE)
+adamModel[[1]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dnorm")
+adamModel[[2]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dlaplace")
+adamModel[[3]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dgnorm")
+adamModel[[4]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dinvgauss")
+adamModel[[5]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dgamma")
 ```
 
 In this case, the function will select the most appropriate ETS model for each distribution. We can see what was selected in each case and compare the models using information criteria:
 
 ```{r}
-setNames(sapply(adamModel, AICc), c("dnorm","dlaplace","dgnorm","dinvgauss","dgamma"))
+setNames(sapply(adamModel, AICc),
+         c("dnorm","dlaplace","dgnorm","dinvgauss","dgamma"))
 ```
 We could compare the performance of models in detail, but, for the purposes of this demonstration, it should suffice to say that among the four models considered above, based on the AICc value, the model with the Normal distribution should be preferred. This process of fit and selection can be automated using `auto.adam()` model, which accepts the vector of distributions to test and by default would consider `distribution=c("dnorm", "dlaplace", "ds", "dgnorm", "dlnorm", "dinvgauss", "dgamma")`:
 ```{r eval=FALSE}
@@ -288,33 +294,43 @@ where `actual` is the vector of actual values $y_t$, `fitted` is the estimate of
 `adam()` has two parameters, one regulating the assumed `distribution`, and another one, regulating how the model will be estimated, what `loss` will be used for these purposes. Here are examples with combinations of different losses and an assumed Inverse Gaussian distribution for ETS(M,A,M) on `AirPassengers` data. We start with MSE, MAE and HAM:
 ```{r}
 adamModel <- vector("list",6)
-names(adamModel) <- c("likelihood","MSE", "MAE", "HAM", "LASSO", "Huber")
-adamModel[[1]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
-                       h=12, holdout=TRUE, loss="likelihood")
-adamModel[[2]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
-                       h=12, holdout=TRUE, loss="MSE")
-adamModel[[3]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
-                       h=12, holdout=TRUE, loss="MAE")
-adamModel[[4]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
-                       h=12, holdout=TRUE, loss="HAM")
+names(adamModel) <-
+    c("likelihood", "MSE", "MAE", "HAM", "LASSO", "Huber")
+adamModel[[1]] <- adam(AirPassengers, "MAM",h=12, holdout=TRUE,
+                       distribution="dinvgauss",
+                       loss="likelihood")
+adamModel[[2]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dinvgauss",
+                       loss="MSE")
+adamModel[[3]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dinvgauss",
+                       loss="MAE")
+adamModel[[4]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dinvgauss",
+                       loss="HAM")
 ```
 
 In these three cases the models, assuming the same distribution for the error term are estimated using MSE, MAE and HAM. Their smoothing parameters should differ, with MSE producing fitted values closer to the mean, MAE - closer to the median and HAM - closer to the mode (but not exactly the mode) of the distribution.
 
 In addition, we introduce ADAM ETS(M,A,M) estimated using LASSO with arbitrarily selected $\lambda=0.1$:
+
 ```{r}
-adamModel[[5]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
-                       h=12, holdout=TRUE, loss="LASSO", lambda=0.1)
+adamModel[[5]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dinvgauss",
+                       loss="LASSO", lambda=0.1)
 ```
+
 And, finally, we estimate the same model using a custom loss, which in this case is Huber loss with the threshold of 1.345:
+
 ```{r}
 # Huber loss with a threshold of 1.345
 lossFunction <- function(actual, fitted, B){
   errors <- actual-fitted;
   return(sum(errors[errors<=1.345]^2) + sum(abs(errors)[errors>1.345]));
 }
-adamModel[[6]] <- adam(AirPassengers, "MAM", distribution="dinvgauss",
-                       h=12, holdout=TRUE, loss=lossFunction)
+adamModel[[6]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
+                       distribution="dinvgauss",
+                       loss=lossFunction)
 ```
 
 Now we can compare the performance of the six models. First, we can compare the smoothing parameters:
@@ -332,6 +348,7 @@ round(sapply(adamModel,"[[","accuracy"),3)[c("ME","MAE","MSE"),]
 ```
 
 And we can also produce forecasts from them and plot those forecasts for the visual inspection:
+
 ```{r fig.width=8, fig.height=10}
 adamModelForecasts <- lapply(adamModel,forecast, h=12, interval="prediction")
 layout(matrix(c(1:6),3,2,byrow=TRUE))
@@ -447,7 +464,8 @@ In order to see how different estimators perform, we will us Box-Jenkins Sales d
 adamModel <- vector("list",6)
 names(adamModel) <- c("MSE","MSEh","TMSE","GTMSE","MSCE","GPL")
 for(i in 1:length(adamModel)){
-  adamModel[[i]] <- adam(BJsales, "AAN", loss=names(adamModel)[i], h=10, holdout=TRUE)
+  adamModel[[i]] <- adam(BJsales, "AAN", h=10, holdout=TRUE,
+                         loss=names(adamModel)[i])
 }
 ```
 

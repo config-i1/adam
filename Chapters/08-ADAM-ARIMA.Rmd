@@ -392,7 +392,8 @@ y <- vector("numeric", 20)
 y[1:5] <- c(97,87,85,94,95)
 phi <- c(0.6,0.8)
 for(i in 6:length(y)){
-    y[i] <- phi[1] * y[i-1] + phi[2] * y[i-4] - phi[1] * phi[2] * y[i-5]
+    y[i] <- phi[1] * y[i-1] + phi[2] * y[i-4] -
+      phi[1] * phi[2] * y[i-5]
 }
 plot(y, type="l", xlab="horizon", ylab="Forecast")
 ```
@@ -406,7 +407,8 @@ y <- vector("numeric", 100)
 y[1:5] <- c(97,87,85,94,95)
 phi <- c(0.6,0.8)
 for(i in 6:length(y)){
-    y[i] <- phi[1] * y[i-1] + phi[2] * y[i-4] - phi[1] * phi[2] * y[i-5] + 8
+    y[i] <- phi[1] * y[i-1] + phi[2] * y[i-4] -
+      phi[1] * phi[2] * y[i-5] + 8
 }
 plot(y, type="l", xlab="horizon", ylab="Forecast")
 ```
@@ -418,7 +420,7 @@ In case of the model with the differences, the constant would have a two-fold ef
 \end{equation}
 which can be reformulated as (after opening brackets and moving elements to the right hand side):
 \begin{equation}
-  y_t = \phi_{1} y_{t-1} + (1+\phi_{4,1}) y_{t-4} + - (1+\phi_{4,1}) \phi_{1} y_{t-5} - \phi_{4,1} y_{t-8} + \phi_1 \phi_{4,1} y_{t-9} + a_0 + \epsilon_t .
+  y_t = \phi_{1} y_{t-1} + (1+\phi_{4,1}) y_{t-4} - (1+\phi_{4,1}) \phi_{1} y_{t-5} - \phi_{4,1} y_{t-8} + \phi_1 \phi_{4,1} y_{t-9} + a_0 + \epsilon_t .
   (\#eq:SARIMA101110Example02)
 \end{equation}
 This formula can then be used to see, what the trajectory from such model will be:
@@ -427,8 +429,9 @@ y <- vector("numeric", 100)
 y[1:9] <- c(96,87,85,94,97,88,86,95,98)
 phi <- c(0.6,0.8)
 for(i in 10:length(y)){
-    y[i] <- phi[1] * y[i-1] + (1+phi[2]) * y[i-4] - (1+ phi[2]) *phi[1] * y[i-5] -
-      phi[2] * y[i-8] + phi[1] * phi[2] * y[i-9] + 0.1
+    y[i] <- phi[1] * y[i-1] + (1+phi[2]) * y[i-4] -
+      (1+ phi[2]) *phi[1] * y[i-5] - phi[2] * y[i-8] +
+      phi[1] * phi[2] * y[i-9] + 0.1
 }
 plot(y, type="l", xlab="horizon", ylab="Forecast")
 ```
@@ -683,10 +686,14 @@ plot(BJsales)
 It seems to exhibit the trend in the data, so we can consider ARIMA(1,1,2), ARIMA(0,2,2) and ARIMA(1,1,1). We do not consider models with drift in this example, because they would imply the same slope over time, which does not seem to be the case here:
 ```{r}
 adamModelARIMA <- vector("list",3)
-adamModelARIMA[[1]] <- adam(BJsales, "NNN", orders=c(1,1,2), h=10, holdout=TRUE)
-adamModelARIMA[[2]] <- adam(BJsales, "NNN", orders=c(0,2,2), h=10, holdout=TRUE)
-adamModelARIMA[[3]] <- adam(BJsales, "NNN", orders=c(1,1,1), h=10, holdout=TRUE)
-names(adamModelARIMA) <- c("ARIMA(1,1,2)", "ARIMA(0,2,2)", "ARIMA(1,1,1)")
+adamModelARIMA[[1]] <- adam(BJsales, "NNN", orders=c(1,1,2),
+                            h=10, holdout=TRUE)
+adamModelARIMA[[2]] <- adam(BJsales, "NNN", orders=c(0,2,2),
+                            h=10, holdout=TRUE)
+adamModelARIMA[[3]] <- adam(BJsales, "NNN", orders=c(1,1,1),
+                            h=10, holdout=TRUE)
+names(adamModelARIMA) <- c("ARIMA(1,1,2)", "ARIMA(0,2,2)",
+                           "ARIMA(1,1,1)")
 ```
 Note that we need to tell adam to use `model="NNN"` in order to switch off the ETS part of the model. Comparing information criteria (we will use AICc) of the three models, we can select the most appropriate one:
 ```{r}
@@ -715,13 +722,16 @@ Similarly to the previous cases, we use Box-Jenkins AirPassengers data, which ex
 ```{r}
 adamModelSARIMA <- vector("list",3)
 adamModelSARIMA[[1]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                             orders=list(ar=c(0,0), i=c(2,1), ma=c(2,1)),
+                             orders=list(ar=c(0,0), i=c(2,1),
+                                         ma=c(2,1)),
                              h=12, holdout=TRUE)
 adamModelSARIMA[[2]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                             orders=list(ar=c(0,1), i=c(2,1), ma=c(2,1)),
+                             orders=list(ar=c(0,1), i=c(2,1),
+                                         ma=c(2,1)),
                              h=12, holdout=TRUE)
 adamModelSARIMA[[3]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                             orders=list(ar=c(0,1), i=c(2,1), ma=c(2,0)),
+                             orders=list(ar=c(0,1), i=c(2,1),
+                                         ma=c(2,0)),
                              h=12, holdout=TRUE)
 names(adamModelSARIMA) <- c("SARIMA(0,2,2)(0,1,1)[12]",
                             "SARIMA(0,2,2)(1,1,1)[12]",
@@ -737,7 +747,8 @@ plot(forecast(adamModelSARIMA[[1]], h=12, interval="prediction"))
 ```
 This model is directly comparable with ETS models, so here, for example, AICc of ETS(M,A,M) on the same data:
 ```{r}
-AICc(adamModelETS <- adam(AirPassengers, "MAM", h=12, holdout=TRUE))
+AICc(adamModelETS <- adam(AirPassengers, "MAM",
+                          h=12, holdout=TRUE))
 ```
 
 Which is lower than for the SARIMA model. This means that ETS(M,A,M) is more appropriate to the data in terms of information criteria. Let's see if there is a way to improve ETS(M,A,M) by adding some ARMA components (figure \@ref(fig:adamETSPlotAirACFPACF)):

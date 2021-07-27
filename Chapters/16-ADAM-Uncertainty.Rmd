@@ -16,11 +16,13 @@ In R, an efficient calculation of Hessian can be done via `hessian()` function f
 ```{r}
 adamModel <- adam(BJsales, h=10, holdout=TRUE)
 adamModelVcov <- vcov(adamModel)
-adamModelVcov
+round(adamModelVcov, 3)
 ```
 The precision of estimate will depend on the closeness of the likelihood function to its maximum in the estimated parameters. If the likelihood was not properly maximised, and the function stopped prematurely, then the covariance matrix might be incorrect and contain errors. Our of curiosity, we could calculate the correlation matrix of the estimated parameters:
 ```{r}
-adamModelVcov / sqrt(diag(adamModelVcov) %*% t(diag(adamModelVcov)))
+round(adamModelVcov /
+        sqrt(diag(adamModelVcov) %*%
+               t(diag(adamModelVcov))), 3)
 ```
 This matrix does not provide much useful analytical information, but demonstrates that the estimates of initial level and trend of the `r adamModel$model` model applied to this data are negatively correlated. The values from this matrix can then be used for a variety of purposes, including calculation of confidence intervals of parameters, construction of confidence interval for the fitted value and point forecasts and finally the construction of more adequate prediction intervals.
 
@@ -34,12 +36,12 @@ An alternative way of constructing the matrix is via the bootstrap. The one that
 
 Here is an example of how the function work on the data above - it is possible to speed up the process by doing parallel calculations:
 ```{r}
-adamModelBoot <- coefbootstrap(adamModel,parallel=TRUE)
+adamModelBoot <- coefbootstrap(adamModel, parallel=TRUE)
 adamModelBoot
 ```
 The covariance matrix can then be extracted from the result via `adamModelBoot$vcov`. The same procedure is used in `vcov()` method if `bootstrap=TRUE`:
 ```{r}
-vcov(adamModel, bootstrap=TRUE, parallel=TRUE)
+round(vcov(adamModel, bootstrap=TRUE, parallel=TRUE), 3)
 ```
 
 
@@ -72,11 +74,13 @@ plot(adamModel,7)
 ```
 
 As another example, we can have a similar summary for ARIMA models in ADAM:
+
 ```{r}
 adamModelARIMA <- adam(BJsales, "NNN", h=10, holdout=TRUE,
                        order=list(ar=3,i=2,ma=3,select=TRUE))
 summary(adamModelARIMA)
 ```
+
 From the summary above, we can see that the parameter $\theta_2$ is close to zero, and the interval around it is wide. So, we can expect that it might change sign if the sample size increases or become even closer to zero. Given that the model above was estimated with the optimisation of initial states, we see in the summary above the values for the ARIMA states and their confidence intervals. If we used `initial="backcasting"`, the summary would not include them.
 
 This estimate of uncertainty via confidence intervals might also be useful to see what can happen with the estimates of parameters if the sample size increases: will they change substantially or not. If they do, then the decisions made on Monday based on the available data might differ seriously from the decisions made on Tuesday. So, in the ideal world we would want to have as lower confidence intervals as possible.
@@ -218,6 +222,7 @@ The `adamModelETSRefitted` object contains several variables, including:
 The last three will contain the random parameters (smoothing, damping and AR/MA parameters), which is why they are provided along with the other values.
 
 As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on artificial, non-seasonal data (see Figure \@ref(fig:adamARIMARefitted):
+
 ```{r eval=FALSE}
 y <- rnorm(200,100,10)
 adamModelARIMA1 <- adam(y, "NNN", h=10, holdout=TRUE,

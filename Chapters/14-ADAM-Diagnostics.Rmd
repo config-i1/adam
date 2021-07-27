@@ -19,7 +19,8 @@ All the model diagnostics is aimed at spotting patterns in residuals. If there a
 In order to make this more actionable, we will consider a conventional regression model on `Seatbelts` data. This can be estimated equally well either with `adam()` from `smooth` or `alm()` from `greybox`. In general, I recommend using `alm()`, when no dynamic elements are present in the model. Otherwise, use `adam()` as shown below:
 
 ```{r adamModelSeat01, fig.cap="Basic regression model for the data of Road Casualties in Great Britain 1969–84."}
-adamModelSeat01 <- adam(Seatbelts,"NNN",formula=drivers~PetrolPrice+kms)
+adamModelSeat01 <- adam(Seatbelts, "NNN",
+                        formula=drivers~PetrolPrice+kms)
 plot(adamModelSeat01,7)
 ```
 
@@ -33,7 +34,9 @@ In some cases we might be able to diagnose this. For example, with our regressio
 
 ```{r}
 # Create a new matrix, removing the variables that are already in the model
-SeatbeltsWithResiduals <- cbind(as.data.frame(residuals(adamModelSeat01)), Seatbelts[,-c(2,5,6)])
+SeatbeltsWithResiduals <-
+  cbind(as.data.frame(residuals(adamModelSeat01)),
+        Seatbelts[,-c(2,5,6)])
 colnames(SeatbeltsWithResiduals)[1] <- "residuals"
 # Spread plot
 greybox::spread(SeatbeltsWithResiduals)
@@ -45,7 +48,9 @@ greybox::assoc(SeatbeltsWithResiduals)
 ```
 Technically speaking, the output of this function tells us that all variables are correlated with residuals and can be considered in the model. I would still prefer not to add `DriversKilled` in the model for the reasons explained earlier. We can construct a new model in the following way:
 ```{r}
-adamModelSeat02 <- adam(Seatbelts,"NNN",formula=drivers~PetrolPrice+kms+front+rear+law)
+adamModelSeat02 <- adam(Seatbelts, "NNN",
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law)
 plot(adamModelSeat02,7)
 ```
 
@@ -57,7 +62,9 @@ plot(adamModelSeat02,8)
 
 This plot shows that the model has not captured seasonality and that there is stil some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model:
 ```{r}
-adamModelSeat03 <- adam(Seatbelts,"ANA",formula=drivers~PetrolPrice+kms+front+rear+law)
+adamModelSeat03 <- adam(Seatbelts, "ANA",
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law)
 par(mfcol=c(1,2))
 plot(adamModelSeat03,7:8)
 ```
@@ -71,7 +78,9 @@ While there are some ways of testing for omitted variables, the redundant ones a
 In the example with Seatbelt data, `DriversKilled` would be a redundant variable. Let's see what happens with the model in this case:
 
 ```{r}
-adamModelSeat04 <- adam(Seatbelts,"NNN",formula=drivers~PetrolPrice+kms+front+rear+law+DriversKilled)
+adamModelSeat04 <- adam(Seatbelts, "NNN", 
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law+DriversKilled)
 par(mfcol=c(1,2))
 plot(adamModelSeat04,7:8)
 ```
@@ -122,6 +131,7 @@ In order to diagnose this properly, we might use other instruments. One of these
 where $\bar{e}$ is the mean of residuals, which is typically assumed to be zero and $u_t$ is the value of standardised residuals. Note that the scales in the formulae above should be calculated via the formula with the bias correction, i.e. with the division by degrees of freedom, not the number of observations. Also, note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$ and additive error models, the formulae for the standardised residuals will be the same, only the assumptions will change (see Section \@ref(ADAMETSAdditiveDistributions)).
 
 Here is an example of a plot of fitted vs standardised residuals in R:
+
 ```{r adamModelSeat03Resid, fig.cap="Diagnostics of pure additive ETSX model."}
 plot(adamModelSeat03,2)
 ```
@@ -135,14 +145,17 @@ plot(adamModelSeat03,8)
 This plot shows that there is a slight decline in the residuals around year 1977. Still, there is no prominent non-linearity in the residuals, so it is not clear whether any transformations are needed or not.
 
 However, based on my judgment and understanding of the problem, I would expect for the number of injuries and deaths to change proportionally to the change of the level of the data: if after some external interventions the overal level of injuries and deaths would increase, we would expect a percentage decline, not a unit decline with a change of already existing variables in the model. This is why I will try a multiplicative model next:
+
 ```{r adamModelSeat05Resid, fig.cap="Diagnostics of pure multiplicative ETSX model."}
-adamModelSeat05 <- adam(Seatbelts,"MNM",formula=drivers~PetrolPrice+kms+front+rear+law)
+adamModelSeat05 <- adam(Seatbelts, "MNM",
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law)
 plot(adamModelSeat05,2)
 ```
 
 The plot shows that the variability is now slightly more uniform across all fitted values, but the difference between Figures \@ref(fig:adamModelSeat03Resid) and \@ref(fig:adamModelSeat05Resid) is not very prominent. One of potential solutions in this situation is to compare the models in terms of information criteria:
 ```{r}
-setNames(c(AICc(adamModelSeat03),AICc(adamModelSeat05)),
+setNames(c(AICc(adamModelSeat03), AICc(adamModelSeat05)),
          c("Additive model", "Multiplicative model"))
 ```
 Based on this, we would be inclined to select the multiplicative model. My personal judgment in this specific case agrees with the information criterion.
@@ -187,8 +200,9 @@ In many cases (ours included) the standardised and studentised residuals will lo
 
 Given the situation with outliers in our case, we could investigate when they happen in the original data to better understand whether they need to be taken care of. But instead of manually recording, which of the observations lie beyond the bounds, we can get their ids via the `outlierdummy` method from the package `greybox`, which extracts either standardised or studentised residuals and flags those observations that lie outside the constructed interval, automatically creating dummy variables for these observations. Here how it works:
 ```{r}
-adamModelSeat05Outliers <- outlierdummy(adamModelSeat05,
-                                        level=0.95, type="rstandard")
+adamModelSeat05Outliers <-
+  outlierdummy(adamModelSeat05,
+               level=0.95, type="rstandard")
 ```
 
 The method returns several objects (see documentation for details), including the ids of outliers:
@@ -224,23 +238,26 @@ As a side note, in R, there are several methods for extracting residuals:
 Based on the output of `outlierdummy()` method from the previous example, we can construct a model with explanatory variables to interpolate the outliers and neglect their impact on the model:
 
 ```{r}
-SeatbeltsWithOutliers <- cbind(as.data.frame(Seatbelts[,-c(1,7)]),adamModelSeat05Outliers$outliers)
+SeatbeltsWithOutliers <- cbind(as.data.frame(Seatbelts[,-c(1,7)]),
+                               adamModelSeat05Outliers$outliers)
 SeatbeltsWithOutliers$drivers <- ts(SeatbeltsWithOutliers$drivers,
                                     start=start(Seatbelts),
                                     frequency=frequency(Seatbelts))
-adamModelSeat06 <- adam(SeatbeltsWithOutliers,"MNM",lags=12,formula=drivers~.)
+adamModelSeat06 <- adam(SeatbeltsWithOutliers, "MNM", lags=12,
+                        formula=drivers~.)
 ```
 
 In order to decide, whether the dummy variables help or not, we can use information criteria, comparing the two models:
 ```{r}
 setNames(c(AICc(adamModelSeat05), AICc(adamModelSeat06)),
-         c("ETSX","ETSXOutliers"))
+         c("ETSX", "ETSXOutliers"))
 ```
 Comparing the two values above, I would conclude that adding dummies improves the model. But instead of including all of them, we could try the model with the outlier for the suspicious observation 170, which corresponds to the ninth outlier:
 
 ```{r}
-adamModelSeat07 <- adam(SeatbeltsWithOutliers,"MNM",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law+outlier9)
+adamModelSeat07 <- adam(SeatbeltsWithOutliers, "MNM", lags=12,
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law+outlier9)
 plot(adamModelSeat07,2)
 AICc(adamModelSeat07)
 ```
@@ -257,9 +274,10 @@ A similar automated mechanism is implemented in `adam()` function, which has `ou
 
 Here how this works for our case:
 ```{r}
-adamModelSeat08 <- adam(Seatbelts,"MNM",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law,
-                        outliers="select",level=0.95)
+adamModelSeat08 <- adam(Seatbelts, "MNM", lags=12,
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law,
+                        outliers="select", level=0.95)
 AICc(adamModelSeat08)
 ```
 
@@ -274,11 +292,14 @@ This automatic procedure will form a matrix that will include original variables
 One of the typical characteristics of time series models is the dynamic relation between variables. Even if fundamentally the sales of ice cream on Monday do not impact sales of the same ice cream on Tuesday, they might impact advertising expenses or sales of a competing product on Tuesday, Wednesday or next week. Missing this sort of structure might lead to autocorrelation of residuals, which then would impact the estimates of parameters and final forecasts. Autocorrelations might also arise due to wrong transformations of variables, where the model would systematically underforecast the actuals, producing autocorrelated residuals. In this section, we will see one of the potential ways for the regression diagnostics and try to improve the model in a stepwise fashion, trying out different order of [ARIMA](#ADAMARIMA) model.
 
 As an example, we continue with the same seatbelts data, dropping the dynamic part to see what would happen in this case:
+
 ```{r}
-adamModelSeat09 <- adam(Seatbelts,"NNN",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law)
+adamModelSeat09 <- adam(Seatbelts, "NNN", lags=12,
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law)
 AICc(adamModelSeat09)
 ```
+
 There are different ways to diagnose this model. We start with a basic plot of residuals over time:
 
 ```{r}
@@ -291,6 +312,7 @@ We see that on one hand the residuals still contain seasonality and on the other
 tseries::kpss.test(resid(adamModelSeat09))
 tseries::adf.test(resid(adamModelSeat09))
 ```
+
 The tests have opposite null hypothesis, and in our case we would reject H$_0$ for both of them on 5% significance level. This means that they contradict each other and we need to use our judgment. First I will see what happens with the model, when we do take differences:
 
 ```{r}
@@ -300,7 +322,9 @@ adamModelSeat10 <- adam(Seatbelts,"NNN",lags=12,
                         orders=list(i=1))
 AICc(adamModelSeat10)
 ```
+
 This leads to an improvement in AICc in comparison with the previous model. The residuals of the model are now also much better behaved:
+
 ```{r}
 plot(adamModelSeat10,8)
 ```
@@ -313,43 +337,53 @@ plot(adamModelSeat10,10:11)
 ```
 
 In case of `adam()` objects, these plots will always have the range for y-axis from -1 to 1 and will start from lag 1 on x-axis. The red horizontal lines represent the "non-rejection" region: if the point lie inside the region, then they are not statistically different from zero on the selected `level` (the uncertainty around them is so high that it covers zero). The points with numbers are those that are statistically significantly different from zero. So, the ACF / PACF analysis might show the lags that are statistically significant on the selected level (the default one is 0.95). Given that this is a statistical instrument, we would expect for approximately (1-level)% (e.g. 5%) of lags lie outside these bounds, so it is fine if we don't see all point lying inside them. However, we should not see any patterns there and we might need to investigate the suspicious lags (low orders of up to 3 - 5 and the seasonal lags if they appear). In our example we see that there is a suspicious lag 1 on ACF and a suspicious lag 2 on the PACF, which might indicate that some dynamic elements are missing (e.g. MA(1) or AR(2)). Furthermore, there are spikes on lag 12 for both ACF and PACF. While it is not clear, what specifically is needed here, we can try out several models and see which one of them is better in order to deremine the appropriate element:
+
 ```{r}
 # ARIMAX(0,1,0)(1,0,0)_12
 adamModelSeat11 <- adam(Seatbelts,"NNN",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law,
                         orders=list(ar=c(0,1),i=1))
 AICc(adamModelSeat11)
 # ARIMAX(0,1,0)(0,0,1)_12
 adamModelSeat12 <- adam(Seatbelts,"NNN",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law,
                         orders=list(i=1,ma=c(0,1)))
 AICc(adamModelSeat12)
 # ARIMAX(0,1,0)(1,0,1)_12
 adamModelSeat13 <- adam(Seatbelts,"NNN",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law,
                         orders=list(ar=c(0,1),i=1,ma=c(0,1)))
 AICc(adamModelSeat13)
 ```
+
 Based on this analysis, we would be inclined to include both seasonal AR(1) and seasonal MA(1) in the model. Next step in our iterative process - another ACF / PACF plot of the residuals:
+
 ```{r}
 par(mfcol=c(1,2))
 plot(adamModelSeat13,10:11)
 ```
 
 In this case, there is a big spike on ACF for lag 1, so we can try adding MA(1) component in the model:
+
 ```{r}
 # ARIMAX(0,1,1)(1,0,1)_12
 adamModelSeat14 <- adam(Seatbelts,"NNN",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law,
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law,
                         orders=list(ar=c(0,1),i=1,ma=c(1,1)))
 AICc(adamModelSeat14)
 ```
+
 Which leads to further improvement in AICc. We could continue our investigations in order to find the most suitable ARIMAX model for the data using this iterative procedure, but this example should suffice in providing the general idea of how it can be done. What we could do else to simplify the process is to use the automated [ARIMA selection algorithm](#ARIMASelection) in `adam()`, which is built on the principles discussed in this section:
 
 ```{r}
-adamModelSeat15 <- adam(Seatbelts,"NNN",lags=12,
-                        formula=drivers~PetrolPrice+kms+front+rear+law,
-                        orders=list(ar=c(3,2),i=c(2,1),ma=c(3,2),select=TRUE))
+adamModelSeat15 <-
+  adam(Seatbelts,"NNN",lags=12,
+       formula=drivers~PetrolPrice+kms+front+rear+law,
+       orders=list(ar=c(3,2),i=c(2,1),ma=c(3,2),select=TRUE))
 AICc(adamModelSeat15)
 ```
 
@@ -393,9 +427,10 @@ In our case, these plots do not give additional message, we already know that th
 If we suspect that there are some specific variables that might cause heteroscedasticity, we can plot absolute or squared residuals vs these variables to see if they are indeed to blame for that. For example, here how we can produce a basic plot of residuals vs all explanatory variables included in the model:
 
 ```{r}
-spread(cbind(as.data.frame(abs(resid(adamModelSeat03))),
-             adamModelSeat03$data[,all.vars(formula(adamModelSeat03))[-1]]),
-       lowess=TRUE)
+spread(cbind(
+  as.data.frame(abs(resid(adamModelSeat03))),
+  adamModelSeat03$data[,all.vars(formula(adamModelSeat03))[-1]]),
+  lowess=TRUE)
 ```
 
 The plot above can be read similarly to the plots discussed above: if we notice a change in variability of residuals or a change (increase of decrease) in the lowess lines with the change of a variable, then this might indicate that the respective variable causes multicollinearity in the model. In our example, it looks like the variable `law` causes the largest issue - all the other variables do not cause as a strong change in variance. We already know that we need to use multiplicative model instead of the additive one in our example, so we will see how the residuals look for the correctly specified model:
@@ -408,9 +443,10 @@ plot(adamModelSeat05,4:5)
 The plots above do not demonstrate any substantial issues: the residuals look more homoscedastic and given the scale of residuals the change of lowess line does not reflect significant changes in residuals. Additional plot of absolute residuals vs explanatory variables does not show anys serious issues either:
 
 ```{r}
-spread(cbind(as.data.frame(abs(log(resid(adamModelSeat05)))),
-             adamModelSeat05$data[,all.vars(formula(adamModelSeat05))[-1]]),
-       lowess=TRUE)
+spread(cbind(
+  as.data.frame(abs(log(resid(adamModelSeat05)))),
+  adamModelSeat05$data[,all.vars(formula(adamModelSeat05))[-1]]),
+  lowess=TRUE)
 ```
 
 So, we can conclude that the multiplicative model resolves the issue with heteroscedasticity. If a variable would still cause an issue with it, it would make sense to construct a model for the variance (e.g. GARCH) in order to address the issue and improve the performance of the model in terms of prediction interval.
@@ -441,11 +477,11 @@ This follows from the previous assumption if the model is correctly specified an
 The diagnostics of this assumption can be done using `rmultistep()` method for `adam()`. This method would apply the estimated model and produce multiple steps ahead forecasts from each in-sample observation to the horizon $h$, stacking the forecast errors by rows. Whether we apply additive or multiplicative error model, the method will report the residual $e_t$.
 
 ```{r}
-adamModelSeat05ResidMulti <- rmultistep(adamModelSeat05,h=12)
+adamModelSeat05ResidMulti <- rmultistep(adamModelSeat05, h=12)
 colnames(adamModelSeat05ResidMulti) <- c(1:12)
-boxplot(adamModelSeat05ResidMulti,xlab="horizon")
-abline(h=0,col="red")
-points(apply(adamModelSeat05ResidMulti,2,mean),col="red",pch=16)
+boxplot(adamModelSeat05ResidMulti, xlab="horizon")
+abline(h=0, col="red")
+points(apply(adamModelSeat05ResidMulti,2,mean), col="red", pch=16)
 ```
 
 As the plot in the Figure above demonstrates, the mean of the residuals increases with the increase of the horizon, thus implying that some information has not been taken into account by the model.
@@ -463,7 +499,9 @@ plot(adamModelSeat03,6)
 If the residuals do not contradict the assumed distribution, then all the points should lie either very close to or on the line. In our case, the majority of points are close to the line, but the tails are slightly off. In ADAM, this might mean that we should either use a different error type or a different distribution. Just for the sake of argument, we can try ETSX(M,N,M) model, with the same set of explanatory variables as in the model `adamModelSeat03`, and with the same Normal distribution:
 
 ```{r}
-adamModelSeat16 <- adam(Seatbelts,"MNM",formula=drivers~PetrolPrice+kms+front+rear+law,
+adamModelSeat16 <- adam(Seatbelts, "MNM",
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law,
                         distribution="dnorm")
 plot(adamModelSeat16,6)
 ```
@@ -471,7 +509,9 @@ plot(adamModelSeat16,6)
 According to the new QQ plot, the residuals of the new model are much closer to the theoretical ones, there is now only the right tail that is wrong - the actual values are a bit further away than expected. This can be addressed by using a skewed distribution, for example, Inverse Gaussian:
 
 ```{r}
-adamModelSeat17 <- adam(Seatbelts,"MNM",formula=drivers~PetrolPrice+kms+front+rear+law,
+adamModelSeat17 <- adam(Seatbelts, "MNM",
+                        formula=drivers~PetrolPrice+kms+
+                          front+rear+law,
                         distribution="dinvgauss")
 plot(adamModelSeat17,6)
 ```
@@ -479,8 +519,10 @@ plot(adamModelSeat17,6)
 The new QQ plot demonstrates that the empirical residuals follow the assumed distribution much closer than in the previous cases: there are just few observations that lie slightly away from the line, but they could happen at random. So, based on this simple analysis we could conclude that Inverse Gaussian distribution is more suitable for this situation than the Normal one. Interestingly, this is supported by the AIC values, which very roughly reflect the same thing:
 
 ```{r}
-setNames(c(AIC(adamModelSeat03),AIC(adamModelSeat16),AIC(adamModelSeat17)),
-         c("Additive Normal","Multiplicative Normal","Multiplicative IG"))
+setNames(c(AIC(adamModelSeat03),AIC(adamModelSeat16),
+           AIC(adamModelSeat17)),
+         c("Additive Normal","Multiplicative Normal",
+           "Multiplicative IG"))
 ```
 
 Another way to analyse the distribution of residuals is to plot histogram together with the theoretical density function. Here is an example:
@@ -538,7 +580,7 @@ There are also formal tests for the distribution of residuals, such as Shapiro-W
 <!-- ``` -->
 <!-- This is useful when you want to see the specific impact on the variance of parameters, but is difficult to work with, when it comes to model diagnostics, because the value of VIF lies between zero and infinity. So, I prefer using the determination coefficients instead, which is always bounded by $(0, 1)$ region and thus easier to interpret. -->
 
-The discussion of multicollinearity and how to diagnose it was carried out in Section \@ref(assumptionsXreg). When it comes to dynamic models, then the situation might differ.
+For the discussion of multicollinearity and how to diagnose it for the regression model, we refer the reader to Section 12.3 of @SvetunkovSBA textbook. When it comes to dynamic models, then the situation might differ.
 
 In case of conventional [ARIMA model](#ARIMA), multicollinearity is inevitable by construct, because of the autocorrelations between actual values. This is why sometimes Heteroskedasticity- and autocorrelation-consistent (HAC) estimators of the covariance matrix [see Section 15.4 of @Hanck2020] of parameters are used instead of the standard ones. They are designed to fix the issue and produce standard errors of parameters that are close to those without the issue.
 

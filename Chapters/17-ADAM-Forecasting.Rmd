@@ -34,7 +34,9 @@ h <- 10
 s <- 0.1
 initial <- c(1000,0.95)
 persistence <- c(0.1,0.01)
-y <- sim.es("MMN",obs=h, nsim=nsim, persistence=persistence, initial=initial, randomizer="rgamma", shape=1/s, scale=s)
+y <- sim.es("MMN", obs=h, nsim=nsim, persistence=persistence,
+            initial=initial, randomizer="rgamma",
+            shape=1/s, scale=s)
 ```
 After running the code above, we will obtain an object that contains several variables, including `y$data` with all the 1000 possible future trajectories. We can plot them to get an impression of what we are dealing with (see Figure \@ref(fig:adamForecastSimulated)).
 
@@ -164,18 +166,24 @@ plot(refit(adamModel))
 In order to make things more complicated and interesting, we introduce explanatory variable with lags and leads of the indicator `BJsales.lead`:
 
 ```{r}
-BJsalesData <- cbind(as.data.frame(BJsales),xregExpander(BJsales.lead,c(-3:3)))
+BJsalesData <- cbind(as.data.frame(BJsales),
+                     xregExpander(BJsales.lead,c(-3:3)))
 colnames(BJsalesData)[1] <- "y"
-adamModelX <- adam(BJsalesData, "YYY", h=10, holdout=TRUE, regressors="select")
+adamModelX <- adam(BJsalesData, "YYY",
+                   h=10, holdout=TRUE,
+                   regressors="select")
 ```
 
 In order to make the task more complicated, I have asked the function specifically to do the selection between pure multiplicative models (see Section \@ref(ETSSelection)). In this case, we will construct several different types of prediction intervals and compare them:
 
 ```{r}
 adamModelPI <- vector("list",6)
-intervalType <- c("approximate","semiparametric","nonparametric","simulated","empirical","complete")
+intervalType <- c("approximate", "semiparametric",
+                  "nonparametric", "simulated",
+                  "empirical", "complete")
 for(i in 1:6){
-  adamModelPI[[i]] <- forecast(adamModelX,h=10,interval=intervalType[i])
+  adamModelPI[[i]] <- forecast(adamModelX, h=10,
+                               interval=intervalType[i])
 }
 ```
 
@@ -253,7 +261,8 @@ In cases of **multiplicative and mixed ADAM models**, there are no closed forms 
 ### Example in R {#forecastingADAMOtherExample}
 For the demonstration purposes, we consider an artificial intermittent demand example, similar to the one from Section \@ref(IntermittentExample):
 ```{r}
-y <- ts(c(rpois(20,0.25),rpois(20,0.5),rpois(20,1),rpois(20,2),rpois(20,3)))
+y <- ts(c(rpois(20,0.25), rpois(20,0.5), rpois(20,1),
+          rpois(20,2), rpois(20,3)))
 ```
 For simplicity, we apply iETS(M,Md,N) model with odds ratio occurrence:
 
@@ -266,14 +275,17 @@ plot(adamModeliETS,7)
 To make this setting closer to possible real life situation, we assume that the lead time is 7 days and we need to satisfy the 99% of demand for the last 7 observations based on our model. Thus we produce the upper bound for the cumulative values for the confidence level of 99%:
 ```{r}
 adamModeliETSForecast <- forecast(adamModeliETS, h=7,
-                                  cumulative=TRUE, interval="prediction", side="upper")
+                                  cumulative=TRUE,
+                                  interval="prediction",
+                                  side="upper")
 ```
 Given that we deal with cumulative values, the basic plot will not be helpful, we should produce a different one (see Figure \@ref(fig:adamModeliETSCumulative)).
 
 ```{r adamModeliETSCumulative, fig.cap="Cumulative demand, expectation and the upper bound based on iETS model."}
 plot(sum(adamModeliETS$holdout), ylab="Cumulative demand",
      xlab="", pch=16,
-     ylim=range(c(0, sum(adamModeliETS$holdout), adamModeliETSForecast$upper)))
+     ylim=range(c(0, sum(adamModeliETS$holdout),
+                  adamModeliETSForecast$upper)))
 abline(h=adamModeliETSForecast$mean, col="blue", lwd=2)
 abline(h=adamModeliETSForecast$upper, col="grey", lwd=2)
 ```
