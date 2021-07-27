@@ -546,23 +546,25 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 \end{equation}\]</span>
 where <span class="math inline">\(\theta_j\)</span> is the parameter under consideration. The property <a href="ADAMUncertaintyVCOV.html#eq:FICovariance">(16.1)</a> can then be used for the calculation of the covariance matrix of parameters. While in case with regression this calculation has an analytical solution, in case of ETS and ARIMA, this can only be done via numeric methods, because the models rely on recursive relations.</p>
 <p>In R, an efficient calculation of Hessian can be done via <code>hessian()</code> function from <code>pracma</code> package. There is a method <code>vcov()</code> that does all the calculations, estimating the negative Hessian inside <code>adam()</code> and then inverts the result. Here is an example of how this works:</p>
-<div class="sourceCode" id="cb321"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb321-1"><a href="ADAMUncertaintyVCOV.html#cb321-1" aria-hidden="true" tabindex="-1"></a>adamModel <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb321-2"><a href="ADAMUncertaintyVCOV.html#cb321-2" aria-hidden="true" tabindex="-1"></a>adamModelVcov <span class="ot">&lt;-</span> <span class="fu">vcov</span>(adamModel)</span>
-<span id="cb321-3"><a href="ADAMUncertaintyVCOV.html#cb321-3" aria-hidden="true" tabindex="-1"></a>adamModelVcov</span></code></pre></div>
-<pre><code>##              alpha        beta          phi       level       trend
-## alpha  0.013096202 -0.01048869  0.006719673  -0.2059952   0.1670392
-## beta  -0.010488693  0.01945175 -0.014069755   0.4700175  -0.3762878
-## phi    0.006719673 -0.01406976  0.015788013  -0.4823944   0.3894840
-## level -0.205995198  0.47001753 -0.482394423  22.2865424 -16.1581910
-## trend  0.167039229 -0.37628782  0.389483965 -16.1581910  12.7038582</code></pre>
+<div class="sourceCode" id="cb323"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb323-1"><a href="ADAMUncertaintyVCOV.html#cb323-1" aria-hidden="true" tabindex="-1"></a>adamModel <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
+<span id="cb323-2"><a href="ADAMUncertaintyVCOV.html#cb323-2" aria-hidden="true" tabindex="-1"></a>adamModelVcov <span class="ot">&lt;-</span> <span class="fu">vcov</span>(adamModel)</span>
+<span id="cb323-3"><a href="ADAMUncertaintyVCOV.html#cb323-3" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamModelVcov, <span class="dv">3</span>)</span></code></pre></div>
+<pre><code>##        alpha   beta    phi   level   trend
+## alpha  0.013 -0.010  0.007  -0.206   0.167
+## beta  -0.010  0.019 -0.014   0.470  -0.376
+## phi    0.007 -0.014  0.016  -0.482   0.389
+## level -0.206  0.470 -0.482  22.287 -16.158
+## trend  0.167 -0.376  0.389 -16.158  12.704</code></pre>
 <p>The precision of estimate will depend on the closeness of the likelihood function to its maximum in the estimated parameters. If the likelihood was not properly maximised, and the function stopped prematurely, then the covariance matrix might be incorrect and contain errors. Our of curiosity, we could calculate the correlation matrix of the estimated parameters:</p>
-<div class="sourceCode" id="cb323"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb323-1"><a href="ADAMUncertaintyVCOV.html#cb323-1" aria-hidden="true" tabindex="-1"></a>adamModelVcov <span class="sc">/</span> <span class="fu">sqrt</span>(<span class="fu">diag</span>(adamModelVcov) <span class="sc">%*%</span> <span class="fu">t</span>(<span class="fu">diag</span>(adamModelVcov)))</span></code></pre></div>
-<pre><code>##            alpha       beta        phi      level      trend
-## alpha  1.0000000 -0.6571573  0.4673172 -0.3812967  0.4095227
-## beta  -0.6571573  1.0000000 -0.8028667  0.7138604 -0.7569600
-## phi    0.4673172 -0.8028667  1.0000000 -0.8132371  0.8696771
-## level -0.3812967  0.7138604 -0.8132371  1.0000000 -0.9602926
-## trend  0.4095227 -0.7569600  0.8696771 -0.9602926  1.0000000</code></pre>
+<div class="sourceCode" id="cb325"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb325-1"><a href="ADAMUncertaintyVCOV.html#cb325-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamModelVcov <span class="sc">/</span></span>
+<span id="cb325-2"><a href="ADAMUncertaintyVCOV.html#cb325-2" aria-hidden="true" tabindex="-1"></a>        <span class="fu">sqrt</span>(<span class="fu">diag</span>(adamModelVcov) <span class="sc">%*%</span></span>
+<span id="cb325-3"><a href="ADAMUncertaintyVCOV.html#cb325-3" aria-hidden="true" tabindex="-1"></a>               <span class="fu">t</span>(<span class="fu">diag</span>(adamModelVcov))), <span class="dv">3</span>)</span></code></pre></div>
+<pre><code>##        alpha   beta    phi  level  trend
+## alpha  1.000 -0.657  0.467 -0.381  0.410
+## beta  -0.657  1.000 -0.803  0.714 -0.757
+## phi    0.467 -0.803  1.000 -0.813  0.870
+## level -0.381  0.714 -0.813  1.000 -0.960
+## trend  0.410 -0.757  0.870 -0.960  1.000</code></pre>
 <p>This matrix does not provide much useful analytical information, but demonstrates that the estimates of initial level and trend of the ETS(AAdN) model applied to this data are negatively correlated. The values from this matrix can then be used for a variety of purposes, including calculation of confidence intervals of parameters, construction of confidence interval for the fitted value and point forecasts and finally the construction of more adequate prediction intervals.</p>
 <p>In some cases the <code>vcov()</code> method would complain that the Fisher Information cannot be inverted. This typically means that the <code>adam()</code> failed to reach the maximum of the likelihood function</p>
 <p>Note that this method only works, when <code>loss="likelihood"</code> or when the loss is aligned with the assumed distribution (e.g. <code>loss="MSE"</code> and <code>distribution="dnorm"</code>). In all the other cases, other approaches (such as bootstrap) would need to be used for the estimation of the covariance matrix of parameters.</p>
@@ -570,18 +572,18 @@ where <span class="math inline">\(\theta_j\)</span> is the parameter under consi
 <h3><span class="header-section-number">16.1.1</span> Bootstrapped covariance matrix</h3>
 <p>An alternative way of constructing the matrix is via the bootstrap. The one that is implemented in <code>smooth</code> is based on <code>coefboostrap()</code> method from <code>greybox</code> package, which implements the modified case resampling. It is less efficient than the Fisher Information method in terms of computational time and works only for larger samples. The algorithm implemented in the function uses a continuous sub-sample of the original data, starting from the original point <span class="math inline">\(t=1\)</span> (if backcasting is used (see Section <a href="ADAMInitialisation.html#ADAMInitialisationOptAndBack">11.4.1</a>), then the starting point will be allowed to differ). This sub-sample is then used for the re-estimation of <code>adam()</code> in order to get the empirical estimates of parameters. The procedure is repeated <code>nsim</code> times, which for <code>adam()</code> is by default equal to 100. This approach is far from ideal and will typically lead to underestimated variance of initials, but it does not break the structure of the data and allows obtaining relatively fast results without imposing any additional assumptions on the model and the data. I personally recommend using it in case of the initialisation via backcasting.</p>
 <p>Here is an example of how the function work on the data above - it is possible to speed up the process by doing parallel calculations:</p>
-<div class="sourceCode" id="cb325"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb325-1"><a href="ADAMUncertaintyVCOV.html#cb325-1" aria-hidden="true" tabindex="-1"></a>adamModelBoot <span class="ot">&lt;-</span> <span class="fu">coefbootstrap</span>(adamModel,<span class="at">parallel=</span><span class="cn">TRUE</span>)</span>
-<span id="cb325-2"><a href="ADAMUncertaintyVCOV.html#cb325-2" aria-hidden="true" tabindex="-1"></a>adamModelBoot</span></code></pre></div>
+<div class="sourceCode" id="cb327"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb327-1"><a href="ADAMUncertaintyVCOV.html#cb327-1" aria-hidden="true" tabindex="-1"></a>adamModelBoot <span class="ot">&lt;-</span> <span class="fu">coefbootstrap</span>(adamModel, <span class="at">parallel=</span><span class="cn">TRUE</span>)</span>
+<span id="cb327-2"><a href="ADAMUncertaintyVCOV.html#cb327-2" aria-hidden="true" tabindex="-1"></a>adamModelBoot</span></code></pre></div>
 <pre><code>## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.49 seconds</code></pre>
+## Time elapsed: 0.56 seconds</code></pre>
 <p>The covariance matrix can then be extracted from the result via <code>adamModelBoot$vcov</code>. The same procedure is used in <code>vcov()</code> method if <code>bootstrap=TRUE</code>:</p>
-<div class="sourceCode" id="cb327"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb327-1"><a href="ADAMUncertaintyVCOV.html#cb327-1" aria-hidden="true" tabindex="-1"></a><span class="fu">vcov</span>(adamModel, <span class="at">bootstrap=</span><span class="cn">TRUE</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>)</span></code></pre></div>
-<pre><code>##              alpha         beta          phi       level       trend
-## alpha  0.016890644  0.001008647  0.003262547  0.01701433 -0.02333407
-## beta   0.001008647  0.011872429 -0.002210145 -0.01383843  0.02538649
-## phi    0.003262547 -0.002210145  0.012893359  0.05357205 -0.05655866
-## level  0.017014333 -0.013838431  0.053572055  0.53658510 -0.70763699
-## trend -0.023334066  0.025386490 -0.056558660 -0.70763699  1.01194869</code></pre>
+<div class="sourceCode" id="cb329"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb329-1"><a href="ADAMUncertaintyVCOV.html#cb329-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">vcov</span>(adamModel, <span class="at">bootstrap=</span><span class="cn">TRUE</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>), <span class="dv">3</span>)</span></code></pre></div>
+<pre><code>##        alpha   beta    phi  level  trend
+## alpha  0.004 -0.001 -0.001 -0.006  0.005
+## beta  -0.001  0.007 -0.002 -0.015  0.025
+## phi   -0.001 -0.002  0.010  0.040 -0.039
+## level -0.006 -0.015  0.040  0.520 -0.728
+## trend  0.005  0.025 -0.039 -0.728  1.101</code></pre>
 </div>
 </div>
 <h3>References</h3>
@@ -640,7 +642,7 @@ gitbook.start({
 "link": null,
 "text": null
 },
-"download": ["adam.pdf", "adam.epub"],
+"download": ["adam.pdf"],
 "toc": {
 "collapse": "section"
 }

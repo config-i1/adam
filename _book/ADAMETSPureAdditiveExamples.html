@@ -600,8 +600,9 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <div class="sourceCode" id="cb57"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb57-1"><a href="ADAMETSPureAdditiveExamples.html#cb57-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamModel,<span class="at">h=</span><span class="dv">10</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>,<span class="at">level=</span><span class="fu">c</span>(<span class="fl">0.9</span>,<span class="fl">0.95</span>)))</span></code></pre></div>
 <p><img src="adam_files/figure-html/unnamed-chunk-34-1.png" width="672" /></p>
 <p>Both smoothing parameters are now higher, which implies that the uncertainty about the future values of states is higher as well, which is then reflected in the slightly wider prediction interval. Although the values are larger than one, the model is still stable. In order to see that we can calculate the discount matrix using the objects returned by the function:</p>
-<div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb58-1"><a href="ADAMETSPureAdditiveExamples.html#cb58-1" aria-hidden="true" tabindex="-1"></a>discountMatrix <span class="ot">&lt;-</span> adamModel<span class="sc">$</span>transition <span class="sc">-</span> adamModel<span class="sc">$</span>persistence <span class="sc">%*%</span> adamModel<span class="sc">$</span>measurement[<span class="fu">nobs</span>(adamModel),,drop<span class="ot">=</span><span class="cn">FALSE</span>]</span>
-<span id="cb58-2"><a href="ADAMETSPureAdditiveExamples.html#cb58-2" aria-hidden="true" tabindex="-1"></a><span class="fu">eigen</span>(discountMatrix)<span class="sc">$</span>values</span></code></pre></div>
+<div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb58-1"><a href="ADAMETSPureAdditiveExamples.html#cb58-1" aria-hidden="true" tabindex="-1"></a>discountMatrix <span class="ot">&lt;-</span> adamModel<span class="sc">$</span>transition <span class="sc">-</span> adamModel<span class="sc">$</span>persistence <span class="sc">%*%</span></span>
+<span id="cb58-2"><a href="ADAMETSPureAdditiveExamples.html#cb58-2" aria-hidden="true" tabindex="-1"></a>  adamModel<span class="sc">$</span>measurement[<span class="fu">nobs</span>(adamModel),,drop<span class="ot">=</span><span class="cn">FALSE</span>]</span>
+<span id="cb58-3"><a href="ADAMETSPureAdditiveExamples.html#cb58-3" aria-hidden="true" tabindex="-1"></a><span class="fu">eigen</span>(discountMatrix)<span class="sc">$</span>values</span></code></pre></div>
 <pre><code>## [1]  0.79538429 -0.06800887</code></pre>
 <p>Notice that the absolute values of the both eigenvalues in the matrix are less than one, which means that the newer observations have higher weights than the older ones and that the absolute values of weights decrease over time, making the model stable.</p>
 <p>If we want to test ADAM ETS with another distribution, it can be done using the respective parameter (here we use Generalised Normal, estimating the shape together with the other parameters):</p>
@@ -636,8 +637,8 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <p><span id="unlabeled-div-6" class="remark"><em>Remark</em>. </span>In some cases, the optimiser might converge to the local minimum, so if you find the results unsatisfactory, it might make sense to reestimate the model tuning the parameters of the optimiser. Here is an example (we increase the number of iterations in the optimisation and set new starting values for the smoothing parameters):</p>
 </div>
 <div class="sourceCode" id="cb64"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb64-1"><a href="ADAMETSPureAdditiveExamples.html#cb64-1" aria-hidden="true" tabindex="-1"></a>adamModel<span class="sc">$</span>B[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>] <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.2</span>,<span class="fl">0.1</span>,<span class="fl">0.3</span>)</span>
-<span id="cb64-2"><a href="ADAMETSPureAdditiveExamples.html#cb64-2" aria-hidden="true" tabindex="-1"></a>adamModel <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;AAA&quot;</span>, <span class="at">lags=</span><span class="dv">12</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb64-3"><a href="ADAMETSPureAdditiveExamples.html#cb64-3" aria-hidden="true" tabindex="-1"></a>                  <span class="at">B=</span>adamModel<span class="sc">$</span>B, <span class="at">maxeval=</span><span class="dv">1000</span>)</span>
+<span id="cb64-2"><a href="ADAMETSPureAdditiveExamples.html#cb64-2" aria-hidden="true" tabindex="-1"></a>adamModel <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;AAA&quot;</span>, <span class="at">lags=</span><span class="dv">12</span>, <span class="at">h=</span><span class="dv">12</span>,</span>
+<span id="cb64-3"><a href="ADAMETSPureAdditiveExamples.html#cb64-3" aria-hidden="true" tabindex="-1"></a>                  <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">B=</span>adamModel<span class="sc">$</span>B, <span class="at">maxeval=</span><span class="dv">1000</span>)</span>
 <span id="cb64-4"><a href="ADAMETSPureAdditiveExamples.html#cb64-4" aria-hidden="true" tabindex="-1"></a>adamModel</span></code></pre></div>
 <pre><code>## Time elapsed: 0.16 seconds
 ## Model estimated using adam() function: ETS(AAA)
@@ -720,7 +721,7 @@ gitbook.start({
 "link": null,
 "text": null
 },
-"download": ["adam.pdf", "adam.epub"],
+"download": ["adam.pdf"],
 "toc": {
 "collapse": "section"
 }
