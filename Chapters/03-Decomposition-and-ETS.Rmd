@@ -92,7 +92,6 @@ There are many functions in R that implement seasonal decomposition. Here is a s
 - `msdecompose()` from the `smooth` package does a classical decomposition for multiple seasonal series.
 
 ### "Why bother?"
-
 "Why decompose?" you may wonder at this point. Understanding the idea behind decompositions and how to perform them helps in understanding ETS, which relies on it. From a practical point of view it can be useful if you want to see if there is a trend in the data and whether the residuals contain outliers or not. It will _not_ show you if the data is seasonal as the seasonality is _assumed_ in the decomposition (I stress this because many students think otherwise). Additionally, when seasonality cannot be added to the model under consideration decomposing the series, predicting the trend and then reseasonalising can be a viable solution. Finally, the values from the decomposition can be used as starting points for the estimation of components in ETS or other dynamic models relying on the error-trend-seasonality.
 
 
@@ -106,6 +105,7 @@ Building on the idea of [time series components](#tsComponents) we can move to t
 According to this taxonomy, the model \@ref(eq:PureAdditive) is denoted as ETS(A,A,A) while the model \@ref(eq:PureMultiplicative) is denoted as ETS(M,M,M), and \@ref(eq:MixedAdditiveTrend) is ETS(M,A,M).
 
 The main advantages of the ETS taxonomy are that the components have clear interpretations and that it is flexible, allowing to have 30 models with different types of error, trend and seasonality. The figure below shows examples of different time series with deterministic (they do not change over time) level, trend and seasonality, based on how they interact in the model. The first one shows the additive error case:
+
 ```{r ETSTaxonomyAdditive, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Time series corresponding to the additive error ETS models"}
 modelsList <- c("ANN","AAN","AAdN","AMN","AMdN","ANA","AAA","AAdA","AMA","AMdA","ANM","AAM","AAdM","AMM","AMdM",
                 "MNN","MAN","MAdN","MMN","MMdN","MNA","MAA","MAdA","MMA","MMdA","MNM","MAM","MAdM","MMM","MMdM")
@@ -164,6 +164,7 @@ Things to note from this plot:
 4. It is practically impossible to distinguish additive and multiplicative seasonality if the series does not trend because what distinguishes the two -- see (1) -- is not relevant (compare ETS(A,N,A) and ETS(A,N,M)).
 
 Here is a similar plot for the multiplicative error models:
+
 ```{r ETSTaxonomyMultiplicative, echo=FALSE, warning=FALSE, fig.cap="Time series corresponding to the multiplicative error ETS models"}
 # Prepare the canvas
 par(mfcol=c(5,3),mar=c(2,3,2,1))
@@ -206,39 +207,35 @@ However, **note that not all the point forecasts correspond to the conditional e
 
 ```{r ETSAdditiveError, echo=FALSE}
 # T="N"
-etsAdditiveTable <- c("$\\begin{split}
-      &y_{t} = l_{t-1} + \\epsilon_t \\\\
+etsAdditiveTable <- c("$\\begin{aligned} &y_{t} = l_{t-1} + \\epsilon_t \\\\
       &l_t = l_{t-1} + \\alpha \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} \\\\
       &\\hat{y}_{t+h} = l_{t} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} + s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} + s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} + \\alpha \\epsilon_t \\\\
       &s_t = s_{t-m} + \\gamma \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
       &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1}} \\\\
       &\\mu_{y,t} = l_{t-1} s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
-    \\end{split}$",
+    \\end{aligned}$",
 # T="A"
-    "$\\begin{split}
-      &y_{t} = l_{t-1} + b_{t-1} + \\epsilon_t \\\\
+    "$\\begin{aligned} &y_{t} = l_{t-1} + b_{t-1} + \\epsilon_t \\\\
       &l_t = l_{t-1} + b_{t-1} + \\alpha \\epsilon_t \\\\
       &b_t = b_{t-1} + \\beta \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + b_{t-1} \\\\
       &\\hat{y}_{t+h} = l_{t} + h b_t \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
+    \\end{aligned}$",
+    "$\\begin{aligned}
       &y_{t} = l_{t-1} + b_{t-1} + s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} + b_{t-1} + \\alpha \\epsilon_t \\\\
       &b_t = b_{t-1} + \\beta \\epsilon_t \\\\
@@ -246,97 +243,87 @@ etsAdditiveTable <- c("$\\begin{split}
       &\\mu_{y,t} = l_{t-1} + b_{t-1} + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} + h b_{t-1} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + b_{t-1}) s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + b_{t-1}) s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} + b_{t-1} + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
       &b_t = b_{t-1} + \\beta \\frac{\\epsilon_t}{s_{t-m}} \\\\
       &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1} + b_{t-1}} \\\\
       &\\mu_{y,t} = (l_{t-1} + b_{t-1}) s_{t-m} \\\\
       &\\hat{y}_{t+h} = \\left(l_{t} + h b_{t-1}\\right) s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
-    \\end{split}$",
+    \\end{aligned}$",
 # T="Ad"
-    "$\\begin{split}
-      &y_{t} = l_{t-1} + \\phi b_{t-1} + \\epsilon_t \\\\
+    "$\\begin{aligned} &y_{t} = l_{t-1} + \\phi b_{t-1} + \\epsilon_t \\\\
       &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha \\epsilon_t \\\\
       &b_t = \\phi b_{t-1} + \\beta \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + \\phi b_{t-1} \\\\
       &\\hat{y}_{t+h} = l_{t} + \\sum_{j=1}^h \\phi^j b_t \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} + \\phi b_{t-1} + s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} + \\phi b_{t-1} + s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha \\epsilon_t \\\\
       &b_t = \\phi b_{t-1} + \\beta \\epsilon_t \\\\
       &s_t = s_{t-m} + \\gamma \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + \\phi b_{t-1} + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} + \\sum_{j=1}^h \\phi^j b_{t-1} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
       &b_t = \\phi b_{t-1} + \\beta \\frac{\\epsilon_t}{s_{t-m}} \\\\
       &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1} + \\phi b_{t-1}} \\\\
       &\\mu_{y,t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m} \\\\
       &\\hat{y}_{t+h} = \\left(l_{t} + \\sum_{j=1}^h \\phi^j b_t \\right) s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
-    \\end{split}$",
+    \\end{aligned}$",
 # T="M"
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1} + \\epsilon_t \\\\
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} + \\epsilon_t \\\\
       &l_t = l_{t-1} b_{t-1} + \\alpha \\epsilon_t \\\\
       &b_t = b_{t-1} + \\beta \\frac{\\epsilon_t}{l_{t-1}} \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1} \\\\
       &\\hat{y}_{t+h} = l_{t} b_t^h \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form for} h>1
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1} + s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} + s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} b_{t-1} + \\alpha \\epsilon_t \\\\
       &b_t = b_{t-1} + \\beta \\frac{\\epsilon_t}{l_{t-1}} \\\\
       &s_t = s_{t-m} + \\gamma \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1} + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} b_{t-1}^h + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form for} h>1
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1} s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} b_{t-1} + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
       &b_t = b_{t-1} + \\beta \\frac{\\epsilon_t}{l_{t-1}s_{t-m}} \\\\
       &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1} b_{t-1}} \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1} s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} b_{t-1}^h s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form for} h>1
-    \\end{split}$",
+    \\end{aligned}$",
 # T="Md"
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1}^\\phi + \\epsilon_t \\\\
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi + \\epsilon_t \\\\
       &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha \\epsilon_t \\\\
       &b_t = b_{t-1}^\\phi + \\beta \\frac{\\epsilon_t}{l_{t-1}} \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi \\\\
       &\\hat{y}_{t+h} = l_{t} b_t^{\\sum_{j=1}^h \\phi^j} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form for} h>1
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1}^\\phi + s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi + s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha \\epsilon_t \\\\
       &b_t = b_{t-1}^\\phi + \\beta \\frac{\\epsilon_t}{l_{t-1}} \\\\
       &s_t = s_{t-m} + \\gamma \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} b_{t-1}^{\\sum_{j=1}^h \\phi^j} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form for} h>1
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1}^\\phi s_{t-m} + \\epsilon_t \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi s_{t-m} + \\epsilon_t \\\\
       &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
       &b_t = b_{t-1}^\\phi + \\beta \\frac{\\epsilon_t}{l_{t-1}s_{t-m}} \\\\
       &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1} b_{t-1}} \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} b_{t-1}^{\\sum_{j=1}^h \\phi^j} s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form for} h>1
-    \\end{split}$")
+    \\end{aligned}$")
 etsAdditiveTable <- matrix(etsAdditiveTable, 5, 3, byrow=TRUE,
                            dimnames=list(c("**No trend**","**Additive trend**","**Additive damped trend**",
                                            "**Multiplicative trend**","**Multiplicative damped trend**"),
@@ -350,137 +337,122 @@ The multiplicative error models have the same one step ahead expectations as the
 
 ```{r ETSMultiplicativeError, echo=FALSE}
 # T="N"
-etsMultiplicativeTable <- c("$\\begin{split}
-      &y_{t} = l_{t-1}(1 + \\epsilon_t) \\\\
+etsMultiplicativeTable <- c("$\\begin{aligned} &y_{t} = l_{t-1}(1 + \\epsilon_t) \\\\
       &l_t = l_{t-1}(1 + \\alpha \\epsilon_t) \\\\
       &\\mu_{y,t} = l_{t-1} \\\\
       &\\hat{y}_{t+h} = l_{t} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} + \\alpha \\mu_{y,t} \\epsilon_t \\\\
       &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} s_{t-m}(1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} s_{t-m}(1 + \\epsilon_t) \\\\
       &l_t = l_{t-1}(1 + \\alpha \\epsilon_t) \\\\
       &s_t = s_{t-m}(1 + \\gamma \\epsilon_t) \\\\
       &\\mu_{y,t} = l_{t-1} s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
-    \\end{split}$",
+    \\end{aligned}$",
 # T="A"
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + b_{t-1})(1 + \\epsilon_t) \\\\
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + b_{t-1})(1 + \\epsilon_t) \\\\
       &l_t = (l_{t-1} + b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
       &b_t = b_{t-1} + \\beta \\mu_{y,t} \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + b_{t-1} \\\\
       &\\hat{y}_{t+h} = l_{t} + h b_t \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} + b_{t-1} + \\alpha \\mu_{y,t} \\epsilon_t \\\\
       &b_t = b_{t-1} + \\beta \\mu_{y,t} \\epsilon_t \\\\
       &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + b_{t-1} + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} + h b_{t-1} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + b_{t-1}) s_{t-m}(1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + b_{t-1}) s_{t-m}(1 + \\epsilon_t) \\\\
       &l_t = (l_{t-1} + b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
       &b_t = b_{t-1} + \\beta (l_{t-1} + b_{t-1}) \\epsilon_t \\\\
       &s_t = s_{t-m} (1 + \\gamma \\epsilon_t) \\\\
       &\\mu_{y,t} = (l_{t-1} + b_{t-1}) s_{t-m} \\\\
       &\\hat{y}_{t+h} = \\left(l_{t} + h b_{t-1}\\right) s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
-    \\end{split}$",
+    \\end{aligned}$",
 # T="Ad"
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + \\phi b_{t-1})(1 + \\epsilon_t) \\\\
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + \\phi b_{t-1})(1 + \\epsilon_t) \\\\
       &l_t = (l_{t-1} + \\phi b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
       &b_t = \\phi b_{t-1} + \\beta \\mu_{y,t} \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + \\phi b_{t-1} \\\\
       &\\hat{y}_{t+h} = l_{t} + \\sum_{j=1}^h \\phi^j b_t \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + \\phi b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + \\phi b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha \\mu_{y,t} \\epsilon_t \\\\
       &b_t = \\phi b_{t-1} + \\beta \\mu_{y,t} \\epsilon_t \\\\
       &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} + \\phi b_{t-1} + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} + \\sum_{j=1}^h \\phi^j b_{t-1} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m}(1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m}(1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} + \\phi b_{t-1} (1 + \\alpha \\epsilon_t) \\\\
       &b_t = \\phi b_{t-1} + \\beta (l_{t-1} + \\phi b_{t-1}) \\epsilon_t \\\\
       &s_t = s_{t-m}(1 + \\gamma \\epsilon_t) \\\\
       &\\mu_{y,t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m} \\\\
       &\\hat{y}_{t+h} = \\left(l_{t} + \\sum_{j=1}^h \\phi^j b_t \\right) s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
-    \\end{split}$",
+    \\end{aligned}$",
 # T="M"
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1} (1 + \\epsilon_t) \\\\
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} (1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} b_{t-1} (1 + \\alpha \\epsilon_t) \\\\
       &b_t = b_{t-1} (1 + \\beta \\epsilon_t) \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1} \\\\
       &\\hat{y}_{t+h} = l_{t} b_t^h \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} b_{t-1} + \\alpha \\mu_{y,t} \\epsilon_t \\\\
       &b_t = b_{t-1} + \\beta \\frac{\\mu_{y,t}}{l_{t-1}} \\epsilon_t \\\\
       &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1} + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} b_{t-1}^h + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1} s_{t-m} (1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} s_{t-m} (1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} b_{t-1} (1 + \\alpha \\epsilon_t) \\\\
       &b_t = b_{t-1} (1 + \\beta \\epsilon_t) \\\\
       &s_t = s_{t-m} (1 + \\gamma \\epsilon_t) \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1} s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} b_{t-1}^h s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form}
-    \\end{split}$",
+    \\end{aligned}$",
 # T="Md"
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1}^\\phi (1 + \\epsilon_t) \\\\
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi (1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} b_{t-1}^\\phi (1 + \\alpha \\epsilon_t) \\\\
       &b_t = b_{t-1}^\\phi (1 + \\beta \\epsilon_t) \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi \\\\
       &\\hat{y}_{t+h} = l_{t} b_t^{\\sum_{j=1}^h \\phi^j} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = (l_{t-1} b_{t-1}^\\phi + s_{t-m})(1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} b_{t-1}^\\phi + s_{t-m})(1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha \\mu_{y,t} \\epsilon_t \\\\
       &b_t = b_{t-1}^\\phi + \\beta \\frac{\\mu_{y,t}}{l_{t-1}} \\epsilon_t \\\\
       &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi + s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} b_{t-1}^{\\sum_{j=1}^h \\phi^j} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form}
-    \\end{split}$",
-    "$\\begin{split}
-      &y_{t} = l_{t-1} b_{t-1}^\\phi s_{t-m} (1 + \\epsilon_t) \\\\
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi s_{t-m} (1 + \\epsilon_t) \\\\
       &l_t = l_{t-1} b_{t-1}^\\phi \\left(1 + \\alpha \\frac{\\epsilon_t}{s_{t-m}}\\right) \\\\
       &b_t = b_{t-1}^\\phi \\left(1 + \\beta \\frac{\\epsilon_t}{l_{t-1}s_{t-m}}\\right) \\\\
       &s_t = s_{t-m} \\left(1 + \\gamma \\frac{\\epsilon_t}{l_{t-1} b_{t-1}}\\right) \\\\
       &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi s_{t-m} \\\\
       &\\hat{y}_{t+h} = l_{t} b_{t-1}^{\\sum_{j=1}^h \\phi^j} s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
       &\\mu_{y,t+h|t} \\text{ - no closed form}
-    \\end{split}$")
+    \\end{aligned}$")
 etsMultiplicativeTable <- matrix(etsMultiplicativeTable, 5, 3, byrow=TRUE,
                            dimnames=list(c("**No trend**","**Additive trend**","**Additive damped trend**",
                                            "**Multiplicative trend**","**Multiplicative damped trend**"),
