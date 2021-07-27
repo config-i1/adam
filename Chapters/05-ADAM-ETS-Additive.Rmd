@@ -1,18 +1,6 @@
 # Pure additive ADAM ETS {#ADAMETSIntroduction}
 
-The ETS model implemented in ADAM framework is built upon the conventional one but has several important differences. First it is formulated using lags of components rather than the transition of them over time, so the original model \@ref(eq:ETSConventionalStateSpace) is written in the following way:
-\begin{equation}
-  \begin{aligned}
-    {y}_{t} = &w(\mathbf{v}_{t-\boldsymbol{l}}) + r(\mathbf{v}_{t-\boldsymbol{l}}) \epsilon_t \\
-    \mathbf{v}_{t} = &f(\mathbf{v}_{t-\boldsymbol{l}}) + g(\mathbf{v}_{t-\boldsymbol{l}}) \epsilon_t
-  \end{aligned},
-  (\#eq:ETSADAMStateSpace)
-\end{equation}
-where $\mathbf{v}_{t-\boldsymbol{l}}$ is the vector of lagged components and $\boldsymbol{l}$ is the vector of lags, and all the other functions corresponds to the ones used in \@ref(eq:ETSConventionalStateSpace). So, for example, for the ETS(A,A,A) model the lags will be $\boldsymbol{l}'=\begin{pmatrix}1 & 1 & m\end{pmatrix}$, where $m$ is the seasonal periodicity of the data, leading to $\mathbf{v}_{t-\boldsymbol{l}}'=\begin{pmatrix} l_{t-1} & b_{t-1} & s_{t-m}\end{pmatrix}$. The model \@ref(eq:ETSADAMStateSpace) updates the states exactly in the same way as \@ref(eq:ETSConventionalStateSpace) and produces exactly the same values. The main benefit of doing that is that the transition matrix becomes smaller, containing $3\times 3$ elements in case of ETS(A,A,A) instead of $(2+m)\times (2+m)$ as for the conventional model. The main disadvantage of this approach is in the complications arrising in the derivation of conditional expectation and mean, which still have closed forms, but are more cumbersome. They are discussed later in this chapter for the example of [pure additive ETS](#ADAMETSPureAdditive).
-
-Furthermore, ADAM ETS introduces more flexibility, allowing the error term $\epsilon_t$ to follow non-normal distributions. This impacts the likelihood function and prediction interval, but does not change the mechanism of the update of states.
-
-Based on all this, in the next few chapters we will discuss several special cases of the ADAM ETS model and explain how they can be extended.
+Now that we are familiar with the conventional ETS, we can move to the discussion of ADAM implementation of it, which has several important differences. We start the discussion with the pure additive models, which are much easier to work with than other ETS models. This chapter focuses on technical details of the model, discussing the general formulation of the model in algebraic form, then moving to recursive relations, that are needed in order to understand how to produce forecasts from the model and how to estimate it correctly (i.e. imposing restrictions on the parameters space). Finally, we discuss the distributional assumptions for ADAM ETS, introducing not only the Normal distribution, but also showing how to use Laplace, S, Generalised Normal, Log Normal, Gamma and Inverse Gaussian distributions in the context.
 
 
 ## Model formulation {#ADAMETSPureAdditive}
@@ -24,15 +12,15 @@ The pure additive case is interesting, because this is the group of models that 
   \end{aligned},
   (\#eq:ETSADAMStateSpacePureAdditive)
 \end{equation}
-where $\mathbf{w}$ is the measurement vector, $\mathbf{F}$ is the transition matrix and $\mathbf{g}$ is the persistence vector. An example of a pure additive model is ETS(A,A,A), for which we have the following values:
+where $\mathbf{w}$ is the measurement vector, $\mathbf{F}$ is the transition matrix, $\mathbf{g}$ is the persistence vector and $\mathbf{v}_{t-\boldsymbol{l}}$ is the vector of lagged components and $\boldsymbol{l}$ is the vector of lags. The important thing to note is that ADAM model is formulated using lags of components rather than the transition of them over time. This comes to the elements of the vector $\boldsymbol{l}$. For example, for the ETS(A,A,A) model the lags will be $\boldsymbol{l}'=\begin{pmatrix}1 & 1 & m\end{pmatrix}$, where $m$ is the seasonal periodicity of the data, leading to:
 \begin{equation}
   \begin{aligned}
-    \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \end{pmatrix}, & \mathbf{F} = \begin{pmatrix} 1 & 1 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{pmatrix}, \\
-    \mathbf{g} = \begin{pmatrix} \alpha \\ \beta \\ \gamma \end{pmatrix}, & \mathbf{v}_{t} = \begin{pmatrix} l_t \\ b_t \\ s_t \end{pmatrix}, & \boldsymbol{l} = \begin{pmatrix} 1 \\ 1 \\ m \end{pmatrix}
+    \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \end{pmatrix}, & \mathbf{F} = \begin{pmatrix} 1 & 1 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{pmatrix}, & \mathbf{g} = \begin{pmatrix} \alpha \\ \beta \\ \gamma \end{pmatrix}, \\
+    \mathbf{v}_{t} = \begin{pmatrix} l_t \\ b_t \\ s_t \end{pmatrix}, & \boldsymbol{l} = \begin{pmatrix} 1 \\ 1 \\ m \end{pmatrix} & \mathbf{v}_{t-\boldsymbol{l}} = \begin{pmatrix} l_{t-1} \\ b_{t-1} \\ s_{t-m} \end{pmatrix}
   \end{aligned}.
   (\#eq:ETSADAMAAAMatrices)
 \end{equation}
-By inserting these values in the equation \@ref(eq:ETSADAMStateSpacePureAdditive), we will obtain the model discussed in the [ETS Taxonomy](#ETSTaxonomyMaths) section:
+The model \@ref(eq:ETSADAMStateSpacePureAdditive) updates the states exactly in the same way as \@ref(eq:ETSConventionalStateSpace) and produces exactly the same values. This becomes clear, if we insert the values \@ref(eq:ETSADAMAAAMatrices) in the equation \@ref(eq:ETSADAMStateSpacePureAdditive), we will obtain the model discussed in the Section \@ref(ETSTaxonomyMaths):
 \begin{equation}
   \begin{aligned}
     y_{t} = & l_{t-1} + b_{t-1} + s_{t-m} + \epsilon_t \\
@@ -47,7 +35,7 @@ Just to compare, the conventional ETS(A,A,A), formulated according to \@ref(eq:E
   \mathbf{F} = \begin{pmatrix} 1 & 1 & \mathbf{0}'_{m-1} & 0 \\ 0 & 1 & \mathbf{0}'_{m-1} & 0 \\ 0 & 0 & \mathbf{0}'_{m-1} & 1 \\ \mathbf{0}_{m-1} & \mathbf{0}_{m-1} & \mathbf{I}_{m-1} & \mathbf{0}_{m-1} \end{pmatrix},
   (\#eq:ETSADAMAAAMatricesTransition)
 \end{equation}
-where $\mathbf{I}_{m-1}$ is the identity matrix of the size $(m-1) \times (m-1)$ and $\mathbf{0}_{m-1}$ is the vector of zeroes of size $m-1$. The model \@ref(eq:ETSADAMStateSpacePureAdditive) is more parsimonious and simplifies some of the calculations, making it realistic, for example, to apply models to data with large frequency $m$ (e.g. 24, 48, 52, 365).
+where $\mathbf{I}_{m-1}$ is the identity matrix of the size $(m-1) \times (m-1)$ and $\mathbf{0}_{m-1}$ is the vector of zeroes of size $m-1$. The main benefit of using the vector of lags $\boldsymbol{l}$ is in the reduction of dimensions of matrices (the transition matrix contains $3\times 3$ elements in case of ETS(A,A,A) instead of $(2+m)\times (2+m)$ as for the conventional ETS model). The model \@ref(eq:ETSADAMStateSpacePureAdditive) is more parsimonious than the conventional one and simplifies some of the calculations, making it realistic, for example, to apply models to data with large frequency $m$ (e.g. 24, 48, 52, 365). The main disadvantage of this approach is in the complications arising in the derivation of conditional expectation and mean, which still have closed forms, but are more cumbersome. They are discussed later in this chapter in Section \@ref(ADAMETSPureAdditive).
 
 
 ## Recursive relation {#adamETSPureAdditiveRecursive}
