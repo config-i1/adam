@@ -40,3 +40,49 @@ Fourth, you need to have benchmark models. Always compare forecasts from your fa
 Finally, when comparing forecasts from different models, you might end up with several very similar performing approaches. If the difference between them is not significant, then the general recommendation is to select the one that is faster and simpler. This is because simpler models are more difficult to break and those that work faster are more attractive in practice due to reduced energy consumption (let's save the planet!).
 
 These forecasting principles do not guarantee that you will end up with the most accurate results, but at least you will not end up with the unreasonable ones.
+
+
+## Types of forecasts
+Depending on circumstances, we might require different types of forecasts with different characteristics. It is important to understand what your model produces in order to measure its performance correctly (see Section \@ref(errorMeasures)) and make correct decisions in practice. There are several things that are typically produced for forecasting purposes. We start with the most popular one.
+
+### Point forecasts
+The classical and most often produced thing is the point forecast, which corresponds to some trajectory from a model. This however might align with different types of statistics depending on the model and its assumptions. In case of pure additive model (such as linear regression), the point forecasts correspond to the conditional expectation (**mean**) from the model. The conventional interpretation of this value is that it shows what to expect on average if the situation would repeat itself many times (e.g. if we have the day with similar conditions, then the average temperature will be 10 degrees Celsius). In case of time series, this interpretation is difficult to digest, given that time does not repeat itself, but this is the best we can have. The technicalities of producing conditional expectations from ADAM will be discussed in Section \@ref(ADAMForecastingExpectation).
+
+Another type of point forecast is the (conditional) geometric expectation (**geometric mean**). It typically arises, when the model is applied to the data in logarithms and the final forecast is only exponentiated. This becomes apparent from the following definition of geometric mean:
+\begin{equation}
+    \check{y} = \sqrt^{T}{\prod_{t=1}^T y_t} = \exp \left(\frac{1}{T} \sum_{t=1}^T \log(y_t) \right) ,
+    (\#eq:GeoMean)
+\end{equation}
+where $y_t$ is the actual value and $T$ is the sample size. In order to use the geometric mean, it is assumed that the actual values can only be positive, otherwise the root in c might produce imaginary units (due to, for example, taking a square root out of a negative number) or be equal to zero (if one of the values is zero). In general, the arithmetic and geometric means are related via the following inequality:
+\begin{equation}
+    \check{y} \leq \mu ,
+    (\#eq:GeoAndArithMeans)
+\end{equation}
+where $\check{y}$ is the geometric mean \check{y} and $\mu$ is the arithmetic one. Although geometric mean makes sense in many contexts, it is more difficult to explain than the arithmetic one to decision makers.
+
+Finally, sometimes **medians** are used in place of point forecasts. In this case we can say that the forecast splits the sample in two halves and shows the level, below which 50% of observations will lie in the future.
+
+### Quantiles and prediction intervals
+As some forecasters say, all point forecasts are wrong. They will never correspond to the actual values, because they only capture the mean (or median) performance of the model, as discussed in the previous subsection. Everything that is not included in the point forecast can be considered as an uncertainty of demand. For example, we never will be able to say specifically how many cups of coffee we will sell next Monday, but we can at least capture the main tendencies and the uncertainty around our point forecast.
+
+```{r adamExampleNormal, fig.cap="An example of a well behaved data, point forecast and a 95% prediction interval.", echo=FALSE}
+testAdam <- adam(rnorm(100,100,10), "ANN", persistence=0, h=10, holdout=TRUE)
+testAdamForecast <- forecast(testAdam, h=10, interval="approx")
+plot(testAdamForecast, main="")
+```
+
+Figure \@ref(adamExampleNormal) shows an example, with a well behaved demand, for which the best point forecast is the straight line. In order to capture the uncertainty of demand, we can construct the prediction interval, which will tell in which bound the demand will lie in $1-\alpha$ percent of cases. The interval in Figure \@ref(adamExampleNormal) has the width of 95% ($\alpha=0.05$) and shows that if the situation is repeated many times, the actual demand will be between `r round(testAdamForecast$lower[1],2)` and `r round(testAdamForecast$upper[1],2)`. Capturing the uncertainty correctly is important, because the real life decisions need to be made based on the full information, not only on the point forecasts.
+
+We will discuss how to produce prediction intervals in more detail in Section \@ref(ADAMForecastingPI).
+
+Another way to capture the uncertainty (related to the prediction interval) is via specific quantiles of distribution. The prediction interval typically has two sides, leaving $\frac{\alpha}{2}$ values on the left and the same on the right, outside the bounds of the interval. Instead of producing the interval, in some cases we might need just a specific quantile, essentially producing the one-sided prediction interval (see Section \@ref(forecastingADAMOtherOneSided) for technicalities). The bound in this case will show the specific value, below which the pre-selected percentage of cases would lie. This becomes especially useful, in such contexts as safety stock calculation (because we are not interested in knowing the lower bound, we want to have products to satisfy some proportion of demand).
+
+
+### Forecast horizon
+Finally, an important aspect in forecasting is the horizon, for which we need to produce forecasts. Depending on the context, we might need:
+
+1. Only a specific value h steps ahead, e.g. what the temperature next Monday will be.
+2. All values from 1 to h steps ahead, e.g. how many patients we will have each day next week.
+3. Cumulative values for the period from 1 to h steps ahead, e.g. what the cumulative demand over the lead time (the time between the order and product delivery) will be (see discussion in Section \@ref(forecastingADAMOtherCumulative)).
+
+It is important to understand how decisions are made in practice and align them with the forecast horizon. In combination with the point forecasts and prediction intervals discussed above, this will give us an understanding of what to produce from the model and how. For example, in case of safety stock calculation it would be more reasonable to produce quantile of the cumulative over the lead time demand than to produce point forecasts from the model.
