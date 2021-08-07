@@ -38,7 +38,7 @@ The main difference in the three measures arises, when the data we deal with is 
 
 ### An example in R
 In order to see how the error measures work, we consider the following example based on a couple of forecasting functions from `smooth` package for R [@Hyndman2008b and @Svetunkov2015] and measures from `greybox`:
-```{r}
+```{r eval=FALSE}
 y <- rnorm(100,100,10)
 model1 <- es(y,h=10,holdout=TRUE)
 model2 <- ces(y,h=10,holdout=TRUE)
@@ -56,7 +56,24 @@ setNames(exp(sqrt(c(MSE(log(model1$holdout), log(model1$forecast)),
          c("ETS","CES"))
 ```
 
-Given that the distribution of the original data is symmetric, all three error measures should in general recommend the same model. But also given that the data we generated for the example is stationary, the two models will produce very similar forecasts. Note that we have evaluated the same point forecasts from the models using different error measures, which would be wrong if the distribution of the data would be skewed. In our case, the model relies on normal distribution, so the point forecast from it would coincide with arithmetic mean, geometric mean and median.
+```{r echo=FALSE}
+load("data/errorMeasures.Rdata")
+
+# RMSE
+setNames(sqrt(c(MSE(model1$holdout, model1$forecast),
+                MSE(model2$holdout, model2$forecast))),
+         c("ETS","CES"))
+# MAE
+setNames(c(MAE(model1$holdout, model1$forecast),
+           MAE(model2$holdout, model2$forecast)),
+         c("ETS","CES"))
+# RMSLE
+setNames(exp(sqrt(c(MSE(log(model1$holdout), log(model1$forecast)),
+                    MSE(log(model2$holdout), log(model2$forecast))))),
+         c("ETS","CES"))
+```
+
+Given that the distribution of the original data is symmetric, all three error measures should in general recommend the same model. But also given that the data we generated for the example is stationary, the two models will produce very similar forecasts. The values above demonstrate the latter point - the accuracy between the two models is roughly the same. Note that we have evaluated the same point forecasts from the models using different error measures, which would be wrong if the distribution of the data would be skewed. In our case, the model relies on normal distribution, so the point forecast from it would coincide with arithmetic mean, geometric mean and median.
 
 
 ### Aggregating error measures
@@ -126,7 +143,7 @@ Similarly, RMSSLE, rRMSLE and sRMSLE can be proposed, using the same principles 
 Finally, when aggregating the performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors - this way you will know which of the methods fails seriously and which does a consistently good job. If an aggregate measure is needed, then **use mean and median of the chosen metric**. The mean might be non-finite for some of error measures, especially when a method performs extremely poorly on a time series (an outlier), but it will give you an information about the average performance of the method and might flag the extreme cases. The median at the same time is robust to outliers and is always calculable, no matter what the distribution of the error term is. Furthermore, the comparison of mean and median might provide an additional information about the tail of distribution without reverting to histograms or calculation of quantiles. @Davydenko2013 argues for the use of geometric mean for relative and scaled measures, but as discussed earlier, it might become equal to zero or to infinity if the data contains outliers (e.g. two cases, when one of methods produced perfect forecast, or the benchmark in rMAE produced a perfect forecast). At the same time, if the distribution of errors in logarithms is symmetric [which is the main argument of @Davydenko2013], then geometric mean will coincide with median, so there is no point in calculating the geometric mean at all.
 
 
-### Demonstration in R
+### Demonstration in R {#errorMeasuresExampleBig}
 In R, there is a variety of functions that calculate the error measures discussed above, including the `accuracy()` function from `forecast` package and `measures()` from `greybox`. Here is an example of how the measures can be calculated based on a couple of forecasting functions from `smooth` package for R and a set of generated time series:
 
 ```{r eval=FALSE}
@@ -144,18 +161,14 @@ for(i in 1:nsim){
   # Generate a time series
   y <- rnorm(100,100,10)
   # Apply ETS
-  model1 <- es(y,"ANN",h=10,holdout=TRUE)
-  errorMeasures[i,1,] <- measures(model1$holdout, model1$forecast,
-                                  actuals(model1))
+  testModel1 <- es(y,"ANN",h=10,holdout=TRUE)
+  errorMeasures[i,1,] <- measures(testModel1$holdout, testModel1$forecast,
+                                  actuals(testModel1))
   # Apply CES
-  model2 <- ces(y,h=10,holdout=TRUE)
-  errorMeasures[i,2,] <- measures(model2$holdout, model2$forecast,
-                                  actuals(model2))
+  testModel2 <- ces(y,h=10,holdout=TRUE)
+  errorMeasures[i,2,] <- measures(testModel2$holdout, testModel2$forecast,
+                                  actuals(testModel2))
 }
-```
-
-```{r echo=FALSE}
-load("data/errorMeasures.Rdata")
 ```
 
 The default benchmark methods for relative measures above is Naïve. In order to see how the distribution of error measures would look like, we can produce violinplots via `vioplot()` function from `vioplot` package. We will focus on rRMSE measure (see Figure \@ref(fig:errorMeasuresrRMSEDistLog)).
@@ -179,7 +192,7 @@ apply(errorMeasures[,,"rRMSE"],2,mean)
 apply(errorMeasures[,,"rRMSE"],2,median)
 ```
 
-Based on the values above, we cannot make any solid conclusion about the performance of the two models: in terms of both mean and median rRMSE, CES is doing slightly better, but the difference between the two models is not substantial so we can probably choose the one that is easier to work with (i.e. ETS).
+Based on the values above, we cannot make any solid conclusion about the performance of the two models: in terms of both mean and median rRMSE, CES is doing slightly better, but the difference between the two models is not substantial so we can probably choose the one that is easier to work with.
 
 
 ## Measuring uncertainty {#uncertainty}
@@ -211,7 +224,7 @@ where $\alpha$ is the significance level. If the actual values lie outside of th
     \mathrm{PS} = (1 -\alpha) \sum_{y_{t+j} < q_{t+j}, j=1,\dots,h } |y_{t+j} -q_{t+j}| + \alpha \sum_{y_{t+j} \geq q_{t+j} , j=1,\dots,h } |y_{t+j} -q_{t+j}|,
     (\#eq:pinball)
 \end{equation}
-where $q_{t+j}$ is the value of the specific quantile of the distribution. What PS shows, is how well we capture the specific quantile in the data. The lower the value of pinball is, the closer the bound is to the specific quantile of the holdout distribution. If the PS is equal to zero, then we have done the perfect job in hitting that specific quantile. The main issue with PS is that it is very difficult to assess the quantiles correctly on small samples. For example, in order to get a better idea of how the 0.975 quantile performs, we would need to have at least 40 observations, so that 39 of them would be expected to lie below this bound $\left(\frac{39}{40} = 0.975\right)$. In fact, the quantiles are not always uniquely defined [see, for example, @Taylor2020], which makes the measurement difficult.
+where $q_{t+j}$ is the value of the specific quantile of the distribution. What PS shows, is how well we capture the specific quantile in the data. The lower the value of pinball is, the closer the bound is to the specific quantile of the holdout distribution. If the PS is equal to zero, then we have done the perfect job in hitting that specific quantile. The main issue with PS is that it is very difficult to assess the quantiles correctly on small samples. For example, in order to get a better idea of how the 0.975 quantile performs, we would need to have at least 40 observations, so that 39 of them would be expected to lie below this bound $\left(\frac{39}{40} = 0.975\right)$. In fact, quantiles are not always uniquely defined [see, for example, @Taylor2020], which makes the measurement difficult.
 
 Similar to the pinball function, it is possible to propose the expectile-based score, but while it has nice statistical properties [@Taylor2020], it is more difficult to interpret.
 
@@ -221,7 +234,7 @@ If you are interested in the overall performance of the model, then MIS provides
 
 
 ### Example in R
-Continuing the example from the previous section, we could produce prediction intervals from the two models and compare them using MIS and pinball:
+Continuing the example from Section \@ref(errorMeasures), we could produce prediction intervals from the two models and compare them using MIS and pinball:
 
 ```{r}
 model1Forecast <- forecast(model1,h=10,interval="p",level=0.95)
@@ -252,7 +265,8 @@ setNames(c(mean(model1$holdout > model1Forecast$lower &
                 model2$holdout < model2Forecast$upper)),
          c("Model 1", "Model 2"))
 ```
-These measures do not tell much in terms of performance of models, when only applied to one time series. In order to see a proper difference, we need to apply models to a set of time series, produce forecasts, calculate measures and then look at their aggregate performance, e.g. via mean / median or quantiles.
+
+The values above imply that the first model (ETS) performed better than the second one in terms of MIS and pinball loss (it interval was narrower). However, these measures do not tell much in terms of performance of models, when only applied to one time series. In order to see more solid results, we need to apply models to a set of time series, produce prediction intervals, calculate measures and then look at their aggregate performance, e.g. via mean / median or quantiles. The loop and the analysis would be similar to the one discussed in Section \@ref(#errorMeasuresExampleBig), so we do not repeat it here.
 
 
 ## How to choose appropriate error measure {#errorMeasuresSelection}
