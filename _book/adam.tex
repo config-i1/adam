@@ -140,7 +140,7 @@
 
 \title{Forecasting and Analytics with ADAM}
 \author{Ivan Svetunkov}
-\date{2021-08-05}
+\date{2021-08-07}
 
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}[chapter]
@@ -383,7 +383,7 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well behaved data, point forecast and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example, with a well behaved demand, for which the best point forecast is the straight line. In order to capture the uncertainty of demand, we can construct the prediction interval, which will tell in which bound the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (\(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 76.49 and 122.26. Capturing the uncertainty correctly is important, because the real life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example, with a well behaved demand, for which the best point forecast is the straight line. In order to capture the uncertainty of demand, we can construct the prediction interval, which will tell in which bound the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (\(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 80.73 and 117.99. Capturing the uncertainty correctly is important, because the real life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}.
 
@@ -462,30 +462,10 @@ In order to see how the error measures work, we consider the following example b
 \FunctionTok{setNames}\NormalTok{(}\FunctionTok{sqrt}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\FunctionTok{MSE}\NormalTok{(model1}\SpecialCharTok{$}\NormalTok{holdout, model1}\SpecialCharTok{$}\NormalTok{forecast),}
                 \FunctionTok{MSE}\NormalTok{(model2}\SpecialCharTok{$}\NormalTok{holdout, model2}\SpecialCharTok{$}\NormalTok{forecast))),}
          \FunctionTok{c}\NormalTok{(}\StringTok{"ETS"}\NormalTok{,}\StringTok{"CES"}\NormalTok{))}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-##      ETS      CES 
-## 8.254042 8.543648
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
 \CommentTok{\# MAE}
 \FunctionTok{setNames}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\FunctionTok{MAE}\NormalTok{(model1}\SpecialCharTok{$}\NormalTok{holdout, model1}\SpecialCharTok{$}\NormalTok{forecast),}
            \FunctionTok{MAE}\NormalTok{(model2}\SpecialCharTok{$}\NormalTok{holdout, model2}\SpecialCharTok{$}\NormalTok{forecast)),}
          \FunctionTok{c}\NormalTok{(}\StringTok{"ETS"}\NormalTok{,}\StringTok{"CES"}\NormalTok{))}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{verbatim}
-##      ETS      CES 
-## 7.383829 7.392171
-\end{verbatim}
-
-\begin{Shaded}
-\begin{Highlighting}[]
 \CommentTok{\# RMSLE}
 \FunctionTok{setNames}\NormalTok{(}\FunctionTok{exp}\NormalTok{(}\FunctionTok{sqrt}\NormalTok{(}\FunctionTok{c}\NormalTok{(}\FunctionTok{MSE}\NormalTok{(}\FunctionTok{log}\NormalTok{(model1}\SpecialCharTok{$}\NormalTok{holdout), }\FunctionTok{log}\NormalTok{(model1}\SpecialCharTok{$}\NormalTok{forecast)),}
                     \FunctionTok{MSE}\NormalTok{(}\FunctionTok{log}\NormalTok{(model2}\SpecialCharTok{$}\NormalTok{holdout), }\FunctionTok{log}\NormalTok{(model2}\SpecialCharTok{$}\NormalTok{forecast))))),}
@@ -495,10 +475,20 @@ In order to see how the error measures work, we consider the following example b
 
 \begin{verbatim}
 ##      ETS      CES 
-## 1.084080 1.086889
+## 9.492744 9.494683
 \end{verbatim}
 
-Given that the distribution of the original data is symmetric, all three error measures should in general recommend the same model. But also given that the data we generated for the example is stationary, the two models will produce very similar forecasts. Note that we have evaluated the same point forecasts from the models using different error measures, which would be wrong if the distribution of the data would be skewed. In our case, the model relies on normal distribution, so the point forecast from it would coincide with arithmetic mean, geometric mean and median.
+\begin{verbatim}
+##      ETS      CES 
+## 7.678865 7.678846
+\end{verbatim}
+
+\begin{verbatim}
+##      ETS      CES 
+## 1.095623 1.095626
+\end{verbatim}
+
+Given that the distribution of the original data is symmetric, all three error measures should in general recommend the same model. But also given that the data we generated for the example is stationary, the two models will produce very similar forecasts. The values above demonstrate the latter point - the accuracy between the two models is roughly the same. Note that we have evaluated the same point forecasts from the models using different error measures, which would be wrong if the distribution of the data would be skewed. In our case, the model relies on normal distribution, so the point forecast from it would coincide with arithmetic mean, geometric mean and median.
 
 \hypertarget{aggregating-error-measures}{%
 \subsection{Aggregating error measures}\label{aggregating-error-measures}}
@@ -599,8 +589,8 @@ Similarly, RMSSLE, rRMSLE and sRMSLE can be proposed, using the same principles 
 
 Finally, when aggregating the performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors - this way you will know which of the methods fails seriously and which does a consistently good job. If an aggregate measure is needed, then \textbf{use mean and median of the chosen metric}. The mean might be non-finite for some of error measures, especially when a method performs extremely poorly on a time series (an outlier), but it will give you an information about the average performance of the method and might flag the extreme cases. The median at the same time is robust to outliers and is always calculable, no matter what the distribution of the error term is. Furthermore, the comparison of mean and median might provide an additional information about the tail of distribution without reverting to histograms or calculation of quantiles. \citet{Davydenko2013} argues for the use of geometric mean for relative and scaled measures, but as discussed earlier, it might become equal to zero or to infinity if the data contains outliers (e.g.~two cases, when one of methods produced perfect forecast, or the benchmark in rMAE produced a perfect forecast). At the same time, if the distribution of errors in logarithms is symmetric \citep[which is the main argument of][]{Davydenko2013}, then geometric mean will coincide with median, so there is no point in calculating the geometric mean at all.
 
-\hypertarget{demonstration-in-r}{%
-\subsection{Demonstration in R}\label{demonstration-in-r}}
+\hypertarget{errorMeasuresExampleBig}{%
+\subsection{Demonstration in R}\label{errorMeasuresExampleBig}}
 
 In R, there is a variety of functions that calculate the error measures discussed above, including the \texttt{accuracy()} function from \texttt{forecast} package and \texttt{measures()} from \texttt{greybox}. Here is an example of how the measures can be calculated based on a couple of forecasting functions from \texttt{smooth} package for R and a set of generated time series:
 
@@ -620,13 +610,13 @@ In R, there is a variety of functions that calculate the error measures discusse
   \CommentTok{\# Generate a time series}
 \NormalTok{  y }\OtherTok{\textless{}{-}} \FunctionTok{rnorm}\NormalTok{(}\DecValTok{100}\NormalTok{,}\DecValTok{100}\NormalTok{,}\DecValTok{10}\NormalTok{)}
   \CommentTok{\# Apply ETS}
-\NormalTok{  model1 }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y,}\StringTok{"ANN"}\NormalTok{,}\AttributeTok{h=}\DecValTok{10}\NormalTok{,}\AttributeTok{holdout=}\ConstantTok{TRUE}\NormalTok{)}
-\NormalTok{  errorMeasures[i,}\DecValTok{1}\NormalTok{,] }\OtherTok{\textless{}{-}} \FunctionTok{measures}\NormalTok{(model1}\SpecialCharTok{$}\NormalTok{holdout, model1}\SpecialCharTok{$}\NormalTok{forecast,}
-                                  \FunctionTok{actuals}\NormalTok{(model1))}
+\NormalTok{  testModel1 }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y,}\StringTok{"ANN"}\NormalTok{,}\AttributeTok{h=}\DecValTok{10}\NormalTok{,}\AttributeTok{holdout=}\ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{  errorMeasures[i,}\DecValTok{1}\NormalTok{,] }\OtherTok{\textless{}{-}} \FunctionTok{measures}\NormalTok{(testModel1}\SpecialCharTok{$}\NormalTok{holdout, testModel1}\SpecialCharTok{$}\NormalTok{forecast,}
+                                  \FunctionTok{actuals}\NormalTok{(testModel1))}
   \CommentTok{\# Apply CES}
-\NormalTok{  model2 }\OtherTok{\textless{}{-}} \FunctionTok{ces}\NormalTok{(y,}\AttributeTok{h=}\DecValTok{10}\NormalTok{,}\AttributeTok{holdout=}\ConstantTok{TRUE}\NormalTok{)}
-\NormalTok{  errorMeasures[i,}\DecValTok{2}\NormalTok{,] }\OtherTok{\textless{}{-}} \FunctionTok{measures}\NormalTok{(model2}\SpecialCharTok{$}\NormalTok{holdout, model2}\SpecialCharTok{$}\NormalTok{forecast,}
-                                  \FunctionTok{actuals}\NormalTok{(model2))}
+\NormalTok{  testModel2 }\OtherTok{\textless{}{-}} \FunctionTok{ces}\NormalTok{(y,}\AttributeTok{h=}\DecValTok{10}\NormalTok{,}\AttributeTok{holdout=}\ConstantTok{TRUE}\NormalTok{)}
+\NormalTok{  errorMeasures[i,}\DecValTok{2}\NormalTok{,] }\OtherTok{\textless{}{-}} \FunctionTok{measures}\NormalTok{(testModel2}\SpecialCharTok{$}\NormalTok{holdout, testModel2}\SpecialCharTok{$}\NormalTok{forecast,}
+                                  \FunctionTok{actuals}\NormalTok{(testModel2))}
 \NormalTok{\}}
 \end{Highlighting}
 \end{Shaded}
@@ -685,7 +675,7 @@ Figure \ref{fig:errorMeasuresrRMSEDistLog} demonstrates that the distribution in
 ## 0.8796325 0.8725286
 \end{verbatim}
 
-Based on the values above, we cannot make any solid conclusion about the performance of the two models: in terms of mean rRMSE, CES is doing slightly better, while in terms of median values the ETS is outperforming its competitor. This tells us that CES does not produce as big errors as ETS does, but the difference between the two models is not substantial so we can probably choose the one that is easier to work with (i.e.~ETS).
+Based on the values above, we cannot make any solid conclusion about the performance of the two models: in terms of both mean and median rRMSE, CES is doing slightly better, but the difference between the two models is not substantial so we can probably choose the one that is easier to work with.
 
 \hypertarget{uncertainty}{%
 \section{Measuring uncertainty}\label{uncertainty}}
@@ -725,7 +715,7 @@ As discussed in Section \ref{typesOfForecastsInterval}, point forecasts are not 
    \mathrm{PS} = (1 -\alpha) \sum_{y_{t+j} < q_{t+j}, j=1,\dots,h } |y_{t+j} -q_{t+j}| + \alpha \sum_{y_{t+j} \geq q_{t+j} , j=1,\dots,h } |y_{t+j} -q_{t+j}|,
    \label{eq:pinball}
   \end{equation}
-  where \(q_{t+j}\) is the value of the specific quantile of the distribution. What PS shows, is how well we capture the specific quantile in the data. The lower the value of pinball is, the closer the bound is to the specific quantile of the holdout distribution. If the PS is equal to zero, then we have done the perfect job in hitting that specific quantile. The main issue with PS is that it is very difficult to assess the quantiles correctly on small samples. For example, in order to get a better idea of how the 0.975 quantile performs, we would need to have at least 40 observations, so that 39 of them would be expected to lie below this bound \(\left(\frac{39}{40} = 0.975\right)\). In fact, the quantiles are not always uniquely defined \citep[see, for example,][]{Taylor2020}, which makes the measurement difficult.
+  where \(q_{t+j}\) is the value of the specific quantile of the distribution. What PS shows, is how well we capture the specific quantile in the data. The lower the value of pinball is, the closer the bound is to the specific quantile of the holdout distribution. If the PS is equal to zero, then we have done the perfect job in hitting that specific quantile. The main issue with PS is that it is very difficult to assess the quantiles correctly on small samples. For example, in order to get a better idea of how the 0.975 quantile performs, we would need to have at least 40 observations, so that 39 of them would be expected to lie below this bound \(\left(\frac{39}{40} = 0.975\right)\). In fact, quantiles are not always uniquely defined \citep[see, for example,][]{Taylor2020}, which makes the measurement difficult.
 \end{enumerate}
 
 Similar to the pinball function, it is possible to propose the expectile-based score, but while it has nice statistical properties \citep{Taylor2020}, it is more difficult to interpret.
@@ -737,7 +727,7 @@ If you are interested in the overall performance of the model, then MIS provides
 \hypertarget{example-in-r}{%
 \subsection{Example in R}\label{example-in-r}}
 
-Continuing the example from the previous section, we could produce prediction intervals from the two models and compare them using MIS and pinball:
+Continuing the example from Section \ref{errorMeasures}, we could produce prediction intervals from the two models and compare them using MIS and pinball:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -755,7 +745,7 @@ Continuing the example from the previous section, we could produce prediction in
 
 \begin{verbatim}
 ##  Model 1  Model 2 
-## 42.06508 42.11345
+## 39.68038 46.91441
 \end{verbatim}
 
 \begin{Shaded}
@@ -769,7 +759,7 @@ Continuing the example from the previous section, we could produce prediction in
 
 \begin{verbatim}
 ##  Model 1  Model 2 
-## 5.317780 4.537961
+## 5.402511 6.703046
 \end{verbatim}
 
 \begin{Shaded}
@@ -783,7 +773,7 @@ Continuing the example from the previous section, we could produce prediction in
 
 \begin{verbatim}
 ##  Model 1  Model 2 
-## 5.198491 5.990401
+## 4.517584 5.025557
 \end{verbatim}
 
 \begin{Shaded}
@@ -799,10 +789,10 @@ Continuing the example from the previous section, we could produce prediction in
 
 \begin{verbatim}
 ## Model 1 Model 2 
-##       1       1
+##     0.9     0.9
 \end{verbatim}
 
-These measures do not tell much in terms of performance of models, when only applied to one time series. In order to see a proper difference, we need to apply models to a set of time series, produce forecasts, calculate measures and then look at their aggregate performance, e.g.~via mean / median or quantiles.
+The values above imply that the first model (ETS) performed better than the second one in terms of MIS and pinball loss (it interval was narrower). However, these measures do not tell much in terms of performance of models, when only applied to one time series. In order to see more solid results, we need to apply models to a set of time series, produce prediction intervals, calculate measures and then look at their aggregate performance, e.g.~via mean / median or quantiles. The loop and the analysis would be similar to the one discussed in Section @ref(\#errorMeasuresExampleBig), so we do not repeat it here.
 
 \hypertarget{errorMeasuresSelection}{%
 \section{How to choose appropriate error measure}\label{errorMeasuresSelection}}
@@ -926,7 +916,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.09160918 0.06616105 0.07399004
+## 0.08812155 0.06863491 0.07311249
 \end{verbatim}
 
 In this example we use \texttt{apply()} function in order to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compared the performance of this model with another one, then we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:
@@ -944,7 +934,7 @@ In this example we use \texttt{apply()} function in order to distinguish between
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.09626478 0.07105095 0.07397976
+## 0.09009206 0.06894067 0.07386748
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude, which of the approaches is more adequate for the data.
@@ -1788,27 +1778,27 @@ Here is an example with automatic parameter estimation in ETS(A,N,N) using \text
 \includegraphics{adam_files/figure-latex/ETSANNExample-1.pdf}
 
 \begin{verbatim}
-## Time elapsed: 0.03 seconds
+## Time elapsed: 0.05 seconds
 ## Model estimated: ETS(ANN)
 ## Persistence vector g:
 ##  alpha 
-## 0.1394 
+## 0.4713 
 ## Initial values were optimised.
 ## 
-## Loss function type: likelihood; Loss function value: 530.9715
-## Error standard deviation: 33.5001
+## Loss function type: likelihood; Loss function value: 527.8518
+## Error standard deviation: 32.5463
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1067.943 1068.174 1075.989 1076.530 
+## 1061.704 1061.934 1069.750 1070.290 
 ## 
 ## 95% parametric prediction interval was constructed
 ## 92% of values are in the prediction interval
 ## Forecast errors:
-## MPE: -3.6%; sCE: -39.8%; Asymmetry: -91.8%; MAPE: 3.8%
-## MASE: 1.074; sMAE: 3.6%; sMSE: 0.2%; rMAE: 1.188; rRMSE: 1.28
+## MPE: 1.6%; sCE: 19.7%; Asymmetry: 67.3%; MAPE: 2.5%
+## MASE: 0.803; sMAE: 2.5%; sMSE: 0.1%; rMAE: 1.002; rRMSE: 1.002
 \end{verbatim}
 
 As we see, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected, because we deal with an in-sample estimation. Also, notice that with such a high smoothing parameter, the prediction interval is widening with the increase of the forecast horizon. If the smoothing parameter would be lower, then the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with \(\alpha=0.01\):
@@ -1900,27 +1890,27 @@ And here is an example with the ETS(M,N,N) data, which is very similar to the ET
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.06 seconds
+## Time elapsed: 0.08 seconds
 ## Model estimated: ETS(MNN)
 ## Persistence vector g:
 ##  alpha 
-## 0.2573 
+## 0.3481 
 ## Initial values were optimised.
 ## 
-## Loss function type: likelihood; Loss function value: 669.5925
-## Error standard deviation: 0.099
+## Loss function type: likelihood; Loss function value: 643.3593
+## Error standard deviation: 0.0954
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1345.185 1345.416 1353.231 1353.772 
+## 1292.718 1292.949 1300.765 1301.305 
 ## 
 ## 95% parametric prediction interval was constructed
-## 100% of values are in the prediction interval
+## 92% of values are in the prediction interval
 ## Forecast errors:
-## MPE: 7.4%; sCE: 114.5%; Asymmetry: 88.6%; MAPE: 8.4%
-## MASE: 1.049; sMAE: 10.6%; sMSE: 1.6%; rMAE: 0.75; rRMSE: 0.786
+## MPE: 2.2%; sCE: 36.5%; Asymmetry: 30.7%; MAPE: 10.3%
+## MASE: 0.973; sMAE: 8.8%; sMSE: 1.2%; rMAE: 0.962; rRMSE: 0.937
 \end{verbatim}
 
 \hypertarget{ETSExamples}{%
@@ -2452,7 +2442,7 @@ The series seem to exhibit trend, so we will apply ETS(A,A,N) model:
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.05 seconds
+## Time elapsed: 0.06 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.8098
@@ -2513,7 +2503,7 @@ Notice that the smoothing parameters of ETS(A,A,N) are very high, with \(\alpha=
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.15 seconds
+## Time elapsed: 0.16 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.5198
@@ -2563,7 +2553,7 @@ If we want to test ADAM ETS with another distribution, it can be done using the 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.06 seconds
+## Time elapsed: 0.09 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Generalised Normal with shape=1.874
 ## Loss function type: likelihood; Loss function value: 264.847
@@ -2622,7 +2612,7 @@ In some cases, the optimiser might converge to the local minimum, so if you find
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.37 seconds
+## Time elapsed: 0.45 seconds
 ## Model estimated using adam() function: ETS(AAA)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 511.3916
@@ -2905,7 +2895,7 @@ We continue our examples with the same Box-Jenkins sales case by fitting the ETS
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.07 seconds
+## Time elapsed: 0.08 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 245.3759
@@ -2981,7 +2971,7 @@ We can also compare the performance of ETS(M,M,N) with \(\mathcal{IG}\) distribu
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.05 seconds
+## Time elapsed: 0.06 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 245.3872
@@ -3025,7 +3015,7 @@ The \texttt{AirPassengers} data used in the \protect\hyperlink{ADAMETSPureAdditi
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.38 seconds
+## Time elapsed: 0.27 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.7832
@@ -3067,11 +3057,11 @@ If we want to calculate the error measures based on the conditional expectation,
 
 \begin{verbatim}
 ##            ME           MAE           MSE           MPE          MAPE 
-##  -4.432698628  15.236200400 452.727546350  -0.013795028   0.032992052 
+##  -4.909205366  15.067330440 451.123361903  -0.014746037   0.032739130 
 ##           sCE          sMAE          sMSE          MASE         RMSSE 
-##  -0.202643500   0.058044343   0.006570575   0.632628289   0.679091912 
+##  -0.224427294   0.057401011   0.006547293   0.625616573   0.677887705 
 ##          rMAE         rRMSE          rAME     asymmetry          sPIS 
-##   0.200476321   0.206623725   0.062286163  -0.132001926   1.745663717
+##   0.198254348   0.206257328   0.068981808  -0.183423271   1.873663113
 \end{verbatim}
 
 And the plot of the time series decomposition according to ETS(M,M,M) is:
@@ -3108,7 +3098,7 @@ Finally, just as an example, we can also fit the most complicated pure multiplic
 \includegraphics{adam_files/figure-latex/unnamed-chunk-53-1.pdf}
 
 \begin{verbatim}
-## Time elapsed: 0.35 seconds
+## Time elapsed: 0.36 seconds
 ## Model estimated using adam() function: ETS(MMdM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.4798
@@ -4058,7 +4048,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     373.4061     373.4061
+##       566.47       566.47
 \end{verbatim}
 
 \begin{Shaded}
@@ -4071,7 +4061,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     752.8122     752.8122
+##      1138.94      1138.94
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
@@ -4086,7 +4076,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##    0.0878324    0.0878324
+##   0.09027126   0.09027126
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related:
@@ -4213,7 +4203,7 @@ Comparing this model with the ETS(A,A,N), we will see a slight difference, becau
 \includegraphics{adam_files/figure-latex/unnamed-chunk-70-1.pdf}
 
 \begin{verbatim}
-## Time elapsed: 0.08 seconds
+## Time elapsed: 0.07 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 243.3913
@@ -4819,7 +4809,7 @@ We can see that there are no significant coefficient on either ACF or PACF, so t
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.75 seconds
+## Time elapsed: 0.82 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[12]
 ## Distribution assumed in the model: Log Normal
 ## Loss function type: likelihood; Loss function value: 478.9136
@@ -4859,7 +4849,7 @@ The ETS model closest to the logSARIMA(0,1,1)(0,1,1)\(_{12}\) would probably be 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.33 seconds
+## Time elapsed: 0.39 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.7832
@@ -5287,7 +5277,7 @@ This simple model already does a fine job in fitting and forecasting the data, a
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.24 seconds
+## Time elapsed: 0.33 seconds
 ## Model estimated using adam() function: ETS(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1125.565
@@ -5343,7 +5333,7 @@ The parameter \texttt{formula} in general is not compulsory and can either be su
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.78 seconds
+## Time elapsed: 0.87 seconds
 ## Model estimated using adam() function: ETSX(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.088
@@ -5386,7 +5376,7 @@ In this specific case, the difference between the ETSX and ETSX\{D\} models is i
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.08 seconds
+## Time elapsed: 1.01 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.269
@@ -6453,7 +6443,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.05 seconds
+## Time elapsed: 1.01 seconds
 ## Model estimated using adam() function: ETS(MNM)[48, 336]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 25682.88
@@ -6482,7 +6472,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 
 \includegraphics{adam_files/figure-latex/unnamed-chunk-107-1.pdf}
 
-As you might notice the model was constructed in 1.05 seconds, and while it might not be the most accurate model for the data, it fits the data well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of multistep estimators, for example \protect\hyperlink{multistepLossesGTMSE}{GTMSE}:
+As you might notice the model was constructed in 1.01 seconds, and while it might not be the most accurate model for the data, it fits the data well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of multistep estimators, for example \protect\hyperlink{multistepLossesGTMSE}{GTMSE}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -6714,7 +6704,7 @@ Another model we can try on this data is ARIMA. We have not yet discussed the or
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.47 seconds
+## Time elapsed: 0.55 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.76
@@ -6839,15 +6829,15 @@ The occurrence part of the model, oETS\(_F\) can be constructed using \texttt{oe
 ## Underlying ETS model: oETS[F](MNN)
 ## Vector of initials:
 ##  level 
-## 0.6273 
+## 0.6727 
 ## 
-## Error standard deviation: 1.0929
+## Error standard deviation: 1.0871
 ## Sample size: 110
 ## Number of estimated parameters: 1
 ## Number of degrees of freedom: 109
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 147.2861 147.3231 149.9866 150.0736
+## 141.0907 141.1277 143.7912 143.8782
 \end{verbatim}
 
 \begin{Shaded}
@@ -6858,7 +6848,7 @@ The occurrence part of the model, oETS\(_F\) can be constructed using \texttt{oe
 
 \includegraphics{adam_files/figure-latex/oETSFExample1-1.pdf}
 
-The plot above demonstrates the dynamics of the occurrence variable \(o_t\) and the fitted and predicted probabilities. The oETS\(_F\) model produces the straight line for the probability of 0.63, ignoring the fact that in our example the probability of occurrence has increased over time.
+The plot above demonstrates the dynamics of the occurrence variable \(o_t\) and the fitted and predicted probabilities. The oETS\(_F\) model produces the straight line for the probability of 0.67, ignoring the fact that in our example the probability of occurrence has increased over time.
 
 \hypertarget{oETSO}{%
 \subsection{\texorpdfstring{Odds ratio model, oETS\(_O\)}{Odds ratio model, oETS\_O}}\label{oETSO}}
@@ -6910,18 +6900,18 @@ The occurrence part of the model oETS\(_O\) is constructed using the very same \
 ## Underlying ETS model: oETS[O](MMN)
 ## Smoothing parameters:
 ##  level  trend 
-## 0.0209 0.0014 
+## 0.0013 0.0012 
 ## Vector of initials:
 ##  level  trend 
-## 0.5008 0.9739 
+## 0.7641 0.9877 
 ## 
-## Error standard deviation: 1.4773
+## Error standard deviation: 1.2387
 ## Sample size: 110
 ## Number of estimated parameters: 4
 ## Number of degrees of freedom: 106
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 122.8991 123.2801 133.7010 134.5964
+## 125.9483 126.3293 136.7503 137.6456
 \end{verbatim}
 
 \begin{Shaded}
@@ -6983,18 +6973,18 @@ The function \texttt{oes()} implements the oETS\(_I\) model as well. For example
 ## Underlying ETS model: oETS[I](MMN)
 ## Smoothing parameters:
 ##  level  trend 
-## 0.0746 0.0000 
+## 0.0788 0.0000 
 ## Vector of initials:
 ##  level  trend 
-## 6.4427 0.9136 
+## 2.7665 0.9114 
 ## 
-## Error standard deviation: 3.3762
+## Error standard deviation: 2.8587
 ## Sample size: 110
 ## Number of estimated parameters: 4
 ## Number of degrees of freedom: 106
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 126.8323 127.2132 137.6342 138.5295
+## 131.5524 131.9334 142.3543 143.2497
 \end{verbatim}
 
 \begin{Shaded}
@@ -7092,7 +7082,7 @@ There is a separate function for the oETS\(_G\) model, called \texttt{oesg()}. I
 ## Number of degrees of freedom: 104
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 131.8852 132.7007 148.0881 150.0048
+## 136.9004 137.7159 153.1033 155.0200
 \end{verbatim}
 
 \begin{Shaded}
@@ -7116,18 +7106,18 @@ We can also analyse separately models for \(a_t\) and \(b_t\). Here is, for exam
 ## Underlying ETS model: oETS[G](MNN)_A
 ## Smoothing parameters:
 ##  level 
-## 0.0672 
+## 0.0758 
 ## Vector of initials:
 ##  level 
-## 0.9721 
+## 1.3127 
 ## 
-## Error standard deviation: 1.4121
+## Error standard deviation: 1.068
 ## Sample size: 110
 ## Number of estimated parameters: 2
 ## Number of degrees of freedom: 108
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 123.8852 123.9973 129.2862 129.5497
+## 128.9004 129.0126 134.3014 134.5649
 \end{verbatim}
 
 The experiments that I have done so far show that oETS\(_G\) very seldomly brings improvements in comparison with oETS\(_O\) or oETS\(_I\) in terms of forecasting accuracy. Besides, selecting models for each of the parts is a challenging task. So, this model is theoretically nice, being more general than the other oETS models, but is not very practical. Still it is useful because we can introduce different oETS model by restricting \(a_t\) and \(b_t\). For example, we can get:
@@ -7214,19 +7204,19 @@ Here's an example of the application of the oETS\(_D\)(M,M,N) to the same artifi
 ## Occurrence state space model estimated: Direct probability
 ## Underlying ETS model: oETS[D](MMN)
 ## Smoothing parameters:
-##  level  trend 
-## 0.2688 0.1692 
+## level trend 
+##     0     0 
 ## Vector of initials:
 ##  level  trend 
-## 0.5822 1.0695 
+## 0.3767 1.0098 
 ## 
-## Error standard deviation: 2.1195
+## Error standard deviation: 0.7966
 ## Sample size: 110
 ## Number of estimated parameters: 4
 ## Number of degrees of freedom: 106
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 677.6094 677.9904 688.4114 689.3067
+## 123.8940 124.2750 134.6960 135.5913
 \end{verbatim}
 
 \begin{Shaded}
@@ -7543,7 +7533,7 @@ This can be done using \texttt{adam()} function from \texttt{smooth} package, de
 
 \begin{verbatim}
 ##         odds-ratio inverse-odds-ratio             direct            general 
-##           460.3000           460.3555           454.9333           469.8230
+##           394.9491           396.0862           392.6016           412.7253
 \end{verbatim}
 
 Based on this, we can see that the model with direct has the lowest AICc. We can see how the model has approximated the data and produced forecasts for the holdout:
@@ -7570,18 +7560,18 @@ We can explore the demand occurrence part of this model the following way:
 ## Underlying ETS model: oETS[D](MMdN)
 ## Smoothing parameters:
 ## level trend 
-##     0     0 
+## 7e-04 7e-04 
 ## Vector of initials:
 ##  level  trend 
-## 0.1639 1.0417 
+## 0.3642 1.0081 
 ## 
-## Error standard deviation: 1.077
+## Error standard deviation: 0.8311
 ## Sample size: 110
 ## Number of estimated parameters: 5
 ## Number of degrees of freedom: 105
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 122.5157 123.0926 136.0181 137.3740
+## 126.5096 127.0865 140.0120 141.3679
 \end{verbatim}
 
 \begin{Shaded}
@@ -7607,18 +7597,18 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.36 seconds
+## Time elapsed: 0.37 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log Normal
-## Loss function type: likelihood; Loss function value: 148.2296
+## Loss function type: likelihood; Loss function value: 125.8067
 ## ARMA parameters of the model:
 ## AR:
 ## phi1[1] 
-## -0.1924 
+##  -0.302 
 ## MA:
 ## theta1[1] theta2[1] 
-##   -0.6049   -0.0663 
+##   -0.5642   -0.1179 
 ## 
 ## Sample size: 110
 ## Number of estimated parameters: 6
@@ -7626,10 +7616,10 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 420.9749 421.7905 437.1778 439.0945 
+## 380.1229 380.9385 396.3258 398.2425 
 ## 
 ## Forecast errors:
-## Asymmetry: 23.437%; sMSE: 83.823%; rRMSE: 0.815; sPIS: -1301.271%; sCE: 311.391%
+## Asymmetry: -26.472%; sMSE: 69.399%; rRMSE: 0.992; sPIS: 1221.968%; sCE: -71.788%
 \end{verbatim}
 
 \begin{Shaded}
@@ -7651,25 +7641,25 @@ Comparing the iARIMA model with the previous iETS based on AIC would not be fair
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.09 seconds
+## Time elapsed: 0.07 seconds
 ## Model estimated using adam() function: iETS(MMdN)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Gamma
-## Loss function type: likelihood; Loss function value: 159.801
+## Loss function type: likelihood; Loss function value: 126.6383
 ## Persistence vector g:
 ##  alpha   beta 
-## 0.1537 0.0065 
-## Damping parameter: 0.4279
+## 0.0110 0.0069 
+## Damping parameter: 0.9953
 ## Sample size: 110
 ## Number of estimated parameters: 6
 ## Number of degrees of freedom: 104
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 444.1177 444.9333 460.3206 462.2373 
+## 381.7861 382.6016 397.9890 399.9057 
 ## 
 ## Forecast errors:
-## Asymmetry: -14.838%; sMSE: 74.356%; rRMSE: 0.768; sPIS: 139.802%; sCE: 46.629%
+## Asymmetry: -43.005%; sMSE: 68.994%; rRMSE: 0.989; sPIS: 1761.249%; sCE: -249.157%
 \end{verbatim}
 
 \begin{Shaded}
@@ -7692,18 +7682,18 @@ Comparing information criteria, the iETS model is more appropriate for this data
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.22 seconds
+## Time elapsed: 0.21 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Gamma
-## Loss function type: likelihood; Loss function value: 167.1324
+## Loss function type: likelihood; Loss function value: 142.6905
 ## ARMA parameters of the model:
 ## AR:
 ## phi1[1] 
-## -0.0418 
+## -0.2893 
 ## MA:
 ## theta1[1] theta2[1] 
-##   -0.6639   -0.0186 
+##   -0.5748   -0.0806 
 ## 
 ## Sample size: 110
 ## Number of estimated parameters: 4
@@ -7711,10 +7701,10 @@ Comparing information criteria, the iETS model is more appropriate for this data
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 454.7805 455.1615 465.5825 466.4778 
+## 409.8905 410.2714 420.6924 421.5877 
 ## 
 ## Forecast errors:
-## Asymmetry: 28.18%; sMSE: 85.393%; rRMSE: 0.823; sPIS: -1448.461%; sCE: 335.65%
+## Asymmetry: -29.439%; sMSE: 69.697%; rRMSE: 0.994; sPIS: 1363.92%; sCE: -96.887%
 \end{verbatim}
 
 \begin{Shaded}
@@ -8801,7 +8791,7 @@ Here is an example of selection of distribution for a specific model, ETS(M,M,N)
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.47 seconds
+## Time elapsed: 0.53 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## Distribution assumed in the model: Log Normal
 ## Loss function type: likelihood; Loss function value: 245.3716
@@ -8881,7 +8871,7 @@ Here is an example with automatically selected ETS model using the branch-and-bo
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 2.05 seconds
+## Time elapsed: 2.03 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 467.2794
@@ -8976,7 +8966,7 @@ In this example, \texttt{orders=list(ar=3,i=2,ma=3,select=TRUE)} tells function 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.9 seconds
+## Time elapsed: 1.07 seconds
 ## Model estimated using auto.adam() function: ARIMA(0,2,2)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 243.2819
@@ -9017,7 +9007,7 @@ Based on the relation between \protect\hyperlink{ARIMAandETS}{ARIMA and ETS}, wh
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.93 seconds
+## Time elapsed: 2.21 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -9371,16 +9361,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6591           254.9436            260.3951
-## 142 257.7187           253.3990            262.0748
-## 143 257.7626           251.9432            263.6303
-## 144 257.8069           250.4677            265.1725
-## 145 257.8445           248.9716            266.7394
-## 146 257.8994           247.4178            268.4279
-## 147 257.9429           245.8297            270.1139
-## 148 257.9832           244.2555            271.8616
-## 149 258.0249           242.7486            273.6224
-## 150 258.0517           241.0751            275.2380
+## 141 257.6558           254.9349            260.3836
+## 142 257.7072           253.4257            262.0291
+## 143 257.7451           251.8518            263.5803
+## 144 257.7966           250.3715            265.1429
+## 145 257.8430           248.9408            266.8281
+## 146 257.8864           247.3571            268.4476
+## 147 257.9347           245.7779            270.1402
+## 148 257.9764           244.1464            271.6515
+## 149 258.0243           242.5193            273.5010
+## 150 258.0731           240.9558            275.2369
 \end{verbatim}
 
 In order to see how the forecast looks like, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -9476,7 +9466,7 @@ Here is an example of how the function work on the data above - it is possible t
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 2.28 seconds
+## Time elapsed: 2.47 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamModelBoot\$vcov}. The same procedure is used in \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -9489,11 +9479,11 @@ The covariance matrix can then be extracted from the result via \texttt{adamMode
 
 \begin{verbatim}
 ##        alpha   beta    phi  level  trend
-## alpha  0.026 -0.004  0.006  0.027  0.001
-## beta  -0.004  0.005 -0.002 -0.034  0.002
-## phi    0.006 -0.002  0.009  0.086 -0.008
-## level  0.027 -0.034  0.086  1.263 -0.214
-## trend  0.001  0.002 -0.008 -0.214  0.081
+## alpha  0.027 -0.006  0.005  0.028  0.000
+## beta  -0.006  0.006 -0.003 -0.040  0.003
+## phi    0.005 -0.003  0.012  0.104 -0.006
+## level  0.028 -0.040  0.104  1.301 -0.203
+## trend  0.000  0.003 -0.006 -0.203  0.090
 \end{verbatim}
 
 \hypertarget{confidence-intervals-for-parameters}{%
@@ -9858,8 +9848,8 @@ The main issue with this approach is that the conditional expectation and any ot
 
 If the model contains explanatory variables, then the h steps ahead conditional expectations should rely us them in the calculation. The main challenge in this situation is that in some cases the future values might not be known. Both cases have been discussed in the Section \ref{ADAMXConventionalConditionalMoments}. Practically speaking, if the user provide the holdout sample values of explanatory variables, then \texttt{forecast.adam()} method will use them in forecasting. If they are not provided, then the function will produce forecasts for each of the explanatory variables via \texttt{adam()} function and use the conditional h steps ahead expectations in forecasting.
 
-\hypertarget{demonstration-in-r-1}{%
-\subsection{Demonstration in R}\label{demonstration-in-r-1}}
+\hypertarget{demonstration-in-r}{%
+\subsection{Demonstration in R}\label{demonstration-in-r}}
 
 In order to demonstrate how the approach works, we consider an artificial case of ETS(M,M,N) model with \(l_t=1000\), \(b_t=0.95\), \(\alpha=0.1\), \(\beta=0.01\), and Gamma distribution for error term with scale \(s=0.05\). We generate 1000 scenarios from this model for the horizon of \(h=10\) using \texttt{sim.es()} function from \texttt{smooth} package:
 
@@ -10298,7 +10288,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, w
 \caption{\label{fig:adamModeliETSCumulative}Cumulative demand, expectation and the upper bound based on iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 25 units, while the upper bound of the interval was approximately 32. Based on that upper bound we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 21 units, while the upper bound of the interval was approximately 36. Based on that upper bound we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 \hypertarget{confidence-interval}{%
 \subsection{Confidence interval}\label{confidence-interval}}
