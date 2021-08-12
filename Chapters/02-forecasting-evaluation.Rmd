@@ -378,6 +378,25 @@ returnedValues1 <- ro(y, h=3, origins=8,
                       call=ourCall, value=ourValue)
 ```
 
+The same can be achieved using the following loop:
+```{r eval=FALSE}
+obs <- 100
+roh <- 8
+h <- 3
+data <- y
+returnedValues1 <- setNames(vector("list",3),
+                            c("actuals","holdout","pred"))
+returnedValues1$actuals <- y
+returnedValues1$holdout <- returnedValues1$pred <- matrix(NA,h,roh,
+                                  dimnames=list(paste0("h",1:h),
+                                                paste0("origin",1:roh)))
+for(i in 1:roh){
+  testModel <- arima(x=data[1:(obs-roh+i-h)],order=c(0,1,1))
+  returnedValues1$holdout[,i] <- data[-c(1:(obs-roh+i-h))]
+  returnedValues1$pred[,i] <- predict(testModel, n.ahead=h)$pred
+}
+```
+
 The function returns a list with all the values that we asked for plus the actual values from the holdout sample. We can calculate some basic error measure based on those values, for example, scaled Mean Absolute Error [@Petropoulos2015]:
 ```{r}
 apply(abs(returnedValues1$holdout - returnedValues1$pred),
