@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-08-10" />
+<meta name="date" content="2021-08-12" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -599,39 +599,65 @@ Figure 2.7: Rolling origin with constant in-sample size
 <p>Now that we have specified <code>ourCall</code> and <code>ourValue</code>, we can produce forecasts from the model using rolling origin. Let’s say that we want three-steps-ahead forecasts and 8 origins with the default values of all the other parameters:</p>
 <div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb25-1"><a href="rollingOrigin.html#cb25-1" aria-hidden="true" tabindex="-1"></a>returnedValues1 <span class="ot">&lt;-</span> <span class="fu">ro</span>(y, <span class="at">h=</span><span class="dv">3</span>, <span class="at">origins=</span><span class="dv">8</span>,</span>
 <span id="cb25-2"><a href="rollingOrigin.html#cb25-2" aria-hidden="true" tabindex="-1"></a>                      <span class="at">call=</span>ourCall, <span class="at">value=</span>ourValue)</span></code></pre></div>
-<p>The function returns a list with all the values that we asked for plus the actual values from the holdout sample. We can calculate some basic error measure based on those values, for example, scaled Mean Absolute Error <span class="citation">(<a href="#ref-Petropoulos2015" role="doc-biblioref">Petropoulos and Kourentzes, 2015</a>)</span>:</p>
-<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="rollingOrigin.html#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">apply</span>(<span class="fu">abs</span>(returnedValues1<span class="sc">$</span>holdout <span class="sc">-</span> returnedValues1<span class="sc">$</span>pred),</span>
-<span id="cb26-2"><a href="rollingOrigin.html#cb26-2" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span>, mean, <span class="at">na.rm=</span><span class="cn">TRUE</span>) <span class="sc">/</span></span>
-<span id="cb26-3"><a href="rollingOrigin.html#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(returnedValues1<span class="sc">$</span>actuals)</span></code></pre></div>
-<pre><code>##         h1         h2         h3 
-## 0.09145422 0.08742724 0.09597761</code></pre>
-<p>In this example we use <code>apply()</code> function in order to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compared the performance of this model with another one, then we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:</p>
-<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb28-1"><a href="rollingOrigin.html#cb28-1" aria-hidden="true" tabindex="-1"></a>ourCall <span class="ot">&lt;-</span> <span class="st">&quot;predict(arima(x=data,order=c(1,1,2)),n.ahead=h)&quot;</span></span>
-<span id="cb28-2"><a href="rollingOrigin.html#cb28-2" aria-hidden="true" tabindex="-1"></a>returnedValues2 <span class="ot">&lt;-</span> <span class="fu">ro</span>(y, <span class="at">h=</span><span class="dv">3</span>, <span class="at">origins=</span><span class="dv">8</span>,</span>
-<span id="cb28-3"><a href="rollingOrigin.html#cb28-3" aria-hidden="true" tabindex="-1"></a>                      <span class="at">call=</span>ourCall, <span class="at">value=</span>ourValue)</span>
-<span id="cb28-4"><a href="rollingOrigin.html#cb28-4" aria-hidden="true" tabindex="-1"></a><span class="fu">apply</span>(<span class="fu">abs</span>(returnedValues2<span class="sc">$</span>holdout <span class="sc">-</span> returnedValues2<span class="sc">$</span>pred),</span>
-<span id="cb28-5"><a href="rollingOrigin.html#cb28-5" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span>, mean, <span class="at">na.rm=</span><span class="cn">TRUE</span>) <span class="sc">/</span></span>
-<span id="cb28-6"><a href="rollingOrigin.html#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(returnedValues2<span class="sc">$</span>actuals)</span></code></pre></div>
-<pre><code>##         h1         h2         h3 
-## 0.09712895 0.08931445 0.09759981</code></pre>
+<p>The same can be achieved using the following loop:</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb26-1"><a href="rollingOrigin.html#cb26-1" aria-hidden="true" tabindex="-1"></a>obs <span class="ot">&lt;-</span> <span class="dv">100</span></span>
+<span id="cb26-2"><a href="rollingOrigin.html#cb26-2" aria-hidden="true" tabindex="-1"></a>roh <span class="ot">&lt;-</span> <span class="dv">8</span></span>
+<span id="cb26-3"><a href="rollingOrigin.html#cb26-3" aria-hidden="true" tabindex="-1"></a>h <span class="ot">&lt;-</span> <span class="dv">3</span></span>
+<span id="cb26-4"><a href="rollingOrigin.html#cb26-4" aria-hidden="true" tabindex="-1"></a>data <span class="ot">&lt;-</span> y</span>
+<span id="cb26-5"><a href="rollingOrigin.html#cb26-5" aria-hidden="true" tabindex="-1"></a>returnedValues1 <span class="ot">&lt;-</span> <span class="fu">setNames</span>(<span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">3</span>),</span>
+<span id="cb26-6"><a href="rollingOrigin.html#cb26-6" aria-hidden="true" tabindex="-1"></a>                            <span class="fu">c</span>(<span class="st">&quot;actuals&quot;</span>,<span class="st">&quot;holdout&quot;</span>,<span class="st">&quot;pred&quot;</span>))</span>
+<span id="cb26-7"><a href="rollingOrigin.html#cb26-7" aria-hidden="true" tabindex="-1"></a>returnedValues1<span class="sc">$</span>actuals <span class="ot">&lt;-</span> y</span>
+<span id="cb26-8"><a href="rollingOrigin.html#cb26-8" aria-hidden="true" tabindex="-1"></a>returnedValues1<span class="sc">$</span>holdout <span class="ot">&lt;-</span> returnedValues1<span class="sc">$</span>pred <span class="ot">&lt;-</span> <span class="fu">matrix</span>(<span class="cn">NA</span>,h,roh,</span>
+<span id="cb26-9"><a href="rollingOrigin.html#cb26-9" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">dimnames=</span><span class="fu">list</span>(<span class="fu">paste0</span>(<span class="st">&quot;h&quot;</span>,<span class="dv">1</span><span class="sc">:</span>h),</span>
+<span id="cb26-10"><a href="rollingOrigin.html#cb26-10" aria-hidden="true" tabindex="-1"></a>                                                <span class="fu">paste0</span>(<span class="st">&quot;origin&quot;</span>,<span class="dv">1</span><span class="sc">:</span>roh)))</span>
+<span id="cb26-11"><a href="rollingOrigin.html#cb26-11" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span>roh){</span>
+<span id="cb26-12"><a href="rollingOrigin.html#cb26-12" aria-hidden="true" tabindex="-1"></a>  testModel <span class="ot">&lt;-</span> <span class="fu">arima</span>(<span class="at">x=</span>data[<span class="dv">1</span><span class="sc">:</span>(obs<span class="sc">-</span>roh<span class="sc">+</span>i<span class="sc">-</span>h)],<span class="at">order=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">1</span>))</span>
+<span id="cb26-13"><a href="rollingOrigin.html#cb26-13" aria-hidden="true" tabindex="-1"></a>  returnedValues1<span class="sc">$</span>holdout[,i] <span class="ot">&lt;-</span> data[<span class="sc">-</span><span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span>(obs<span class="sc">-</span>roh<span class="sc">+</span>i<span class="sc">-</span>h))]</span>
+<span id="cb26-14"><a href="rollingOrigin.html#cb26-14" aria-hidden="true" tabindex="-1"></a>  returnedValues1<span class="sc">$</span>pred[,i] <span class="ot">&lt;-</span> <span class="fu">predict</span>(testModel, <span class="at">n.ahead=</span>h)<span class="sc">$</span>pred</span>
+<span id="cb26-15"><a href="rollingOrigin.html#cb26-15" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div>
+<p>The function returns a list with all the values that we asked for plus the actual values from the holdout sample. We can calculate some basic error measure based on those values, for example, scaled Absolute Error <span class="citation">(<a href="#ref-Petropoulos2015" role="doc-biblioref">Petropoulos and Kourentzes, 2015</a>)</span>:</p>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="rollingOrigin.html#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">apply</span>(<span class="fu">abs</span>(returnedValues1<span class="sc">$</span>holdout <span class="sc">-</span> returnedValues1<span class="sc">$</span>pred),</span>
+<span id="cb27-2"><a href="rollingOrigin.html#cb27-2" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span>, mean, <span class="at">na.rm=</span><span class="cn">TRUE</span>) <span class="sc">/</span></span>
+<span id="cb27-3"><a href="rollingOrigin.html#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(returnedValues1<span class="sc">$</span>actuals)</span></code></pre></div>
+<pre><code>##        h1        h2        h3 
+## 0.1260436 0.1063791 0.1156385</code></pre>
+<p>In this example we use <code>apply()</code> function in order to distinguish between the different forecasting horizons and to have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with another one, then we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:</p>
+<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="rollingOrigin.html#cb29-1" aria-hidden="true" tabindex="-1"></a>ourCall <span class="ot">&lt;-</span> <span class="st">&quot;predict(arima(x=data,order=c(1,1,2)),n.ahead=h)&quot;</span></span>
+<span id="cb29-2"><a href="rollingOrigin.html#cb29-2" aria-hidden="true" tabindex="-1"></a>returnedValues2 <span class="ot">&lt;-</span> <span class="fu">ro</span>(y, <span class="at">h=</span><span class="dv">3</span>, <span class="at">origins=</span><span class="dv">8</span>,</span>
+<span id="cb29-3"><a href="rollingOrigin.html#cb29-3" aria-hidden="true" tabindex="-1"></a>                      <span class="at">call=</span>ourCall, <span class="at">value=</span>ourValue)</span>
+<span id="cb29-4"><a href="rollingOrigin.html#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="fu">apply</span>(<span class="fu">abs</span>(returnedValues2<span class="sc">$</span>holdout <span class="sc">-</span> returnedValues2<span class="sc">$</span>pred),</span>
+<span id="cb29-5"><a href="rollingOrigin.html#cb29-5" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span>, mean, <span class="at">na.rm=</span><span class="cn">TRUE</span>) <span class="sc">/</span></span>
+<span id="cb29-6"><a href="rollingOrigin.html#cb29-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(returnedValues2<span class="sc">$</span>actuals)</span></code></pre></div>
+<pre><code>##        h1        h2        h3 
+## 0.1279131 0.1062689 0.1148312</code></pre>
 <p>Comparing these errors with the ones from the previous model, we can conclude, which of the approaches is more adequate for the data.</p>
-<p>We can also plot the forecasts from the rolling origin, which shows how the selected model behaves:</p>
-<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb30-1"><a href="rollingOrigin.html#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>))</span>
-<span id="cb30-2"><a href="rollingOrigin.html#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(returnedValues1)</span>
-<span id="cb30-3"><a href="rollingOrigin.html#cb30-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(returnedValues2)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-16-1.png" width="768" /></p>
-<p>In this example the forecasts from different origins are close to each other. This is because the data is stationary and the model is quite stable.</p>
+<p>We can also plot the forecasts from the rolling origin, which shows how the models behave:</p>
+<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="rollingOrigin.html#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">1</span>))</span>
+<span id="cb31-2"><a href="rollingOrigin.html#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(returnedValues1)</span>
+<span id="cb31-3"><a href="rollingOrigin.html#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(returnedValues2)</span></code></pre></div>
+<div class="figure"><span id="fig:roExample01"></span>
+<img src="adam_files/figure-html/roExample01-1.png" alt="Rolling origin performance of two forecasting methods" width="768" />
+<p class="caption">
+Figure 2.8: Rolling origin performance of two forecasting methods
+</p>
+</div>
+<p>In Figure <a href="rollingOrigin.html#fig:roExample01">2.8</a>, the forecasts from different origins are close to each other. This is because the data is stationary and both models produce flat lines as forecasts.</p>
 <p>The rolling origin function from the <code>greybox</code> package also allows working with explanatory variables and returning prediction intervals if needed. Some further examples are discussed in the vignette of the package: <code>vignette("ro","greybox")</code>.</p>
 <p>Practically speaking, if we have a set of forecasts from different models we can analyse the distribution of error measures and come to conclusions about performance of models. Here is an example with analysis of performance for <span class="math inline">\(h=1\)</span> based on absolute errors:</p>
-<div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="rollingOrigin.html#cb31-1" aria-hidden="true" tabindex="-1"></a>aeValuesh1 <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fu">abs</span>(returnedValues1<span class="sc">$</span>holdout <span class="sc">-</span></span>
-<span id="cb31-2"><a href="rollingOrigin.html#cb31-2" aria-hidden="true" tabindex="-1"></a>                          returnedValues1<span class="sc">$</span>pred)[<span class="dv">1</span>,],</span>
-<span id="cb31-3"><a href="rollingOrigin.html#cb31-3" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">abs</span>(returnedValues1<span class="sc">$</span>holdout <span class="sc">-</span></span>
-<span id="cb31-4"><a href="rollingOrigin.html#cb31-4" aria-hidden="true" tabindex="-1"></a>                          returnedValues2<span class="sc">$</span>pred)[<span class="dv">1</span>,])</span>
-<span id="cb31-5"><a href="rollingOrigin.html#cb31-5" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(aeValuesh1) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ARIMA(0,1,1)&quot;</span>,<span class="st">&quot;ARIMA(1,1,2)&quot;</span>)</span>
-<span id="cb31-6"><a href="rollingOrigin.html#cb31-6" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(aeValuesh1)</span>
-<span id="cb31-7"><a href="rollingOrigin.html#cb31-7" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(<span class="fu">apply</span>(aeValuesh1,<span class="dv">2</span>,mean),<span class="at">pch=</span><span class="dv">16</span>,<span class="at">col=</span><span class="st">&quot;red&quot;</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
-<p>The boxplots above can be interpreted as any other boxplots applied to random variables (see for example, discussion in Section 2.2 of <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span>).</p>
+<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb32-1"><a href="rollingOrigin.html#cb32-1" aria-hidden="true" tabindex="-1"></a>aeValuesh1 <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fu">abs</span>(returnedValues1<span class="sc">$</span>holdout <span class="sc">-</span></span>
+<span id="cb32-2"><a href="rollingOrigin.html#cb32-2" aria-hidden="true" tabindex="-1"></a>                          returnedValues1<span class="sc">$</span>pred)[<span class="dv">1</span>,],</span>
+<span id="cb32-3"><a href="rollingOrigin.html#cb32-3" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">abs</span>(returnedValues1<span class="sc">$</span>holdout <span class="sc">-</span></span>
+<span id="cb32-4"><a href="rollingOrigin.html#cb32-4" aria-hidden="true" tabindex="-1"></a>                          returnedValues2<span class="sc">$</span>pred)[<span class="dv">1</span>,])</span>
+<span id="cb32-5"><a href="rollingOrigin.html#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(aeValuesh1) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ARIMA(0,1,1)&quot;</span>,<span class="st">&quot;ARIMA(1,1,2)&quot;</span>)</span>
+<span id="cb32-6"><a href="rollingOrigin.html#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(aeValuesh1)</span>
+<span id="cb32-7"><a href="rollingOrigin.html#cb32-7" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(<span class="fu">apply</span>(aeValuesh1,<span class="dv">2</span>,mean),<span class="at">pch=</span><span class="dv">16</span>,<span class="at">col=</span><span class="st">&quot;red&quot;</span>)</span></code></pre></div>
+<div class="figure"><span id="fig:roExample02"></span>
+<img src="adam_files/figure-html/roExample02-1.png" alt="Boxplots of error measures of two methods." width="672" />
+<p class="caption">
+Figure 2.9: Boxplots of error measures of two methods.
+</p>
+</div>
+<p>The boxplots in Figure <a href="rollingOrigin.html#fig:roExample02">2.9</a> can be interpreted as any other boxplots applied to random variables <span class="citation">(see for example, discussion in Section 2.2 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span>.</p>
 </div>
 </div>
 <h3>References</h3>
