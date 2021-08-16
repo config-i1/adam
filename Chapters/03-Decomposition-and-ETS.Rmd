@@ -139,6 +139,137 @@ There are many functions in R that implement seasonal decomposition. Here is a s
 ## Simple forecasting methods {#simpleForecastingMethods}
 Now that we understand that time series might contain different components and that there are approaches for their decomposition, we can introduce several simple forecasting methods that can be used in practice at least as benchmarks. Their usage aligns with the idea of forecasting principles, discussed in Section \@ref(forecastingPrinciples).
 
+### Naïve {#Naive}
+Naïve is one of the simplest forecasting methods. According to each, the one step ahead forecast is equal to the most recent actual value:
+\begin{equation}
+    \hat{y}_t = y_{t-1} .
+    (\#eq:Naive)
+\end{equation}
+Using this approach might sound naïve indeed, but there are cases, where it is very hard to outperform the method. Consider an example with temperature forecasting. If we want to know what the temperature outside will be in 5 minutes, then Naïve would be typically very accurate: the temperature in 5 minutes will be the same as it is right now. The statistical model underlying Naïve is called "Random Walk" and is written as:
+\begin{equation}
+    y_t = y_{t-1} + \epsilon_t.
+    (\#eq:RandomWalk)
+\end{equation}
+The variability of $\epsilon_t$ will impact the speed of change of the data: the higher it is, the more rapid the values will change. Graphically Random Walk and Naïve can be represented in Figure \@ref(fig:naiveExample). In the example below we use simple moving average (discussed later in Section \@ref(SMA)) of order 1 to generate the data from Random Walk and then produce forecasts using Naïve.
+
+```{r naiveExample, fig.cap="A Random Walk example."}
+y <- sim.sma(1, 120)
+testModel <- sma(y$data, 1,
+                 h=10, holdout=TRUE)
+plot(testModel, 7, main="")
+```
+
+As it can be seen from the plot in Figure \@ref(fig:naiveExample), Naïve lags behind the actual time series by one observation, because of how it is constructed via equation \@ref(eq:Naive). The point forecast corresponds to the straight line, parallel to x-axis. Given that the data was generated from Random Walk, the point forecast shown in Figure \@ref(fig:naiveExample) is the best possible forecast for the time series, even though it exhibits rapid changes in the level.
+
+Note that if the time series exhibits level shifts or other types of unexpected changes in dynamics, Naïve will update rapidly and reach the new level instantaneously. However, because it only has a memory of one (last observation), it will not filter out the noise in the data, but rather copy it into the future. So, it has a limited usefulness in practice. However, being the simplest possible forecasting method, it is considered as one of the basic forecasting benchmarks. If your model cannot beat it, then it is not worth using.
+
+
+### Global Mean {#GlobalMean}
+While Naïve considered only one observation (the most recent one), global mean (aka "global average") relies on all the observations in the data:
+\begin{equation}
+    \hat{y}_t = \bar{y} = \frac{1}{T} \sum_{t=1}^T y_{t} ,
+    (\#eq:GlobalMean)
+\end{equation}
+where $T$ is the sample size. The model underlying this forecasting method is called "global level" and is written as:
+\begin{equation}
+    y_t = \mu + \epsilon_t,
+    (\#eq:GlobalLevel)
+\end{equation}
+so that the $\bar{y}$ is an estimate of the fixed expectation $\mu$. Graphically, this is represented with a straight line going through the series as shown in Figure \@ref(fig:globalMeanExample).
+
+```{r globalMeanExample, fig.cap="A global level example."}
+y <- rnorm(120, 100, 10)
+testModel <- es(y, "ANN", persistence=0,
+                 h=10, holdout=TRUE)
+plot(testModel, 7, main="")
+```
+
+The series shown in Figure \@ref(fig:globalMeanExample) is generated from the global level model and the point forecast corresponds to the forecast from the global mean method. Note that the method assumes that the weights between the in sample observation are equal, i.e. the first observation has exactly the same weight of $\frac{1}{T}$ as the last one. If the series exhibits some changes in level over time, global mean will not be suitable, because it will produce the averaged out forecast, considering values for parts before and after the change.
+
+
+### Simple Moving Average {#SMA}
+Naïve and Global Mean can be considered as opposite points in the spectrum of possible level time series (although, there are series beyond Naïve, see for example ARIMA(0,1,1) with $\theta_1>0$, discussed in Section \@ref(ARIMA)). The series between them exhibit slow changes in level and can be modelled using different forecasting approaches. One of those is Simple Moving Average (SMA), which uses the mechanism of the mean for a small part of time series. It relies on the formula:
+\begin{equation}
+    \hat{y}_t = \frac{1}{m}\sum_{j=1}^{m} y_{t-j},
+    (\#eq:SMA)
+\end{equation}
+which implies going through time series with something like a "window" of $m$ observations and using their average for forecasting. The order $m$ determines the length of the memory of the method: if it is equal to 1, then \@ref(eq:SMA) turns into Naïve, while in case of $m=T$ it transforms into Global Mean. The order $m$ is typically decided by a forecaster, keeping in mind that the lower $m$ corresponds to the shorter memory method, while the higher one corresponds to the longer one.
+
+@Svetunkov2017 have shown that SMA has an underlying non-stationary AR(m) model with $\phi_j=\frac{1}{m}$ for all $j=1, \dots, m$. While the conventional approach to forecasting from SMA is to produce the straight line, equal to the last obtained observation, @Svetunkov2017 demonstrate that in general the point forecast does not correspond to the straight line.
+
+```{r SMAExample, fig.cap="Examples of SMA time series and several SMA models of different orders applied to it."}
+y <- sim.sma(10,120)
+par(mfcol=c(2,2), mar=c(2,2,2,1))
+# SMA(1)
+testModel <- sma(y, order=1,
+                 h=10, holdout=TRUE)
+plot(testModel, 7, main=testModel$model)
+# SMA(10)
+testModel <- sma(y, order=10,
+                 h=10, holdout=TRUE)
+plot(testModel, 7, main=testModel$model)
+# SMA(20)
+testModel <- sma(y, order=20,
+                 h=10, holdout=TRUE)
+plot(testModel, 7, main=testModel$model)
+# SMA(110)
+testModel <- sma(y, order=110,
+                 h=10, holdout=TRUE)
+plot(testModel, 7, main=testModel$model)
+```
+
+Figure \@ref(fig:SMAExample) demonstrates the time series generated from SMA(10) and several SMA models applied to it. We can see that the higher orders of SMA lead to smoother fitted lines and calmer point forecasts. On the other hand, the SMA of very high order, such as SMA(110) does not follow the changes in time series efficiently, ignoring the potential changes in level. Given the difficulty with the selection of the order $m$, @Svetunkov2017 proposed using information criteria for the order selection of SMA in practice.
+
+Finally, an attentive reader has already spotted that the formula for SMA corresponds to the formula of CMA of an odd order from equation \@ref(eq:CMAOdd). They are indeed similar, but they have a different purpose: CMA is needed in order to smooth out the series, the calculated values are inserted in the middle of the average, while SMA is used for forecasting, and the point forecasts are inserted at the end of the average.
+
+
+### Random Walk with drift {#RWWithDrift}
+So far we have discussed the methods used for level time series. But as discussed in the Section \@ref(tsComponents), there are other components in time series as well. In case of the series with a trend, Naïve, Global Mean and SMA will be inappropriate, because they would be missing the important component. The simplest model that can be used in this case is called "Random Walk with drift", which is formulated as:
+\begin{equation}
+    y_t = y_{t-1} + a_0 + \epsilon_t,
+    (\#eq:RandomWalkWithDrift)
+\end{equation}
+where $a_0$ is a constant term, the introduction of which leads to increasing or decreasing trajectories, depending on the value of $a_0$. The point forecast from this model is calculated as:
+\begin{equation}
+    \hat{y}_{t+h} = y_{t} + a_0 h,
+    (\#eq:RandomWalkWithDriftForecast)
+\end{equation}
+implying that the forecast from the model is a straight line with the slope parameter $a_0$. Figure \@ref(fig:RWDriftExample) shows how the data generated from Random Walk with drift and $a_0=10$ looks like. This model is discussed in some detail in Section \@ref(ARIMA).
+
+```{r RWDriftExample, fig.cap="Random Walk with drift data and the model applied to that data."}
+y <- sim.ssarima(orders=list(i=1), lags=1, obs=120,
+                 constant=10)
+testModel <- msarima(y, orders=list(i=1), constant=TRUE,
+                     h=10, holdout=TRUE)
+plot(testModel, 7, main="")
+```
+
+The data in Figure \@ref(fig:RWDriftExample) demonstrates positive trend (because $a_0>0$) and a randomness from one observation to another. The model is useful as a benchmark and as a special case for several other models, because it is simple and requires the estimation of only one parameter.
+
+
+### Seasonal Naïve {#NaiveSeasonal}
+Finally, in case of seasonal data, there is a simple forecasting method that can be considered as a good benchmark in many situations. Similar to Naïve, Seasonal Naïve relies only on one observation, but instead of taking the most recent value, it uses the value from the same period a season ago. For example, for producing a forecast for January 1984, we would use the value from the January 1983. Mathematically this is written as:
+\begin{equation}
+    \hat{y}_t = y_{t-m} ,
+    (\#eq:NaiveSeasonal)
+\end{equation}
+where $m$ is the seasonal frequency. This method has an underlying model, Seasonal Random Walk:
+\begin{equation}
+    \hat{y}_t = y_{t-m} + \epsilon_t.
+    (\#eq:RWSeasonal)
+\end{equation}
+Similar to Naïve, the higher is the variability of the error term $\epsilon_t$ in \@ref(eq:RWSeasonal), the faster will the data exhibit changes. Seasonal Naïve does not require estimation of any parameters and thus is considered as one of the popular benchmarks in case of seasonal data. Figure \@ref(fig:NaiveSeasonalExample) demonstrates how the data generated from seasonal Random Walk looks like and how the point forecast from the seasonal Naïve applied to this data performs.
+
+```{r NaiveSeasonalExample, fig.cap="Seasonal Random Walk and Seasonal Naïve."}
+y <- sim.ssarima(orders=list(i=1), lags=4,
+                 obs=120, sd=50)
+testModel <- msarima(y, orders=list(i=1), lags=4,
+                     h=10, holdout=TRUE)
+plot(testModel, 7, main="")
+```
+
+Similarly to the previous methods, if Seasonal Naïve cannot be outperformed by other approaches under consideration, then it is not worth spending time on those approaches.
+
 
 ## ETS taxonomy {#ETSTaxonomy}
 Building on the idea of [time series components](#tsComponents) we can move to the ETS taxonomy. ETS stands for "Error-Trend-Seasonality" and defines how specifically the components interact with each other. Based on the type of error, trend and seasonality, [@Pegels1969] proposed a taxonomy, which was then developed further by [@Hyndman2002] and refined by [@Hyndman2008b]. According to this taxonomy, error, trend and seasonality can be:
