@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-08-16" />
+<meta name="date" content="2021-08-23" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,7 +33,7 @@
   
 <link rel="prev" href="ARIMAandETS.html"/>
 <link rel="next" href="ADAMARIMA.html"/>
-<script src="libs/header-attrs-2.8/header-attrs.js"></script>
+<script src="libs/header-attrs-2.9/header-attrs.js"></script>
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
@@ -584,20 +584,20 @@ Figure 8.2: BJSales series and ARIMA(0,2,2)
 <p>Comparing this model with the ETS(A,A,N), we will see a slight difference, because the two models are initialised and estimated differently:</p>
 <div class="sourceCode" id="cb126"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb126-1"><a href="ARIMAExampleInR.html#cb126-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(BJsales, <span class="st">&quot;AAN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">silent=</span><span class="cn">FALSE</span>)</span></code></pre></div>
 <p><img src="adam_files/figure-html/unnamed-chunk-69-1.png" width="672" /></p>
-<pre><code>## Time elapsed: 0.07 seconds
+<pre><code>## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
-## Loss function type: likelihood; Loss function value: 243.3913
+## Loss function type: likelihood; Loss function value: 243.4073
 ## Persistence vector g:
 ##  alpha   beta 
-## 0.9999 0.2392 
+## 1.0000 0.2392 
 ## 
 ## Sample size: 140
 ## Number of estimated parameters: 5
 ## Number of degrees of freedom: 135
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 496.7825 497.2303 511.4907 512.5971 
+## 496.8146 497.2624 511.5228 512.6292 
 ## 
 ## Forecast errors:
 ## ME: 3.229; MAE: 3.341; RMSE: 3.797
@@ -636,14 +636,14 @@ Figure 8.3: ACF and PACF of ARIMA(0,2,2) on BJSales data
 <p>Note that now that we have seasonal component, we need to provide the SARIMA lags: 1 and <span class="math inline">\(m=12\)</span> and need to provide <code>orders</code> differently - as a list, specifying the values for AR, I and MA separately. This is done because the SARIMA implemented in <code>adam()</code> supports multiple seasonality (e.g. you can have <code>lags=c(1,24,24*7)</code> if you want). The resulting information criteria of models are:</p>
 <div class="sourceCode" id="cb130"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb130-1"><a href="ARIMAExampleInR.html#cb130-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sapply</span>(adamModelSARIMA, AICc)</span></code></pre></div>
 <pre><code>## SARIMA(0,2,2)(0,1,1)[12] SARIMA(0,2,2)(1,1,1)[12] SARIMA(0,2,2)(1,1,0)[12] 
-##                 1046.424                 1073.413                 1081.479</code></pre>
+##                 1028.828                 1078.016                 1086.773</code></pre>
 <p>It looks like the first model is slightly better than the other two, so we will use it in order to produce forecasts:</p>
 <div class="sourceCode" id="cb132"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb132-1"><a href="ARIMAExampleInR.html#cb132-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamModelSARIMA[[<span class="dv">1</span>]], <span class="at">h=</span><span class="dv">12</span>, <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
 <p><img src="adam_files/figure-html/adamSARIMAPlotAir-1.png" width="672" />
 This model is directly comparable with ETS models, so here, for example, AICc of ETS(M,A,M) on the same data:</p>
 <div class="sourceCode" id="cb133"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb133-1"><a href="ARIMAExampleInR.html#cb133-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AICc</span>(adamModelETS <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>,</span>
 <span id="cb133-2"><a href="ARIMAExampleInR.html#cb133-2" aria-hidden="true" tabindex="-1"></a>                          <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>))</span></code></pre></div>
-<pre><code>## [1] 973.9272</code></pre>
+<pre><code>## [1] 973.9646</code></pre>
 <p>Which is lower than for the SARIMA model. This means that ETS(M,A,M) is more appropriate to the data in terms of information criteria. Let’s see if there is a way to improve ETS(M,A,M) by adding some ARMA components (figure <a href="ARIMAExampleInR.html#fig:adamETSPlotAirACFPACF">8.4</a>):</p>
 <div class="sourceCode" id="cb135"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb135-1"><a href="ARIMAExampleInR.html#cb135-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))</span>
 <span id="cb135-2"><a href="ARIMAExampleInR.html#cb135-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelETS, <span class="fu">c</span>(<span class="dv">10</span>,<span class="dv">11</span>), <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
@@ -656,7 +656,7 @@ Figure 8.4: ACF and PACF of ETS(M,A,M) on AirPassengers data
 <p>Judging by the plots, there are some significant correlation coefficients for some lags, but it is not clear, whether they appear due to the type I error or not. Just to check, we will see if adding SARIMA(0,0,0)(0,0,1)<span class="math inline">\(_{12}\)</span> helps (reduces AICc) in this case:</p>
 <div class="sourceCode" id="cb136"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb136-1"><a href="ARIMAExampleInR.html#cb136-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AICc</span>(<span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb136-2"><a href="ARIMAExampleInR.html#cb136-2" aria-hidden="true" tabindex="-1"></a>          <span class="at">order=</span><span class="fu">list</span>(<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)), <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">12</span>)))</span></code></pre></div>
-<pre><code>## [1] 1012.907</code></pre>
+<pre><code>## [1] 1010.571</code></pre>
 <p>As we see, the increased complexity does not decrease the AICc (probably because now we need to estimate 13 parameters more than in just ETS(M,A,M)), so we should not add the SARIMA component. We could try adding other SARIMA elements to see if they improve the model or not, the reader is suggested to do that as an additional exercise.</p>
 
 </div>
