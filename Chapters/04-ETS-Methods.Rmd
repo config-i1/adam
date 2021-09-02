@@ -13,31 +13,30 @@ We start our discussion of exponential smoothing with the original Simple Expone
 \end{equation}
 where $\hat{\alpha}$ is the smoothing parameter, defined by analyst and which is typically restricted with (0, 1) region (this region is actually arbitrary and we will see in Section \@ref(ETSParametersBounds) what is the correct one). This is one of the simplest forecasting methods, and the smoothing parameter in it is typically interpreted as a weight between the actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value $\hat{y}_{t}$ and the new information is neglected. If $\hat{\alpha}=0$ then the method becomes equivalent to Global Mean method, discussed in Section \@ref(GlobalMean). When it is close to one, then mainly the actual value ${y}_{t}$ is taken into account. If $\hat{\alpha}=1$, then the method transforms into Naïve, discussed in Section \@ref(Naive). By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
 
-Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ in order to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the state of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function [@Hyndman2002]. Typically MSE (see Section \@ref(errorMeasures)) is used as one, minimising the squares of one step ahead forecast error.
+Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ in order to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the state of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function [@Hyndman2002]. Typically MSE (see Section \@ref(errorMeasures)) is used as one, minimising the squares of one step ahead forecast errors.
+
 
 ### Examples of application
 Here is an example of how this method works on different time series. We start with generating a stationary series and using `es()` function from `smooth` package. Although it implements the ETS model, we will see later the connection between SES and ETS(A,N,N). We start with the stationary time series and $\hat{\alpha}=0$:
 
-```{r SESExample1}
+```{r SESExample1, fig.cap="An example with a time series and SES forecast. $\\hat{\\alpha}=0$"}
 y <- rnorm(100,100,10)
 ourModel <- es(y, model="ANN", h=10, persistence=0)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
+plot(ourModel, 7, main="")
 ```
 
-The SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Here is an example:
+As we see from Figure \@ref(fig:SESExample1), the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure \@ref(fig:SESExample2) shows an example with level shift in the data.
 
-```{r SESExample2}
+```{r SESExample2, fig.cap="An example with a time series and SES forecast. $\\hat{\\alpha}=0.1$"}
 y <- c(rnorm(50,100,10),rnorm(50,130,10))
 ourModel <- es(y, model="ANN", h=10, persistence=0.1)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
+plot(ourModel, 7, main="")
 ```
 
-With $\hat{\alpha}=0.1$, it manages to get to the new level, but now the method starts adapting to noise a little bit - it follows the peaks and troughs and repeats them, but with much smaller magnitude. If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise:
+With $\hat{\alpha}=0.1$, SES manages to get to the new level, but now the method starts adapting to noise a little bit - it follows the peaks and troughs and repeats them with a lag, but with much smaller magnitude (see Figure \@ref(fig:SESExample2)). If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise. This is shown in Figure \@ref(fig:SESExamples) with different smoothing parameters values.
 
-```{r echo=FALSE}
-par(mfcol=c(3,1))
+```{r SESExamples, fig.cap="SES with different smoothing parameters applied to the same data.", echo=FALSE}
+par(mfcol=c(3,1), mar=c(2,2,3,1))
 ourModel <- es(y, model="ANN", h=10, persistence=0.2)
 plot(ourModel, 7, main=paste0("SES with alpha=",
                               ourModel$persistence))
@@ -49,35 +48,38 @@ plot(ourModel, 7, main=paste0("SES with alpha=",
                               ourModel$persistence))
 ```
 
-If we set $\hat{\alpha}=1$, we will end up with Naive forecasting method, which is not appropriate for our example:
+If we set $\hat{\alpha}=1$, we will end up with Naive forecasting method (see Section \@ref(Naive)), which is not appropriate for our example (see Figure \@ref(fig:SESExampleNaive)).
 
-```{r echo=FALSE}
+```{r SESExampleNaive, fig.cap="SES with $\\hat{\\alpha}=1$.", echo=FALSE}
 par(mfcol=c(1,1))
 ourModel <- es(y, model="ANN", h=10, persistence=1)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
+plot(ourModel, 7, main="")
 ```
 
-So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE:
+So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE (see Figure \@ref(fig:SESExample3)):
 
-```{r SESExample3}
+```{r SESExample3, fig.cap="SES with optimal smoothing parameter."}
 ourModel <- es(y, model="ANN", h=10, loss="MSE")
 plot(ourModel, 7, main=paste0("SES with alpha=",
                               round(ourModel$persistence,3)))
 ```
 
-This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$, but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting.
+This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$, but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting accuracy [see, for example, @Fildes1992].
 
 
 ### Why "exponential"? {#whyExponential}
-Now, **why is it called "exponential"**? Because the same method can be represented in a different form, if we substitute $\hat{y}_{t}$ in right hand side \@ref(eq:BrownMethod) by the formula for the previous step:
+Now, **why is it called "exponential"**? Because the same method can be represented in a different form, if we substitute $\hat{y}_{t}$ in right hand side of \@ref(eq:BrownMethod) by the formula for the previous step:
 \begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
+  \begin{aligned}
+  & \hat{y}_{t} = &\hat{\alpha} {y}_{t-1} + (1 - \hat{\alpha}) \hat{y}_{t-1}, \\
+  & \hat{y}_{t+1} = &\hat{\alpha} {y}_{t} + (1 - \hat{\alpha}) \hat{y}_{t} = \\
+  & & \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
+  \end{aligned}
   (\#eq:BrownMethodExponential1)
 \end{equation}
 By repeating this procedure for each $\hat{y}_{t-1}$, $\hat{y}_{t-2}$ etc, we will obtain a different form of the method:
 \begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots + (1 -\hat{\alpha})^t \hat{y}_1 
+  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots  + \hat{\alpha} (1 -\hat{\alpha})^{t-1} {y}_{1} + (1 -\hat{\alpha})^t \hat{y}_1 
   (\#eq:BrownMethodExponential2)
 \end{equation}
 or equivalently:
@@ -85,24 +87,24 @@ or equivalently:
   \hat{y}_{t+1} = \hat{\alpha} \sum_{j=0}^{t-1} (1 -\hat{\alpha})^j {y}_{t-j} + (1 -\hat{\alpha})^t \hat{y}_1 .
   (\#eq:BrownMethodExponential3)
 \end{equation}
-Now each actual observation has a weight infront of it. For the most recent observation it is $\hat{\alpha}$, for the previous one it is $\hat{\alpha} (1 -\hat{\alpha})$, then $\hat{\alpha} (1 -\hat{\alpha})^2$ etc. These form the geometric series or an exponential curve. Here, for example, how it looks, when $\hat{\alpha} =0.25$ for a sample of 30 observations:
+In the form \@ref(eq:BrownMethodExponential3), each actual observation has a weight infront of it. For the most recent observation it is equal to $\hat{\alpha}$, for the previous one it is $\hat{\alpha} (1 -\hat{\alpha})$, then $\hat{\alpha} (1 -\hat{\alpha})^2$ etc. These form the geometric series or an exponential curve. Figure \@ref(fig:BrownExponentialExample) shows an example with $\hat{\alpha} =0.25$ for a sample of 30 observations:
 
-```{r}
+```{r BrownExponentialExample, fig.cap="Example of weights distribution for $\\hat{\\alpha}=0.25$"}
 plot(0.25*(1-0.25)^c(0:30), type="b", 
      xlab="Time lags", ylab="Weights")
 ```
 
-This explains the name "exponential". The term "smoothing" comes from the idea that the parameter $\hat{\alpha}$ should be selected so that the method smoothes the original time series.
+This explains the name "exponential". The term "smoothing" comes from the idea that the parameter $\hat{\alpha}$ should be selected so that the method smooths the original time series and not to react to noise.
 
 ### Error correction form of SES
-Finally, an alternative form of SES is known as error correction form and involves some simple permutations, taking that $e_t=y_t-\hat{y}_t$ is the one step ahead forecast error:
+Finally, an alternative form of SES is known as error correction form and involves some simple permutations, taking that $e_t=y_t-\hat{y}_t$ is the one step ahead forecast error, formula \@ref(eq:BrownMethod) can be written as:
 \begin{equation}
   \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
   (\#eq:SESErrorCorrection)
 \end{equation}
-In this form, the smoothing parameter $\hat{\alpha}$ regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.
+In this form, the smoothing parameter $\hat{\alpha}$ has a different meaning: it regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.
 
-As you see, this is a very simple method. It is easy to explain it to practitioners and it is very easy to implement in practice. However, this is just a [forecasting method](#intro), so it just gives a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.
+As you see, SES is a very simple method. It is easy to explain to practitioners and it is very easy to implement in practice. However, this is just a forecasting method (see Section \@ref(modelsMethods)), so it just provides a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.
 
 
 ## SES and ETS {#SESandETS}

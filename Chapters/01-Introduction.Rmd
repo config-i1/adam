@@ -88,7 +88,7 @@ plot(testAdamForecast, main="")
 
 Figure \@ref(fig:adamExampleNormal) shows an example, with a well behaved demand, for which the best point forecast is the straight line. In order to capture the uncertainty of demand, we can construct the prediction interval, which will tell in which bound the demand will lie in $1-\alpha$ percent of cases. The interval in Figure \@ref(fig:adamExampleNormal) has the width of 95% ($\alpha=0.05$) and shows that if the situation is repeated many times, the actual demand will be between `r round(testAdamForecast$lower[1],2)` and `r round(testAdamForecast$upper[1],2)`. Capturing the uncertainty correctly is important, because the real life decisions need to be made based on the full information, not only on the point forecasts.
 
-We will discuss how to produce prediction intervals in more detail in Section \@ref(ADAMForecastingPI).
+We will discuss how to produce prediction intervals in more detail in Section \@ref(ADAMForecastingPI). For more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 5 of @SvetunkovSBA.
 
 Another way to capture the uncertainty (related to the prediction interval) is via specific quantiles of distribution. The prediction interval typically has two sides, leaving $\frac{\alpha}{2}$ values on the left and the same on the right, outside the bounds of the interval. Instead of producing the interval, in some cases we might need just a specific quantile, essentially producing the one-sided prediction interval (see Section \@ref(forecastingADAMOtherOneSided) for technicalities). The bound in this case will show the specific value, below which the pre-selected percentage of cases would lie. This becomes especially useful, in such contexts as safety stock calculation (because we are not interested in knowing the lower bound, we want to have products to satisfy some proportion of demand).
 
@@ -103,10 +103,47 @@ Finally, an important aspect in forecasting is the horizon, for which we need to
 It is important to understand how decisions are made in practice and align them with the forecast horizon. In combination with the point forecasts and prediction intervals discussed above, this will give us an understanding of what to produce from the model and how. For example, in case of safety stock calculation it would be more reasonable to produce quantile of the cumulative over the lead time demand than to produce point forecasts from the model.
 
 
-<!-- ## Simple forecasting methods -->
+## Models, methods and typical assumptions {#modelsMethods}
+While we do not aim to fully cover the topic of models, methods and typical assumptions of statistical models, we need to make several important definitions, so that it becomes clear what we will discuss in this textbook. For a more detailed discussion, see Chapters 1 and 12 of @SvetunkovSBA.
 
-<!-- ### Naive -->
+Cambridge dictionary [@CambridgeMethod] defines **method** as a particular way of doing something. So, the method does not necessarily explain how the structure appears or how the error term interacts with it, it only explains how a value is produced. In our context, forecasting method would be a formula that generates point forecasts based on some parameters and available data. It would not explain how what underlies the data.
 
-<!-- ### Global average -->
+**Statistical model** on the other hand, is a 'mathematical representation of a real phenomenon with a complete specification of distribution and parameters' [@Svetunkov2019a]. It explains what happens inside the data, reveals the structure and shows how the error term interacts with the structure.
 
-<!-- ### Simple Moving Average -->
+While we discuss statistical models, we should also define **true model**. It is "the idealistic statistical model that is correctly specified (has all the necessary components in correct form), and applied to the data in population" [@SvetunkovSBA]. Note that some statisticians also use the term **Data Generating Process** (DGP), when talking about the true model, but I think that we need to make a distinction between the two terms, as DGP implies that the data is somehow generated using a mathematical formula. In real life, the data is not generated from any function, it comes from a measurement of a complex process, influenced by many factors (e.g. behaviour of a group of customers based on their individual preferences and mental states). The DGP is useful when we want to conduct some experiments on a simulated data, in a control environment, but it is not helpful, when it comes to applying models to the data. Finally, the true model is an abstract notion, because it is never known or reachable. But it is still a useful one, as it allows not only to see what would happen in case when we know the model, but more importantly what would happen, when the model we use is wrong.
+
+The related to this definition is the **estimated** or **applied model**, which is the statistical model that is applied to the available sample of data. This model will almost always be wrong, because even if we know for some mysterious reason the specification of the true model, we would still need to estimate it on our data. In this case the estimates of parameters would differ from the ones in the population and thus the model will still be wrong.
+
+Mathematically, in the simplest case the true model can be written as:
+\begin{equation}
+    y_t = \mu_{y,t} + \epsilon_t,
+    (\#eq:TrueModel)
+\end{equation}
+where $y_t$ is the actual value, $\mu_{y,t}$ is the structure and $\epsilon_t$ is the true noise. If we manage to capture the structure correctly, the model applied to the sample of data would be written as:
+\begin{equation}
+    y_t = \hat{\mu}_{y,t} + e_t,
+    (\#eq:AppliedModel)
+\end{equation}
+where $\hat{\mu}_{y,t}$ is the estimate of the structure $\mu_{y,t}$ and $e_t$ is the estimate of the noise $\epsilon_t$ (also known as "**residuals**"). If the structure is captured correctly, then there would still be a difference between \@ref(eq:TrueModel) and \@ref(eq:AppliedModel), because the latter is estimated on the data. However, if the sample size increases and we use an adequate estimation procedure, then due to Central Limit Theorem [see Chapter 4 of @SvetunkovSBA] the distance between the two models will decrease and asymptotically (with the increase of sample size) $e_t$ would converge to $\epsilon_t$. This does not happen automatically, and there are some assumptions that should hold in order for this to happen.
+
+### Assumptions of statistical models {#assumptions}
+Very roughly, the typical assumptions of statistical models can be split into following categories [@SvetunkovSBA]:
+
+1. Model is correctly specified:
+a. We have not omitted important variables in the model (underfitting the data);
+b. We do not have redundant variables in the model (overfitting the data);
+c. The necessary transformations of the variables are applied;
+d. We do not have outliers in the model;
+2. Residuals are independent and identically distributed (i.i.d.):
+a. There is no autocorrelation in the residuals;
+b. The residuals are homoscedastic;
+c. The expectation of residuals is zero, no matter what;
+d. The variable follows the assumed distribution;
+e. More generally speaking, distribution of residuals does not change over time;
+3. The explanatory variables are not correlated with anything but the response variable:
+a. No multicollinearity;
+b. No endogeneity.
+
+Many of these assumptions come to the idea that we have correctly captured the structure, meaning that we have not omitted any important variables, we have not included the redundant ones and that we transformed all the variables in the correct way (e.g. took logarithms, where needed). If all these assumptions hold, then we would expect the applied model to converge to the true one with the increase of the sample size. If some of them do not hold, then the point forecasts from our model might be biased or we might end up producing prediction intervals that are wider (or narrower) than needed. 
+
+These assumptions with their implications on example of multiple regression are discussed in detail in Chapter 12 of @SvetunkovSBA. The diagnostics of dynamic models based on these assumptions is discussed in Chapter \@ref(diagnostics).
