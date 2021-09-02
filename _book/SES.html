@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>4.1 Simple Exponential Smoothing | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
 
   <meta property="og:title" content="4.1 Simple Exponential Smoothing | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-08-23" />
+<meta name="date" content="2021-09-02" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,8 @@
   
 <link rel="prev" href="ETSConventional.html"/>
 <link rel="next" href="SESandETS.html"/>
-<script src="libs/header-attrs-2.9/header-attrs.js"></script>
-<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<script src="libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -187,6 +187,10 @@ div.csl-indent {
 <li class="chapter" data-level="1.3.1" data-path="typesOfForecasts.html"><a href="typesOfForecasts.html#typesOfForecastsPoint"><i class="fa fa-check"></i><b>1.3.1</b> Point forecasts</a></li>
 <li class="chapter" data-level="1.3.2" data-path="typesOfForecasts.html"><a href="typesOfForecasts.html#typesOfForecastsInterval"><i class="fa fa-check"></i><b>1.3.2</b> Quantiles and prediction intervals</a></li>
 <li class="chapter" data-level="1.3.3" data-path="typesOfForecasts.html"><a href="typesOfForecasts.html#forecast-horizon"><i class="fa fa-check"></i><b>1.3.3</b> Forecast horizon</a></li>
+</ul></li>
+<li class="chapter" data-level="1.4" data-path="modelsMethods.html"><a href="modelsMethods.html"><i class="fa fa-check"></i><b>1.4</b> Models, methods and typical assumptions</a>
+<ul>
+<li class="chapter" data-level="1.4.1" data-path="modelsMethods.html"><a href="modelsMethods.html#assumptions"><i class="fa fa-check"></i><b>1.4.1</b> Assumptions of statistical models</a></li>
 </ul></li>
 </ul></li>
 <li class="chapter" data-level="2" data-path="forecastsEvaluation.html"><a href="forecastsEvaluation.html"><i class="fa fa-check"></i><b>2</b> Forecasts evaluation</a>
@@ -561,42 +565,69 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
   \tag{4.1}
 \end{equation}\]</span>
 where <span class="math inline">\(\hat{\alpha}\)</span> is the smoothing parameter, defined by analyst and which is typically restricted with (0, 1) region (this region is actually arbitrary and we will see in Section <a href="ETSParametersBounds.html#ETSParametersBounds">4.6</a> what is the correct one). This is one of the simplest forecasting methods, and the smoothing parameter in it is typically interpreted as a weight between the actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value <span class="math inline">\(\hat{y}_{t}\)</span> and the new information is neglected. If <span class="math inline">\(\hat{\alpha}=0\)</span> then the method becomes equivalent to Global Mean method, discussed in Section <a href="simpleForecastingMethods.html#GlobalMean">3.3.2</a>. When it is close to one, then mainly the actual value <span class="math inline">\({y}_{t}\)</span> is taken into account. If <span class="math inline">\(\hat{\alpha}=1\)</span>, then the method transforms into Naïve, discussed in Section <a href="simpleForecastingMethods.html#Naive">3.3.1</a>. By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.</p>
-<p>Also, notice that this is a recursive method, meaning that there needs to be some starting point <span class="math inline">\(\hat{y}_1\)</span> in order to apply <a href="SES.html#eq:BrownMethod">(4.1)</a> to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the sttate of the art one is to estimate <span class="math inline">\(\hat{\alpha}\)</span> and <span class="math inline">\(\hat{y}_{1}\)</span> together by minimising some loss function. Typically <a href="errorMeasures.html#errorMeasures">MSE</a> is used as one, minimising the one step ahead forecast error.</p>
+<p>Also, notice that this is a recursive method, meaning that there needs to be some starting point <span class="math inline">\(\hat{y}_1\)</span> in order to apply <a href="SES.html#eq:BrownMethod">(4.1)</a> to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the state of the art one is to estimate <span class="math inline">\(\hat{\alpha}\)</span> and <span class="math inline">\(\hat{y}_{1}\)</span> together by minimising some loss function <span class="citation">(<a href="#ref-Hyndman2002" role="doc-biblioref">Hyndman et al., 2002</a>)</span>. Typically MSE (see Section <a href="errorMeasures.html#errorMeasures">2.1</a>) is used as one, minimising the squares of one step ahead forecast errors.</p>
 <div id="examples-of-application" class="section level3" number="4.1.1">
 <h3><span class="header-section-number">4.1.1</span> Examples of application</h3>
 <p>Here is an example of how this method works on different time series. We start with generating a stationary series and using <code>es()</code> function from <code>smooth</code> package. Although it implements the ETS model, we will see later the connection between SES and ETS(A,N,N). We start with the stationary time series and <span class="math inline">\(\hat{\alpha}=0\)</span>:</p>
-<div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="SES.html#cb52-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">100</span>,<span class="dv">100</span>,<span class="dv">10</span>)</span>
-<span id="cb52-2"><a href="SES.html#cb52-2" aria-hidden="true" tabindex="-1"></a>ourModel <span class="ot">&lt;-</span> <span class="fu">es</span>(y, <span class="at">model=</span><span class="st">&quot;ANN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">persistence=</span><span class="dv">0</span>)</span>
-<span id="cb52-3"><a href="SES.html#cb52-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ourModel, <span class="dv">7</span>, <span class="at">main=</span><span class="fu">paste0</span>(<span class="st">&quot;SES with alpha=&quot;</span>,</span>
-<span id="cb52-4"><a href="SES.html#cb52-4" aria-hidden="true" tabindex="-1"></a>                              ourModel<span class="sc">$</span>persistence))</span></code></pre></div>
-<p><img src="adam_files/figure-html/SESExample1-1.png" width="672" /></p>
-<p>The SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Here is an example:</p>
-<div class="sourceCode" id="cb53"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb53-1"><a href="SES.html#cb53-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">rnorm</span>(<span class="dv">50</span>,<span class="dv">100</span>,<span class="dv">10</span>),<span class="fu">rnorm</span>(<span class="dv">50</span>,<span class="dv">130</span>,<span class="dv">10</span>))</span>
-<span id="cb53-2"><a href="SES.html#cb53-2" aria-hidden="true" tabindex="-1"></a>ourModel <span class="ot">&lt;-</span> <span class="fu">es</span>(y, <span class="at">model=</span><span class="st">&quot;ANN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">persistence=</span><span class="fl">0.1</span>)</span>
-<span id="cb53-3"><a href="SES.html#cb53-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ourModel, <span class="dv">7</span>, <span class="at">main=</span><span class="fu">paste0</span>(<span class="st">&quot;SES with alpha=&quot;</span>,</span>
-<span id="cb53-4"><a href="SES.html#cb53-4" aria-hidden="true" tabindex="-1"></a>                              ourModel<span class="sc">$</span>persistence))</span></code></pre></div>
-<p><img src="adam_files/figure-html/SESExample2-1.png" width="672" /></p>
-<p>With <span class="math inline">\(\hat{\alpha}=0.1\)</span>, it manages to get to the new level, but now the method starts adapting to noise a little bit - it follows the peaks and troughs and repeats them, but with much smaller magnitude. If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise:</p>
-<p><img src="adam_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
-<p>If we set <span class="math inline">\(\hat{\alpha}=1\)</span>, we will end up with Naive forecasting method, which is not appropriate for our example:</p>
-<p><img src="adam_files/figure-html/unnamed-chunk-23-1.png" width="672" /></p>
-<p>So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE:</p>
-<div class="sourceCode" id="cb54"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb54-1"><a href="SES.html#cb54-1" aria-hidden="true" tabindex="-1"></a>ourModel <span class="ot">&lt;-</span> <span class="fu">es</span>(y, <span class="at">model=</span><span class="st">&quot;ANN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">loss=</span><span class="st">&quot;MSE&quot;</span>)</span>
-<span id="cb54-2"><a href="SES.html#cb54-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ourModel, <span class="dv">7</span>, <span class="at">main=</span><span class="fu">paste0</span>(<span class="st">&quot;SES with alpha=&quot;</span>,</span>
-<span id="cb54-3"><a href="SES.html#cb54-3" aria-hidden="true" tabindex="-1"></a>                              <span class="fu">round</span>(ourModel<span class="sc">$</span>persistence,<span class="dv">3</span>)))</span></code></pre></div>
-<p><img src="adam_files/figure-html/SESExample3-1.png" width="672" /></p>
-<p>This approach won’t guarantee that we will get the most appropriate <span class="math inline">\(\hat{\alpha}\)</span>, but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting.</p>
+<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="SES.html#cb50-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">100</span>,<span class="dv">100</span>,<span class="dv">10</span>)</span>
+<span id="cb50-2"><a href="SES.html#cb50-2" aria-hidden="true" tabindex="-1"></a>ourModel <span class="ot">&lt;-</span> <span class="fu">es</span>(y, <span class="at">model=</span><span class="st">&quot;ANN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">persistence=</span><span class="dv">0</span>)</span>
+<span id="cb50-3"><a href="SES.html#cb50-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ourModel, <span class="dv">7</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:SESExample1"></span>
+<img src="adam_files/figure-html/SESExample1-1.png" alt="An example with a time series and SES forecast. $\hat{\alpha}=0$" width="672" />
+<p class="caption">
+Figure 4.1: An example with a time series and SES forecast. <span class="math inline">\(\hat{\alpha}=0\)</span>
+</p>
+</div>
+<p>As we see from Figure <a href="SES.html#fig:SESExample1">4.1</a>, the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure <a href="SES.html#fig:SESExample2">4.2</a> shows an example with level shift in the data.</p>
+<div class="sourceCode" id="cb51"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb51-1"><a href="SES.html#cb51-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">rnorm</span>(<span class="dv">50</span>,<span class="dv">100</span>,<span class="dv">10</span>),<span class="fu">rnorm</span>(<span class="dv">50</span>,<span class="dv">130</span>,<span class="dv">10</span>))</span>
+<span id="cb51-2"><a href="SES.html#cb51-2" aria-hidden="true" tabindex="-1"></a>ourModel <span class="ot">&lt;-</span> <span class="fu">es</span>(y, <span class="at">model=</span><span class="st">&quot;ANN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">persistence=</span><span class="fl">0.1</span>)</span>
+<span id="cb51-3"><a href="SES.html#cb51-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ourModel, <span class="dv">7</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:SESExample2"></span>
+<img src="adam_files/figure-html/SESExample2-1.png" alt="An example with a time series and SES forecast. $\hat{\alpha}=0.1$" width="672" />
+<p class="caption">
+Figure 4.2: An example with a time series and SES forecast. <span class="math inline">\(\hat{\alpha}=0.1\)</span>
+</p>
+</div>
+<p>With <span class="math inline">\(\hat{\alpha}=0.1\)</span>, SES manages to get to the new level, but now the method starts adapting to noise a little bit - it follows the peaks and troughs and repeats them with a lag, but with much smaller magnitude (see Figure <a href="SES.html#fig:SESExample2">4.2</a>). If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise. This is shown in Figure <a href="SES.html#fig:SESExamples">4.3</a> with different smoothing parameters values.</p>
+<div class="figure"><span style="display:block;" id="fig:SESExamples"></span>
+<img src="adam_files/figure-html/SESExamples-1.png" alt="SES with different smoothing parameters applied to the same data." width="672" />
+<p class="caption">
+Figure 4.3: SES with different smoothing parameters applied to the same data.
+</p>
+</div>
+<p>If we set <span class="math inline">\(\hat{\alpha}=1\)</span>, we will end up with Naive forecasting method (see Section <a href="simpleForecastingMethods.html#Naive">3.3.1</a>), which is not appropriate for our example (see Figure <a href="SES.html#fig:SESExampleNaive">4.4</a>).</p>
+<div class="figure"><span style="display:block;" id="fig:SESExampleNaive"></span>
+<img src="adam_files/figure-html/SESExampleNaive-1.png" alt="SES with $\hat{\alpha}=1$." width="672" />
+<p class="caption">
+Figure 4.4: SES with <span class="math inline">\(\hat{\alpha}=1\)</span>.
+</p>
+</div>
+<p>So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE (see Figure <a href="SES.html#fig:SESExample3">4.5</a>):</p>
+<div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="SES.html#cb52-1" aria-hidden="true" tabindex="-1"></a>ourModel <span class="ot">&lt;-</span> <span class="fu">es</span>(y, <span class="at">model=</span><span class="st">&quot;ANN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">loss=</span><span class="st">&quot;MSE&quot;</span>)</span>
+<span id="cb52-2"><a href="SES.html#cb52-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ourModel, <span class="dv">7</span>, <span class="at">main=</span><span class="fu">paste0</span>(<span class="st">&quot;SES with alpha=&quot;</span>,</span>
+<span id="cb52-3"><a href="SES.html#cb52-3" aria-hidden="true" tabindex="-1"></a>                              <span class="fu">round</span>(ourModel<span class="sc">$</span>persistence,<span class="dv">3</span>)))</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:SESExample3"></span>
+<img src="adam_files/figure-html/SESExample3-1.png" alt="SES with optimal smoothing parameter." width="672" />
+<p class="caption">
+Figure 4.5: SES with optimal smoothing parameter.
+</p>
+</div>
+<p>This approach won’t guarantee that we will get the most appropriate <span class="math inline">\(\hat{\alpha}\)</span>, but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting accuracy <span class="citation">(see, for example, <a href="#ref-Fildes1992" role="doc-biblioref">Fildes, 1992</a>)</span>.</p>
 </div>
 <div id="whyExponential" class="section level3" number="4.1.2">
 <h3><span class="header-section-number">4.1.2</span> Why “exponential?”</h3>
-<p>Now, <strong>why is it called “exponential”</strong>? Because the same method can be represented in a different form, if we substitute <span class="math inline">\(\hat{y}_{t}\)</span> in right hand side <a href="SES.html#eq:BrownMethod">(4.1)</a> by the formula for the previous step:
+<p>Now, <strong>why is it called “exponential”</strong>? Because the same method can be represented in a different form, if we substitute <span class="math inline">\(\hat{y}_{t}\)</span> in right hand side of <a href="SES.html#eq:BrownMethod">(4.1)</a> by the formula for the previous step:
 <span class="math display" id="eq:BrownMethodExponential1">\[\begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
+  \begin{aligned}
+  &amp; \hat{y}_{t} = &amp;\hat{\alpha} {y}_{t-1} + (1 - \hat{\alpha}) \hat{y}_{t-1}, \\
+  &amp; \hat{y}_{t+1} = &amp;\hat{\alpha} {y}_{t} + (1 - \hat{\alpha}) \hat{y}_{t} = \\
+  &amp; &amp; \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
+  \end{aligned}
   \tag{4.2}
 \end{equation}\]</span>
 By repeating this procedure for each <span class="math inline">\(\hat{y}_{t-1}\)</span>, <span class="math inline">\(\hat{y}_{t-2}\)</span> etc, we will obtain a different form of the method:
 <span class="math display" id="eq:BrownMethodExponential2">\[\begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots + (1 -\hat{\alpha})^t \hat{y}_1 
+  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots  + \hat{\alpha} (1 -\hat{\alpha})^{t-1} {y}_{1} + (1 -\hat{\alpha})^t \hat{y}_1 
   \tag{4.3}
 \end{equation}\]</span>
 or equivalently:
@@ -604,27 +635,38 @@ or equivalently:
   \hat{y}_{t+1} = \hat{\alpha} \sum_{j=0}^{t-1} (1 -\hat{\alpha})^j {y}_{t-j} + (1 -\hat{\alpha})^t \hat{y}_1 .
   \tag{4.4}
 \end{equation}\]</span>
-Now each actual observation has a weight infront of it. For the most recent observation it is <span class="math inline">\(\hat{\alpha}\)</span>, for the previous one it is <span class="math inline">\(\hat{\alpha} (1 -\hat{\alpha})\)</span>, then <span class="math inline">\(\hat{\alpha} (1 -\hat{\alpha})^2\)</span> etc. These form the geometric series or an exponential curve. Here, for example, how it looks, when <span class="math inline">\(\hat{\alpha} =0.25\)</span> for a sample of 30 observations:</p>
-<div class="sourceCode" id="cb55"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb55-1"><a href="SES.html#cb55-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fl">0.25</span><span class="sc">*</span>(<span class="dv">1</span><span class="fl">-0.25</span>)<span class="sc">^</span><span class="fu">c</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">30</span>), <span class="at">type=</span><span class="st">&quot;b&quot;</span>, </span>
-<span id="cb55-2"><a href="SES.html#cb55-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab=</span><span class="st">&quot;Time lags&quot;</span>, <span class="at">ylab=</span><span class="st">&quot;Weights&quot;</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-24-1.png" width="672" /></p>
-<p>This explains the name “exponential.” The term “smoothing” comes from the idea that the parameter <span class="math inline">\(\hat{\alpha}\)</span> should be selected so that the method smoothes the original time series.</p>
+In the form <a href="SES.html#eq:BrownMethodExponential3">(4.4)</a>, each actual observation has a weight infront of it. For the most recent observation it is equal to <span class="math inline">\(\hat{\alpha}\)</span>, for the previous one it is <span class="math inline">\(\hat{\alpha} (1 -\hat{\alpha})\)</span>, then <span class="math inline">\(\hat{\alpha} (1 -\hat{\alpha})^2\)</span> etc. These form the geometric series or an exponential curve. Figure <a href="SES.html#fig:BrownExponentialExample">4.6</a> shows an example with <span class="math inline">\(\hat{\alpha} =0.25\)</span> for a sample of 30 observations:</p>
+<div class="sourceCode" id="cb53"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb53-1"><a href="SES.html#cb53-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fl">0.25</span><span class="sc">*</span>(<span class="dv">1</span><span class="fl">-0.25</span>)<span class="sc">^</span><span class="fu">c</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">30</span>), <span class="at">type=</span><span class="st">&quot;b&quot;</span>, </span>
+<span id="cb53-2"><a href="SES.html#cb53-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">xlab=</span><span class="st">&quot;Time lags&quot;</span>, <span class="at">ylab=</span><span class="st">&quot;Weights&quot;</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:BrownExponentialExample"></span>
+<img src="adam_files/figure-html/BrownExponentialExample-1.png" alt="Example of weights distribution for $\hat{\alpha}=0.25$" width="672" />
+<p class="caption">
+Figure 4.6: Example of weights distribution for <span class="math inline">\(\hat{\alpha}=0.25\)</span>
+</p>
+</div>
+<p>This explains the name “exponential.” The term “smoothing” comes from the idea that the parameter <span class="math inline">\(\hat{\alpha}\)</span> should be selected so that the method smooths the original time series and not to react to noise.</p>
 </div>
 <div id="error-correction-form-of-ses" class="section level3" number="4.1.3">
 <h3><span class="header-section-number">4.1.3</span> Error correction form of SES</h3>
-<p>Finally, an alternative form of SES is known as error correction form and involves some simple permutations, taking that <span class="math inline">\(e_t=y_t-\hat{y}_t\)</span> is the one step ahead forecast error:
+<p>Finally, an alternative form of SES is known as error correction form and involves some simple permutations, taking that <span class="math inline">\(e_t=y_t-\hat{y}_t\)</span> is the one step ahead forecast error, formula <a href="SES.html#eq:BrownMethod">(4.1)</a> can be written as:
 <span class="math display" id="eq:SESErrorCorrection">\[\begin{equation}
   \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
   \tag{4.5}
 \end{equation}\]</span>
-In this form, the smoothing parameter <span class="math inline">\(\hat{\alpha}\)</span> regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.</p>
-<p>As you see, this is a very simple method. It is easy to explain it to practitioners and it is very easy to implement in practice. However, this is just a <a href="intro.html#intro">forecasting method</a>, so it just gives a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.</p>
+In this form, the smoothing parameter <span class="math inline">\(\hat{\alpha}\)</span> has a different meaning: it regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.</p>
+<p>As you see, SES is a very simple method. It is easy to explain to practitioners and it is very easy to implement in practice. However, this is just a forecasting method (see Section <a href="modelsMethods.html#modelsMethods">1.4</a>), so it just provides a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.</p>
 </div>
 </div>
 <h3>References</h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-Brown1956" class="csl-entry">
 • Brown, R.G., 1956. <span class="nocase">Exponential Smoothing for predicting demand</span>.
+</div>
+<div id="ref-Fildes1992" class="csl-entry">
+• Fildes, R., 1992. <span class="nocase">The evaluation of extrapolative forecasting methods</span>. International Journal of Forecasting. 8, 81–98. <a href="https://doi.org/10.1016/0169-2070(92)90009-X">https://doi.org/10.1016/0169-2070(92)90009-X</a>
+</div>
+<div id="ref-Hyndman2002" class="csl-entry">
+• Hyndman, R.J., Koehler, A.B., Snyder, R.D., Grose, S., 2002. <span class="nocase">A state space framework for automatic forecasting using exponential smoothing methods</span>. International Journal of Forecasting. 18, 439–454. <a href="https://doi.org/10.1016/S0169-2070(01)00110-8">https://doi.org/10.1016/S0169-2070(01)00110-8</a>
 </div>
 </div>
 
@@ -678,6 +720,10 @@ gitbook.start({
 "text": null
 },
 "download": ["adam.pdf"],
+"search": {
+"engine": "lunr",
+"options": null
+},
 "toc": {
 "collapse": "section"
 }

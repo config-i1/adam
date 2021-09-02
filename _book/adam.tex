@@ -140,7 +140,7 @@
 
 \title{Forecasting and Analytics with ADAM}
 \author{Ivan Svetunkov}
-\date{2021-08-23}
+\date{2021-09-02}
 
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}[chapter]
@@ -383,9 +383,9 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well behaved data, point forecast and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example, with a well behaved demand, for which the best point forecast is the straight line. In order to capture the uncertainty of demand, we can construct the prediction interval, which will tell in which bound the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (\(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 79.77 and 120.02. Capturing the uncertainty correctly is important, because the real life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example, with a well behaved demand, for which the best point forecast is the straight line. In order to capture the uncertainty of demand, we can construct the prediction interval, which will tell in which bound the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (\(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 81.35 and 118.77. Capturing the uncertainty correctly is important, because the real life decisions need to be made based on the full information, not only on the point forecasts.
 
-We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}.
+We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 5 of \citet{SvetunkovSBA}.
 
 Another way to capture the uncertainty (related to the prediction interval) is via specific quantiles of distribution. The prediction interval typically has two sides, leaving \(\frac{\alpha}{2}\) values on the left and the same on the right, outside the bounds of the interval. Instead of producing the interval, in some cases we might need just a specific quantile, essentially producing the one-sided prediction interval (see Section \ref{forecastingADAMOtherOneSided} for technicalities). The bound in this case will show the specific value, below which the pre-selected percentage of cases would lie. This becomes especially useful, in such contexts as safety stock calculation (because we are not interested in knowing the lower bound, we want to have products to satisfy some proportion of demand).
 
@@ -406,6 +406,100 @@ Finally, an important aspect in forecasting is the horizon, for which we need to
 \end{enumerate}
 
 It is important to understand how decisions are made in practice and align them with the forecast horizon. In combination with the point forecasts and prediction intervals discussed above, this will give us an understanding of what to produce from the model and how. For example, in case of safety stock calculation it would be more reasonable to produce quantile of the cumulative over the lead time demand than to produce point forecasts from the model.
+
+\hypertarget{modelsMethods}{%
+\section{Models, methods and typical assumptions}\label{modelsMethods}}
+
+While we do not aim to fully cover the topic of models, methods and typical assumptions of statistical models, we need to make several important definitions, so that it becomes clear what we will discuss in this textbook. For a more detailed discussion, see Chapters 1 and 12 of \citet{SvetunkovSBA}.
+
+Cambridge dictionary \citep{CambridgeMethod} defines \textbf{method} as a particular way of doing something. So, the method does not necessarily explain how the structure appears or how the error term interacts with it, it only explains how a value is produced. In our context, forecasting method would be a formula that generates point forecasts based on some parameters and available data. It would not explain how what underlies the data.
+
+\textbf{Statistical model} on the other hand, is a `mathematical representation of a real phenomenon with a complete specification of distribution and parameters' \citep{Svetunkov2019a}. It explains what happens inside the data, reveals the structure and shows how the error term interacts with the structure.
+
+While we discuss statistical models, we should also define \textbf{true model}. It is ``the idealistic statistical model that is correctly specified (has all the necessary components in correct form), and applied to the data in population'' \citep{SvetunkovSBA}. Note that some statisticians also use the term \textbf{Data Generating Process} (DGP), when talking about the true model, but I think that we need to make a distinction between the two terms, as DGP implies that the data is somehow generated using a mathematical formula. In real life, the data is not generated from any function, it comes from a measurement of a complex process, influenced by many factors (e.g.~behaviour of a group of customers based on their individual preferences and mental states). The DGP is useful when we want to conduct some experiments on a simulated data, in a control environment, but it is not helpful, when it comes to applying models to the data. Finally, the true model is an abstract notion, because it is never known or reachable. But it is still a useful one, as it allows not only to see what would happen in case when we know the model, but more importantly what would happen, when the model we use is wrong.
+
+The related to this definition is the \textbf{estimated} or \textbf{applied model}, which is the statistical model that is applied to the available sample of data. This model will almost always be wrong, because even if we know for some mysterious reason the specification of the true model, we would still need to estimate it on our data. In this case the estimates of parameters would differ from the ones in the population and thus the model will still be wrong.
+
+Mathematically, in the simplest case the true model can be written as:
+\begin{equation}
+    y_t = \mu_{y,t} + \epsilon_t,
+    \label{eq:TrueModel}
+\end{equation}
+where \(y_t\) is the actual value, \(\mu_{y,t}\) is the structure and \(\epsilon_t\) is the true noise. If we manage to capture the structure correctly, the model applied to the sample of data would be written as:
+\begin{equation}
+    y_t = \hat{\mu}_{y,t} + e_t,
+    \label{eq:AppliedModel}
+\end{equation}
+where \(\hat{\mu}_{y,t}\) is the estimate of the structure \(\mu_{y,t}\) and \(e_t\) is the estimate of the noise \(\epsilon_t\) (also known as ``\textbf{residuals}''). If the structure is captured correctly, then there would still be a difference between \eqref{eq:TrueModel} and \eqref{eq:AppliedModel}, because the latter is estimated on the data. However, if the sample size increases and we use an adequate estimation procedure, then due to Central Limit Theorem \citep[see Chapter 4 of][]{SvetunkovSBA} the distance between the two models will decrease and asymptotically (with the increase of sample size) \(e_t\) would converge to \(\epsilon_t\). This does not happen automatically, and there are some assumptions that should hold in order for this to happen.
+
+\hypertarget{assumptions}{%
+\subsection{Assumptions of statistical models}\label{assumptions}}
+
+Very roughly, the typical assumptions of statistical models can be split into following categories \citep{SvetunkovSBA}:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Model is correctly specified:
+\end{enumerate}
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi}.}
+\tightlist
+\item
+  We have not omitted important variables in the model (underfitting the data);
+\item
+  We do not have redundant variables in the model (overfitting the data);
+\item
+  The necessary transformations of the variables are applied;
+\item
+  We do not have outliers in the model;
+\end{enumerate}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Residuals are independent and identically distributed (i.i.d.):
+\end{enumerate}
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi}.}
+\tightlist
+\item
+  There is no autocorrelation in the residuals;
+\item
+  The residuals are homoscedastic;
+\item
+  The expectation of residuals is zero, no matter what;
+\item
+  The variable follows the assumed distribution;
+\item
+  More generally speaking, distribution of residuals does not change over time;
+\end{enumerate}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  The explanatory variables are not correlated with anything but the response variable:
+\end{enumerate}
+
+\begin{enumerate}
+\def\labelenumi{\alph{enumi}.}
+\tightlist
+\item
+  No multicollinearity;
+\item
+  No endogeneity.
+\end{enumerate}
+
+Many of these assumptions come to the idea that we have correctly captured the structure, meaning that we have not omitted any important variables, we have not included the redundant ones and that we transformed all the variables in the correct way (e.g.~took logarithms, where needed). If all these assumptions hold, then we would expect the applied model to converge to the true one with the increase of the sample size. If some of them do not hold, then the point forecasts from our model might be biased or we might end up producing prediction intervals that are wider (or narrower) than needed.
+
+These assumptions with their implications on example of multiple regression are discussed in detail in Chapter 12 of \citet{SvetunkovSBA}. The diagnostics of dynamic models based on these assumptions is discussed in Chapter \ref{diagnostics}.
 
 \hypertarget{forecastsEvaluation}{%
 \chapter{Forecasts evaluation}\label{forecastsEvaluation}}
@@ -830,9 +924,7 @@ You can also download this flowchart in pdf format via \href{./images/errorMeasu
 \section{Rolling origin}\label{rollingOrigin}}
 
 \begin{remark}
-
 The text in this section is based on the vignette for the \href{https://cran.r-project.org/package=greybox}{greybox package}, written by the author of this textbook.
-
 \end{remark}
 
 When there is a need to select the most appropriate forecasting model or method for the data, the forecaster usually splits the sample into two parts: in-sample (aka ``training set'') and holdout sample (aka out-sample or ``test set''). The model is estimated on the in-sample and its forecasting performance is evaluated \protect\hyperlink{errorMeasures}{using some error measure} on the holdout sample.
@@ -938,7 +1030,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.09557513 0.08769816 0.07777630
+## 0.10690435 0.09232375 0.09676992
 \end{verbatim}
 
 In this example we use \texttt{apply()} function in order to distinguish between the different forecasting horizons and to have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with another one, then we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:
@@ -956,7 +1048,7 @@ In this example we use \texttt{apply()} function in order to distinguish between
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.09388625 0.09118684 0.07680145
+## 0.09351103 0.09307918 0.09858077
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude, which of the approaches is more adequate for the data.
@@ -1752,9 +1844,7 @@ From statistical point of view, formulae in Tables \ref{tab:ETSAdditiveError} an
 In case of the additive error models, the point forecasts correspond to the expectations only when the expectation of the error term is zero, i.e.~\(\text{E}(\epsilon_t)=0\), while in case of the multiplicative one the condition is changed to \(\text{E}(1+\epsilon_t)=1\).
 
 \begin{remark}
-
 \textbf{Not all the point forecasts of ETS models correspond to conditional expectations}. This issue applies to the models with multiplicative trend and / or multiplicative seasonality. This is because ETS model assumes that different states are correlated (they have the same source of error) and as a result multiple steps ahead values (when h\textgreater1) of states introduce products of error terms. So, the conditional expectations in these cases might not have analytical forms (``n.c.f.'' in Table \ref{tab:ETSModelsForecasts} stands for ``no closed form''), and when working with these models, simulations might be required. This does not apply to the one step ahead forecasts, for which all the classical formulae work.
-
 \end{remark}
 
 \begin{table}
@@ -1841,7 +1931,7 @@ In case of the additive error models, the point forecasts correspond to the expe
 
 The multiplicative error models have the same one step ahead expectations and the same point forecasts as the additive error ones, but due to the multiplication by the error term, the multiple steps ahead conditional expectations between the two models might differ, specifically for the multiplicative trend and multiplicative seasonal models. These values do not have closed forms and can only be obtained via simulations.
 
-Although there are 30 potential ETS models, not all of them are stable So, Rob Hyndman has reduced the pool of models under consideration in the \texttt{ets()} function of \texttt{forecast} package to the following 19: ANN, AAN, AAdN, ANA, AAA, AAdA, MNN, MAN, MAdN, MNA, MAA, MAdA, MNM, MAM, MAdM, MMN, MMdN, MMM, MMdM. In addition, the multiplicative trend models and are unstable in cases of data with outliers, so they are switched off in the \texttt{ets()} function by default, which reduces the pool of models further to the first 15.
+Although there are 30 potential ETS models, not all of them are stable. So, Rob Hyndman has reduced the pool of models under consideration in the \texttt{ets()} function of \texttt{forecast} package to the following 19: ANN, AAN, AAdN, ANA, AAA, AAdA, MNN, MAN, MAdN, MNA, MAA, MAdA, MNM, MAM, MAdM, MMN, MMdN, MMM, MMdM. In addition, the multiplicative trend models and are unstable in cases of data with outliers, so they are switched off in the \texttt{ets()} function by default, which reduces the pool of models further to the first 15.
 
 \hypertarget{ETSConventional}{%
 \chapter{Conventional Exponential Smoothing}\label{ETSConventional}}
@@ -1860,7 +1950,7 @@ We start our discussion of exponential smoothing with the original Simple Expone
 \end{equation}
 where \(\hat{\alpha}\) is the smoothing parameter, defined by analyst and which is typically restricted with (0, 1) region (this region is actually arbitrary and we will see in Section \ref{ETSParametersBounds} what is the correct one). This is one of the simplest forecasting methods, and the smoothing parameter in it is typically interpreted as a weight between the actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value \(\hat{y}_{t}\) and the new information is neglected. If \(\hat{\alpha}=0\) then the method becomes equivalent to Global Mean method, discussed in Section \ref{GlobalMean}. When it is close to one, then mainly the actual value \({y}_{t}\) is taken into account. If \(\hat{\alpha}=1\), then the method transforms into Naïve, discussed in Section \ref{Naive}. By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
 
-Also, notice that this is a recursive method, meaning that there needs to be some starting point \(\hat{y}_1\) in order to apply \eqref{eq:BrownMethod} to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the state of the art one is to estimate \(\hat{\alpha}\) and \(\hat{y}_{1}\) together by minimising some loss function \citep{Hyndman2002}. Typically MSE (see Section \ref{errorMeasures}) is used as one, minimising the one step ahead forecast error.
+Also, notice that this is a recursive method, meaning that there needs to be some starting point \(\hat{y}_1\) in order to apply \eqref{eq:BrownMethod} to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the state of the art one is to estimate \(\hat{\alpha}\) and \(\hat{y}_{1}\) together by minimising some loss function \citep{Hyndman2002}. Typically MSE (see Section \ref{errorMeasures}) is used as one, minimising the squares of one step ahead forecast errors.
 
 \hypertarget{examples-of-application}{%
 \subsection{Examples of application}\label{examples-of-application}}
@@ -1871,35 +1961,49 @@ Here is an example of how this method works on different time series. We start w
 \begin{Highlighting}[]
 \NormalTok{y }\OtherTok{\textless{}{-}} \FunctionTok{rnorm}\NormalTok{(}\DecValTok{100}\NormalTok{,}\DecValTok{100}\NormalTok{,}\DecValTok{10}\NormalTok{)}
 \NormalTok{ourModel }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y, }\AttributeTok{model=}\StringTok{"ANN"}\NormalTok{, }\AttributeTok{h=}\DecValTok{10}\NormalTok{, }\AttributeTok{persistence=}\DecValTok{0}\NormalTok{)}
-\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\FunctionTok{paste0}\NormalTok{(}\StringTok{"SES with alpha="}\NormalTok{,}
-\NormalTok{                              ourModel}\SpecialCharTok{$}\NormalTok{persistence))}
+\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\StringTok{""}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
+\begin{figure}
+\centering
 \includegraphics{adam_files/figure-latex/SESExample1-1.pdf}
+\caption{\label{fig:SESExample1}An example with a time series and SES forecast. \(\hat{\alpha}=0\)}
+\end{figure}
 
-The SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Here is an example:
+As we see from Figure \ref{fig:SESExample1}, the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure \ref{fig:SESExample2} shows an example with level shift in the data.
 
 \begin{Shaded}
 \begin{Highlighting}[]
 \NormalTok{y }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{50}\NormalTok{,}\DecValTok{100}\NormalTok{,}\DecValTok{10}\NormalTok{),}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{50}\NormalTok{,}\DecValTok{130}\NormalTok{,}\DecValTok{10}\NormalTok{))}
 \NormalTok{ourModel }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y, }\AttributeTok{model=}\StringTok{"ANN"}\NormalTok{, }\AttributeTok{h=}\DecValTok{10}\NormalTok{, }\AttributeTok{persistence=}\FloatTok{0.1}\NormalTok{)}
-\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\FunctionTok{paste0}\NormalTok{(}\StringTok{"SES with alpha="}\NormalTok{,}
-\NormalTok{                              ourModel}\SpecialCharTok{$}\NormalTok{persistence))}
+\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\StringTok{""}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
 
+\begin{figure}
+\centering
 \includegraphics{adam_files/figure-latex/SESExample2-1.pdf}
+\caption{\label{fig:SESExample2}An example with a time series and SES forecast. \(\hat{\alpha}=0.1\)}
+\end{figure}
 
-With \(\hat{\alpha}=0.1\), it manages to get to the new level, but now the method starts adapting to noise a little bit - it follows the peaks and troughs and repeats them, but with much smaller magnitude. If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise:
+With \(\hat{\alpha}=0.1\), SES manages to get to the new level, but now the method starts adapting to noise a little bit - it follows the peaks and troughs and repeats them with a lag, but with much smaller magnitude (see Figure \ref{fig:SESExample2}). If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise. This is shown in Figure \ref{fig:SESExamples} with different smoothing parameters values.
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-22-1.pdf}
+\begin{figure}
+\centering
+\includegraphics{adam_files/figure-latex/SESExamples-1.pdf}
+\caption{\label{fig:SESExamples}SES with different smoothing parameters applied to the same data.}
+\end{figure}
 
-If we set \(\hat{\alpha}=1\), we will end up with Naive forecasting method, which is not appropriate for our example:
+If we set \(\hat{\alpha}=1\), we will end up with Naive forecasting method (see Section \ref{Naive}), which is not appropriate for our example (see Figure \ref{fig:SESExampleNaive}).
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-23-1.pdf}
+\begin{figure}
+\centering
+\includegraphics{adam_files/figure-latex/SESExampleNaive-1.pdf}
+\caption{\label{fig:SESExampleNaive}SES with \(\hat{\alpha}=1\).}
+\end{figure}
 
-So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE:
+So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE (see Figure \ref{fig:SESExample3}):
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1909,21 +2013,29 @@ So, when working with SES, we need to make sure that the reasonable smoothing pa
 \end{Highlighting}
 \end{Shaded}
 
+\begin{figure}
+\centering
 \includegraphics{adam_files/figure-latex/SESExample3-1.pdf}
+\caption{\label{fig:SESExample3}SES with optimal smoothing parameter.}
+\end{figure}
 
-This approach won't guarantee that we will get the most appropriate \(\hat{\alpha}\), but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting.
+This approach won't guarantee that we will get the most appropriate \(\hat{\alpha}\), but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting accuracy \citep[see, for example,][]{Fildes1992}.
 
 \hypertarget{whyExponential}{%
 \subsection{Why ``exponential''?}\label{whyExponential}}
 
-Now, \textbf{why is it called ``exponential''}? Because the same method can be represented in a different form, if we substitute \(\hat{y}_{t}\) in right hand side \eqref{eq:BrownMethod} by the formula for the previous step:
+Now, \textbf{why is it called ``exponential''}? Because the same method can be represented in a different form, if we substitute \(\hat{y}_{t}\) in right hand side of \eqref{eq:BrownMethod} by the formula for the previous step:
 \begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
+  \begin{aligned}
+  & \hat{y}_{t} = &\hat{\alpha} {y}_{t-1} + (1 - \hat{\alpha}) \hat{y}_{t-1}, \\
+  & \hat{y}_{t+1} = &\hat{\alpha} {y}_{t} + (1 - \hat{\alpha}) \hat{y}_{t} = \\
+  & & \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
+  \end{aligned}
   \label{eq:BrownMethodExponential1}
 \end{equation}
 By repeating this procedure for each \(\hat{y}_{t-1}\), \(\hat{y}_{t-2}\) etc, we will obtain a different form of the method:
 \begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots + (1 -\hat{\alpha})^t \hat{y}_1 
+  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots  + \hat{\alpha} (1 -\hat{\alpha})^{t-1} {y}_{1} + (1 -\hat{\alpha})^t \hat{y}_1 
   \label{eq:BrownMethodExponential2}
 \end{equation}
 or equivalently:
@@ -1931,7 +2043,7 @@ or equivalently:
   \hat{y}_{t+1} = \hat{\alpha} \sum_{j=0}^{t-1} (1 -\hat{\alpha})^j {y}_{t-j} + (1 -\hat{\alpha})^t \hat{y}_1 .
   \label{eq:BrownMethodExponential3}
 \end{equation}
-Now each actual observation has a weight infront of it. For the most recent observation it is \(\hat{\alpha}\), for the previous one it is \(\hat{\alpha} (1 -\hat{\alpha})\), then \(\hat{\alpha} (1 -\hat{\alpha})^2\) etc. These form the geometric series or an exponential curve. Here, for example, how it looks, when \(\hat{\alpha} =0.25\) for a sample of 30 observations:
+In the form \eqref{eq:BrownMethodExponential3}, each actual observation has a weight infront of it. For the most recent observation it is equal to \(\hat{\alpha}\), for the previous one it is \(\hat{\alpha} (1 -\hat{\alpha})\), then \(\hat{\alpha} (1 -\hat{\alpha})^2\) etc. These form the geometric series or an exponential curve. Figure \ref{fig:BrownExponentialExample} shows an example with \(\hat{\alpha} =0.25\) for a sample of 30 observations:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1940,21 +2052,25 @@ Now each actual observation has a weight infront of it. For the most recent obse
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-24-1.pdf}
+\begin{figure}
+\centering
+\includegraphics{adam_files/figure-latex/BrownExponentialExample-1.pdf}
+\caption{\label{fig:BrownExponentialExample}Example of weights distribution for \(\hat{\alpha}=0.25\)}
+\end{figure}
 
-This explains the name ``exponential''. The term ``smoothing'' comes from the idea that the parameter \(\hat{\alpha}\) should be selected so that the method smoothes the original time series.
+This explains the name ``exponential''. The term ``smoothing'' comes from the idea that the parameter \(\hat{\alpha}\) should be selected so that the method smooths the original time series and not to react to noise.
 
 \hypertarget{error-correction-form-of-ses}{%
 \subsection{Error correction form of SES}\label{error-correction-form-of-ses}}
 
-Finally, an alternative form of SES is known as error correction form and involves some simple permutations, taking that \(e_t=y_t-\hat{y}_t\) is the one step ahead forecast error:
+Finally, an alternative form of SES is known as error correction form and involves some simple permutations, taking that \(e_t=y_t-\hat{y}_t\) is the one step ahead forecast error, formula \eqref{eq:BrownMethod} can be written as:
 \begin{equation}
   \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
   \label{eq:SESErrorCorrection}
 \end{equation}
-In this form, the smoothing parameter \(\hat{\alpha}\) regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.
+In this form, the smoothing parameter \(\hat{\alpha}\) has a different meaning: it regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.
 
-As you see, this is a very simple method. It is easy to explain it to practitioners and it is very easy to implement in practice. However, this is just a \protect\hyperlink{intro}{forecasting method}, so it just gives a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.
+As you see, SES is a very simple method. It is easy to explain to practitioners and it is very easy to implement in practice. However, this is just a forecasting method (see Section \ref{modelsMethods}), so it just provides a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.
 
 \hypertarget{SESandETS}{%
 \section{SES and ETS}\label{SESandETS}}
@@ -2017,7 +2133,7 @@ In order to see the data that corresponds to the ETS(A,N,N) we can use \texttt{s
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-25-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-22-1.pdf}
 
 This simple simulation shows that the higher \(\alpha\) is, the higher variability is in the data and less predictable the data becomes. This is related with the higher values of \(\alpha\), the level changes faster, also leading to the increased uncertainty about the future values of the level in the data.
 
@@ -2040,27 +2156,27 @@ Here is an example with automatic parameter estimation in ETS(A,N,N) using \text
 \includegraphics{adam_files/figure-latex/ETSANNExample-1.pdf}
 
 \begin{verbatim}
-## Time elapsed: 0.03 seconds
+## Time elapsed: 0.05 seconds
 ## Model estimated: ETS(ANN)
 ## Persistence vector g:
-##  alpha 
-## 0.3881 
+## alpha 
+## 0.245 
 ## Initial values were optimised.
 ## 
-## Loss function type: likelihood; Loss function value: 525.8304
-## Error standard deviation: 31.9428
+## Loss function type: likelihood; Loss function value: 516.7667
+## Error standard deviation: 29.3715
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1057.661 1057.892 1065.707 1066.247 
+## 1039.533 1039.764 1047.580 1048.120 
 ## 
 ## 95% parametric prediction interval was constructed
 ## 100% of values are in the prediction interval
 ## Forecast errors:
-## MPE: -3.1%; sCE: -38.6%; Asymmetry: -92.7%; MAPE: 3.3%
-## MASE: 1.149; sMAE: 3.4%; sMSE: 0.2%; rMAE: 0.848; rRMSE: 0.864
+## MPE: 1.6%; sCE: 20.6%; Asymmetry: 47.1%; MAPE: 3%
+## MASE: 0.98; sMAE: 3%; sMSE: 0.1%; rMAE: 0.766; rRMSE: 0.751
 \end{verbatim}
 
 As we see, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected, because we deal with an in-sample estimation. Also, notice that with such a high smoothing parameter, the prediction interval is widening with the increase of the forecast horizon. If the smoothing parameter would be lower, then the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with \(\alpha=0.01\):
@@ -2152,27 +2268,27 @@ And here is an example with the ETS(M,N,N) data, which is very similar to the ET
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.02 seconds
+## Time elapsed: 0.05 seconds
 ## Model estimated: ETS(MNN)
 ## Persistence vector g:
 ##  alpha 
-## 0.3857 
+## 0.1912 
 ## Initial values were optimised.
 ## 
-## Loss function type: likelihood; Loss function value: 638.2544
-## Error standard deviation: 0.1009
+## Loss function type: likelihood; Loss function value: 641.5075
+## Error standard deviation: 0.0861
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1282.509 1282.740 1290.555 1291.095 
+## 1289.015 1289.246 1297.061 1297.602 
 ## 
 ## 95% parametric prediction interval was constructed
-## 100% of values are in the prediction interval
+## 92% of values are in the prediction interval
 ## Forecast errors:
-## MPE: 7.8%; sCE: 118.6%; Asymmetry: 81.7%; MAPE: 10.1%
-## MASE: 1.344; sMAE: 12%; sMSE: 2.5%; rMAE: 1.018; rRMSE: 1.014
+## MPE: 8.1%; sCE: 134%; Asymmetry: 73.7%; MAPE: 11.2%
+## MASE: 1.542; sMAE: 14.5%; sMSE: 2.7%; rMAE: 0.722; rRMSE: 0.706
 \end{verbatim}
 
 \hypertarget{ETSExamples}{%
@@ -2206,7 +2322,7 @@ Here is an example of the data that corresponds to the ETS(A,A,N) model:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-26-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-23-1.pdf}
 
 As you might notice, the trend is not deterministic in this model: both the intercept and the slope change over time. The higher the smoothing parameters are, the more uncertain it is, what the level and the slope will be, thus higher the uncertainty about the future values is.
 
@@ -2223,7 +2339,7 @@ This becomes apparent if one takes the conditional expectations E\((l_{t+h}|t)\)
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-27-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-24-1.pdf}
 
 If you want to experiment with the model and see how its parameters influence the fit and forecast, you can use the following R code:
 
@@ -2257,7 +2373,7 @@ where \(\phi\) is the dampening parameter, typically lying between 0 and 1. If i
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-29-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-26-1.pdf}
 
 The point forecast from this model is a bit more complicated:
 \begin{equation}
@@ -2272,7 +2388,7 @@ It corresponds to the slowing down trajectory:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-30-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-27-1.pdf}
 
 \hypertarget{etsaam}{%
 \subsection{ETS(A,A,M)}\label{etsaam}}
@@ -2298,7 +2414,7 @@ where \(s_t\) is the seasonal component and \(\gamma\) is its smoothing paramete
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-31-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-28-1.pdf}
 
 Finally, the point forecast from this model are based on the ETS(A,A,N):
 \begin{equation}
@@ -2308,9 +2424,7 @@ Finally, the point forecast from this model are based on the ETS(A,A,N):
 where \(\lceil\frac{h}{m}\rceil\) is the rounded up value of the fraction in the brackets.
 
 \begin{remark}
-
 The point forecasts produced from this model do not correspond to the conditional expectations. This was discussed in the \protect\hyperlink{ETSTaxonomyMaths}{previous chapter}.
-
 \end{remark}
 
 \hypertarget{ets-assumptions-estimation-and-selection}{%
@@ -2692,7 +2806,7 @@ In order to see how the pure additive ADAM ETS works, we will try it out using \
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-32-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-29-1.pdf}
 
 The series seem to exhibit trend, so we will apply ETS(A,A,N) model:
 
@@ -2729,7 +2843,7 @@ The output of the model summarises, which specific model was estimated, assuming
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.01 seconds
+## Time elapsed: 0.02 seconds
 ## Model estimated using adam() function: ETS(ANN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 273.2898
@@ -2753,7 +2867,7 @@ In this situation the information criteria for ETS(A,N,N) are higher than for ET
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-35-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-32-1.pdf}
 
 Notice that the smoothing parameters of ETS(A,A,N) are very high, with \(\alpha=1\). This might mean that the maximum of the likelihood is achieved in the \emph{admissible} bounds. We can try it out and see what happens:
 
@@ -2765,7 +2879,7 @@ Notice that the smoothing parameters of ETS(A,A,N) are very high, with \(\alpha=
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.04 seconds
+## Time elapsed: 0.05 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.5358
@@ -2787,7 +2901,7 @@ Notice that the smoothing parameters of ETS(A,A,N) are very high, with \(\alpha=
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-36-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-33-1.pdf}
 
 Both smoothing parameters are now higher, which implies that the uncertainty about the future values of states is higher as well, which is then reflected in the slightly wider prediction interval. Although the values are larger than one, the model is still stable. In order to see that we can calculate the discount matrix using the objects returned by the function:
 
@@ -2815,7 +2929,7 @@ If we want to test ADAM ETS with another distribution, it can be done using the 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.05 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Generalised Normal with shape=1.741
 ## Loss function type: likelihood; Loss function value: 258.456
@@ -2837,7 +2951,7 @@ If we want to test ADAM ETS with another distribution, it can be done using the 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-38-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-35-1.pdf}
 
 The prediction interval in this case is slightly weider than in the previous one, because \(\mathcal{GN}\) distribution with \(\beta=\) 1.74 has fatter tails than the normal distribution.
 
@@ -2853,15 +2967,11 @@ Now we will check what happens in the case of seasonal data. We use \texttt{AirP
 \end{Shaded}
 
 \begin{remark}
-
 The \texttt{lags} parameter in this specific case is not necessary, because the function will get the frequency from the \texttt{ts} object automatically. If we were to provide a vector of values instead of the \texttt{ts} object, we would need to specify the correct lag. Note that \texttt{1} (lag for level and trend) is not important either - the function will always use it anyway.
-
 \end{remark}
 
 \begin{remark}
-
 In some cases, the optimiser might converge to the local minimum, so if you find the results unsatisfactory, it might make sense to reestimate the model tuning the parameters of the optimiser. Here is an example (we increase the number of iterations in the optimisation and set new starting values for the smoothing parameters):
-
 \end{remark}
 
 \begin{Shaded}
@@ -2874,7 +2984,7 @@ In some cases, the optimiser might converge to the local minimum, so if you find
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.23 seconds
+## Time elapsed: 0.28 seconds
 ## Model estimated using adam() function: ETS(AAA)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 513.0026
@@ -2903,7 +3013,7 @@ Notice that because we fit the additive seasonal model to the data with multipli
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-41-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-38-1.pdf}
 
 While the fit to the data is far from perfect, due to a pure coincidence the point forecast from this model is quite decent.
 
@@ -2915,7 +3025,7 @@ In order to see how the ADAM ETS decomposes the data into components, we can plo
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-42-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-39-1.pdf}
 
 We can see on this graph that the residuals still contain some seasonality in them, so there is a room for improvement. Most probably, this happened because the data exhibits multiplicative seasonality rather than the additive one. For now, we do not aim to fix this issue.
 
@@ -3157,7 +3267,7 @@ We continue our examples with the same Box-Jenkins sales case by fitting the ETS
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.03 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 245.3759
@@ -3184,7 +3294,7 @@ We continue our examples with the same Box-Jenkins sales case by fitting the ETS
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-43-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-40-1.pdf}
 
 Note that the function produces the point forecast in this case, which is not equivalent to the conditional expectation! Also, the default distribution for the multiplicative erro models is \(\mathcal{IG}\). Similarly, to how it was done in the \protect\hyperlink{ADAMETSPureAdditiveExamples}{previous chapter}, the output gives a general summary for the model. We can compare this model with the ETS(A,A,N) via information criteria if we want. For example, here are the AICc for the two models:
 
@@ -3218,7 +3328,7 @@ The comparison is fair, because both models were estimated via likelihood and bo
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-45-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-42-1.pdf}
 
 Note that, when we ask for ``prediction'' intervals, the \texttt{forecast()} function will automatically decide what to use: in case of pure additive model it will use analytical solutions, while in the other cases, it will use simulations. The point forecast obtained from forecast function corresponds to the conditional expectation and is calculated based on the simulations. This also means that it will differ slightly from one run of the function to another (reflecting the uncertainty in the error term), but the difference should be negligible.
 
@@ -3233,7 +3343,7 @@ We can also compare the performance of ETS(M,M,N) with \(\mathcal{IG}\) distribu
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.03 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 245.3872
@@ -3268,7 +3378,7 @@ The \texttt{AirPassengers} data used in the \protect\hyperlink{ADAMETSPureAdditi
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-47-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-44-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -3307,7 +3417,7 @@ Notice that the smoothing parameter \(\gamma=0\) in this case, which reflects th
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-48-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-45-1.pdf}
 
 If we want to calculate the error measures based on the conditional expectation, we can use the \texttt{measures()} function from \texttt{greybox} package in the following way:
 
@@ -3319,11 +3429,11 @@ If we want to calculate the error measures based on the conditional expectation,
 
 \begin{verbatim}
 ##            ME           MAE           MSE           MPE          MAPE 
-##  -6.188861816  15.521314096 486.737534483  -0.017545886   0.033929045 
+##  -5.554817364  15.560769104 481.819642295  -0.016214515   0.033901648 
 ##           sCE          sMAE          sMSE          MASE         RMSSE 
-##  -0.282927563   0.059130522   0.007064172   0.644466607   0.704137570 
+##  -0.253941837   0.059280831   0.006992798   0.646104834   0.700571311 
 ##          rMAE         rRMSE          rAME     asymmetry          sPIS 
-##   0.204227817   0.214244236   0.086962929  -0.267517967   2.280257075
+##   0.204746962   0.213159149   0.078053640  -0.224623635   2.116558263
 \end{verbatim}
 
 And the plot of the time series decomposition according to ETS(M,M,M) is:
@@ -3334,7 +3444,7 @@ And the plot of the time series decomposition according to ETS(M,M,M) is:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-50-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-47-1.pdf}
 
 It shows that the residuals are more random for the model than for the ETS(A,A,A), but there still might be some structure left. The autocorrelation and partial autocorrelation functions might help in understanding this better:
 
@@ -3345,7 +3455,7 @@ It shows that the residuals are more random for the model than for the ETS(A,A,A
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-51-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-48-1.pdf}
 
 The plot shows that there is still some correlation left in the residuals, which could be either due to pure randomness or due to the imperfect estimation of the model. Tuning the parameters of the optimiser or selecting a different model might solve the problem.
 
@@ -3357,10 +3467,10 @@ Finally, just as an example, we can also fit the most complicated pure multiplic
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-52-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-49-1.pdf}
 
 \begin{verbatim}
-## Time elapsed: 0.14 seconds
+## Time elapsed: 0.16 seconds
 ## Model estimated using adam() function: ETS(MMdM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 466.1865
@@ -3506,7 +3616,7 @@ One of the issues that can be encountered, when using these models is the explos
 
 Furthermore, the combination of components for the models in this class makes even less sense than the combination for \protect\hyperlink{ADAMETSMixedModelsGroup3}{the previous class} of models. For example, the multiplicative trend assumes either the explosive growth or decay as shown on the following two figures:
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-53-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-50-1.pdf}
 
 Assuming that either seasonal component, or the error term, or both will have exactly the same impact on the final value irrespective of the point of time is unrealistic for these situation. The more reasonable would be for the amplitude of seasonality to decrease together with the exponential decay of the trend and for the variance of the error term to do the same. But this means that we are talking about the \protect\hyperlink{ADAMETSPureMultiplicative}{pure multiplicative models}, not the mixed ones. There is only one situation, where such mixed models could make sense: when the speed of change of the exponential trajectory is close to zero, meaning that the level of the series does not change rapidly and when the volume of the data is high. In this case the mixed models might perform well and even produce more accurate forecasts than the models from the other classes.
 
@@ -3660,7 +3770,7 @@ The forecast trajectory (conditional expectation several steps ahead) of this mo
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-54-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-51-1.pdf}
 
 If for some reason we get \(\phi_1>1\), then the trajectory corresponds to exponential increase, becoming explosive, implying non-stationary behaviour. The model in this case becomes very difficult to work with, even if the parameter is close to one. So it is typically advised to restrict the parameter with stationarity region (we will discuss this in more detail later in this chapter).
 
@@ -3683,7 +3793,7 @@ where \(\phi_i\) is the parameters for the \(i\)-th lag of the model. So, the mo
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-55-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-52-1.pdf}
 
 No matter what the forecast trajectory of AR model is, it will asymptotically converge to zero, as long as the model is stationary.
 
@@ -3801,7 +3911,7 @@ So, the forecast trajectory from this model dampens out, similar to the \protect
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-56-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-53-1.pdf}
 
 The more complicated ARMA(p,q) models with p\textgreater1 will have more complicated trajectories with potential harmonics, but the idea of dampening in AR(p) part of the model stays.
 
@@ -4048,7 +4158,7 @@ When it comes to forecasting from such model as SARIMA(1,0,1)(1,0,1)\(_4\), the 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-57-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-54-1.pdf}
 
 As we see, the values converge to zero due to \(0<\phi_1<1\) and the seasonality disappears because \(0<\phi_{4,1}<1\) as well. So, this is the forecast implied by the SARIMA without differences. If the differences are introduced, then the model would produce non-stationary and seasonaly non-stationary trajectories.
 
@@ -4070,7 +4180,7 @@ In addition, it is possible to add the constant term to the SARIMA model, and it
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-58-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-55-1.pdf}
 
 In case of the model with the differences, the constant would have a two-fold effect: working as a drift for the non-seasonal part and increasing the amplitude of seasonality for the seasonal one. Here is an example from SARIMA(1,0,0)(1,1,0)\(_4\) with constant:
 \begin{equation}
@@ -4098,7 +4208,7 @@ This formula can then be used to see, what the trajectory from such model will b
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-59-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-56-1.pdf}
 
 As we see, the trajectory exhibits a drift, coming from the non-seasonal part of the model and a stable seasonality (the amplitude of which does not converge to zero anymore). More complex behaviours for the future trajectories can be obtained with higher orders of seasonal and non-seasonal parts of SARIMA model.
 
@@ -4178,7 +4288,7 @@ Using the formula \eqref{eq:autoCorrelation}, we can calculate the autocorrelati
   \label{eq:autoCovarianceAR1}
 \end{equation}
 which when inserted in \eqref{eq:autoCorrelation} leads to \(\rho(1)=\phi_1\). The ACF for AR(1) with a positive \(\phi_1\) will have the following shape (on the example of \(\phi_1=0.9\)):
-\includegraphics{adam_files/figure-latex/unnamed-chunk-60-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-57-1.pdf}
 
 Note that \(\rho(0)=1\) just because the value is correlated with itself in this case, so lag 0 is typically dropped as not being useful. The declining shape of the ACF tells us that if \(y_t\) is correlated with \(y_{t-1}\), then the correlation between \(y_{t-1}\) and \(y_{t-2}\) will be exactly the same, also implying that \(y_{t}\) is somehow correlated with \(y_{t-2}\), even if there is no true correlation between them. In fact, it is difficult to say anything for AR process based on ACF exactly because of this temporal relation of the variable with itself. On the other hand, ACF can be used to judge the order of MA(q) process. For example, if we consider \protect\hyperlink{MA}{MA(1)}, then the \(\rho(1)\) will depend on the following covariance:
 \begin{equation}
@@ -4242,7 +4352,7 @@ Summarising the discussions in this section, we can conclude that:
 These rules are tempting to use, when determining the appropriate order of ARMA model. However these rules are not necessarily bi-directional: e.g.~\emph{if we deal with MA(q), ACF drops abruptly right after the lag q, but if ACF drops abruptly after the lag q, then this does not necessarily mean that we deal with MA(q)}. The former follows directly from the assumed ``true'' model, while the latter refers to the identification of the model on the data, and there can be different reasons for the ACF to behave in a way it does. The logic here is similar to the following:
 
 \begin{example}
-\protect\hypertarget{exm:unnamed-chunk-61}{}{\label{exm:unnamed-chunk-61} }All birds have wings. Sarah has wings. Thus Sarah is a bird.
+\protect\hypertarget{exm:unnamed-chunk-58}{}{\label{exm:unnamed-chunk-58} }All birds have wings. Sarah has wings. Thus Sarah is a bird.
 
 Here is Sarah:
 \end{example}
@@ -4310,7 +4420,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     439.0905     439.0905
+##     521.9067     521.9067
 \end{verbatim}
 
 \begin{Shaded}
@@ -4323,7 +4433,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     882.1810     884.1811
+##     1049.813     1049.813
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
@@ -4338,7 +4448,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-## 0.000000e+00 3.523093e-11
+##    0.2340483    0.2340483
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related:
@@ -4351,7 +4461,7 @@ Finally, the fit and the forecasts from the two models should be exactly the sam
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-65-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-62-1.pdf}
 
 We expect the ETS(A,N,N) and ARIMA(0,1,1) models to be equivalent in this example because they are estimated using the respective functions es() and ssarima(), which are implemented in the same way, using the same framework. If the framework, initialisation, construction or estimation would be different, then the relation between the applied models might be not exact, but approximate.
 
@@ -4409,7 +4519,7 @@ Finally, it is possible to have a combination of ETS and ARIMA, based on the dis
 \subsection{Non-seasonal data}\label{non-seasonal-data-2}}
 
 Using the time series from the Box-Jenkins textbook \citep{Box1976}, we will fit ARIMA model to the data, but based on our judgment rather than their approach. Just a reminder, here how the data looks (series \texttt{BJsales}):
-\includegraphics{adam_files/figure-latex/unnamed-chunk-66-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-63-1.pdf}
 
 It seems to exhibit the trend in the data, so we can consider ARIMA(1,1,2), ARIMA(0,2,2) and ARIMA(1,1,1). We do not consider models with drift in this example, because they would imply the same slope over time, which does not seem to be the case here:
 
@@ -4462,7 +4572,7 @@ Comparing this model with the ETS(A,A,N), we will see a slight difference, becau
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-69-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-66-1.pdf}
 
 \begin{verbatim}
 ## Time elapsed: 0.03 seconds
@@ -5014,7 +5124,7 @@ Building upon the example with \texttt{AirPassengers} data from \protect\hyperli
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-74-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-71-1.pdf}
 
 We still have the trend in the data and the seasonality now corresponds to the additive one rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking first differences for the seasonal should suffice. So we can test several models with different options for ARIMA orders:
 
@@ -5060,7 +5170,7 @@ It looks like the logSARIMA(0,1,1)(0,1,1)\(_{12}\) is more appropriate for the d
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-77-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-74-1.pdf}
 
 We can see that there are no significant coefficient on either ACF or PACF, so there is nothing else to improve in this model. We can then produce forecast from the model and see how it performed on the holdout sample:
 
@@ -5071,7 +5181,7 @@ We can see that there are no significant coefficient on either ACF or PACF, so t
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.28 seconds
+## Time elapsed: 0.31 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[12]
 ## Distribution assumed in the model: Log Normal
 ## Loss function type: likelihood; Loss function value: 472.923
@@ -5099,7 +5209,7 @@ We can see that there are no significant coefficient on either ACF or PACF, so t
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-78-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-75-1.pdf}
 
 The ETS model closest to the logSARIMA(0,1,1)(0,1,1)\(_{12}\) would probably be ETS(M,M,M):
 
@@ -5111,7 +5221,7 @@ The ETS model closest to the logSARIMA(0,1,1)(0,1,1)\(_{12}\) would probably be 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.13 seconds
+## Time elapsed: 0.14 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.5176
@@ -5528,7 +5638,7 @@ It is apparent that the \texttt{drivers} variable exhibits seasonality, but does
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-81-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-78-1.pdf}
 
 This simple model already does a fine job in fitting and forecasting the data, although the forecast is biased and is lower than needed because of the sudden drop in the level of series, which can only be explained by the introduction of the new law in the UK in 1983, making the seatbelts compulsory for drivers. Due to the sudden drop, the smoothing parameter for the level of series is higher than needed, leading to wider intervals and less accurate forecasts, here is the output of the model:
 
@@ -5539,7 +5649,7 @@ This simple model already does a fine job in fitting and forecasting the data, a
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.12 seconds
+## Time elapsed: 0.13 seconds
 ## Model estimated using adam() function: ETS(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1125.509
@@ -5584,7 +5694,7 @@ The plot on Figure \ref{fig:driversSpread} shows that there is a negative relati
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-83-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-80-1.pdf}
 
 The parameter \texttt{formula} in general is not compulsory and can either be substituted by \texttt{formula=drivers\textasciitilde{}.} or dropped completely - the function would fit the model of the first variable in the matrix from everything else. We need it in our case, because we introduce log-transformations of some of explanatory variables. The forecast from the second model is slightly more accurate and, what is even more important, the prediction interval is narrower, because now the model takes the external information into account. Here is the summary of the second model:
 
@@ -5595,7 +5705,7 @@ The parameter \texttt{formula} in general is not compulsory and can either be su
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.43 seconds
+## Time elapsed: 0.45 seconds
 ## Model estimated using adam() function: ETSX(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.042
@@ -5627,7 +5737,7 @@ The model with explanatory variables is already more precise than the simple uni
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-85-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-82-1.pdf}
 
 In this specific case, the difference between the ETSX and ETSX\{D\} models is infinitesimal in terms of the accuracy of final forecasts and prediction intervals. Here is the output of the model:
 
@@ -5638,7 +5748,7 @@ In this specific case, the difference between the ETSX and ETSX\{D\} models is i
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.49 seconds
+## Time elapsed: 0.52 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.215
@@ -6134,7 +6244,7 @@ And we can also produce forecasts from them and plot those forecasts for the vis
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-100-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-97-1.pdf}
 
 What we observe in this case, is that different losses led to different forecasts and prediction intervals (we still assume Inverse Gaussian distribution) and that in case of LASSO, the shrinkage is so strong that the seasonality is shrunk to zero. What can potentially be done to make this practical is the \protect\hyperlink{rollingOrigin}{rolling origin evaluation} for different losses and then comparison of forecast errors between them in order to select the most efficient one.
 
@@ -6689,7 +6799,7 @@ In order to see how ADAM can be applied to high frequency data, we will use \tex
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-105-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-102-1.pdf}
 
 Note that when you have data with \protect\hyperlink{MultipleFrequenciesDSTandLeap}{DST or Leap years}, \texttt{adam()} will automatically correct the seasonal lags if your data contains specific dates (as \texttt{zoo} objects have, for example). The series above does not exhibit an obvious trend, but has two seasonal cycles: half-hour of day and day of week. Seasonality seems to be multiplicative. We will try several different models and see how they compare. In all the cases below, we will use backcasting as initialisation of the model. We will use the last 336 observations (\(48 \times 7\)) as the holdout, just to see whether models perform adequately or not.
 
@@ -6705,7 +6815,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.46 seconds
+## Time elapsed: 0.65 seconds
 ## Model estimated using adam() function: ETS(MNM)[48, 336]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 25682.88
@@ -6732,9 +6842,9 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-106-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-103-1.pdf}
 
-As you might notice the model was constructed in 0.46 seconds, and while it might not be the most accurate model for the data, it fits the data well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of multistep estimators, for example \protect\hyperlink{multistepLossesGTMSE}{GTMSE}:
+As you might notice the model was constructed in 0.65 seconds, and while it might not be the most accurate model for the data, it fits the data well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of multistep estimators, for example \protect\hyperlink{multistepLossesGTMSE}{GTMSE}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -6881,7 +6991,7 @@ The resulting model produces the biased forecasts (they are consistently higher 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-114-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-111-1.pdf}
 
 As we see, the level component not only contains the level, but also absorbed seasonality, which causes the issue with forecasting accuracy. However, the obtained value did not happen due to randomness - this is what the model does, when seasonality is fixed and is not allowed to evolve over time. In order to reduce the sensitivity of the model, we can shrink the smoothing parameter using a multistep estimator (discussed in Section \ref{multistepLosses}). Note however that these estimators are typically slower than the conventional ones, so they might take more computational time:
 
@@ -6947,7 +7057,7 @@ While the performance of model with GTMSE has improved due to the shrinkage of \
 ## MASE: 1.277; RMSSE: 1.118; rMAE: 0.124; rRMSE: 0.129
 \end{verbatim}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-118-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-115-1.pdf}
 
 We can see an improvement in comparison with the previous model, so the seasonal states do change over time, which means that the deterministic seasonality is not appropriate in our example. However, in some other cases it might be more suitable, producing more accurate forecasts than the models assuming stochastic seasonality (i.e.~via multiple seasonal ETS / ARIMA models).
 
@@ -6966,7 +7076,7 @@ Another model we can try on this data is ARIMA. We have not yet discussed the or
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.24 seconds
+## Time elapsed: 0.2 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.76
@@ -6994,7 +7104,7 @@ Another model we can try on this data is ARIMA. We have not yet discussed the or
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-119-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-116-1.pdf}
 
 This model is directly comparable with ADAM ETS via information criteria, and as we can see is worse than ADAM ETS(M,N,M)+AR(1) and multiple seasonal ETS(M,N,M) in terms of AICc. But it is better in terms of RMSSE, producing more accurate forecasts. We could analyse the residuals of this model and iteratively test, whether the addition of AR terms and halfhour of day seasonality improves the accuracy of the model. We could also try ARIMA models with different distributions, compare them and select the most appropriate one. The reader is encouraged to do this task on their own.
 
@@ -7055,7 +7165,7 @@ Here how the data looks like:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-120-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-117-1.pdf}
 
 The probability of occurrence in this model increases together with the demand sizes. This example corresponds to the situation of intermittent demand of a product becoming regular.
 
@@ -7090,16 +7200,16 @@ The occurrence part of the model, oETS\(_F\) can be constructed using \texttt{oe
 ## Occurrence state space model estimated: Fixed probability
 ## Underlying ETS model: oETS[F](MNN)
 ## Vector of initials:
-##  level 
-## 0.6636 
+## level 
+##   0.6 
 ## 
-## Error standard deviation: 1.0884
+## Error standard deviation: 1.0952
 ## Sample size: 110
 ## Number of estimated parameters: 1
 ## Number of degrees of freedom: 109
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 142.4907 142.5277 145.1912 145.2782
+## 150.0626 150.0996 152.7630 152.8501
 \end{verbatim}
 
 \begin{Shaded}
@@ -7110,7 +7220,7 @@ The occurrence part of the model, oETS\(_F\) can be constructed using \texttt{oe
 
 \includegraphics{adam_files/figure-latex/oETSFExample1-1.pdf}
 
-The plot above demonstrates the dynamics of the occurrence variable \(o_t\) and the fitted and predicted probabilities. The oETS\(_F\) model produces the straight line for the probability of 0.66, ignoring the fact that in our example the probability of occurrence has increased over time.
+The plot above demonstrates the dynamics of the occurrence variable \(o_t\) and the fitted and predicted probabilities. The oETS\(_F\) model produces the straight line for the probability of 0.6, ignoring the fact that in our example the probability of occurrence has increased over time.
 
 \hypertarget{oETSO}{%
 \subsection{\texorpdfstring{Odds ratio model, oETS\(_O\)}{Odds ratio model, oETS\_O}}\label{oETSO}}
@@ -7161,19 +7271,19 @@ The occurrence part of the model oETS\(_O\) is constructed using the very same \
 ## Occurrence state space model estimated: Odds ratio
 ## Underlying ETS model: oETS[O](MMN)
 ## Smoothing parameters:
-##  level  trend 
-## 0.0022 0.0022 
+## level trend 
+##     0     0 
 ## Vector of initials:
 ##  level  trend 
-## 0.7357 0.9552 
+## 0.1569 1.0448 
 ## 
-## Error standard deviation: 1.5153
+## Error standard deviation: 2.0143
 ## Sample size: 110
 ## Number of estimated parameters: 4
 ## Number of degrees of freedom: 106
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 109.8974 110.2783 120.6993 121.5946
+## 120.3413 120.7222 131.1432 132.0385
 \end{verbatim}
 
 \begin{Shaded}
@@ -7235,18 +7345,18 @@ The function \texttt{oes()} implements the oETS\(_I\) model as well. For example
 ## Underlying ETS model: oETS[I](MMN)
 ## Smoothing parameters:
 ##  level  trend 
-## 0.0276 0.0000 
+## 0.0753 0.0000 
 ## Vector of initials:
-##  level  trend 
-## 4.6824 0.9401 
+##   level   trend 
+## 11.7215  0.8997 
 ## 
-## Error standard deviation: 4.1268
+## Error standard deviation: 2.936
 ## Sample size: 110
 ## Number of estimated parameters: 4
 ## Number of degrees of freedom: 106
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 116.5572 116.9382 127.3591 128.2545
+## 125.9150 126.2959 136.7169 137.6122
 \end{verbatim}
 
 \begin{Shaded}
@@ -7344,7 +7454,7 @@ There is a separate function for the oETS\(_G\) model, called \texttt{oesg()}. I
 ## Number of degrees of freedom: 104
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 123.4900 124.3055 139.6929 141.6096
+## 124.3416 125.1571 140.5445 142.4612
 \end{verbatim}
 
 \begin{Shaded}
@@ -7367,19 +7477,19 @@ We can also analyse separately models for \(a_t\) and \(b_t\). Here is, for exam
 ## Occurrence state space model estimated: Odds ratio
 ## Underlying ETS model: oETS[G](MNN)_A
 ## Smoothing parameters:
-##  level 
-## 0.0537 
+## level 
+##     0 
 ## Vector of initials:
 ##  level 
-## 1.1934 
+## 1.0464 
 ## 
-## Error standard deviation: 1.1014
+## Error standard deviation: 2.0108
 ## Sample size: 110
 ## Number of estimated parameters: 2
 ## Number of degrees of freedom: 108
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 115.4900 115.6021 120.8909 121.1545
+## 116.3416 116.4537 121.7425 122.0061
 \end{verbatim}
 
 The experiments that I have done so far show that oETS\(_G\) very seldomly brings improvements in comparison with oETS\(_O\) or oETS\(_I\) in terms of forecasting accuracy. Besides, selecting models for each of the parts is a challenging task. So, this model is theoretically nice, being more general than the other oETS models, but is not very practical. Still it is useful because we can introduce different oETS model by restricting \(a_t\) and \(b_t\). For example, we can get:
@@ -7470,15 +7580,15 @@ Here's an example of the application of the oETS\(_D\)(M,M,N) to the same artifi
 ##     0     0 
 ## Vector of initials:
 ##  level  trend 
-## 0.4151 1.0087 
+## 0.2460 1.0146 
 ## 
-## Error standard deviation: 0.7301
+## Error standard deviation: 0.9855
 ## Sample size: 110
 ## Number of estimated parameters: 4
 ## Number of degrees of freedom: 106
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 115.9946 116.3756 126.7965 127.6919
+## 118.3605 118.7414 129.1624 130.0577
 \end{verbatim}
 
 \begin{Shaded}
@@ -7770,7 +7880,7 @@ In order to see how ADAM works on intermittent data, we consider the same exampl
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-123-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-120-1.pdf}
 
 This can be done using \texttt{adam()} function from \texttt{smooth} package, defining the type of occurrence to use. We will try several options and select the one that has the lowest AICc:
 
@@ -7795,10 +7905,10 @@ This can be done using \texttt{adam()} function from \texttt{smooth} package, de
 
 \begin{verbatim}
 ##         odds-ratio inverse-odds-ratio             direct            general 
-##           414.8931           417.5686           416.6561           450.4869
+##           408.6770           415.4992           404.8367           416.7119
 \end{verbatim}
 
-Based on this, we can see that the model with odds-ratio has the lowest AICc. We can see how the model has approximated the data and produced forecasts for the holdout:
+Based on this, we can see that the model with direct has the lowest AICc. We can see how the model has approximated the data and produced forecasts for the holdout:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -7807,7 +7917,7 @@ Based on this, we can see that the model with odds-ratio has the lowest AICc. We
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-125-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-122-1.pdf}
 
 We can explore the demand occurrence part of this model the following way:
 
@@ -7818,22 +7928,22 @@ We can explore the demand occurrence part of this model the following way:
 \end{Shaded}
 
 \begin{verbatim}
-## Occurrence state space model estimated: Odds ratio
-## Underlying ETS model: oETS[O](MMdN)
+## Occurrence state space model estimated: Direct probability
+## Underlying ETS model: oETS[D](MMdN)
 ## Smoothing parameters:
-##  level  trend 
-## 0.1465 0.0000 
+## level trend 
+##     0     0 
 ## Vector of initials:
 ##  level  trend 
-## 4.5451 0.5688 
+## 0.1600 1.0348 
 ## 
-## Error standard deviation: 2.0863
+## Error standard deviation: 1.1059
 ## Sample size: 110
 ## Number of estimated parameters: 5
 ## Number of degrees of freedom: 105
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 118.9351 119.5121 132.4375 133.7934
+## 119.9292 120.5061 133.4316 134.7875
 \end{verbatim}
 
 \begin{Shaded}
@@ -7842,7 +7952,7 @@ We can explore the demand occurrence part of this model the following way:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-126-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-123-1.pdf}
 
 Depending on the generated data, there might be issues in the ETS(M,Md,N) model for demand sizes, if the smoothing parameters are large. So, we can try out the ADAM logARIMA(1,1,2) to see how it compares with this model. Given that ARIMA is not yet implemented for the occurrence part of the model, we need to construct it separately and then use in \texttt{adam()}:
 
@@ -7859,18 +7969,18 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.11 seconds
-## Model estimated using adam() function: iARIMA(1,1,2)[O]
-## Occurrence model type: Odds ratio
+## Time elapsed: 0.16 seconds
+## Model estimated using adam() function: iARIMA(1,1,2)[D]
+## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log Normal
-## Loss function type: likelihood; Loss function value: 148.5465
+## Loss function type: likelihood; Loss function value: 143.0229
 ## ARMA parameters of the model:
 ## AR:
 ## phi1[1] 
-## -0.1248 
+## -0.0377 
 ## MA:
 ## theta1[1] theta2[1] 
-##   -0.6859   -0.0573 
+##   -0.9053    0.1733 
 ## 
 ## Sample size: 110
 ## Number of estimated parameters: 6
@@ -7878,10 +7988,10 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 418.0282 418.8437 434.2310 436.1477 
+## 407.9751 408.7906 424.1779 426.0946 
 ## 
 ## Forecast errors:
-## Asymmetry: -53.36%; sMSE: 26.899%; rRMSE: 1.14; sPIS: 1799.462%; sCE: -253.431%
+## Asymmetry: -48.588%; sMSE: 56.573%; rRMSE: 0.63; sPIS: 2625.01%; sCE: -305.031%
 \end{verbatim}
 
 \begin{Shaded}
@@ -7890,7 +8000,7 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-127-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-124-1.pdf}
 
 Comparing the iARIMA model with the previous iETS based on AIC would not be fair, because as soon as the occurrence model is provided to \texttt{adam()}, he does not count the parameters estimated in that part towards the overal number of estimated parameters. In order to make the comparison fair, we need to estimate ADAM iETS in the following way:
 
@@ -7903,25 +8013,25 @@ Comparing the iARIMA model with the previous iETS based on AIC would not be fair
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.04 seconds
-## Model estimated using adam() function: iETS(MMdN)[O]
-## Occurrence model type: Odds ratio
+## Time elapsed: 0.05 seconds
+## Model estimated using adam() function: iETS(MMdN)[D]
+## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Gamma
-## Loss function type: likelihood; Loss function value: 141.5712
+## Loss function type: likelihood; Loss function value: 136.046
 ## Persistence vector g:
 ## alpha  beta 
 ##     0     0 
-## Damping parameter: 1
+## Damping parameter: 0.9918
 ## Sample size: 110
 ## Number of estimated parameters: 6
 ## Number of degrees of freedom: 104
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 404.0775 404.8931 420.2804 422.1971 
+## 394.0211 394.8367 410.2240 412.1407 
 ## 
 ## Forecast errors:
-## Asymmetry: -90.481%; sMSE: 45.619%; rRMSE: 1.485; sPIS: 2930.304%; sCE: -517.309%
+## Asymmetry: 29.593%; sMSE: 50.207%; rRMSE: 0.593; sPIS: -188.733%; sCE: 188.013%
 \end{verbatim}
 
 \begin{Shaded}
@@ -7930,7 +8040,7 @@ Comparing the iARIMA model with the previous iETS based on AIC would not be fair
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-128-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-125-1.pdf}
 
 Comparing information criteria, the iETS model is more appropriate for this data. But this might be due to a different distributional assumptions and difficulties estimating ARIMA model. If you want to experiment more with ADAM iARIMA, you might try \protect\hyperlink{ADAMInitialisationOptAndBack}{fine tuning} it for the data either by increasing the \texttt{maxeval} or changing the initialisation, for example:
 
@@ -7944,18 +8054,18 @@ Comparing information criteria, the iETS model is more appropriate for this data
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.08 seconds
-## Model estimated using adam() function: iARIMA(1,1,2)[O]
-## Occurrence model type: Odds ratio
+## Time elapsed: 0.09 seconds
+## Model estimated using adam() function: iARIMA(1,1,2)[D]
+## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Gamma
-## Loss function type: likelihood; Loss function value: 159.7914
+## Loss function type: likelihood; Loss function value: 152.8763
 ## ARMA parameters of the model:
 ## AR:
 ## phi1[1] 
-##  0.2162 
+## -0.1501 
 ## MA:
 ## theta1[1] theta2[1] 
-##   -1.0054    0.1902 
+##   -0.9710    0.2289 
 ## 
 ## Sample size: 110
 ## Number of estimated parameters: 4
@@ -7963,10 +8073,10 @@ Comparing information criteria, the iETS model is more appropriate for this data
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 436.5180 436.8989 447.3199 448.2152 
+## 423.6819 424.0628 434.4838 435.3791 
 ## 
 ## Forecast errors:
-## Asymmetry: -52.998%; sMSE: 27.164%; rRMSE: 1.146; sPIS: 1796.886%; sCE: -254.584%
+## Asymmetry: -46.007%; sMSE: 53.272%; rRMSE: 0.611; sPIS: 2428.106%; sCE: -279.093%
 \end{verbatim}
 
 \begin{Shaded}
@@ -7975,7 +8085,7 @@ Comparing information criteria, the iETS model is more appropriate for this data
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-129-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-126-1.pdf}
 
 Finally, we can produce point and interval forecasts from either of the model via the \texttt{forecast()} method. Here is an example:
 
@@ -7987,7 +8097,7 @@ Finally, we can produce point and interval forecasts from either of the model vi
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-130-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-127-1.pdf}
 
 The prediction intervals produced from multiplicative ETS models will typically be simulated, so in order to make them smoother you might need to increase \texttt{nsim} parameter, for example to \texttt{nsim=100000}.
 
@@ -8101,7 +8211,7 @@ In some cases we might be able to diagnose this. For example, with our regressio
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-131-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-128-1.pdf}
 
 \texttt{spread()} function automatically detects the type of variable and produces scatterplot / \texttt{boxplot()} / \texttt{tableplot()} between them, making the final plot more readable. The plot above tells us that residuals are correlated with \texttt{DriversKilled}, \texttt{front}, \texttt{rear} and \texttt{law}, so some of these variables can be added to the model to improve it. \texttt{VanKilled} might have a weak relation with \texttt{drivers}, but judging by description does not make sense in the model (this is a part of the \texttt{drivers} variable). In our case, it is safe to add these variables, because they make sense in explaining the number of injured drivers. However, I would not add \texttt{DriversKilled} as it seems not to drive the number of deaths and injuries, but is just correlated with it for obvious reasons (\texttt{DriversKilled} is included in \texttt{drivers}). We can also calculate measures of association between variables:
 
@@ -8152,7 +8262,7 @@ Technically speaking, the output of this function tells us that all variables ar
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-133-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-130-1.pdf}
 
 How can we know that we have not omitted any important variables in our new model? Unfortunately, there is no good way of knowing that. In general, we should use judgment in order to decide whether anything else is needed or not. But given that we deal with time series, we can analyse residuals over time and see if there is any structure left:
 
@@ -8162,7 +8272,7 @@ How can we know that we have not omitted any important variables in our new mode
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-134-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-131-1.pdf}
 
 This plot shows that the model has not captured seasonality and that there is stil some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model:
 
@@ -8176,7 +8286,7 @@ This plot shows that the model has not captured seasonality and that there is st
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-135-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-132-1.pdf}
 
 This is much better. There is no apparent missing structure in the data and no apparent omitted variables. We can now move to the next steps of diagnostics.
 
@@ -8197,7 +8307,7 @@ In the example with Seatbelt data, \texttt{DriversKilled} would be a redundant v
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-136-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-133-1.pdf}
 
 The residuals from this model look adequate, with only issue being the first 45 observations lying below the zero line. The summary of this model is:
 
@@ -8258,7 +8368,7 @@ There are different ways to diagnose the problem with wrong transformations, whi
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-138-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-135-1.pdf}
 
 The grey dashed line on the plot corresponds to the situation, when actuals and fitted coincide (100\% fit). The red line on the plot above is LOESS line, produced by \texttt{lowess()} function in R, smoothing the scatterplot to reflect the potential tendencies in the data. In the ideal situation this red line should coinside with the grey line. In addition the variability around the line should not change with the increase of fitted values. In our case there is a slight U-shape in the red line and an insignificant increase in variability around the middle of the data. This could either be due to pure randomness and thus should be ignored, or could indicate a slight non-linearity in the data. After all, we have constructed pure additive model on the data that exhibits seasonality with multiplicative characteristics, which becomes especially apparent at the end of the series, where the drop in level is accompanied by the decrease of variability of the data:
 
@@ -8268,7 +8378,7 @@ The grey dashed line on the plot corresponds to the situation, when actuals and 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-139-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-136-1.pdf}
 
 In order to diagnose this properly, we might use other instruments. One of these is the analysis of standardised residuals. The formula for the standardised residuals will differ depending on the assumed distribution and for some of them comes to the value inside the ``\(\exp\)'' part of the probability density function:
 
@@ -8314,7 +8424,7 @@ Given that the scale of the original variable is now removed in the standardised
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-140-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-137-1.pdf}
 
 This plot shows that there is a slight decline in the residuals around year 1977. Still, there is no prominent non-linearity in the residuals, so it is not clear whether any transformations are needed or not.
 
@@ -8384,7 +8494,7 @@ Here is an example in R with the same multiplicative ETSX model and the standard
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-142-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-139-1.pdf}
 
 Note that in case of \(\mathcal{IG}\), \(\Gamma\) and \(\mathrm{log}\mathcal{N}\), the function will plot \(\log u_t\) in order to make the plot more readable. The plot demonstrates that there are outliers, some of which are further away from the bounds. Although the amount of outliers is not big, it would make sense investigating why they happened. Well, we know why - we constructed an incorrect model. Given that we deal with time series, plotting residuals vs time is also sometimes helpful:
 
@@ -8394,7 +8504,7 @@ Note that in case of \(\mathcal{IG}\), \(\Gamma\) and \(\mathrm{log}\mathcal{N}\
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-143-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-140-1.pdf}
 
 We see that there is no specific pattern in the outliers, they happen randomly, so they appear not because of the omitted variables or wrong transformations. We have 5 observations lying outside the bounds, which given that the sample size of 192 observations, means that the 95\% interval contains \(\frac{192-9}{192} \times 100 \mathrm{\%} \approx 95.3\mathrm{\%}\) of observations, which is close to the nominal value.
 
@@ -8407,7 +8517,7 @@ In some cases, the outliers might impact the scale of distribution and will lead
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-144-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-141-1.pdf}
 
 In many cases (ours included) the standardised and studentised residuals will look very similar, but in some cases of extreme outliers they might differ and the latter might show outliers better than the former.
 
@@ -8447,12 +8557,11 @@ These ids can be used to produce additional plots. For example:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-147-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-144-1.pdf}
 
 Among all these points, there is one special that happens on observation 170. This is when the law for seatbelts was introduced and the model cannot capture the change in injuries and deaths correctly.
 
 \begin{remark}
-
 As a side note, in R, there are several methods for extracting residuals:
 
 \begin{itemize}
@@ -8466,7 +8575,6 @@ As a side note, in R, there are several methods for extracting residuals:
 \end{itemize}
 
 \texttt{smooth} package also introduces \texttt{rmultistep} which extracts multiple steps ahead in sample forecast errors. We do not discuss this method here, but we might come back to it later in this textbook.
-
 \end{remark}
 
 \hypertarget{dealing-with-outliers}{%
@@ -8511,7 +8619,7 @@ Comparing the two values above, I would conclude that adding dummies improves th
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-150-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-147-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -8592,7 +8700,7 @@ There are different ways to diagnose this model. We start with a basic plot of r
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-153-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-150-1.pdf}
 
 We see that on one hand the residuals still contain seasonality and on the other that they do not look stationary. We could conduct ADF and / or KPSS test to get a formal answer to the stationarity question:
 
@@ -8655,7 +8763,7 @@ This leads to an improvement in AICc in comparison with the previous model. The 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-156-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-153-1.pdf}
 
 In order to see whether there are any other dynamic elements left, we will plot \protect\hyperlink{ACF}{ACF} and \protect\hyperlink{PACF}{PACF} of residuals:
 
@@ -8666,7 +8774,7 @@ In order to see whether there are any other dynamic elements left, we will plot 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-157-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-154-1.pdf}
 
 In case of \texttt{adam()} objects, these plots will always have the range for y-axis from -1 to 1 and will start from lag 1 on x-axis. The red horizontal lines represent the ``non-rejection'' region: if the point lie inside the region, then they are not statistically different from zero on the selected \texttt{level} (the uncertainty around them is so high that it covers zero). The points with numbers are those that are statistically significantly different from zero. So, the ACF / PACF analysis might show the lags that are statistically significant on the selected level (the default one is 0.95). Given that this is a statistical instrument, we would expect for approximately (1-level)\% (e.g.~5\%) of lags lie outside these bounds, so it is fine if we don't see all point lying inside them. However, we should not see any patterns there and we might need to investigate the suspicious lags (low orders of up to 3 - 5 and the seasonal lags if they appear). In our example we see that there is a suspicious lag 1 on ACF and a suspicious lag 2 on the PACF, which might indicate that some dynamic elements are missing (e.g.~MA(1) or AR(2)). Furthermore, there are spikes on lag 12 for both ACF and PACF. While it is not clear, what specifically is needed here, we can try out several models and see which one of them is better in order to deremine the appropriate element:
 
@@ -8724,7 +8832,7 @@ Based on this analysis, we would be inclined to include both seasonal AR(1) and 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-159-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-156-1.pdf}
 
 In this case, there is a big spike on ACF for lag 1, so we can try adding MA(1) component in the model:
 
@@ -8768,7 +8876,7 @@ This new constructed SARIMAX(0,1,1)(0,1,1)\(_{12}\) model has lower AICc than th
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-162-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-159-1.pdf}
 
 So for the purposes of analytics and forecasting, we would be inclined to use SARIMAX(0,1,1)(0,1,1)\(_{12}\) rather than ETSX(MNM).
 
@@ -8791,7 +8899,7 @@ Building upon our previous example. We will use the ETSX(A,N,A) model, which \pr
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-163-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-160-1.pdf}
 
 These two plots allow detecting specific type of heteroscedasticity, when with the increase of fitted values the residuals variability changes. The plot of absolute residuals vs fitted is more appropriate for models, where the scale parameters is calculated based on absolute values of residuals (e.g.~the model with Laplace distribution), while the squared residuals vs fitted shows whether the variance of residuals is stable or not (thus making it more suitable for models with Normal and related distributions). Furthermore, the squared residuals plot might be difficult to read due to outliers, so the first one might help in detecting the heteroscedasticity even, when the scale is supposed to rely on squared errors. What we want to see on these plots, is for all the points to lie in the same corridor for lower and for the higher fitted values and for the red line to be constant. In our case There is a slight increase of the line and the variability of residuals around 1000 is lower than the one around 2000, which might indicate that we have heteroscedasticity in residuals. In our case this is cause by the wrong transformations in the model (see Section \ref{diagnosticsTransformations}), so the fix of the issue is to use the multiplicative model.
 
@@ -8804,7 +8912,7 @@ Another diagnostics tool that might become useful in some situations are the plo
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-164-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-161-1.pdf}
 
 In our case, these plots do not give additional message, we already know that there is a slight heteroscedasticity and that we need to transform the response variable some how (build multiplicative model).
 
@@ -8819,7 +8927,7 @@ If we suspect that there are some specific variables that might cause heterosced
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-165-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-162-1.pdf}
 
 The plot above can be read similarly to the plots discussed above: if we notice a change in variability of residuals or a change (increase of decrease) in the lowess lines with the change of a variable, then this might indicate that the respective variable causes multicollinearity in the model. In our example, it looks like the variable \texttt{law} causes the largest issue - all the other variables do not cause as a strong change in variance. We already know that we need to use multiplicative model instead of the additive one in our example, so we will see how the residuals look for the correctly specified model:
 
@@ -8830,7 +8938,7 @@ The plot above can be read similarly to the plots discussed above: if we notice 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-166-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-163-1.pdf}
 
 The plots above do not demonstrate any substantial issues: the residuals look more homoscedastic and given the scale of residuals the change of lowess line does not reflect significant changes in residuals. Additional plot of absolute residuals vs explanatory variables does not show anys serious issues either:
 
@@ -8843,7 +8951,7 @@ The plots above do not demonstrate any substantial issues: the residuals look mo
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-167-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-164-1.pdf}
 
 So, we can conclude that the multiplicative model resolves the issue with heteroscedasticity. If a variable would still cause an issue with it, it would make sense to construct a model for the variance (e.g.~GARCH) in order to address the issue and improve the performance of the model in terms of prediction interval.
 
@@ -8885,7 +8993,7 @@ The diagnostics of this assumption can be done using \texttt{rmultistep()} metho
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-168-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-165-1.pdf}
 
 As the plot in the Figure above demonstrates, the mean of the residuals increases with the increase of the horizon, thus implying that some information has not been taken into account by the model.
 
@@ -8902,7 +9010,7 @@ The simplest one is called Quantile-Quantile (QQ) plot. It produces a figure wit
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-169-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-166-1.pdf}
 
 If the residuals do not contradict the assumed distribution, then all the points should lie either very close to or on the line. In our case, the majority of points are close to the line, but the tails are slightly off. In ADAM, this might mean that we should either use a different error type or a different distribution. Just for the sake of argument, we can try ETSX(M,N,M) model, with the same set of explanatory variables as in the model \texttt{adamModelSeat03}, and with the same Normal distribution:
 
@@ -8916,7 +9024,7 @@ If the residuals do not contradict the assumed distribution, then all the points
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-170-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-167-1.pdf}
 
 According to the new QQ plot, the residuals of the new model are much closer to the theoretical ones, there is now only the right tail that is wrong - the actual values are a bit further away than expected. This can be addressed by using a skewed distribution, for example, Inverse Gaussian:
 
@@ -8930,7 +9038,7 @@ According to the new QQ plot, the residuals of the new model are much closer to 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-171-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-168-1.pdf}
 
 The new QQ plot demonstrates that the empirical residuals follow the assumed distribution much closer than in the previous cases: there are just few observations that lie slightly away from the line, but they could happen at random. So, based on this simple analysis we could conclude that Inverse Gaussian distribution is more suitable for this situation than the Normal one. Interestingly, this is supported by the AIC values, which very roughly reflect the same thing:
 
@@ -8959,7 +9067,7 @@ Another way to analyse the distribution of residuals is to plot histogram togeth
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-173-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-170-1.pdf}
 
 However, this plot is much more difficult to analyse than QQ plot, because of the bars, which average out the quantiles. So, in general I would recommend using QQ plots instead.
 
@@ -9133,7 +9241,7 @@ Here is an example with automatically selected ETS model using the branch-and-bo
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.3 seconds
+## Time elapsed: 1.47 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 467.2981
@@ -9219,7 +9327,7 @@ In this example, \texttt{orders=list(ar=3,i=2,ma=3,select=TRUE)} tells function 
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-178-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-175-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -9228,7 +9336,7 @@ In this example, \texttt{orders=list(ar=3,i=2,ma=3,select=TRUE)} tells function 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.64 seconds
+## Time elapsed: 0.65 seconds
 ## Model estimated using auto.adam() function: ARIMA(0,2,2)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 243.2819
@@ -9269,7 +9377,7 @@ Based on the relation between \protect\hyperlink{ARIMAandETS}{ARIMA and ETS}, wh
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.32 seconds
+## Time elapsed: 1.27 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -9301,7 +9409,7 @@ Based on the relation between \protect\hyperlink{ARIMAandETS}{ARIMA and ETS}, wh
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-179-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-176-1.pdf}
 
 The resulting model is ETS(M,M,M) with AR elements: 3 non-seasonal ones and 1 seasonal AR, which improve the fit of the model and hopefully result in more accurate forecasts.
 
@@ -9362,7 +9470,7 @@ We have already \protect\hyperlink{ETSXRExample}{had a look at this data earlier
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-181-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-178-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -9522,7 +9630,7 @@ As can be seen from the output of weights, the level models ETS(A,N,N) and ETS(M
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-184-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-181-1.pdf}
 
 What the function does in this case is produces forecasts and prediction intervals from each model and then uses original weights to combine them. In fact, each individual model can be extracted and used separately, if needed. Here is an example with ETS(A,Ad,N) model from the estimated pool:
 
@@ -9532,7 +9640,7 @@ What the function does in this case is produces forecasts and prediction interva
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-185-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-182-1.pdf}
 
 Alternatively, if we do not need to consider all ETS models, we can provide the pool of models, including a model with ``C'' in its name. Here is an example of how pure additive models can be combined:
 
@@ -9623,16 +9731,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6601           254.9213            260.4055
-## 142 257.7101           253.3678            262.0161
-## 143 257.7679           251.8862            263.6448
-## 144 257.8319           250.3839            265.2122
-## 145 257.8899           248.9493            266.8179
-## 146 257.9409           247.4261            268.4007
-## 147 257.9921           245.9113            270.0618
-## 148 258.0355           244.2590            271.6741
-## 149 258.0973           242.7386            273.4252
-## 150 258.1418           241.1826            275.2254
+## 141 257.6499           254.9177            260.3923
+## 142 257.7082           253.3781            262.0735
+## 143 257.7619           251.9167            263.6484
+## 144 257.8130           250.4460            265.3230
+## 145 257.8606           248.9064            266.7947
+## 146 257.9156           247.5012            268.3770
+## 147 257.9698           245.9329            270.0901
+## 148 258.0220           244.3888            271.9265
+## 149 258.0717           242.7546            273.6072
+## 150 258.1212           241.1200            275.4204
 \end{verbatim}
 
 In order to see how the forecast looks like, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -9728,7 +9836,7 @@ Here is an example of how the function work on the data above - it is possible t
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.46 seconds
+## Time elapsed: 0.62 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamModelBoot\$vcov}. The same procedure is used in \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -9740,12 +9848,12 @@ The covariance matrix can then be extracted from the result via \texttt{adamMode
 \end{Shaded}
 
 \begin{verbatim}
-##        alpha  beta    phi  level  trend
-## alpha  0.045 0.007  0.008  0.047 -0.056
-## beta   0.007 0.014  0.004  0.000  0.021
-## phi    0.008 0.004  0.012  0.051 -0.051
-## level  0.047 0.000  0.051  0.515 -0.703
-## trend -0.056 0.021 -0.051 -0.703  1.061
+##        alpha   beta    phi  level  trend
+## alpha  0.025  0.004  0.004  0.027 -0.032
+## beta   0.004  0.008  0.000 -0.008  0.018
+## phi    0.004  0.000  0.010  0.048 -0.049
+## level  0.027 -0.008  0.048  0.507 -0.706
+## trend -0.032  0.018 -0.049 -0.706  1.079
 \end{verbatim}
 
 \hypertarget{confidence-intervals-for-parameters}{%
@@ -9828,7 +9936,7 @@ The output above shows the estimates of parameters and their 99\% confidence int
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-195-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-192-1.pdf}
 
 As another example, we can have a similar summary for ARIMA models in ADAM:
 
@@ -10518,7 +10626,7 @@ For simplicity, we apply iETS(M,Md,N) model with odds ratio occurrence:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{adam_files/figure-latex/unnamed-chunk-205-1.pdf}
+\includegraphics{adam_files/figure-latex/unnamed-chunk-202-1.pdf}
 
 To make this setting closer to possible real life situation, we assume that the lead time is 7 days and we need to satisfy the 99\% of demand for the last 7 observations based on our model. Thus we produce the upper bound for the cumulative values for the confidence level of 99\%:
 
@@ -10550,7 +10658,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, w
 \caption{\label{fig:adamModeliETSCumulative}Cumulative demand, expectation and the upper bound based on iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 27 units, while the upper bound of the interval was approximately 30. Based on that upper bound we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 16 units, while the upper bound of the interval was approximately 87. Based on that upper bound we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 \hypertarget{confidence-interval}{%
 \subsection{Confidence interval}\label{confidence-interval}}
