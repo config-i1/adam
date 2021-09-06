@@ -109,7 +109,7 @@ As you see, SES is a very simple method. It is easy to explain to practitioners 
 
 ## SES and ETS {#SESandETS}
 ### ETS(A,N,N)
-There have been several tries to develop statistical models, underlying SES, and we know now that it has underlying ARIMA(0,1,1), local level MSOE (Multiple Source of Error) model [@Muth1960] and SSOE (Single Source of Error) model [@Snyder1985]. According to [@Hyndman2002], the ETS(A,N,N) model also underlies the SES method. It can be formulated in the following way, [as discussed earlier](#ETSTaxonomyMaths):
+There have been several tries to develop statistical models, underlying SES, and we know now that it has underlying ARIMA(0,1,1), local level MSOE [Multiple Source of Error, @Muth1960] and SSOE [Single Source of Error, @Snyder1985] models. According to [@Hyndman2002], the ETS(A,N,N) model also underlies the SES method. It can be formulated in the following way, as discussed in Section \@ref(ETSTaxonomyMaths):
 \begin{equation}
   \begin{aligned}
     & y_{t} = l_{t-1} + \epsilon_t \\
@@ -117,7 +117,7 @@ There have been several tries to develop statistical models, underlying SES, and
   \end{aligned} ,
   (\#eq:ETSANN)
 \end{equation}
-where, as we know from [the previous section](#tsComponents), $l_t$ is the level of the data, $\epsilon_t$ is the error term and $\alpha$ is the smoothing parameter. Note that we use $\alpha$ without the "hat" symbol, which implies that there is a "true" value of the parameter (which could be obtained if we had all the data in the world or just knew it for some reason). It is easy to show that ETS(A,N,N) underlies SES. In order to see this, we need to take move towards estimation phase and use $\hat{l}_{t-1}=l_{t-1}$ and move to estimates $\hat{\alpha}$ and $e_t$ (the estimate of the error term $\epsilon_t$):
+where, as we know from Section \@ref(tsComponents), $l_t$ is the level of the data, $\epsilon_t$ is the error term and $\alpha$ is the smoothing parameter. Note that we use $\alpha$ without the "hat" symbol, which implies that there is a "true" value of the parameter (which could be obtained if we had all the data in the world or just knew it for some reason). It is easy to show that ETS(A,N,N) underlies SES. In order to see this, we need to move towards estimation phase and use $\hat{l}_{t-1}=l_{t-1}$ and $\hat{\alpha}$ instead of $\alpha$ and $e_t$ as estimate of $\epsilon_t$:
 \begin{equation}
   \begin{aligned}
     & y_{t} = \hat{l}_{t-1} + e_t \\
@@ -125,70 +125,78 @@ where, as we know from [the previous section](#tsComponents), $l_t$ is the level
   \end{aligned} ,
   (\#eq:ETSANNEstimation)
 \end{equation}
-and also take that $\hat{y}_t=\hat{l}_{t-1}$:
+Inserting the second equation in the first one, we get:
 \begin{equation}
-  \begin{aligned}
-    & y_{t} = \hat{y}_{t} + e_t \\
-    & \hat{y}_{t} = \hat{y}_{t-1} + \hat{\alpha} e_{t-1}
-  \end{aligned} .
+    y_{t} = \hat{l}_{t-2} + \hat{\alpha} e_{t-1} + e_t .
+  (\#eq:ETSANNEstimation01)
+\end{equation}
+The one step ahead forecast from ETS(A,N,N) is $\hat{y}_t=\hat{l}_{t-1}$ (see Section \@ref(ETSTaxonomyMaths)), while the actual value can be represented as $y_t = \hat{y}_t + e_t$, leading to:
+\begin{equation}
+    \hat{y}_t + e_t = \hat{y}_{t-1} + \hat{\alpha} e_{t-1} + e_t .
   (\#eq:ETSANNEstimation2)
 \end{equation}
-Inserting the second equation in the first one and substituting $y_t$ with $\hat{y}_t+e_t$ we get:
-\begin{equation}
-    \hat{y}_t+e_t = \hat{y}_{t-1} + \hat{\alpha} e_{t-1} + e_t ,
-  (\#eq:ETSANNEstimation3)
-\end{equation}
-cancelling out $e_t$ and shifting everything by one step ahead, we obtain the error correction form \@ref(eq:SESErrorCorrection) of SES.
+Cancelling out $e_t$ and shifting everything by one step ahead, we obtain the error correction form \@ref(eq:SESErrorCorrection) of SES. But now, the main benefit of having the model \@ref(eq:ETSANN) instead of just the method \@ref(eq:SESErrorCorrection) is in having a flexible framework, which allows adding other components, selecting the most appropriate ones, estimating parameters in a consistent way (see Section 4.3 of @SvetunkovSBA), producing prediction intervals etc.
 
-But now, the main benefit of having the model \@ref(eq:ETSANN) instead of just the method \@ref(eq:SESErrorCorrection) is in having a flexible framework, which allows adding other components, selecting the most appropriate ones, estimating parameters in a [consistent](#intro) way, producing prediction intervals etc.
-
-In order to see the data that corresponds to the ETS(A,N,N) we can use `sim.es()` function from smooth package. Here are several examples with different smoothing parameters:
+In order to see the data that corresponds to the ETS(A,N,N) we can use `sim.es()` function from `smooth` package. Here are several examples with different smoothing parameters values:
 
 ```{r}
+# list with generated data
 y <- vector("list",6)
+# Parameters for DGP
 initial <- 1000
 meanValue <- 0
 sdValue <- 20
 alphas <- c(0.1,0.3,0.5,0.75,1,1.5)
+# Go through all alphas and generate respective data
 for(i in 1:length(alphas)){
   y[[i]] <- sim.es("ANN", 120, 1, 12, persistence=alphas[i],
                    initial=initial, mean=meanValue, sd=sdValue)
 }
+```
 
-par(mfcol=c(3,2))
+The generated data can be plotted the following way:
+
+```{r DGPetsANNExample, fig.cap="Local level data corresponding to ETS(A,N,N) model with different smoothing parameters."}
+par(mfrow=c(3,2), mar=c(2,2,2,1))
 for(i in 1:6){
   plot(y[[i]], main=paste0("alpha=",y[[i]]$persistence),
        ylim=initial+c(-500,500))
 }
 ```
 
-This simple simulation shows that the higher $\alpha$ is, the higher variability is in the data and less predictable the data becomes. This is related with the higher values of $\alpha$, the level changes faster, also leading to the increased uncertainty about the future values of the level in the data.
+This simple simulation shows that the smoothing parameter in ETS(A,N,N) controls the variability in the data (Figure \@ref(fig:DGPetsANNExample)): the higher $\alpha$ is, the higher variability is and less predictable the data becomes. With the higher values of $\alpha$, the level changes faster, also leading to the increased uncertainty about the future values of the level in the data.
 
-When it comes to the application of this model to the data, the point forecast corresponds to the conditional h steps ahead mean and is equal to the last observed level:
+When it comes to the application of this model to the data, the conditional h steps ahead mean corresponds to the point forecast and is equal to the last observed level:
 \begin{equation}
     \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} ,
   (\#eq:ETSANNForecast)
 \end{equation}
-this holds because it is [assumed](#assumptions) that $\text{E}(\epsilon_t)=0$, which implies that the conditional h steps ahead expectation of the level in the model is $\text{E}(l_{t+h}|t)=l_t+\alpha\sum_{j=1}^{h-1}\epsilon_{t+j} = l_t$.
+this holds because it is assumed (see Section \@ref(assumptions)) that $\text{E}(\epsilon_t)=0$, which implies that the conditional h steps ahead expectation of the level in the model is (from the second equation in \@ref(eq:ETSANN)):
+\begin{equation}
+  \text{E}(l_{t+h}|t) = l_t + \text{E}(\alpha\sum_{j=1}^{h-1}\epsilon_{t+j}|t) = l_t .
+  (\#eq:ETSANNForecasthStepsAhead)
+\end{equation}
 
-Here is an example with automatic parameter estimation in ETS(A,N,N) using `es()` function from `smooth` package:
+Here is an example of a forecast from ETS(A,N,N) with automatic parameter estimation using `es()` function from `smooth` package:
 
-```{r ETSANNExample}
+```{r ETSANNExample, fig.cap="An example of ETS(A,N,N) applied to the data generated from the same model."}
+# Generate the data
 y <- sim.es("ANN", 120, 1, 12, persistence=0.3, initial=1000)
+# Apply ETS(A,N,N) model
 es(y$data, "ANN", h=12, interval=TRUE, holdout=TRUE, silent=FALSE)
 ```
 
-As we see, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected, because we deal with an in-sample estimation. Also, notice that with such a high smoothing parameter, the prediction interval is widening with the increase of the forecast horizon. If the smoothing parameter would be lower, then the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with $\alpha=0.01$:
+As we see from Figure \@ref(fig:ETSANNExample), the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected, because we deal with an in-sample estimation. Also, notice that with such a smoothing parameter, the prediction interval is widening with the increase of the forecast horizon. If the smoothing parameter was lower, then the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with $\alpha=0.01$ on the same data (Figure \@ref(fig:ETSANNExamplealpha0.1))
 
-```{r ETSANNExamplealpha0.1}
+```{r ETSANNExamplealpha0.1, fig.cap="ETS(A,N,N) with $\\hat{\\alpha}=0.01$ applied to the data generated from the same model with $\\alpha=0.3$."}
 ourModel <- es(y$data, "ANN", h=12, interval=TRUE,
                holdout=TRUE, silent=FALSE, persistence=0.01)
 ```
 
-In this case, the prediction interval is wider than needed and the forecast is biased - the model does not keep up to the fast changing time series. So, it is important to correctly estimate the smoothing parameters not only to approximate the data, but also to produce less biased point forecast and more appropriate prediction interval.
+Figure \@ref(fig:ETSANNExamplealpha0.1) shows that the prediction interval does not expand, but at the same time is wider than needed, and the forecast is biased - the model does not keep up to the fast changing time series. So, it is important to correctly estimate the smoothing parameters not only to approximate the data, but also to produce less biased point forecast and more appropriate prediction interval.
 
 ### ETS(M,N,N)
-@Hyndman2008b also demonstrate that there is another ETS model, underlying SES. It is the model with multiplicative error, which is formulated in the following way, [as mentioned in a previous chapter](#ETSTaxonomyMaths):
+@Hyndman2008b demonstrate that there is another ETS model, underlying SES. It is the model with multiplicative error, which is formulated in the following way, as mentioned in Chapter \@ref(ETSTaxonomyMaths):
 \begin{equation}
   \begin{aligned}
     & y_{t} = l_{t-1}(1 + \epsilon_t) \\
@@ -196,26 +204,18 @@ In this case, the prediction interval is wider than needed and the forecast is b
   \end{aligned} ,
   (\#eq:ETSMNN)
 \end{equation}
-where $(1+\epsilon_t)$ corresponds to the $\varepsilon_t$ discussed in [the previous section](#tsComponents). In order to see the connection of this model with SES, we need to revert to the estimation of the model on the data again:
+where $(1+\epsilon_t)$ corresponds to the $\varepsilon_t$ discussed in Section \@ref(tsComponents). In order to see the connection of this model with SES, we need to revert to the estimation of the model on the data again:
 \begin{equation}
   \begin{aligned}
     & y_{t} = \hat{l}_{t-1}(1 + e_t) \\
     & \hat{l}_t = \hat{l}_{t-1}(1 + \hat{\alpha} e_t)
-  \end{aligned} ,
+  \end{aligned} .
   (\#eq:ETSMNNEstimation)
 \end{equation}
-where $\hat{y}_t = \hat{l}_{t-1}$ and $e_t=\frac{y_t - \hat{y}_t}{\hat{y}_t}$. Substituting these values in \@ref(eq:ETSMNNEstimation) we obtain:
+where one step ahead forecast is (Section \@ref(ETSTaxonomyMaths)) $\hat{y}_t = \hat{l}_{t-1}$ and $e_t=\frac{y_t - \hat{y}_t}{\hat{y}_t}$. Substituting these values in second equation of \@ref(eq:ETSMNNEstimation) we obtain:
 \begin{equation}
-  \begin{aligned}
-    & y_{t} = \hat{y}_t (1 + e_t) \\
-    & \hat{y}_{t+1} = \hat{y}_t \left(1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t} \right)
-  \end{aligned} .
+    \hat{y}_{t+1} = \hat{y}_t \left(1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t} \right)
   (\#eq:ETSMNNEstimation2)
-\end{equation}
-Substituting $y_t$ with $\hat{y}_t(1+e_t)$, shifting the indices one step ahead and inserting the second equation to the first one, we get:
-\begin{equation}
-    \hat{y}_{t+1} = \hat{y}_t \left(1 + \hat{\alpha} \frac{y_t - \hat{y}_t}{\hat{y}_t} \right).
-  (\#eq:ETSMNNEstimation3)
 \end{equation}
 Finally, opening the brackets, we get the SES in the form similar to \@ref(eq:SESErrorCorrection):
 \begin{equation}
@@ -223,36 +223,46 @@ Finally, opening the brackets, we get the SES in the form similar to \@ref(eq:SE
   (\#eq:ETSMNNEstimation4)
 \end{equation}
 
-This example demonstratesonce again the difference between the forecasting method and the forecasting model. When we use SES, we ignore the distributional assumptions, which restricts the usage of the method. The main features of ETS(M,N,N) model in comparison with ETS(A,N,N) are:
+This example demonstrates once again the difference between a forecasting method and a model. When we use SES, we ignore the distributional assumptions, which restricts the usage of the method. When we use a model, we assume a specific structure, which on one hand makes it more restrictive, but on the other hand gives it additional features. The main ones in case of ETS(M,N,N) in comparison with ETS(A,N,N) are:
 
 1. The variance of the actual values in ETS(M,N,N) increases with the increase of the level $l_{t}$. This allows modelling heteroscedasticity situation in the data;
-2. If $(1+\epsilon_t)$ is always positive, then the ETS(M,N,N) model will always produce only positive forecasts (both point and interval). This makes this model applicable to the data with low level;
+2. If $(1+\epsilon_t)$ is always positive, then the ETS(M,N,N) model will always produce only positive forecasts (both point and interval). This makes this model applicable in principle to the data with low level.
 
-An alternative to \@ref(eq:ETSMNN) would be the model \@ref(eq:ETSANN) applied to the data in logarithms (assuming that the data we work with is always positive). However, the ETS(M,N,N) does not rely on exponentiation of the values, making it safe in cases, when very high values are produced by the model (e.g. `exp(1000)` returns infinity in R).
+An alternative to \@ref(eq:ETSMNN) would be the model \@ref(eq:ETSANN) applied to the data in logarithms (assuming that the data we work with is always positive), implying that:
+\begin{equation}
+  \begin{aligned}
+    & \log y_{t} = l_{t-1} + \epsilon_t \\
+    & l_t = l_{t-1} + \alpha \epsilon_t
+  \end{aligned} .
+  (\#eq:ETSANNLogs)
+\end{equation}
+However, in order to produce forecasts from \@ref(eq:ETSANNLogs) exponentiation is needed, which might make the application of the model more difficult than needed. The ETS(M,N,N) on the other hand does not rely on exponentiation, making it safe in cases, when very high values are produced by the model (e.g. `exp(1000)` returns infinity in R).
 
-Finally, the point forecast of ETS(M,N,N) corresponds to the conditional h steps ahead mean and is equal to the last observed level, but only if $\text{E}(1+\epsilon_t)=1$:
+Finally, the conditional h steps ahead mean of ETS(M,N,N) corresponds to the point forecast and is equal to the last observed level, but only if $\text{E}(1+\epsilon_t)=1$:
 \begin{equation}
     \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} .
   (\#eq:ETSMNNForecast)
 \end{equation}
 
-And here is an example with the ETS(M,N,N) data, which is very similar to the ETS(A,N,N) one:
+And here is an example with the ETS(M,N,N) data (Figure \@ref(fig:ETSMNNExample)):
 
-```{r ETSMNNExample}
+```{r ETSMNNExample, fig.cap="ETS(M,N,N) model applied to the data generated from the same model."}
 y <- sim.es("MNN", 120, 1, 12, persistence=0.3, initial=1000)
 ourModel <- es(y$data, "MNN", h=12, holdout=TRUE,
                interval=TRUE, silent=FALSE)
 ourModel
 ```
 
+Conceptually, the data in Figure \@ref(fig:ETSMNNExample) looks very similar to the one from ETS(A,N,N) (Figure \@ref(fig:ETSANNExample)), but demonstrating the changing variance of the error term with the change of the level.
+
 
 ## Several examples of exponential smoothing methods and ETS {#ETSExamples}
-There are other exponential smoothing, which include more components, as discussed in [the previous section](#tsComponents). This includes but is not restricted with: Holt's [@Holt2004b, originally proposed in 1957], Holt-Winter's [@Winters1960], multiplicative trend [@Pegels1969], Damped trend (originally proposed by @Roberts1982 and then picked up by @Gardner1985a), Damped trend Holt-Winters [@Gardner1989] and damped multiplicative trend methods [@Taylor2003]. We will not discuss them here one by one, as we will not use them further in this textbook. More importantly, all of them have underlying ETS models, so we will focus on them instead.
+There are other exponential smoothing methods, which include more components, as discussed in Section \@ref(tsComponents). This includes but is not limited to: Holt's [@Holt2004b, originally proposed in 1957], Holt-Winter's [@Winters1960], multiplicative trend [@Pegels1969], Damped trend (originally proposed by @Roberts1982 and then picked up by @Gardner1985a), Damped trend Holt-Winters [@Gardner1989] and damped multiplicative trend methods [@Taylor2003]. We will not discuss them here one by one, as we will not use them further in this textbook. We would rather focus on ETS models, underlying them.
 
-We already understand that there can be different components in time series and that they can interact with each other either in an additive or a multiplicative way, which gives us the [aforementioned taxonomy](#ETSTaxonomy). Here are several examples of ETS models with several components and their relations to the conventional exponential smoothing methods.
+We already understand that there can be different components in time series and that they can interact with each other either in an additive or a multiplicative way, which gives us the aforementioned taxonomy, discussed in Section \@ref(ETSTaxonomy). In this section, we consider several examples of ETS models and their relations to the conventional exponential smoothing methods.
 
 ### ETS(A,A,N) {#ETSAAN}
-This is also sometimes known as local trend model and is formulated as ETS(A,N,N), but with addition of the trend equation. It underlies Holt's method:
+This is also sometimes known as local trend model and is formulated similar to ETS(A,N,N), but with addition of the trend equation. It underlies Holt's method [@Ord1997]:
 \begin{equation}
   \begin{aligned}
     & y_{t} = l_{t-1} + b_{t-1} + \epsilon_t \\
@@ -261,26 +271,26 @@ This is also sometimes known as local trend model and is formulated as ETS(A,N,N
   \end{aligned} ,
   (\#eq:ETSAAN)
 \end{equation}
-where $\beta$ is the smoothing parameter for the trend component. It has a similar idea as ETS(A,N,N): the states evolve over time, and the speed of their change depends on the values of $\alpha$ and $\beta$. 
+where $\beta$ is the smoothing parameter for the trend component. It has a similar idea as ETS(A,N,N): the states evolve over time, and the speed of their change depends on the values of $\alpha$ and $\beta$. The trend is not deterministic in this model: both the intercept and the slope change over time. The higher the smoothing parameters are, the more uncertain it is, what the level and the slope will be, thus higher the uncertainty about the future values is.
 
 Here is an example of the data that corresponds to the ETS(A,A,N) model:
 
-```{r}
+```{r ETSAANExample, fig.cap="Data generated from ETS(A,A,N) model."}
 y <- sim.es("AAN", 120, 1, 12, persistence=c(0.3,0.1),
             initial=c(1000,20), mean=0, sd=20)
 plot(y)
 ```
 
-As you might notice, the trend is not deterministic in this model: both the intercept and the slope change over time. The higher the smoothing parameters are, the more uncertain it is, what the level and the slope will be, thus higher the uncertainty about the future values is.
+The series in Figure \@ref(fig:ETSAANExample) demonstrates trend that changes over time. If we needed to produce forecasts for this data, we would capture the dynamics of trend component and then use the last values of it for the several steps ahead prediction. 
 
-The point forecast h steps ahead from this model is a straight line with a slope $b_t$:
+The point forecast h steps ahead from this model is a straight line with a slope $b_t$ (as shown in Table \@ref(tab:ETSAdditiveError) from Section \@ref(ETSTaxonomyMaths)):
 \begin{equation}
     \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} + h b_t.
   (\#eq:ETSAANForecast)
 \end{equation}
-This becomes apparent if one takes the conditional expectations E$(l_{t+h}|t)$ and E$(b_{t+h}|t)$ in the second and third equations of \@ref(eq:ETSAAN). Graphically it will look like this:
+This becomes apparent if one takes the conditional expectations E$(l_{t+h}|t)$ and E$(b_{t+h}|t)$ in the second and third equations of \@ref(eq:ETSAAN) and then inserts them in the measurement equation. Graphically it will look as shown in Figure \@ref(fig:ETSAANExampleForecast):
 
-```{r}
+```{r ETSAANExampleForecast, fig.cap="ETS(A,A,N) and a point forecast produced from it."}
 esModel <- es(y, h=10, silent=FALSE)
 ```
 
@@ -289,8 +299,7 @@ If you want to experiment with the model and see how its parameters influence th
 ```{r eval=FALSE}
 esModel <- es(y$data, h=10, silent=FALSE, persistence=c(0.2,0.1))
 ```
-
-where `persistence` is the vector of smoothing parameters (first $\alpha$, then $\beta$).
+where `persistence` is the vector of smoothing parameters (first $\hat\alpha$, then $\hat\beta$). By changing their values, we will make model less / more responsive to the changes in the data.
 
 
 ### ETS(A,Ad,N) {#ETSAAdN}
