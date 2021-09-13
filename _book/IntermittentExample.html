@@ -581,7 +581,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <span id="cb223-13"><a href="IntermittentExample.html#cb223-13" aria-hidden="true" tabindex="-1"></a>               <span class="st">&quot;direct&quot;</span>, <span class="st">&quot;general&quot;</span>))</span>
 <span id="cb223-14"><a href="IntermittentExample.html#cb223-14" aria-hidden="true" tabindex="-1"></a>adamModelsiETSAICcs</span></code></pre></div>
 <pre><code>##         odds-ratio inverse-odds-ratio             direct            general 
-##           382.8213           386.1786           378.1103           391.8324</code></pre>
+##           406.0328           412.1461           404.2288           420.9978</code></pre>
 <p>Based on this, we can see that the model with direct has the lowest AICc. We can see how the model has approximated the data and produced forecasts for the holdout:</p>
 <div class="sourceCode" id="cb225"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb225-1"><a href="IntermittentExample.html#cb225-1" aria-hidden="true" tabindex="-1"></a>i <span class="ot">&lt;-</span> <span class="fu">which.min</span>(adamModelsiETSAICcs)</span>
 <span id="cb225-2"><a href="IntermittentExample.html#cb225-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelsiETS[[i]],<span class="dv">7</span>)</span></code></pre></div>
@@ -595,15 +595,15 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ##     0     0 
 ## Vector of initials:
 ##  level  trend 
-## 0.2823 1.0176 
+## 0.1367 1.0399 
 ## 
-## Error standard deviation: 0.8411
+## Error standard deviation: 1.2346
 ## Sample size: 110
 ## Number of estimated parameters: 5
 ## Number of degrees of freedom: 105
 ## Information criteria: 
 ##      AIC     AICc      BIC     BICc 
-## 107.0129 107.5898 120.5153 121.8712</code></pre>
+## 109.5039 110.0808 123.0063 124.3622</code></pre>
 <div class="sourceCode" id="cb228"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb228-1"><a href="IntermittentExample.html#cb228-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelsiETS[[i]]<span class="sc">$</span>occurrence)</span></code></pre></div>
 <p><img src="adam_files/figure-html/unnamed-chunk-118-1.png" width="672" /></p>
 <p>Depending on the generated data, there might be issues in the ETS(M,Md,N) model for demand sizes, if the smoothing parameters are large. So, we can try out the ADAM logARIMA(1,1,2) to see how it compares with this model. Given that ARIMA is not yet implemented for the occurrence part of the model, we need to construct it separately and then use in <code>adam()</code>:</p>
@@ -614,18 +614,18 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <span id="cb229-5"><a href="IntermittentExample.html#cb229-5" aria-hidden="true" tabindex="-1"></a>                        <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>,<span class="dv">2</span>),</span>
 <span id="cb229-6"><a href="IntermittentExample.html#cb229-6" aria-hidden="true" tabindex="-1"></a>                        <span class="at">distribution=</span><span class="st">&quot;dlnorm&quot;</span>)</span>
 <span id="cb229-7"><a href="IntermittentExample.html#cb229-7" aria-hidden="true" tabindex="-1"></a>adamModeliARIMA</span></code></pre></div>
-<pre><code>## Time elapsed: 0.11 seconds
+<pre><code>## Time elapsed: 0.12 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log Normal
-## Loss function type: likelihood; Loss function value: 134.5141
+## Loss function type: likelihood; Loss function value: 137.8458
 ## ARMA parameters of the model:
 ## AR:
 ## phi1[1] 
-## -0.3616 
+##  -0.377 
 ## MA:
 ## theta1[1] theta2[1] 
-##   -0.4953   -0.2314 
+##   -0.4611   -0.1976 
 ## 
 ## Sample size: 110
 ## Number of estimated parameters: 6
@@ -633,35 +633,35 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 378.0411 378.8567 394.2440 396.1607 
+## 387.1956 388.0111 403.3984 405.3151 
 ## 
 ## Forecast errors:
-## Asymmetry: 73.895%; sMSE: 29.623%; rRMSE: 1.138; sPIS: -1117.197%; sCE: 305.935%</code></pre>
+## Asymmetry: 87.441%; sMSE: 39.235%; rRMSE: 0.558; sPIS: -3263.538%; sCE: 390.488%</code></pre>
 <div class="sourceCode" id="cb231"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb231-1"><a href="IntermittentExample.html#cb231-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModeliARIMA,<span class="dv">7</span>)</span></code></pre></div>
 <p><img src="adam_files/figure-html/unnamed-chunk-119-1.png" width="672" /></p>
 <p>Comparing the iARIMA model with the previous iETS based on AIC would not be fair, because as soon as the occurrence model is provided to <code>adam()</code>, he does not count the parameters estimated in that part towards the overal number of estimated parameters. In order to make the comparison fair, we need to estimate ADAM iETS in the following way:</p>
 <div class="sourceCode" id="cb232"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb232-1"><a href="IntermittentExample.html#cb232-1" aria-hidden="true" tabindex="-1"></a>adamModelsiETS[[i]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(y, <span class="st">&quot;MMdN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb232-2"><a href="IntermittentExample.html#cb232-2" aria-hidden="true" tabindex="-1"></a>                            <span class="at">occurrence=</span>oETSModel)</span>
 <span id="cb232-3"><a href="IntermittentExample.html#cb232-3" aria-hidden="true" tabindex="-1"></a>adamModelsiETS[[i]]</span></code></pre></div>
-<pre><code>## Time elapsed: 0.04 seconds
+<pre><code>## Time elapsed: 0.05 seconds
 ## Model estimated using adam() function: iETS(MMdN)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Gamma
-## Loss function type: likelihood; Loss function value: 129.1409
+## Loss function type: likelihood; Loss function value: 140.9547
 ## Persistence vector g:
 ##  alpha   beta 
-## 0.0083 0.0071 
-## Damping parameter: 1
+## 0.0735 0.0052 
+## Damping parameter: 0.997
 ## Sample size: 110
 ## Number of estimated parameters: 6
 ## Number of degrees of freedom: 104
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 367.2948 368.1103 383.4976 385.4143 
+## 393.4132 394.2288 409.6161 411.5328 
 ## 
 ## Forecast errors:
-## Asymmetry: -82.885%; sMSE: 29.336%; rRMSE: 1.132; sPIS: 1726.672%; sCE: -347.626%</code></pre>
+## Asymmetry: -60.04%; sMSE: 38.072%; rRMSE: 0.55; sPIS: 121.009%; sCE: -262.451%</code></pre>
 <div class="sourceCode" id="cb234"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb234-1"><a href="IntermittentExample.html#cb234-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelsiETS[[i]],<span class="dv">7</span>)</span></code></pre></div>
 <p><img src="adam_files/figure-html/unnamed-chunk-120-1.png" width="672" /></p>
 <p>Comparing information criteria, the iETS model is more appropriate for this data. But this might be due to a different distributional assumptions and difficulties estimating ARIMA model. If you want to experiment more with ADAM iARIMA, you might try <a href="ADAMInitialisation.html#ADAMInitialisationOptAndBack">fine tuning</a> it for the data either by increasing the <code>maxeval</code> or changing the initialisation, for example:</p>
@@ -673,14 +673,14 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Gamma
-## Loss function type: likelihood; Loss function value: 150.4993
+## Loss function type: likelihood; Loss function value: 150.2228
 ## ARMA parameters of the model:
 ## AR:
 ## phi1[1] 
-## -0.3579 
+## -0.4247 
 ## MA:
 ## theta1[1] theta2[1] 
-##   -0.4621   -0.2359 
+##   -0.4677   -0.1624 
 ## 
 ## Sample size: 110
 ## Number of estimated parameters: 4
@@ -688,10 +688,10 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## Number of provided parameters: 5
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 406.0116 406.3925 416.8135 417.7088 
+## 407.9496 408.3305 418.7515 419.6468 
 ## 
 ## Forecast errors:
-## Asymmetry: 71.427%; sMSE: 28.061%; rRMSE: 1.107; sPIS: -969.639%; sCE: 279.223%</code></pre>
+## Asymmetry: 87.819%; sMSE: 37.895%; rRMSE: 0.549; sPIS: -3254.321%; sCE: 393.35%</code></pre>
 <div class="sourceCode" id="cb237"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb237-1"><a href="IntermittentExample.html#cb237-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModeliARIMA,<span class="dv">7</span>)</span></code></pre></div>
 <p><img src="adam_files/figure-html/unnamed-chunk-121-1.png" width="672" /></p>
 <p>Finally, we can produce point and interval forecasts from either of the model via the <code>forecast()</code> method. Here is an example:</p>
