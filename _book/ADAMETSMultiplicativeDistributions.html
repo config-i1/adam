@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-09-14" />
+<meta name="date" content="2021-09-15" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -563,7 +563,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <div id="ADAMETSMultiplicativeDistributions" class="section level2" number="6.5">
 <h2><span class="header-section-number">6.5</span> Distributional assumptions in pure multiplicative ETS</h2>
 <p>The conventional assumption for the error term in ETS is that <span class="math inline">\(\epsilon_t\sim\mathcal{N}(0,\sigma^2)\)</span>, which guarantees that the conditional expectation of the model will be equal to the point forecasts, when the trend and seasonal components are not multiplicative. In general, ETS works well in many cases with this assumption, mainly when the data is strictly positive and the level of series is high (e.g. thousands of units). However, when dealing with lower level data, this assumption might become unhelpful, because the models may start generating non-positive values, which contradicts the idea of pure multiplicative ETS models. <span class="citation"><a href="#ref-Akram2009" role="doc-biblioref">Akram et al.</a> (<a href="#ref-Akram2009" role="doc-biblioref">2009</a>)</span> studied the ETS models with multiplicative error and suggested that applying ETS on data in logarithms is a better approach than just using ETS(M,Y,Y) models (here “Y” stands for non-additive components). However, this approach sidesteps the ETS taxonomy, creating a new group of models. An alternative (also discussed in <span class="citation"><a href="#ref-Akram2009" role="doc-biblioref">Akram et al.</a> (<a href="#ref-Akram2009" role="doc-biblioref">2009</a>)</span>) is to assume that the error term <span class="math inline">\(1+\epsilon_t\)</span> follows some distribution for positive data. The authors mentioned log Normal, truncated and Gamma distributions, but never explored them further.</p>
-<p><span class="citation"><a href="#ref-Svetunkov2020ETS" role="doc-biblioref">Svetunkov and Boylan</a> (<a href="#ref-Svetunkov2020ETS" role="doc-biblioref">2020a</a>)</span> discussed several options for the distribution of the <span class="math inline">\(1+\epsilon_t\)</span> in ETS and came to conclusion that the most suitable distribution in this case is the <a href="#IGDistribution">Inverse Gaussian</a>. Having said that, other distributions for positive data can be applied as well, but their usage might become complicated, because they need to meet condition <span class="math inline">\(\mathrm{E}(1+\epsilon_t)=1\)</span> in order for the expectation to coincide with the point forecasts for models with non-multiplicative trend and seasonality. For example, if the error term follows log Normal distribution, then this restriction implies that the location of the distribution should be non-zero, based on <a href="#eq:logNMean">(<strong>??</strong>)</a>: <span class="math inline">\(1+\epsilon_t\sim\mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2},\sigma^2\right)\)</span>. Based on that the following distributions are supported by ADAM:</p>
+<p><span class="citation"><a href="#ref-Svetunkov2020ETS" role="doc-biblioref">Svetunkov and Boylan</a> (<a href="#ref-Svetunkov2020ETS" role="doc-biblioref">2020a</a>)</span> discussed several options for the distribution of <span class="math inline">\(1+\epsilon_t\)</span> in ETS, including log Normal, Gamma and Inverse Gaussian. Other distributions for positive data can be applied as well, but their usage might become complicated, because they need to meet condition <span class="math inline">\(\mathrm{E}(1+\epsilon_t)=1\)</span> in order for the expectation to coincide with the point forecasts for models with non-multiplicative trend and seasonality. For example, if the error term follows log Normal distribution, then this restriction implies that the location of the distribution should be non-zero: <span class="math inline">\(1+\epsilon_t\sim\mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2},\sigma^2\right)\)</span>. Using this principle the following distributions can be used for ADAM ETS:</p>
 <ol style="list-style-type: decimal">
 <li>Inverse Gaussian: <span class="math inline">\(\left(1+\epsilon_t \right) \sim \mathcal{IG}(1, s)\)</span>;</li>
 <li>Gamma: <span class="math inline">\(\left(1+\epsilon_t \right) \sim \mathcal{\Gamma}(s^{-1}, s)\)</span>;</li>
@@ -572,19 +572,19 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <p>The MLE of <span class="math inline">\(s\)</span> in <span class="math inline">\(\mathcal{IG}\)</span> is straightforward and is:
 <span class="math display" id="eq:ETSMultiplicativeErrorMLESigmaIG">\[\begin{equation}
     \hat{s} = \frac{1}{T} \sum_{t=1}^{T} \frac{e_{t}^2}{1+e_t} ,
-    \tag{6.18}
+    \tag{6.16}
 \end{equation}\]</span>
 where <span class="math inline">\(e_t\)</span> is the estimate of the error term <span class="math inline">\(\epsilon_t\)</span>. However, when it comes to the MLE of scale parameter for the log Normal distribution with the aforementioned restrictions, it is more complicated and is <span class="citation">(<a href="#ref-Svetunkov2020ETS" role="doc-biblioref">Svetunkov and Boylan, 2020a</a>)</span>:
 <span class="math display" id="eq:ETSMultiplicativeErrorMLESigmaLogN">\[\begin{equation}
     \hat{\sigma}^2 = 2\left(1-\sqrt{ 1-\frac{1}{T} \sum_{t=1}^{T} \log^2(1+e_{t})}\right).
-    \tag{6.19}
+    \tag{6.17}
 \end{equation}\]</span>
-Finally, MLE of <span class="math inline">\(s\)</span> in <span class="math inline">\(\mathcal{\Gamma}\)</span> does not have a closed form. Luckily, as discussed in <a href="#GammaDistribution">section 2.5</a>, method of moments can be used to obtain its value:
+Finally, MLE of <span class="math inline">\(s\)</span> in <span class="math inline">\(\mathcal{\Gamma}\)</span> does not have a closed form. Luckily, method of moments can be used to obtain its value <span class="citation">(<a href="#ref-Svetunkov2020ETS" role="doc-biblioref">Svetunkov and Boylan, 2020a</a>)</span>:
 <span class="math display" id="eq:ETSMultiplicativeErrorMLESigmaGamma">\[\begin{equation}
     \hat{s} = \frac{1}{T} \sum_{t=1}^{T} e_{t}^2 .
-    \tag{6.20}
+    \tag{6.18}
 \end{equation}\]</span></p>
-<p>Even if we assume that we deal with strictly positive high level data and that <span class="math inline">\(\epsilon_t\)</span> can be non-positive, it is not necessary to limit the distribution with Normal only. The following distributions can be applied as well:</p>
+<p>Even if we deal with strictly positive high level data, it is not necessary to limit the distribution with Normal only. The following distributions can be applied as well:</p>
 <ol style="list-style-type: decimal">
 <li>Normal: <span class="math inline">\(\epsilon_t \sim \mathcal{N}(0, \sigma^2)\)</span>, implying that <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \mathcal{N}(\mu_t, \mu_t^2 \sigma^2)\)</span>;</li>
 <li>Laplace: <span class="math inline">\(\epsilon_t \sim \mathcal{Laplace}(0, s)\)</span>, meaning that <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \mathcal{Laplace}(\mu_t, \mu_t s)\)</span>;</li>
@@ -597,24 +597,28 @@ Finally, MLE of <span class="math inline">\(s\)</span> in <span class="math inli
 <p>Note that the MLE of scale parameters for these distributions will be calculated differently than in the case of pure additive models. For example, for the normal distribution it is:
 <span class="math display" id="eq:ETSMultiplicativeErrorMLESigmaNormal">\[\begin{equation}
     \hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T \frac{y_t-\hat{\mu}_t}{\hat{\mu}_t} ,
-    \tag{6.21}
+    \tag{6.19}
 \end{equation}\]</span>
 where the main difference from the additive error case arises from the measurement equation of the multiplicative error models:
 <span class="math display" id="eq:ETSMultiplicativeErrorMeasurement">\[\begin{equation}
     y_t = \mu_t (1+\epsilon_t),
-    \tag{6.22}
+    \tag{6.20}
 \end{equation}\]</span>
 implying that
 <span class="math display" id="eq:ETSMultiplicativeErrorFormula">\[\begin{equation}
     e_t = \frac{y_t-\hat{\mu}_t}{\hat{\mu}_t}.
-    \tag{6.23}
+    \tag{6.21}
 \end{equation}\]</span>
-The estimates of scale can then be used in the estimation phase, when parameters are optimised via the maximisation of respective log-likelihood function.</p>
+The estimates of scale can then be used in the next phase, when parameters are optimised via the maximisation of respective log-likelihood function. The maximum likelihood approach is in case of ADAM models is discussed in detail in Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>.</p>
+<p>The distributional assumptions impacts not only the estimation of models, but also the prediction intervals. In case of asymmetric distributions (such as log Normal, Gamma and Inverse Gaussian), the intervals will typically be asymmetric as well, with upper bound being further away from the point forecast than the lower one. Furthermore, even with the comparable estimates of scales of distributions, Inverse Gaussian distribution will typically produce wider bounds than Log Normal and Gamma. The width of intervals relates to the kurtosis of distributions, which is discussed in Chapter 3 of <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span>.</p>
 </div>
 <h3>References</h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-Akram2009" class="csl-entry">
 • Akram, M., Hyndman, R.J., Ord, J.K., 2009. <span class="nocase">Exponential Smoothing and Non-negative Data</span>. Australian <span>&amp;</span> New Zealand Journal of Statistics. 51, 415–432. <a href="https://doi.org/10.1111/j.1467-842X.2009.00555.x">https://doi.org/10.1111/j.1467-842X.2009.00555.x</a>
+</div>
+<div id="ref-SvetunkovSBA" class="csl-entry">
+• Svetunkov, I., 2021c. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: [01.09.2021])
 </div>
 <div id="ref-Svetunkov2020ETS" class="csl-entry">
 • Svetunkov, I., Boylan, J.E., 2020a. <span class="nocase">Dealing with Positive Data Using Pure Multiplicative ETS Models</span>.
