@@ -1,14 +1,62 @@
 # ADAM ARIMA {#ADAMARIMA}
-There are different ways to formulate and implement ARIMA. The one discussed in the [previous section](#ARIMA) is the conventional way, and the model in that case can be estimate directly, assuming that its initialisation happens some time before the Big Bang: the conventional ARIMA assumes that there is no starting point of the model, we just observe a specific piece of data from a population without any beginning or end. Obviously this assumption is idealistic and does not necessarily agree with reality (imagine the series of infinitely lasting sales of Siemens S45 mobile phones. Do you even remember such thing?).
+There are different ways to formulate and implement ARIMA. The one discussed in the Chapter \@ref(ARIMA) is the conventional way, and the model in that case can be estimate directly, assuming that its initialisation happens some time before the Big Bang: the conventional ARIMA assumes that there is no starting point of the model, we just observe a specific piece of data from a population without any beginning or end. Obviously this assumption is idealistic and does not necessarily agree with reality (imagine the series of infinitely lasting sales of Siemens S45 mobile phones. Do you even remember such thing?).
 
-But besides the conventional formulation, there are also state space forms of ARIMA, the most relevant to our topic being the one implemented in SSOE form [Chapter 11 of @Hyndman2008b]. @Svetunkov2019 adapted this state space model for supply chain forecasting, developing an order selection mechanism, sidestepping the hypothesis testing and focusing on information criteria. However, the main issue with that approach is that the resulting ARIMA model works very slow on the data with large frequencies (because the model was formulated based on Chapter 11 of @Hyndman2008b). Luckily, there is an alternative SSOE state space formulation, using the same idea of lags as [ADAM ETS](#ADAMETSPureAdditive) does. This model is already implemented in `msarima()` function of `smooth` package and was also used as the basis for the ADAM ARIMA.
+But besides the conventional formulation, there are also state space forms of ARIMA, the most relevant to our topic being the one implemented in SSOE form [Chapter 11 of @Hyndman2008b]. @Svetunkov2019 adapted this state space model for supply chain forecasting, developing an order selection mechanism, sidestepping the hypothesis testing and focusing on information criteria. However, the main issue with that approach is that the resulting ARIMA model works very slow on the data with large frequencies (because the model was formulated based on Chapter 11 of @Hyndman2008b). Luckily, there is an alternative SSOE state space formulation, introduced in Chapter \@ref(ADAMETSPureAdditive). This model is already implemented in `msarima()` function of `smooth` package and was also used as the basis for the ADAM ARIMA.
 
 In this chapter, we discuss the state space ADAM ARIMA for both pure additive and pure multiplicative cases, the conditional moments from the model and parameter space, then move to the distributional assumptions of the model (including the conditional distributions) and finish the chapter with the discussion of implications of ETS+ARIMA model. The latter has not been discussed in the literature and might make model unidentifiable, so an analyst using the combination should be cautious.
 
 
 ## State space ARIMA {#StateSpaceARIMA}
+### An example of State Space ARIMA
+In order to understand how the state space ADAM ARIMA can be formulated, we consider an arbitrary example of SARIMA(1,1,2)(0,1,0)$_4$:
+\begin{equation*}
+    {y}_{t} (1- \phi_1 B)(1-B)(1-B^4) = \epsilon_t (1 + \theta_1 B + \theta_2 B^2),
+\end{equation*}
+which can be rewritten in the expanded form:
+\begin{equation*}
+    {y}_{t} (1-\phi_1 B - B + \phi_1 B^2 - B^4 +\phi_1 B^5 + B^5 - \phi_1 B^6) = \epsilon_t (1 + \theta_1 B + \theta_2 B^2),
+\end{equation*}
+or after moving all the lagged values to the right hand side:
+\begin{equation*}
+    {y}_{t} = (1+\phi_1) {y}_{t-1} - \phi_1 {y}_{t-2} + {y}_{t-4} - (1+\phi_1) {y}_{t-5} + \phi_1 {y}_{t-6} + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \epsilon_t .
+\end{equation*}
+Now we can define the states of the model:
+\begin{equation}
+    \begin{aligned}
+    & v_{1,t-1} = (1+\phi_1) y_{t-1} + \theta_1 \epsilon_{t-1} \\
+    & v_{2,t-2} = -\phi_1 y_{t-2} + \theta_2 \epsilon_{t-2} \\
+    & v_{3,t-3} = 0 \\
+    & v_{4,t-4} = y_{t-4} \\
+    & v_{5,t-5} = -(1+\phi_1) y_{t-5} \\
+    & v_{6,t-6} = \phi_1 y_{t-6}
+    \end{aligned} .
+  (\#eq:MSARIMAStateExample01)
+\end{equation}
+In our example all the MA parameters are zero for $j>2$, that is why they disappear from the states above. Furthermore, there are no elements for lag three, so that state can be dropped. The measurement equation of the ARIMA model in this situation can be written as:
+\begin{equation*}
+    {y}_{t} = \sum_{j=1,2,4,5,6} v_{j,t-j} + \epsilon_t ,
+\end{equation*}
+based on which the actual value on some lag $i$ can also be written as:
+\begin{equation}
+    {y}_{t-i} = \sum_{j=1,2,4,5,6} v_{j,t-j-i} + \epsilon_{t-i}.
+  (\#eq:MSARIMAStateExample02)
+\end{equation}
+Inserting \@ref(eq:MSARIMAStateExample02) in \@ref(eq:MSARIMAStateExample01) and shifting the lags from $t-i$ to $t$ in every equation, we get the state space ARIMA:
+\begin{equation*}
+    \begin{aligned}
+    &{y}_{t} = \sum_{j=1,2,4,5,6} v_{j,t-j} + \epsilon_t \\
+    & v_{1,t} = (1+\phi_1) \sum_{j=1}^6 v_{j,t-j} + (1+\phi_1+\theta_1) \epsilon_t \\
+    & v_{2,t} = -\phi_1 \sum_{j=1}^6 v_{j,t-j} + (-\phi_1+\theta_2) \epsilon_t \\
+    & v_{4,t} = \sum_{j=1}^6 v_{j,t-j} + \epsilon_t \\
+    & v_{5,t} = -(1+\phi_1) \sum_{j=1}^6 v_{j,t-j} -(1+\phi_1) \epsilon_t \\
+    & v_{6,t} = \phi_1 \sum_{j=1}^6 v_{j,t-j} + \phi_1 \epsilon_t
+    \end{aligned} .
+\end{equation*}
+This model can then be applied to the data, and forecasts from it can be produced in a similar way to how it was done for pure additive ETS model (see Section \@ref(ADAMETSPureAdditive)). Furthermore, it can be shown that any ARIMA model can be written in the compact form \@ref(eq:ETSADAMStateSpacePureAdditive), meaning that the same principles as for ETS can be applied to ARIMA and that the two models can be united in one framework.
+
+
 ### Additive ARIMA {#StateSpaceARIMAAdditive}
-In order to develop state space ARIMA, we will use the most general multiple seasonal ARIMA, discussed in [the previous section](#MSARIMA):
+In a more general case, in order to develop state space ARIMA, we will use the multiple seasonal ARIMA, discussed in Section \@ref(MSARIMA):
 \begin{equation*}
   y_t \prod_{j=0}^n \Delta^{D_j} (B^{m_j}) \varphi^{P_j}(B^{m_j}) = \epsilon_t \prod_{j=0}^n \vartheta^{Q_j}(B^{m_j}) ,
 \end{equation*}
@@ -17,7 +65,18 @@ This model can be represented in an easier to digest form by expanding the polyn
   y_t = \sum_{j=1}^K \eta_j y_{t-j} + \sum_{j=1}^K \theta_j \epsilon_{t-j} + \epsilon_t .
   (\#eq:MSARIMAExpanded)
 \end{equation}
-Here $K$ is the order of the highest polynomial, calculated as $K=\max\left(\sum_{j=0}^n (P_j + D_j)m_j, \sum_{j=0}^n Q_j m_j\right)$. If, for example, the MA order is higher than the sum of ARI orders, then polynomials $\eta_i=0$ for $i>\sum_{j=0}^n (P_j + D_j)m_j$. The same property holds for the opposite situation of the sum of ARI orders being higher than the MA orders. Based on this we could define states for each of the previous elements:
+Each element before the lagged $y_{t-j}$ can be called the parameter of polynomial. In our example with SARIMA(1,1,2)(0,1,0)$_4$ in the previous subsection they were:
+\begin{equation*}
+    \begin{aligned}
+    & \eta_1 = 1+\phi_1 \\
+    & \eta_2 = -\phi_1 \\
+    & \eta_3 = 0 \\
+    & \eta_4 = 1 \\
+    & \eta_5 = - (1+\phi_1) \\
+    & \eta_6 = \phi_1
+    \end{aligned} .
+\end{equation*}
+In the equation \@ref(eq:MSARIMAExpanded), $K$ is the order of the highest polynomial, calculated as $K=\max\left(\sum_{j=0}^n (P_j + D_j)m_j, \sum_{j=0}^n Q_j m_j\right)$. If, for example, the MA order is higher than the sum of ARI orders, then polynomials $\eta_i=0$ for $i>\sum_{j=0}^n (P_j + D_j)m_j$. The same holds for the opposite situation of the sum of ARI orders being higher than the MA orders, where $\theta_i=0$ for all $i>\sum_{j=0}^n Q_j m_j$. Based on this we could define states for each of the previous elements:
 \begin{equation}
   v_{i,t-i} = \eta_i y_{t-i} + \theta_i \epsilon_{t-i},
   (\#eq:MSARIMAState)
@@ -45,7 +104,7 @@ This leads to the SSOE state space model based on \@ref(eq:MSARIMAMeasurement02)
   \end{aligned},
   (\#eq:ADAMARIMAExpanded)
 \end{equation}
-which can be formulated in the conventional form as a [pure additive model](#ADAMETSPureAdditive):
+which can be formulated in the conventional form as a pure additive ADAM model (Section \@ref(ADAMETSPureAdditive)):
 \begin{equation*}
   \begin{aligned}
     &{y}_{t} = \mathbf{w}' \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
@@ -60,47 +119,13 @@ with the following values for matrices:
   \end{aligned}.
   (\#eq:ADAMARIMAMatrices)
 \end{equation}
-States in this model do not have any specific meaning, they just represent a combination of actual values and error terms, some portion of ARIMA model. Furthermore, there are zero states in this model, corresponding to zero polynomials of ARI and MA. These can be dropped to make the model even more compact.
+States in this model do not have any specific meaning, they just represent a combination of actual values and error terms, some pieces of ARIMA model. Furthermore, there are zero states in this model, corresponding to zero polynomials of ARI and MA. These can be dropped to make the model even more compact.
 
-### An example
-In order to better understand what the state space model \@ref(eq:ADAMARIMAExpanded) implies, we consider an example of SARIMA(1,1,2)(0,1,0)$_4$:
-\begin{equation*}
-    {y}_{t} (1- \phi_1 B)(1-B)(1-B^4) = \epsilon_t (1 + \theta_1 B + \theta_2 B^2),
-\end{equation*}
-which can be rewritten in the expanded form:
-\begin{equation*}
-    {y}_{t} (1-\phi_1 B - B + \phi_1 B^2 - B^4 +\phi_1 B^5 + B^5 - \phi_1 B^6) = \epsilon_t (1 + \theta_1 B + \theta_2 B^2),
-\end{equation*}
-or after moving the previous values to the right hand side:
-\begin{equation*}
-    {y}_{t} = (1+\phi_1) {y}_{t-1} - \phi_1 {y}_{t-2} + {y}_{t-4} - (1+\phi_1) {y}_{t-5} + \phi_1 {y}_{t-6} + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \epsilon_t .
-\end{equation*}
-The polynomials in this case can be written as:
-\begin{equation*}
-    \begin{aligned}
-    & \eta_1 = 1+\phi_1 \\
-    & \eta_2 = -\phi_1 \\
-    & \eta_3 = 0 \\
-    & \eta_4 = 1 \\
-    & \eta_5 = - (1+\phi_1) \\
-    & \eta_6 = \phi_1
-    \end{aligned} ,
-\end{equation*}
-leading to 6 states, one of which can be dropped (the third one, for which both $\eta_3=0$ and $\theta_3=0$). The state space ARIMA can then be written as:
-\begin{equation*}
-    \begin{aligned}
-    &{y}_{t} = \sum_{j=1,2,4,5,6} v_{j,t-j} + \epsilon_t \\
-    & v_{1,t} = (1+\phi_1) \sum_{j=1}^6 v_{j,t-j} + (1+\phi_1+\theta_1) \epsilon_t \\
-    & v_{2,t} = -\phi_1 \sum_{j=1}^6 v_{j,t-j} + (-\phi_1+\theta_2) \epsilon_t \\
-    & v_{4,t} = \sum_{j=1}^6 v_{j,t-j} + \epsilon_t \\
-    & v_{5,t} = -(1+\phi_1) \sum_{j=1}^6 v_{j,t-j} -(1+\phi_1) \epsilon_t \\
-    & v_{6,t} = \phi_1 \sum_{j=1}^6 v_{j,t-j} + \phi_1 \epsilon_t
-    \end{aligned} .
-\end{equation*}
-This model looks more complicated than the original ARIMA in the conventional form, but it bring the model to the same ground as [ETS in ADAM](#ADAMETSIntroduction), making them directly comparable via information criteria and allowing to easily combine the two models, not to mention compare ARIMA of any order with another ARIMA (e.g. with different orders of differencing).
+In general, state space ARIMA looks more complicated than the original one in the conventional form, but it brings the model to the same ground as ETS in ADAM (Section \@ref(ADAMETSIntroduction)), making them directly comparable via information criteria and allowing to easily combine the two models, not to mention compare ARIMA of any order with another ARIMA (e.g. with different orders of differencing) or introduce multiple seasonality and explanatory variables.
+
 
 ### State space ARIMA with constant
-If we want to add the [constant](#ARMAConstant) to the model, we need to modify the equation \@ref(eq:MSARIMAExpanded):
+If we want to add the constant (similar to how it was done in Section \@ref(ARMAConstant)) to the model, we need to modify the equation \@ref(eq:MSARIMAExpanded):
 \begin{equation}
   y_t = \sum_{j=1}^K \eta_j y_{t-j} + \sum_{j=1}^K \theta_j \epsilon_{t-j} + a_0 + \epsilon_t .
   (\#eq:MSARIMAExpandedConstant)
@@ -110,12 +135,12 @@ This then leads to the appearance of the new state:
   v_{K+1,t} = a_0 ,
   (\#eq:MSARIMAStateConstant)
 \end{equation}
-which leads to the modified measurement equation:
+and modified measurement equation:
 \begin{equation}
   y_t = \sum_{j=1}^{K+1} v_{j,t-j} + \epsilon_t ,
   (\#eq:MSARIMAMeasurementConstant)
 \end{equation}
-and the modified transition states:
+with the following transition equation:
 \begin{equation}
   \begin{aligned}
     & v_{i,t} = \eta_i \sum_{j=1}^{K+1} v_{j,t-j} + (\eta_i + \theta_i) \epsilon_{t} , \text{ for } i=\{1, 2, \dots, K\} \\
@@ -132,7 +157,7 @@ The state space equations \@ref(eq:MSARIMAMeasurementConstant) and \@ref(eq:MSAR
   (\#eq:ADAMARIMAMatricesConstant)
 \end{equation}
 
-Note that the constant term introduced in this model has different meaning, depending on the differences of the model. For example, if all $D_j=0$, then it acts as an intercept, while for the $d=1$, it will act as a drift. 
+Note that the constant term introduced in this model has different meaning, depending on the order of differences of the model. For example, if $D_j=0$ for all $j$, then it acts as an intercept, while for the $d=1$, it will act as a drift. 
 
 ### Multiplicative ARIMA {#ADAMARIMAPureMultiplicative}
 In order to connect ARIMA with ETS, we also need to define cases for multiplicative models. This implies that the error term $(1+\epsilon_t)$ is multiplied by components of the model. The state space ARIMA in this case is formulated using logarithms in the following way:
@@ -151,13 +176,15 @@ The model \@ref(eq:ADAMARIMAExpandedMultiplicative) can be written in the follow
   \end{aligned},
   (\#eq:ADAMStateSpaceMultiplicative)
 \end{equation}
-where $\mathbf{w}$, $\mathbf{F}$, $\mathbf{v}_t$, $\mathbf{g}$ and $\mathbf{l}$ are defined as before for the [additive ARIMA](#StateSpaceARIMA), e.g. in equation \@ref(eq:ADAMARIMAMatricesConstant). This model is equivalent to applying ARIMA to log-transformed data, but at the same time shares some similarities with [pure multiplicative ETS](#ADAMETSPureMultiplicative). The main advantage of this formulation is that this model has analytical solutions for the conditional moments and has well defined h steps ahead distributions, which simplifies the work with it in contrast with the [pure multiplicative ETS](#ADAMETSPureMultiplicative) models.
+where $\mathbf{w}$, $\mathbf{F}$, $\mathbf{v}_t$, $\mathbf{g}$ and $\mathbf{l}$ are defined as before for the pure additive ARIMA (Section \@ref(StateSpaceARIMA)), e.g. in equation \@ref(eq:ADAMARIMAMatricesConstant). This model is equivalent to applying ARIMA to log-transformed data, but at the same time shares some similarities with pure multiplicative ETS from Section \@ref(ADAMETSPureMultiplicative). The main advantage of this formulation is that this model has analytical solutions for the conditional moments and has well defined h steps ahead conditional distribution, which simplifies the work with the model in contrast with the pure multiplicative ETS.
 
 In order to distinguish the additive ARIMA from the multiplicative one, we will use the notation "logARIMA" for the latter in this book, pointing out at what such model is equivalent to (applying ARIMA to the log-transformed data).
 
+Finally, it is worth mentioning that due to the logarithmic transform, the logARIMA model would be suitable for the cases of time varying heteroscedasticity, similar to the multiplicative error ETS models.
+
 
 ## Recursive relation {#ADAMARIMARecursive}
-Both additive and multiplicative ARIMA models can be written in the recursion form, similar to [pure additive ETS](#adamETSPureAdditiveRecursive). The formulae would be cumbersome in this case, but would have closed forms. Here they are for the pure additive ARIMA:
+Both additive and multiplicative ARIMA models can be written in the recursion form, similar to pure additive ETS (see Section \@ref(adamETSPureAdditiveRecursive)). For the pure additive ARIMA:
 \begin{equation}
     y_{t+h} = \sum_{i=1}^K \mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \mathbf{v}_{t} + \mathbf{w}_{i}' \sum_{j=1}^{\lceil\frac{h}{i}\rceil-1} \mathbf{F}_{i}^{j-1} \mathbf{g}_{i} \epsilon_{t+i\lceil\frac{h}{i}\rceil-j} + \epsilon_{t+h} ,
   (\#eq:ADAMARIMAStateSpacePureAdditiveRecursion)
@@ -167,55 +194,78 @@ and for the pure multiplicative one:
     \log y_{t+h} = \sum_{i=1}^K \mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \log \mathbf{v}_{t} + \mathbf{w}_{i}' \sum_{j=1}^{\lceil\frac{h}{i}\rceil-1} \mathbf{F}_{i}^{j-1} \mathbf{g}_{i} \log (1+\epsilon_{t+i\lceil\frac{h}{i}\rceil-j}) + \log(1+ \epsilon_{t+h}) ,
   (\#eq:ADAMARIMAStateSpacePureMultiplicativeRecursion)
 \end{equation}
-where $i$ corresponds to each lag of the model from 1 to $K$, $\mathbf{w}_{i}$ is the measurement vector, $\mathbf{g}_{i}$ is the persistence vector, both including only $i$-th elements, $\mathbf{F}_{i}$ is the transition matrix, including only $i$-th column. Based on this recursion, we can calculate conditional moments of ADAM ARIMA.
+where $i$ corresponds to each lag of the model from 1 to $K$, $\mathbf{w}_{i}$ is the measurement vector, $\mathbf{g}_{i}$ is the persistence vector, both including only $i$-th elements, $\mathbf{F}_{i}$ is the transition matrix, including only $i$-th column. Based on these recursions, point forecasts can be produced from the additive and multiplicative ARIMA models, which will be respectively:
+\begin{equation}
+    \hat{y}_{t+h} = \sum_{i=1}^K \mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \mathbf{v}_{t}
+  (\#eq:ADAMARIMAStateSpacePureAdditiveForecast)
+\end{equation}
+and:
+\begin{equation}
+    \hat{y}_{t+h} = \exp\left(\sum_{i=1}^K \mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \log \mathbf{v}_{t} \right) .
+  (\#eq:ADAMARIMAStateSpacePureMultiplicativeForecast)
+\end{equation}
+Note however that similarly to the multiplicative ETS, the point forecasts of logARIMA will not necessarily coincide with the conditional expectations. Still, based on the recursions \@ref(eq:ADAMARIMAStateSpacePureAdditiveRecursion) and \@ref(eq:ADAMARIMAStateSpacePureMultiplicativeRecursion), we can calculate conditional moments of ADAM ARIMA.
 
-### Moments of ADAM ARIMA {#ADAMARIMARecursiveMoments}
-In case of the pure additive ARIMA model, the moments correspond to the ones discussed in the [pure additive ETS section](#ADAMETSPureAdditive) and follows directly from \@ref(eq:ADAMARIMAStateSpacePureAdditiveRecursion):
+
+### Conditional moments of ADAM ARIMA {#ADAMARIMARecursiveMoments}
+In case of the pure additive ARIMA, the moments correspond to the ones for ETS, discussed in Section \@ref(ADAMETSPureAdditive) and follow directly from \@ref(eq:ADAMARIMAStateSpacePureAdditiveRecursion):
 \begin{equation*}
   \begin{aligned}
     \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = & \sum_{i=1}^K \left(\mathbf{w}_{i}' \mathbf{F}_{i}^{\lceil\frac{h}{i}\rceil-1} \right) \mathbf{v}_{t} \\
     \sigma^2_{h} = \mathrm{V}(y_{t+h}|t) = & \left( \sum_{i=1}^K \left(\mathbf{w}_{i}' \sum_{j=1}^{\lceil\frac{h}{i}\rceil-1} \mathbf{F}_{i}^{j-1} \mathbf{g}_{i} \mathbf{g}'_{i} (\mathbf{F}_{i}')^{j-1} \mathbf{w}_{i} \right) + 1 \right) \sigma^2
   \end{aligned} .
 \end{equation*}
-When it comes to the multiplicative ARIMA model, using the same idea with recursive relation as in the [pure additive ETS section](#adamETSPureAdditiveRecursive), we can obtain the logarithmic moments based on \@ref(eq:ADAMARIMAStateSpacePureMultiplicativeRecursion):
+When it comes to the multiplicative ARIMA model, the conditional moments would depend on the assumed distribution and might become quite complicated. Here is an example of the conditional logarithmic mean for Log Normal distribution, assuming that $(1+\epsilon_t) \sim \mathrm{log}\mathcal{N}\left(\frac{\sigma^2}{2},\sigma^2 \right)$ based on \@ref(eq:ADAMARIMAStateSpacePureMultiplicativeRecursion):
 \begin{equation}
-  \begin{aligned}
-    \mu_{\log y,t+h} = \mathrm{E}(\log y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \log \mathbf{v}_{t} \\
-    \sigma^2_{\log y,h} = \mathrm{V}(\log y_{t+h}|t) = & \left( \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \sigma_{\log (1+\epsilon)}^2
-  \end{aligned},
-  (\#eq:ADAMARIMAMultiplicativeMomentsLogs)
+    \mu_{\log y,t+h} = \mathrm{E}(\log y_{t+h}|t) = \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \log \mathbf{v}_{t} - \left(\mathbf{w}_{i}' \sum_{j=1}^{\lceil\frac{h}{i}\rceil-1} \mathbf{F}_{i}^{j-1} \mathbf{g}_{i} + 1\right) \frac{\sigma^2}{2} .
+  (\#eq:ADAMARIMAMultiplicativeMeanLogN)
 \end{equation}
-where $\sigma_{\log (1+\epsilon)}^2$ is the variance of the error term in logarithms. The obtained logarithmic moments can then be used to get the ones in the original scale, after making assumptions about the distribution of the random variable. For example, if we assume that $\left(1+\epsilon_t \right) \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma_{\log (1+\epsilon)}^2}{2}, \sigma_{\log (1+\epsilon)}^2\right)$, then the conditional expectation and variance can be calculated as:
+Note that the variance conditional logarithmic variance of the model will be the same for all logARIMA models, independent of the distributional assumptions:
+\begin{equation}
+    \sigma^2_{\log y,h} = \mathrm{V}(\log y_{t+h}|t) = \left( \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \sigma^2 .
+  (\#eq:ADAMARIMAMultiplicativeVarianceLogN)
+\end{equation}
+The obtained logarithmic moments can then be used to get the ones in the original scale, after using the connection between the moments in Log Normal distribution. The conditional expectation and variance in this case can be calculated as:
 \begin{equation}
   \begin{aligned}
     & \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = \exp \left(\mu_{\log y,t+h} + \frac{\sigma^2_{\log y,h}}{2} \right) \\
-    & \sigma^2_{h} = \mathrm{V}(y_{t+h}|t) = \left(\exp\left( \sigma^2_{\log y,h} \right) - 1 \right)\exp\left(2 \times \mu_{\log y,t+h} + \sigma^2_{\log y,h} \right)
-  \end{aligned}.
+    & \sigma^2_{h} = \mathrm{V}(y_{t+h}|t) = \left(\exp\left( \sigma^2_{\log y,h} \right) - 1 \right)\exp\left(2 \times \mu_{\log y,t+h} + \sigma^2_{\log y,h} \right) .
+  \end{aligned}
   (\#eq:ADAMARIMAMultiplicativeMomentsLogN)
 \end{equation}
-If some other distributions are assumed in the model, then the connection between the logarithmic and normal moments should be used in order to get the conditional expectation and variance. If these relations are not available, then simulations can be used in order to obtain the numeric approximations.
+Inserting the values \@ref(eq:ADAMARIMAMultiplicativeMeanLogN) and \@ref(eq:ADAMARIMAMultiplicativeVarianceLogN) in \@ref(eq:ADAMARIMAMultiplicativeMomentsLog), we will get the analytical solutions for the two moments.
+
+If some other distributions are assumed in the model, then the conditional logarithmic mean would change, because the variable $\log(1+\epsilon_t)$ would follow a different distribution with a different mean. For example:
+
+1. Gamma: if $\left(1+\epsilon_t \right) \sim \mathcal{\Gamma}(s^{-1}, s)$, then $\log\left(1+\epsilon_t \right) \sim \mathrm{exp}\mathcal{\Gamma}(s^{-1}, s)$, which is exponential Gamma distribution, which has the following logarithmic mean: $\mathrm{E}(\log(1+\epsilon_t)) = \psi\left(s^{-1}\right)+\log(s)$;
+2. Inverse Gaussian: if $\left(1+\epsilon_t \right) \sim \mathcal{IG}(1, s)$, then $\log\left(1+\epsilon_t \right) \sim \mathrm{exp}\mathcal{IG}(1, s)$, exponential Inverse Gaussian distribution, which does not have a simple formula for the logarithmic mean [but it can be calculated based on its connection with Generalised $\mathcal{IG}$ and formulae provided in @Sichel1997].
+
+After that, similarly to how it was done for Log Normal distribution above, the connection between the logarithmic and normal moments should be used in order to get the conditional expectation and variance. If these relations are not available or are too complicated, then simulations can be used in order to obtain the numeric approximations (see discussion in Section \@ref(ADAMForecastingExpectationSimulations)).
+
+Finally, we should remark that the formulae for the conditional moments in logARIMA are complicated mainly because of the distributional assumptions, inherited from ETS. However, this allows constructing more complicated models, some of which are discussed in Section \@ref(ETSAndARIMA).
+
 
 ### Parameters bounds
-Finally, modifying the recursions \@ref(eq:ADAMARIMAStateSpacePureAdditiveRecursion) and \@ref(eq:ADAMARIMAStateSpacePureMultiplicativeRecursion), we can get the stability condition for the parameters, similar to the one for [pure additive ETS](#stabilityConditionAdditiveError). The advantage of the pure multiplicative ARIMA formulated in the form \@ref(eq:ADAMStateSpaceMultiplicative) is that the adequate stability condition can be obtained. In fact, it will be the same as for the pure additive ARIMA and / or ETS. The ARIMA model will be **stable**, when the absolute values of all non-zero eigenvalues of the discount matrices $\mathbf{D}_{i}$ are lower than one, given that:
+Finally, modifying the recursions \@ref(eq:ADAMARIMAStateSpacePureAdditiveRecursion) and \@ref(eq:ADAMARIMAStateSpacePureMultiplicativeRecursion), we can get the stability condition for the parameters, similar to the one for pure additive ETS from Section \@ref(stabilityConditionAdditiveError). The advantage of the pure multiplicative ARIMA formulated in the form \@ref(eq:ADAMStateSpaceMultiplicative) is that the adequate stability condition can be obtained in contrast with the pure multiplicative ETS models. In fact, it will be the same as for the pure additive ARIMA and / or ETS. The ARIMA model will be **stable**, when the absolute values of all non-zero eigenvalues of the discount matrices $\mathbf{D}_{i}$ are lower than one, given that:
 \begin{equation}
   \mathbf{D}_{i} = \mathbf{F}_{i} - \mathbf{g}_{i} \mathbf{w}_{i}' .
   (\#eq:ADAMARIMADiscountmatrix)
 \end{equation}
-@Hyndman2008b show that the stability condition corresponds to the [invertibility](#MSARIMABounds) condition of ARIMA, so the model can either be checked via the discount matrix \@ref(eq:ADAMARIMADiscountmatrix) or via the MA polynomials \@ref(eq:MSARIMABoundsInvertibility).
+@Hyndman2008b show that the stability condition for SSOE models corresponds to the invertibility condition of ARIMA (Section \@ref(MSARIMABounds)), so the model can either be checked via the discount matrix \@ref(eq:ADAMARIMADiscountmatrix) or via the MA polynomials \@ref(eq:MSARIMABoundsInvertibility).
 
-When it comes to **stationarity**, state space ARIMA is always non-stationary if the differences $d \neq 0$. So, there needs to be a different mechanism for the stationarity check. The simplest thing to do would be to expand the AR(p) polynomials, ignoring I(d), fill in the transition matrix $\mathbf{F}$ and then calculate its eigenvalues. If they are lower than one by absolute values, then the model is stationary. The same condition can be checked via the roots of polynomial of AR(p) \@ref(eq:MSARIMABoundsStationarity).
+When it comes to **stationarity**, state space ARIMA is always non-stationary if the differences $\mathbf{D}_j \neq 0$ for any $j$. So, there needs to be a different mechanism for the stationarity check. The simplest thing to do would be to expand the AR(p) polynomials, ignoring I(d), fill in the transition matrix $\mathbf{F}$ and then calculate its eigenvalues. If they are lower than one by absolute value, then the model is stationary. The same condition can be checked via the roots of polynomial of AR(p) \@ref(eq:MSARIMABoundsStationarity). However, the eigenvalues approach is more computationally efficient, and I personally recommend using it instead of the conventional polynomials calculation.
 
 If both stability and stationarity conditions for ARIMA are satisfied, then we will call the bounds that the AR / MA parameters form "admissible", similar to how they are called in ETS. Note that there are no "usual" or "traditional" bounds for ARIMA.
 
 
 ## Distributional assumptions of ADAM ARIMA {#ADAMARIMADistributions}
-Following the same idea as in [pure additive](#ADAMETSAdditiveDistributions) and [pure multiplicative](ADAMETSMultiplicativeDistributions) ETS models, we can have state space ARIMA with different distributions, but with distributions aligning more appropriately with the types of models. For additive ARIMA:
+Following the same idea as in pure additive (Section \@ref(ADAMETSAdditiveDistributions)) and pure multiplicative (Section \@ref(ADAMETSMultiplicativeDistributions)) ETS models, we can have state space ARIMA with different distributional assumptions, but with the distributions aligning more appropriately with the types of models. For additive ARIMA:
 
 1. Normal: $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$;
 2. Laplace: $\epsilon_t \sim \mathcal{Laplace}(0, s)$;
 3. S: $\epsilon_t \sim \mathcal{S}(0, s)$;
 4. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$;
-5. Asymmetric Laplace: $\epsilon_t \sim \mathcal{ALaplace}(0, s, \alpha)$
+5. Asymmetric Laplace: $\epsilon_t \sim \mathcal{ALaplace}(0, s, \alpha)$.
 
 For multiplicative ARIMA:
 
@@ -226,18 +276,18 @@ For multiplicative ARIMA:
 The restrictions imposed on the parameters of the model correspond to the ones for ETS: in case of pure additive models, they ensure that the conditional h steps ahead mean is not impacted by the location of distribution (thus $\mu_\epsilon=0$); in case of pure multiplicative models, they ensure that the conditional h steps ahead mean is just equal to the point forecast (thus imposing $\mathrm{E}(1+\epsilon_t)=1$).
 
 ### Conditional distributions
-When it comes to conditional distribution of variables, ADAM ARIMA with the [assumptions](#ADAMARIMADistributions) discussed above has closed forms for all of them. For example, if we work with additive ARIMA, then according to [recursive relation](#ADAMARIMARecursive) \@ref(eq:ADAMARIMAStateSpacePureAdditiveRecursion) the h steps ahead value follows the same distribution but with different conditional mean and variance. For example, if $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$, then $y_{t+h} \sim \mathcal{GN}(\mu_{y,t+h}, s_{h}, \beta)$, where $s_{h}$ is the conditional h steps ahead scale, found from the connection between variance and scale in Generalised Normal distribution via:
+When it comes to conditional distribution of variables, additive ADAM ARIMA with the assumptions discussed in subsection \@ref(ADAMARIMADistributions) has closed forms for all of them. For example, if we work with additive ARIMA, then according to recursive relation \@ref(eq:ADAMARIMAStateSpacePureAdditiveRecursion) from subsection \@ref(ADAMARIMARecursive), the h steps ahead value follows the same distribution but with different conditional mean and variance. For example, if $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$, then $y_{t+h} \sim \mathcal{GN}(\mu_{y,t+h}, s_{h}, \beta)$, where $s_{h}$ is the conditional h steps ahead scale, found from the connection between variance and scale in Generalised Normal distribution via:
 \begin{equation*}
     s_h = \sqrt{\frac{\sigma^2_h \Gamma(1/\beta)}{\Gamma(3/\beta)}}.
 \end{equation*}
 
 Using similar principles, we can calculate scale parameters for the other distributions.
 
-When it comes to the multiplicative models, the conditional distribution has the closed form in case of log Normal (it is log Normal as well), but does not have it in case of Inverse Gaussian. In the former case, the logarithmic moments can be directly used to define the parameters of distribution, i.e. if $\left(1+\epsilon_t \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$, then $y_{t+h} \sim \text{log}\mathcal{N}\left(\mu_{\log y,t+h}, \sigma^2_{\log y,h} \right)$. In the latter case, simulations need to be used in order to get the quantile, cumulative and density functions.
+When it comes to the multiplicative models, the conditional distribution has the closed form in case of log Normal (it is log Normal as well), but does not have it in case of Inverse Gaussian and Gamma. In the former case, the logarithmic moments can be directly used to define the parameters of distribution, i.e. if $\left(1+\epsilon_t \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$, then $y_{t+h} \sim \text{log}\mathcal{N}\left(\mu_{\log y,t+h}, \sigma^2_{\log y,h} \right)$. In the other case, simulations need to be used in order to get the quantile, cumulative and density functions.
 
 
 ## ETS + ARIMA {#ETSAndARIMA}
-Coming back to the topic of ETS and ARIMA, we can now look at it from the SSOE state space point of view.
+Coming back to the topic of ETS and ARIMA, we can now look at it from the point of view of SSOE state space model.
 
 ### Pure additive models
 A pure additive ETS + ARIMA model can be formulated in the general form, which we have [already discussed](#ADAMETSPureAdditive) several times in this textbook:
@@ -261,8 +311,8 @@ but now the matrices and vectors of the model contain ETS and ARIMA components, 
 where $\phi_1$ is the parameter of the AR(1) part of the model. This model represented in the conventional additive SSOE state space model leads to the following matrices and vectors:
 \begin{equation}
   \begin{aligned}
-    \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \\ 1 \end{pmatrix}, & \mathbf{F} = \begin{pmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & \phi_1 & \phi_1 \\ 0 & 0 & \phi_2 & \phi_2 \end{pmatrix}, \\
-    \mathbf{g} = \begin{pmatrix} \alpha \\ \gamma \\ \phi_1 \\ \phi_2 \end{pmatrix}, & \mathbf{v}_{t} = \begin{pmatrix} l_t \\ s_t \\ v_{1,t-1} \\ v_{2,t-2} \end{pmatrix}, & \mathbf{l} = \begin{pmatrix} 1 \\ m \\ 1 \\ 2\end{pmatrix}
+    \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \\ 1 \end{pmatrix}, & \mathbf{F} = \begin{pmatrix} 1 & 0 & 0 & 0 \\ 0 & 1 & 0 & 0 \\ 0 & 0 & \phi_1 & \phi_1 \\ 0 & 0 & \phi_2 & \phi_2 \end{pmatrix}, & \mathbf{g} = \begin{pmatrix} \alpha \\ \gamma \\ \phi_1 \\ \phi_2 \end{pmatrix}, \\
+    \mathbf{v}_{t} = \begin{pmatrix} l_t \\ s_t \\ v_{1,t} \\ v_{2,t} \end{pmatrix}, & \mathbf{v}_{t-\mathbf{l}} = \begin{pmatrix} l_{t-1} \\ s_{t-m} \\ v_{1,t-1} \\ v_{2,t-2} \end{pmatrix} & \mathbf{l} = \begin{pmatrix} 1 \\ m \\ 1 \\ 2\end{pmatrix}
   \end{aligned}.
   (\#eq:ADAMETSARIMAANN100Matrices)
 \end{equation}
@@ -277,7 +327,7 @@ ADAM introduces the flexibility necessary for fitting any ETS+ARIMA combination,
   \end{aligned}.
   (\#eq:ADAMETSARIMAANN011)
 \end{equation}
-In the transition part of the model \@ref(eq:ADAMETSARIMAANN011), the two equations duplicate each other, because they have exactly the same mechanism of update of states. In fact, as we know from [a previous chapter](#ARIMAETS011), ETS(A,N,N) and ARIMA(0,1,1) are equivalent, when $\alpha=1+\theta_1$. If we estimate this model, then we are duplicating the state, in a way splitting it into two parts with some arbitrary weights. This can be seen if we insert the transition equations in the measurement one, obtaining:
+In the transition part of the model \@ref(eq:ADAMETSARIMAANN011), the two equations duplicate each other, because they have exactly the same mechanism of update of states. In fact, as we know from Section \@ref(ARIMAETS011), ETS(A,N,N) and ARIMA(0,1,1) are equivalent, when $\alpha=1+\theta_1$. If we estimate this model, then we are duplicating the state, in a way splitting it into two parts with some arbitrary weights. This becomes apparent if we insert the transition equations in the measurement one, obtaining:
 \begin{equation}
   \begin{aligned}
     {y}_{t} = & l_{t-2} + \alpha \epsilon_{t-1} + v_{1,t-2} + (1+\theta_1) \epsilon_{t-1} + \epsilon_t =\\
@@ -285,11 +335,11 @@ In the transition part of the model \@ref(eq:ADAMETSARIMAANN011), the two equati
   \end{aligned},
   (\#eq:ADAMETSARIMAANN011Measurement)
 \end{equation}
-which leads to an infinite combination of values of parameters $\theta$ and $\alpha$ that would produce exactly the same fit. So, the model \@ref(eq:ADAMETSARIMAANN011) does not have unique parameters and thus is not identifiable.
+which leads to an infinite combination of values of parameters $\theta$ and $\alpha$ that would produce exactly the same model fit. So, the model \@ref(eq:ADAMETSARIMAANN011) does not have unique parameters and thus is **unidentifiable**. This means that we cannot reach the "true model" based on ETS(A,N,N)+ARIMA(0,1,1) and thus the model selection via information criteria becomes inappropriate. Furthermore, the estimates of parameters of such a model might become biased, inefficient and inconsistent due to the "infinite combination" issue mentioned above.
 
-In some other cases, some parts of models might be unidentifiable as well, so it makes sense to switch to a more complicated model. For example, if we have ETS(A,A,N)+ARIMA(0,2,3), then some parts of the models will be duplicated (because ETS(A,A,N) is equivalent to ARIMA(0,2,2)), so it would be more reasonable to switch to pure ARIMA(0,2,3) instead.
+In some other cases, some parts of model might be duplicated, making the whole model unidentifiable as well, so it makes sense to switch to either ETS or ARIMA, depending on the circumstances. For example, if we have ETS(A,A,N)+ARIMA(0,2,3), then some parts of the models will be duplicated (because ETS(A,A,N) is equivalent to ARIMA(0,2,2)), so it would be more reasonable to switch to pure ARIMA(0,2,3) instead. On the other hand, if we deal with ETS(A,Ad,N)+ARIMA(0,1,2), then dropping the ARIMA part would be more appropriate.
 
-These examples show that, when using ETS+ARIMA, model building needs to be done with care, not to get an unreasonable model that cannot be identefied. As a general recommendation, keep the [ETS and ARIMA connection](#ARIMAandETS) in mind, when deciding, what to construct. And here is a short list of guidlines of what to do in some special cases:
+These examples show that, when using ETS+ARIMA, model building needs to be done with care, not to get an unreasonable model that cannot be identified. As a general recommendation, keep the ETS and ARIMA connection (see Section \@ref(ARIMAandETS)) in mind, when deciding, what to construct. And here is a short list of guidelines of what to do in some special cases:
 
 1. For ETS(A,N,N)+ARIMA(0,1,q):
 - use ARIMA(0,1,q) in case of $q >1$,
@@ -301,10 +351,10 @@ These examples show that, when using ETS+ARIMA, model building needs to be done 
 - use ARIMA(p,1,q), when either $p>1$ or $q>2$,
 - use ETS(A,Ad,N), when $p \leq 1$ and $q \leq 2$.
 
-When it comes to seasonal models, the relation between ETS and ARIMA is mroe complex, and it is highly improbable to get to equivalent ARIMA models, so it makes sense to make sure that the three rules above hold for the non-seasonal part of the model.
+When it comes to seasonal models, the relation between ETS and ARIMA is more complex, and it is highly improbable to get to equivalent ARIMA models, so it makes sense to make sure that the three rules above hold for the non-seasonal part of the model.
 
 ### Pure multiplicative models
-When it comes to the multiplicative error and mixed ETS models, then the ETS+ARIMA might not have the same issues as the pure additive one. This is because the [multiplicative ETS](#ADAMETSPureMultiplicative) and [multiplicative ARIMA](#ADAMARIMAPureMultiplicative) are formulated differently. An example is an ETS(M,N,N)+logARIMA(0,1,1), which is formulated as:
+When it comes to the multiplicative error and mixed ETS models, then the ETS+ARIMA might not have the same issues as the pure additive one. This is because the multiplicative ETS (Section \@ref(ADAMETSPureMultiplicative)) and multiplicative ARIMA (Section \@ref(ADAMARIMAPureMultiplicative)) are formulated differently. An example is an ETS(M,N,N)+logARIMA(0,1,1), which is formulated as:
 \begin{equation}
   \begin{aligned}
     &{y}_{t} = l_{t-1} v_{1,t-1} (1 + \epsilon_t) \\
@@ -319,52 +369,64 @@ The last equation in \@ref(eq:ADAMETSARIMAMNN011) can be rewritten as $v_{1,t} =
 2. ETS(M,M,N)+logARIMA(0,2,2);
 3. ETS(M,Md,N)+logARIMA(1,1,1).
 
-In additions, the recommendations discussed for the pure additive ETS+ARIMA can be applied here for the pure multiplicative ETS+ARIMA to guarantee that the resulting model is identifiable no matter what.
+In addition, the recommendations discussed for the pure additive ETS+ARIMA can be applied here for the pure multiplicative ETS+ARIMA to guarantee that the resulting model is identifiable no matter what.
 
-Finally, mixing additive ETS with multiplicative ARIMA or multiplicative ETS with additive ARIMA does not make sense and only complicates the model building process, so, we do not consider these exotic cases in the book.
+Finally, mixing additive ETS with multiplicative ARIMA or multiplicative ETS with additive ARIMA does not make sense from modelling point of view, and only complicates the model building process, so, we do not consider these exotic cases in this book, although they are possible in theory.
 
 ## Examples of application {#ADAMARIMAExamples}
-Building upon the example with `AirPassengers` data from [the previous section](#ARIMAExampleInRSeasonal), we will construct multiplicative ARIMA models and see, which one of them is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(0,2,2)$_{12}$, which had AICc of `r round(min(sapply(adamModelSARIMA, AICc)),3)`. We will do something similar here, but using Log Normal distribution, thus working with logARIMA. In order to understand what model can be used in this case, we can take logarithm of data and see what happens with the components of time series:
+Building upon the example with `AirPassengers` data from Section \@ref(ARIMAExampleInRSeasonal), we will construct several multiplicative ARIMA models and see, which one of them is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(0,2,2)$_{12}$, which had AICc of `r round(min(sapply(adamModelSARIMA, AICc)),3)`. We will do something similar here, but using Log Normal distribution, thus working with logARIMA. In order to understand what model can be used in this case, we can take logarithm of data and see what happens with the components of time series:
 ```{r}
 plot(log(AirPassengers))
 ```
 
-We still have the trend in the data and the seasonality now corresponds to the additive one rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking first differences for the seasonal should suffice. So we can test several models with different options for ARIMA orders:
+We still have the trend in the data and the seasonality now corresponds to the additive one rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking first differences for the seasonal should suffice, because the logarithmic transform will take care of the expanding seasonal pattern in the data. So we can test several models with different options for ARIMA orders:
 ```{r}
 adamModelLogSARIMA <- vector("list",3)
-adamModelLogSARIMA[[1]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                                orders=list(ar=c(0,0), i=c(1,1), ma=c(1,1)),
-                                h=12, holdout=TRUE, distribution="dlnorm")
-adamModelLogSARIMA[[2]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                                orders=list(ar=c(0,0), i=c(2,1), ma=c(2,2)),
-                                h=12, holdout=TRUE, distribution="dlnorm")
-adamModelLogSARIMA[[3]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                                orders=list(ar=c(1,0), i=c(1,1), ma=c(2,1)),
-                                h=12, holdout=TRUE, distribution="dlnorm")
+# logSARIMA(0,1,1)(0,1,1)[12]
+adamModelLogSARIMA[[1]] <-
+  adam(AirPassengers, "NNN", lags=c(1,12),
+       orders=list(ar=c(0,0), i=c(1,1), ma=c(1,1)),
+       h=12, holdout=TRUE, distribution="dlnorm")
+# logSARIMA(0,2,2)(0,1,1)[12]
+adamModelLogSARIMA[[2]] <-
+  adam(AirPassengers, "NNN", lags=c(1,12),
+       orders=list(ar=c(0,0), i=c(2,1), ma=c(2,2)),
+       h=12, holdout=TRUE, distribution="dlnorm")
+# logSARIMA(1,1,2)(0,1,1)[12]
+adamModelLogSARIMA[[3]] <-
+  adam(AirPassengers, "NNN", lags=c(1,12),
+       orders=list(ar=c(1,0), i=c(1,1), ma=c(2,1)),
+       h=12, holdout=TRUE, distribution="dlnorm")
 names(adamModelLogSARIMA) <- c("logSARIMA(0,1,1)(0,1,1)[12]",
                                "logSARIMA(0,2,2)(0,1,1)[12]",
                                "logSARIMA(1,1,2)(0,1,1)[12]")
 ```
-The thing that is different between the models is the non-seasonal part. Using the [connection with ETS](#ARIMAandETS), the first model should work on local level data, the second should be optimal for the local trend series and the third one is placed somewhere in between the two. We can compare the models based on AICc:
+The thing that is different between the models is the non-seasonal part. Using the connection with ETS (discussed in Section \@ref(ARIMAandETS)), the first model should work on local level data, the second should be optimal for the local trend series and the third one is placed somewhere in between the two. We can compare the models using AICc:
 ```{r}
 sapply(adamModelLogSARIMA, AICc)
 ```
-It looks like the logSARIMA(0,1,1)(0,1,1)$_{12}$ is more appropriate for the data. In order to make sure that we did not miss anything, we analyse the residuals of this model:
-```{r}
-par(mfcol=c(2,1))
+It looks like the logSARIMA(0,1,1)(0,1,1)$_{12}$ is more appropriate for the data. In order to make sure that we did not miss anything, we analyse the residuals of this model (Figure \@ref(fig:logSARIMAACF)):
+
+```{r logSARIMAACF, fig.cap="ACF and PACF of logSARIMA(0,1,1)(0,1,1)$_{12}$."}
+par(mfcol=c(2,1), mar=c(2,2,2,1))
 plot(adamModelLogSARIMA[[1]],10:11)
 ```
 
-We can see that there are no significant coefficient on either ACF or PACF, so there is nothing else to improve in this model. We can then produce forecast from the model and see how it performed on the holdout sample:
-```{r}
-adamModelLogSARIMA[[1]]
+We can see that there are no significant coefficient on either ACF or PACF, so there is nothing else to improve in this model. We can then produce forecast from the model and see how it performed on the holdout sample (Figure \@ref(fig:logSARIMAForecast)):
+
+```{r logSARIMAForecast, fig.cap="Forecast from logSARIMA(0,1,1)(0,1,1)$_{12}$."}
 plot(forecast(adamModelLogSARIMA[[1]],h=12,interval="prediction"))
 ```
 
-The ETS model closest to the logSARIMA(0,1,1)(0,1,1)$_{12}$ would probably be ETS(M,M,M):
+The ETS model closest to the logSARIMA(0,1,1)(0,1,1)$_{12}$ would probably be ETS(M,M,M), because the former has both seasonal and non-seasonal differences (see discussion in Subsection \@ref(ARIMAETSOther)):
+
 ```{r}
 adamModelETS <- adam(AirPassengers, "MMM", h=12, holdout=TRUE)
 adamModelETS
 ```
 
-Comparing information criteria, ETS(M,M,M) should be preferred to logARIMA, but in terms of accuracy on the holdout, logARIMA is more accurate than ETS on this data.
+Comparing information criteria, ETS(M,M,M) should be preferred to logARIMA, but in terms of accuracy on the holdout, logARIMA is more accurate than ETS on this data:
+
+```{r}
+adamModelLogSARIMA[[1]]
+```
