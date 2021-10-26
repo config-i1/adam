@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-10-26" />
+<meta name="date" content="2021-10-27" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -562,30 +562,41 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 </div>
 <div id="non-mle-based-loss-functions" class="section level2" number="11.2">
 <h2><span class="header-section-number">11.2</span> Non MLE-based loss functions</h2>
-<div id="MSEandMAEEstimators" class="section level3" number="11.2.1">
-<h3><span class="header-section-number">11.2.1</span> MSE and MAE</h3>
-<p>An alternative approach for estimating ADAM ETS is using the conventional loss functions, such as MSE, MAE etc. In this case, the model selection using information criteria would not work, but this might not matter, when you have already decided what model to use and want to improve it. In some special cases (as discussed in Chapter 3 of <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span>), the minimisation of these losses would give the same results as the maximisation of some likelihoods, namely:</p>
+<p>An alternative approach for estimating ADAM ETS is using the conventional loss functions, such as MSE, MAE etc. In this case, the model selection using information criteria would not work, but this might not matter, when you have already decided what model to use and want to improve it. In some special cases <span class="citation">(as discussed in Chapter 3 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span>, the minimisation of these losses would give the same results as the maximisation of some likelihood functions:</p>
 <ol style="list-style-type: decimal">
-<li>Minimum of MSE corresponds to the maximum of likelihood of Normal distribution;</li>
-<li>Minimum of MAE corresponds to the maximum of likelihood of Laplace distribution;</li>
+<li>Minimum of MSE corresponds to the maximum of likelihood of Normal distribution <span class="citation">(see discussion in <a href="#ref-Kolassa2016" role="doc-biblioref">Kolassa, 2016</a>)</span>;</li>
+<li>Minimum of MAE corresponds to the maximum of likelihood of Laplace distribution <span class="citation">(<a href="#ref-Schwertman1990" role="doc-biblioref">Schwertman et al., 1990</a>)</span>;</li>
 <li>Minimum of pinball function <span class="citation">(<a href="#ref-Koenker1978" role="doc-biblioref">Koenker and Bassett, 1978</a>, quantile regression)</span> corresponds to the maximum of likelihood of Asymmetric Laplace distribution <span class="citation">(<a href="#ref-Yu2005" role="doc-biblioref">Yu and Zhang, 2005</a>)</span>;</li>
 </ol>
-<p>The main difference between using these losses and maximising respective likelihoods is in the <a href="#statisticsNumberOfParameters">number of estimated parameters</a>: the latter implies that the scale is estimated together with the other parameters, while the former does not consider it.</p>
+<p>The main difference between using these losses and maximising respective likelihoods is in the number of estimated parameters <span class="citation">(see discussion in Section 13.3 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span>: the latter implies that the scale is estimated together with the other parameters, while the former does not consider it and in a way provides it for free.</p>
 <p>Having said that, the assumed distribution does not necessarily depend on the used loss and vice versa. For example, we can assume that the actuals follow Inverse Gaussian distribution, but estimate the model using MAE. The estimates of parameters might not be as efficient as in the case of MLE, but it is still possible to do. The error term, which is minimised in respective losses depends on the error type:</p>
 <ul>
 <li>Additive error: <span class="math inline">\(e_t = y_t - \hat{\mu}_{y,t}\)</span>;</li>
 <li>Multiplicative error: <span class="math inline">\(e_t = \frac{y_t - \hat{\mu}_{y,t}}{\hat{\mu}_{y,t}}\)</span>.</li>
 </ul>
 <p>This follows directly from the respective ETS models.</p>
+<div id="MSEandMAEEstimators" class="section level3" number="11.2.1">
+<h3><span class="header-section-number">11.2.1</span> MSE and MAE</h3>
+<p>MSE and MAE have been discussed in Section <a href="errorMeasures.html#errorMeasures">2.1</a>, but in the context of forecasts evaluation. If they are used for the estimation of a model, then the formulae <a href="errorMeasures.html#eq:RMSE">(2.1)</a> and <a href="errorMeasures.html#eq:MAE">(2.2)</a> would need to be amended to:
+<span class="math display" id="eq:MSEInSample">\[\begin{equation}
+    \mathrm{MSE} = \sqrt{\frac{1}{T} \sum_{j=1}^T \left( e_t \right)^2 }
+    \tag{11.6}
+\end{equation}\]</span>
+and
+<span class="math display" id="eq:MAEInSample">\[\begin{equation}
+    \mathrm{MAE} = \frac{1}{T} \sum_{j=1}^T \left| e_t \right| ,
+    \tag{11.7}
+\end{equation}\]</span>
+where the specific formula for <span class="math inline">\(e_t\)</span> would depend on the error type. The main difference between the two estimators is in terms of what specifically they are minimised with: MSE is minimised by mean, while MAE is minimised by median. This means that models estimated using MAE will typically be more conservative (i.e. in case of ETS, have lower smoothing parameters). <span class="citation"><a href="#ref-Gardner2006" role="doc-biblioref">Gardner</a> (<a href="#ref-Gardner2006" role="doc-biblioref">2006</a>)</span> recommended using MAE in cases of outliers in the data, as the model becomes not as reactive as in case of MSE in this situation. Note that in case of intermittent demand, MAE should be in general avoided due to the issues discussed in Section <a href="errorMeasures.html#errorMeasures">2.1</a>.</p>
 </div>
 <div id="ham" class="section level3" number="11.2.2">
 <h3><span class="header-section-number">11.2.2</span> HAM</h3>
 <p>Along with the discussed MSE and MAE, there is also HAM - “Half Absolute Moment”:
 <span class="math display" id="eq:HAM">\[\begin{equation}
   \mathrm{HAM} = \frac{1}{T} \sum_{j=1}^T \sqrt{\left|e_t\right|},
-  \tag{11.6}
+  \tag{11.8}
 \end{equation}\]</span>
-the minimum of which corresponds to the maximum of the likelihood of S distribution (see Chapter 3 of <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span>). The idea of this estimator is to minimise the errors that happen very often, close to the estimate. It will typically ignore the outliers and focus on the values that happen most often. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution. I donot have a proof of this property, but it becomes apparent, given that the square root in <a href="non-mle-based-loss-functions.html#eq:HAM">(11.6)</a> would reduce the influence of all values lying above 1 and increase the values of everything that lies between (0, 1) (e.g. <span class="math inline">\(\sqrt{0.16}=0.4\)</span>, but <span class="math inline">\(\sqrt{16}=4\)</span>).</p>
+the minimum of which corresponds to the maximum of the likelihood of S distribution (see Chapter 3 of <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span>). The idea of this estimator is to minimise the errors that happen very often, close to the estimate. It will typically ignore the outliers and focus on the values that happen most often. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution. I do not have a proof of this property, but it becomes apparent, given that the square root in <a href="non-mle-based-loss-functions.html#eq:HAM">(11.8)</a> would reduce the influence of all values lying above 1 and increase the values of everything that lies between (0, 1) (e.g. <span class="math inline">\(\sqrt{0.16}=0.4\)</span>, but <span class="math inline">\(\sqrt{16}=4\)</span>).</p>
 <p>Similar to HAM, one can calculate other fractional losses, which would be even less sensitive to outliers and more focused on the frequently appearing values, e.g. by using the <span class="math inline">\(\sqrt[^\alpha]{\left|e_t\right|}\)</span> with <span class="math inline">\(\alpha&gt;1\)</span>.</p>
 </div>
 <div id="lasso-and-ridge" class="section level3" number="11.2.3">
@@ -596,7 +607,7 @@ the minimum of which corresponds to the maximum of the likelihood of S distribut
     \mathrm{LASSO} = &amp;(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum |\hat{\theta}| \\
     \mathrm{RIDGE} = &amp;(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum \hat{\theta}^2,
   \end{aligned}
-  \tag{11.7}
+  \tag{11.9}
 \end{equation}\]</span>
 where <span class="math inline">\(\theta\)</span> is the vector of all parameters in the model and <span class="math inline">\(\lambda\)</span> is the regularisation parameter. The idea of these losses is in shrinkage of parameters. If <span class="math inline">\(\lambda=0\)</span>, then the losses become equivalent to the MSE, when <span class="math inline">\(\lambda=1\)</span>, the optimiser would minimise the values of parameters, ignoring the MSE part. In the context of ETS, it makes sense to shrink everything but the initial level. In order for different components to shrink with a similar speed, they need to be normalised, so here are some tricks used in ADAM ETS:</p>
 <ol style="list-style-type: decimal">
@@ -681,11 +692,20 @@ where <span class="math inline">\(\theta\)</span> is the vector of all parameter
 <div id="ref-Barrow2020" class="csl-entry">
 • Barrow, D., Kourentzes, N., Sandberg, R., Niklewski, J., 2020. <span class="nocase">Automatic robust estimation for exponential smoothing: Perspectives from statistics and machine learning</span>. Expert Systems with Applications. 160, 113637. <a href="https://doi.org/10.1016/j.eswa.2020.113637">https://doi.org/10.1016/j.eswa.2020.113637</a>
 </div>
+<div id="ref-Gardner2006" class="csl-entry">
+• Gardner, E.S., 2006. <span class="nocase">Exponential smoothing: The state of the art-Part II</span>. International Journal of Forecasting. 22, 637–666. <a href="https://doi.org/10.1016/j.ijforecast.2006.03.005">https://doi.org/10.1016/j.ijforecast.2006.03.005</a>
+</div>
 <div id="ref-James2017" class="csl-entry">
 • James, G., Witen, D., Hastie, T., Tibshirani, R., 2017. <span class="nocase">An Introduction to Statistical Learning with Applications in R</span>. Springer New York. <a href="https://doi.org/10.1016/j.peva.2007.06.006">https://doi.org/10.1016/j.peva.2007.06.006</a>
 </div>
 <div id="ref-Koenker1978" class="csl-entry">
 • Koenker, R., Bassett, G., 1978. <span>Regression Quantiles</span>. Econometrica. 46, 33. <a href="https://doi.org/10.2307/1913643">https://doi.org/10.2307/1913643</a>
+</div>
+<div id="ref-Kolassa2016" class="csl-entry">
+• Kolassa, S., 2016. <span class="nocase">Evaluating predictive count data distributions in retail sales forecasting</span>. International Journal of Forecasting. 32, 788–803. <a href="https://doi.org/10.1016/j.ijforecast.2015.12.004">https://doi.org/10.1016/j.ijforecast.2015.12.004</a>
+</div>
+<div id="ref-Schwertman1990" class="csl-entry">
+• Schwertman, N.C., Gilks, A.J., Cameron, J., 1990. <span class="nocase">A Simple Noncalculus Proof That the Median Minimizes the Sum of the Absolute Deviations</span>. The American Statistician. 44, 38–39. <a href="https://doi.org/10.1080/00031305.1990.10475690">https://doi.org/10.1080/00031305.1990.10475690</a>
 </div>
 <div id="ref-SvetunkovSBA" class="csl-entry">
 • Svetunkov, I., 2021c. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 01.10.2021)

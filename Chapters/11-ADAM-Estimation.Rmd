@@ -230,14 +230,13 @@ This command should return the ADAM ETS(M,A,M) model with the most appropriate d
 
 
 ## Non MLE-based loss functions
-### MSE and MAE {#MSEandMAEEstimators}
-An alternative approach for estimating ADAM ETS is using the conventional loss functions, such as MSE, MAE etc. In this case, the model selection using information criteria would not work, but this might not matter, when you have already decided what model to use and want to improve it. In some special cases (as discussed in Chapter 3 of @SvetunkovSBA), the minimisation of these losses would give the same results as the maximisation of some likelihoods, namely:
+An alternative approach for estimating ADAM ETS is using the conventional loss functions, such as MSE, MAE etc. In this case, the model selection using information criteria would not work, but this might not matter, when you have already decided what model to use and want to improve it. In some special cases [as discussed in Chapter 3 of @SvetunkovSBA], the minimisation of these losses would give the same results as the maximisation of some likelihood functions:
 
-1. Minimum of MSE corresponds to the maximum of likelihood of Normal distribution;
-2. Minimum of MAE corresponds to the maximum of likelihood of Laplace distribution;
+1. Minimum of MSE corresponds to the maximum of likelihood of Normal distribution [see discussion in @Kolassa2016];
+2. Minimum of MAE corresponds to the maximum of likelihood of Laplace distribution [@Schwertman1990];
 3. Minimum of pinball function [@Koenker1978, quantile regression] corresponds to the maximum of likelihood of Asymmetric Laplace distribution [@Yu2005];
 
-The main difference between using these losses and maximising respective likelihoods is in the [number of estimated parameters](#statisticsNumberOfParameters): the latter implies that the scale is estimated together with the other parameters, while the former does not consider it.
+The main difference between using these losses and maximising respective likelihoods is in the number of estimated parameters [see discussion in Section 13.3 of @SvetunkovSBA]: the latter implies that the scale is estimated together with the other parameters, while the former does not consider it and in a way provides it for free.
 
 Having said that, the assumed distribution does not necessarily depend on the used loss and vice versa. For example, we can assume that the actuals follow Inverse Gaussian distribution, but estimate the model using MAE. The estimates of parameters might not be as efficient as in the case of MLE, but it is still possible to do. The error term, which is minimised in respective losses depends on the error type:
 
@@ -246,13 +245,30 @@ Having said that, the assumed distribution does not necessarily depend on the us
 
 This follows directly from the respective ETS models.
 
+
+### MSE and MAE {#MSEandMAEEstimators}
+MSE and MAE have been discussed in Section \@ref(errorMeasures), but in the context of forecasts evaluation. If they are used for the estimation of a model, then the formulae \@ref(eq:RMSE) and \@ref(eq:MAE) would need to be amended to:
+\begin{equation}
+    \mathrm{MSE} = \sqrt{\frac{1}{T} \sum_{j=1}^T \left( e_t \right)^2 }
+    (\#eq:MSEInSample)
+\end{equation}
+and 
+\begin{equation}
+    \mathrm{MAE} = \frac{1}{T} \sum_{j=1}^T \left| e_t \right| ,
+    (\#eq:MAEInSample)
+\end{equation}
+where the specific formula for $e_t$ would depend on the error type. The main difference between the two estimators is in terms of what specifically they are minimised with: MSE is minimised by mean, while MAE is minimised by median. This means that models estimated using MAE will typically be more conservative (i.e. in case of ETS, have lower smoothing parameters). @Gardner2006 recommended using MAE in cases of outliers in the data, as the model becomes not as reactive as in case of MSE in this situation. Note that in case of intermittent demand, MAE should be in general avoided due to the issues discussed in Section \@ref(errorMeasures).
+
+
+
+
 ### HAM
 Along with the discussed MSE and MAE, there is also HAM - "Half Absolute Moment":
 \begin{equation}
   \mathrm{HAM} = \frac{1}{T} \sum_{j=1}^T \sqrt{\left|e_t\right|},
   (\#eq:HAM)
 \end{equation}
-the minimum of which corresponds to the maximum of the likelihood of S distribution (see Chapter 3 of @SvetunkovSBA). The idea of this estimator is to minimise the errors that happen very often, close to the estimate. It will typically ignore the outliers and focus on the values that happen most often. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution. I donot have a proof of this property, but it becomes apparent, given that the square root in \@ref(eq:HAM) would reduce the influence of all values lying above 1 and increase the values of everything that lies between (0, 1) (e.g. $\sqrt{0.16}=0.4$, but $\sqrt{16}=4$).
+the minimum of which corresponds to the maximum of the likelihood of S distribution (see Chapter 3 of @SvetunkovSBA). The idea of this estimator is to minimise the errors that happen very often, close to the estimate. It will typically ignore the outliers and focus on the values that happen most often. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution. I do not have a proof of this property, but it becomes apparent, given that the square root in \@ref(eq:HAM) would reduce the influence of all values lying above 1 and increase the values of everything that lies between (0, 1) (e.g. $\sqrt{0.16}=0.4$, but $\sqrt{16}=4$).
 
 Similar to HAM, one can calculate other fractional losses, which would be even less sensitive to outliers and more focused on the frequently appearing values, e.g. by using the $\sqrt[^\alpha]{\left|e_t\right|}$ with $\alpha>1$.
 
