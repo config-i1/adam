@@ -201,15 +201,15 @@ As discussed in the previous sections, it is difficult to capture the impact of 
 
 The idea of the approach is to get the covariance matrix of the parameters of the selected model (see Section \@ref(ADAMUncertaintyVCOV)) and then generate $n$ sets of parameters randomly from rectified multivariate normal distribution using the matrix and the values of estimated parameters. After that the model is applied to the data with each combination of generated parameters, states, fitted values and residuals are extracted from it to get their distribution. This way we propagate the uncertainty about the parameters from the first observation to the last. The final states can also be used to produce point forecasts and prediction intervals based each set of parameters. These scenarios allow producing more adequate prediction intervals from the model and / or confidence intervals for the fitted values, states and conditional expectations. All of this is done without additional assumptions (as it is done in bagging), relying fully on the model. However, the approach is computationally expensive, as it requires fitting all the $n$ models to the data, although no estimation is needed for them. If the uncertainty about the model needs to be taken into account, then the combination of models can be used, as described in Section \@ref(ADAMCombinations).
 
-`smooth` package has the method `refit()` that implements this approach for `adam()` models. This works with ADAM ETS, ARIMA, regression and any combination between them. Here is an example in R with $n=1000$:
+`smooth` package has the method `reapply()` that implements this approach for `adam()` models. This works with ADAM ETS, ARIMA, regression and any combination between them. Here is an example in R with $n=1000$:
 
 ```{r adamETSRefitted, fig.cap="Refitted ADAM ETS(M,M,M) model on AirPassengers data."}
 adamModelETS <- adam(AirPassengers, "MMM", h=10, holdout=TRUE)
-adamModelETSRefitted <- refit(adamModelETS, nsim=1000)
+adamModelETSRefitted <- reapply(adamModelETS, nsim=1000)
 plot(adamModelETSRefitted)
 ```
 
-Figure \@ref(fig:adamETSRefitted) demonstrates how the approach works on the example of `AirPassengers` data and ETS(M,M,M) model. The grey areas around the fitted line show quantiles from the fitted values, forming confidence intervals of width 95%, 80%, 60%, 40% and 20%. They show how the fitted value would vary, if the estimates of parameters would different from the estimated ones. Note that there was a warning about the covariance matrix of parameters, which typically arises if the optimal value of the loss function was not reached. If this happens, I would recommend tuning the optimiser (see Section \@ref(ADAMInitialisation)). For example, we could try more iterations via setting `maxeval` parameter or reestimating the model, providing the estimates of parameters in `B`. If these fail and the bounds from the `refit()` are too wide, then it might make sense considering backcasting for the initialisation.
+Figure \@ref(fig:adamETSRefitted) demonstrates how the approach works on the example of `AirPassengers` data and ETS(M,M,M) model. The grey areas around the fitted line show quantiles from the fitted values, forming confidence intervals of width 95%, 80%, 60%, 40% and 20%. They show how the fitted value would vary, if the estimates of parameters would different from the estimated ones. Note that there was a warning about the covariance matrix of parameters, which typically arises if the optimal value of the loss function was not reached. If this happens, I would recommend tuning the optimiser (see Section \@ref(ADAMInitialisation)). For example, we could try more iterations via setting `maxeval` parameter or reestimating the model, providing the estimates of parameters in `B`. If these fail and the bounds from the `reapply()` are too wide, then it might make sense considering backcasting for the initialisation.
 
 The `adamModelETSRefitted` object contains several variables, including:
 
@@ -226,8 +226,8 @@ As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example
 ```{r eval=FALSE}
 y <- rnorm(200,100,10)
 adamModelARIMA1 <- adam(y, "NNN", h=10, holdout=TRUE,
-                       orders=c(0,1,1))
-adamModelARIMARefitted1 <- refit(adamModelARIMA1)
+                        orders=c(0,1,1))
+adamModelARIMARefitted1 <- reapply(adamModelARIMA1)
 plot(adamModelARIMARefitted1)
 ```
 
@@ -241,8 +241,8 @@ Note that the more complicated the fitted model is, the more difficult it is to 
 ```{r eval=FALSE}
 adamModelARIMA2 <- adam(y, "NNN", h=10, holdout=TRUE,
                        orders=c(0,1,1))
-adamModelARIMARefitted2 <- refit(adamModelARIMA2, bootstrap=TRUE,
-                                nsim=1000, parallel=TRUE)
+adamModelARIMARefitted2 <- reapply(adamModelARIMA2, bootstrap=TRUE,
+                                   nsim=1000, parallel=TRUE)
 plot(adamModelARIMARefitted2)
 ```
 
