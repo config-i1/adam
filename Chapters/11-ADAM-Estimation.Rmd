@@ -260,20 +260,19 @@ and
 where the specific formula for $e_t$ would depend on the error type. The main difference between the two estimators is in terms of what specifically they are minimised with: MSE is minimised by mean, while MAE is minimised by median. This means that models estimated using MAE will typically be more conservative (i.e. in case of ETS, have lower smoothing parameters). @Gardner2006 recommended using MAE in cases of outliers in the data, as the model becomes not as reactive as in case of MSE in this situation. Note that in case of intermittent demand, MAE should be in general avoided due to the issues discussed in Section \@ref(errorMeasures).
 
 
-
-
 ### HAM
 Along with the discussed MSE and MAE, there is also HAM - "Half Absolute Moment":
 \begin{equation}
   \mathrm{HAM} = \frac{1}{T} \sum_{j=1}^T \sqrt{\left|e_t\right|},
   (\#eq:HAM)
 \end{equation}
-the minimum of which corresponds to the maximum of the likelihood of S distribution (see Chapter 3 of @SvetunkovSBA). The idea of this estimator is to minimise the errors that happen very often, close to the estimate. It will typically ignore the outliers and focus on the values that happen most often. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution. I do not have a proof of this property, but it becomes apparent, given that the square root in \@ref(eq:HAM) would reduce the influence of all values lying above 1 and increase the values of everything that lies between (0, 1) (e.g. $\sqrt{0.16}=0.4$, but $\sqrt{16}=4$).
+the minimum of which corresponds to the maximum of the likelihood of S distribution [see Chapter 3 of @SvetunkovSBA]. The idea of this estimator is to minimise the errors that happen very often, close to the location of distribution. It will typically ignore the outliers and focus on the values that happen most often. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution if it is unimodal. I do not have a proof of this property, but it becomes apparent, given that the square root in \@ref(eq:HAM) would reduce the influence of all values lying above 1 and increase the values of everything that lies between (0, 1) (e.g. $\sqrt{0.16}=0.4$, but $\sqrt{16}=4$).
 
-Similar to HAM, one can calculate other fractional losses, which would be even less sensitive to outliers and more focused on the frequently appearing values, e.g. by using the $\sqrt[^\alpha]{\left|e_t\right|}$ with $\alpha>1$.
+Similar to HAM, one can calculate other fractional losses, which would be even less sensitive to outliers and more focused on the frequently appearing values, e.g. by using the $\sqrt[^\alpha]{\left|e_t\right|}$ with $\alpha>1$. This would then correspond to the maximum of Generalised Normal distribution with shape parameter $\beta=\frac{1}{\alpha}$.
+
 
 ### LASSO and RIDGE
-While this is not a well studied approach yet, it is possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation of ETS models [@James2017 give a good overview of these losses with examples in R], which can be formulated as (at least this is how it is formualted in ADAM ETS):
+While this is not a well studied approach yet, it is possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation of ETS models [@James2017 give a good overview of these losses with examples in R], which can be formulated in ADAM ETS:
 \begin{equation}
   \begin{aligned}
     \mathrm{LASSO} = &(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum |\hat{\theta}| \\
@@ -294,6 +293,7 @@ where $\theta$ is the vector of all parameters in the model and $\lambda$ is the
 All of these tricks make sure that different components shrink towards zero simultaneously, not breaking the model. If we would not do these steps, then, for example, the initial trend could dominate in $\hat{\theta}$ and would shrink faster than the smoothing parameters. As a result, one can potentially use the model with trend and seasonality and use regularisation in order to shrink the unnecessary parameters towards zero. The `adam()` function does not select the most appropriate $\lambda$ and will set it equal to zero if it is not provided by the user.
 
 Note that both LASSO and RIDGE are experimental options. If you have better ideas of how to implement them, send me a message, I will improve the mechanism in `adam()`.
+
 
 ### Custom losses
 It is also theoretically possible to use other non-standard loss functions. `adam()` function allows doing that via the parameter `loss`. For example, we could estimate an ETS(A,A,N) model on the `BJsales` data using an absolute cubic loss (note that the parameters `actual`, `fitted` and `B` are compulsory for the function):
