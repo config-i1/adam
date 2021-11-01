@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Chapter 14 Model diagnostics | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="Chapter 14 Model diagnostics | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-10-27" />
+<meta name="date" content="2021-11-01" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="intermittent-demand-challenges.html"/>
 <link rel="next" href="diagnosticsOmitted.html"/>
-<script src="libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -520,7 +520,7 @@ div.csl-indent {
 <li class="chapter" data-level="17.2.2" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#ADAMForecastingPISimulations"><i class="fa fa-check"></i><b>17.2.2</b> Simulated</a></li>
 <li class="chapter" data-level="17.2.3" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#semiparametric"><i class="fa fa-check"></i><b>17.2.3</b> Semiparametric</a></li>
 <li class="chapter" data-level="17.2.4" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#nonparametric"><i class="fa fa-check"></i><b>17.2.4</b> Nonparametric</a></li>
-<li class="chapter" data-level="17.2.5" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#empirical"><i class="fa fa-check"></i><b>17.2.5</b> Empirical</a></li>
+<li class="chapter" data-level="17.2.5" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#ADAMForecastingPIEmpirical"><i class="fa fa-check"></i><b>17.2.5</b> Empirical</a></li>
 <li class="chapter" data-level="17.2.6" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#complete-parametric"><i class="fa fa-check"></i><b>17.2.6</b> Complete parametric</a></li>
 <li class="chapter" data-level="17.2.7" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#explanatory-variables-1"><i class="fa fa-check"></i><b>17.2.7</b> Explanatory variables</a></li>
 <li class="chapter" data-level="17.2.8" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#ADAMForecastingPIExample"><i class="fa fa-check"></i><b>17.2.8</b> Example in R</a></li>
@@ -587,9 +587,9 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 </ol>
 <p>All the model diagnostics is aimed at spotting patterns in residuals. If there are some, then something is probably missing in the model. In this chapter we will discuss, which instruments can be used to diagnose different types of assumptions</p>
 <p>In order to make this more actionable, we will consider a conventional regression model on <code>Seatbelts</code> data. This can be estimated equally well either with <code>adam()</code> from <code>smooth</code> or <code>alm()</code> from <code>greybox</code>. In general, I recommend using <code>alm()</code>, when no dynamic elements are present in the model. Otherwise, use <code>adam()</code> as shown below:</p>
-<div class="sourceCode" id="cb238"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb238-1"><a href="diagnostics.html#cb238-1" aria-hidden="true" tabindex="-1"></a>adamModelSeat01 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;NNN&quot;</span>,</span>
-<span id="cb238-2"><a href="diagnostics.html#cb238-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">formula=</span>drivers<span class="sc">~</span>PetrolPrice<span class="sc">+</span>kms)</span>
-<span id="cb238-3"><a href="diagnostics.html#cb238-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat01,<span class="dv">7</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb236"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb236-1"><a href="diagnostics.html#cb236-1" aria-hidden="true" tabindex="-1"></a>adamModelSeat01 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;NNN&quot;</span>,</span>
+<span id="cb236-2"><a href="diagnostics.html#cb236-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">formula=</span>drivers<span class="sc">~</span>PetrolPrice<span class="sc">+</span>kms)</span>
+<span id="cb236-3"><a href="diagnostics.html#cb236-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat01,<span class="dv">7</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamModelSeat01"></span>
 <img src="adam_files/figure-html/adamModelSeat01-1.png" alt="Basic regression model for the data of Road Casualties in Great Britain 1969–84." width="672" />
 <p class="caption">
@@ -615,7 +615,6 @@ Figure 14.1: Basic regression model for the data of Road Casualties in Great Bri
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -656,7 +655,7 @@ gitbook.start({
 },
 "download": ["adam.pdf"],
 "search": {
-"engine": "lunr",
+"engine": "fuse",
 "options": null
 },
 "toc": {

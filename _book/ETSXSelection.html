@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>15.3 Explanatory variables selection | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="15.3 Explanatory variables selection | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-10-27" />
+<meta name="date" content="2021-11-01" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="ARIMASelection.html"/>
 <link rel="next" href="ADAMCombinations.html"/>
-<script src="libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -520,7 +520,7 @@ div.csl-indent {
 <li class="chapter" data-level="17.2.2" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#ADAMForecastingPISimulations"><i class="fa fa-check"></i><b>17.2.2</b> Simulated</a></li>
 <li class="chapter" data-level="17.2.3" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#semiparametric"><i class="fa fa-check"></i><b>17.2.3</b> Semiparametric</a></li>
 <li class="chapter" data-level="17.2.4" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#nonparametric"><i class="fa fa-check"></i><b>17.2.4</b> Nonparametric</a></li>
-<li class="chapter" data-level="17.2.5" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#empirical"><i class="fa fa-check"></i><b>17.2.5</b> Empirical</a></li>
+<li class="chapter" data-level="17.2.5" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#ADAMForecastingPIEmpirical"><i class="fa fa-check"></i><b>17.2.5</b> Empirical</a></li>
 <li class="chapter" data-level="17.2.6" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#complete-parametric"><i class="fa fa-check"></i><b>17.2.6</b> Complete parametric</a></li>
 <li class="chapter" data-level="17.2.7" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#explanatory-variables-1"><i class="fa fa-check"></i><b>17.2.7</b> Explanatory variables</a></li>
 <li class="chapter" data-level="17.2.8" data-path="ADAMForecastingPI.html"><a href="ADAMForecastingPI.html#ADAMForecastingPIExample"><i class="fa fa-check"></i><b>17.2.8</b> Example in R</a></li>
@@ -580,14 +580,14 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <p>In R, step (3) is done using the <code>stepwise()</code> function from <code>greybox</code> package, which supports all the distributions discussed in the previous chapters.</p>
 <p>While the suggested approach has obvious limitations (e.g. smoothing parameters can be higher than needed, explaining the variability otherwise explained by variables), it is efficient in terms of computational time.</p>
 <p>In order to see how it works, we use SeatBelt data:</p>
-<div class="sourceCode" id="cb319"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb319-1"><a href="ETSXSelection.html#cb319-1" aria-hidden="true" tabindex="-1"></a>SeatbeltsData <span class="ot">&lt;-</span> Seatbelts[,<span class="fu">c</span>(<span class="st">&quot;drivers&quot;</span>,<span class="st">&quot;kms&quot;</span>,<span class="st">&quot;PetrolPrice&quot;</span>,<span class="st">&quot;law&quot;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb317"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb317-1"><a href="ETSXSelection.html#cb317-1" aria-hidden="true" tabindex="-1"></a>SeatbeltsData <span class="ot">&lt;-</span> Seatbelts[,<span class="fu">c</span>(<span class="st">&quot;drivers&quot;</span>,<span class="st">&quot;kms&quot;</span>,<span class="st">&quot;PetrolPrice&quot;</span>,<span class="st">&quot;law&quot;</span>)]</span></code></pre></div>
 <p>We have already <a href="ETSXRExample.html#ETSXRExample">had a look at this data earlier</a>, so we can move directly to the selection part:</p>
-<div class="sourceCode" id="cb320"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb320-1"><a href="ETSXSelection.html#cb320-1" aria-hidden="true" tabindex="-1"></a>adamModelETSXMNMSelect <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
-<span id="cb320-2"><a href="ETSXSelection.html#cb320-2" aria-hidden="true" tabindex="-1"></a>                               <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb320-3"><a href="ETSXSelection.html#cb320-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
-<span id="cb320-4"><a href="ETSXSelection.html#cb320-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamModelETSXMNMSelect, <span class="at">h=</span><span class="dv">12</span>, <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-154-1.png" width="672" /></p>
-<div class="sourceCode" id="cb321"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb321-1"><a href="ETSXSelection.html#cb321-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamModelETSXMNMSelect)</span></code></pre></div>
+<div class="sourceCode" id="cb318"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb318-1"><a href="ETSXSelection.html#cb318-1" aria-hidden="true" tabindex="-1"></a>adamModelETSXMNMSelect <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
+<span id="cb318-2"><a href="ETSXSelection.html#cb318-2" aria-hidden="true" tabindex="-1"></a>                               <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb318-3"><a href="ETSXSelection.html#cb318-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
+<span id="cb318-4"><a href="ETSXSelection.html#cb318-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamModelETSXMNMSelect, <span class="at">h=</span><span class="dv">12</span>, <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
+<p><img src="adam_files/figure-html/unnamed-chunk-153-1.png" width="672" /></p>
+<div class="sourceCode" id="cb319"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb319-1"><a href="ETSXSelection.html#cb319-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamModelETSXMNMSelect)</span></code></pre></div>
 <pre><code>## Warning: Observed Fisher Information is not positive semi-definite, which means
 ## that the likelihood was not maximised properly. Consider reestimating the model,
 ## tuning the optimiser or using bootstrap via bootstrap=TRUE.</code></pre>
@@ -622,9 +622,9 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## 2266.378 2269.715 2317.465 2326.131</code></pre>
 <p>Note that the function might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality.</p>
 <p>Based on the summary from the model, we can see that neither <code>kms</code>, nor <code>PetrolPrice</code> improve the model in terms of AICc. We could check them manually in order to see if the selection worked out well in our case (construct sink regression as a benchmark):</p>
-<div class="sourceCode" id="cb324"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb324-1"><a href="ETSXSelection.html#cb324-1" aria-hidden="true" tabindex="-1"></a>adamModelETSXMNMSink <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
-<span id="cb324-2"><a href="ETSXSelection.html#cb324-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb324-3"><a href="ETSXSelection.html#cb324-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamModelETSXMNMSink)</span></code></pre></div>
+<div class="sourceCode" id="cb322"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb322-1"><a href="ETSXSelection.html#cb322-1" aria-hidden="true" tabindex="-1"></a>adamModelETSXMNMSink <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
+<span id="cb322-2"><a href="ETSXSelection.html#cb322-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
+<span id="cb322-3"><a href="ETSXSelection.html#cb322-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamModelETSXMNMSink)</span></code></pre></div>
 <pre><code>## Warning: Observed Fisher Information is not positive semi-definite, which means
 ## that the likelihood was not maximised properly. Consider reestimating the model,
 ## tuning the optimiser or using bootstrap via bootstrap=TRUE.</code></pre>
@@ -632,33 +632,33 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## Model estimated using adam() function: ETSX(MNM)
 ## Response variable: drivers
 ## Distribution used in the estimation: Gamma
-## Loss function type: likelihood; Loss function value: 1234.291
+## Loss function type: likelihood; Loss function value: 1234.276
 ## Coefficients:
 ##             Estimate Std. Error Lower 2.5% Upper 97.5%  
-## alpha         0.9508     2.5779     0.0000      1.0000  
-## gamma         0.0000     0.0132     0.0000      0.0260  
+## alpha         0.9508     2.5798     0.0000      1.0000  
+## gamma         0.0000     0.0131     0.0000      0.0259  
 ## level        23.2952     1.2746    20.7783     25.8086 *
-## seasonal_1    1.1340     0.0621     1.0115      4.2959 *
-## seasonal_2    0.9924     0.9574     0.8698      4.1542 *
-## seasonal_3    0.9248     0.8608     0.8023      4.0867 *
-## seasonal_4    0.8342     0.7952     0.7117      3.9960 *
-## seasonal_5    0.9068     0.9038     0.7843      4.0686 *
-## seasonal_6    0.8625     0.9196     0.7400      4.0243 *
-## seasonal_7    0.8396     0.8211     0.7171      4.0014 *
-## seasonal_8    0.8477     0.7802     0.7252      4.0095 *
-## seasonal_9    0.9798     1.0017     0.8573      4.1417 *
-## seasonal_10   1.1417     1.3043     1.0192      4.3036 *
-## seasonal_11   1.3273     1.6033     1.2047      4.4891 *
+## seasonal_1    1.1340     0.0621     1.0115      4.2792 *
+## seasonal_2    0.9924     0.9526     0.8698      4.1375 *
+## seasonal_3    0.9248     0.8560     0.8023      4.0700 *
+## seasonal_4    0.8354     0.7921     0.7128      3.9805 *
+## seasonal_5    0.9068     0.8966     0.7843      4.0519 *
+## seasonal_6    0.8625     0.9178     0.7400      4.0076 *
+## seasonal_7    0.8363     0.8131     0.7138      3.9815 *
+## seasonal_8    0.8477     0.7809     0.7252      3.9928 *
+## seasonal_9    0.9798     0.9973     0.8573      4.1250 *
+## seasonal_10   1.1417     1.2949     1.0192      4.2869 *
+## seasonal_11   1.3273     1.5949     1.2047      4.4724 *
 ## kms           0.0000     0.0000    -0.0001      0.0001  
-## PetrolPrice  -2.7216     3.1200    -8.8827      3.4312  
-## law           0.0181     5.2239   -10.2976     10.3197  
+## PetrolPrice  -2.7216     3.1283    -8.8991      3.4476  
+## law           0.0181     5.2227   -10.2954     10.3174  
 ## 
 ## Sample size: 180
 ## Number of estimated parameters: 18
 ## Number of degrees of freedom: 162
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 2504.581 2508.829 2562.054 2573.085</code></pre>
+## 2504.551 2508.800 2562.024 2573.055</code></pre>
 <p>We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the “true model.” While <code>adamModelETSXMNMSelect</code> might not be the best possible model in terms of information criteria, it is still a reasonable one and allows making different decisions.
 <!-- For example, we can see from the summary of the model that the introduction of law has reduced the number of accidents with drivers by approximately 23.79%. However, this is an average effect, and the true one lies somewhere between -34.06% and -13.53% (with the 95% confidence). --></p>
 </div>
@@ -679,7 +679,6 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -720,7 +719,7 @@ gitbook.start({
 },
 "download": ["adam.pdf"],
 "search": {
-"engine": "lunr",
+"engine": "fuse",
 "options": null
 },
 "toc": {
