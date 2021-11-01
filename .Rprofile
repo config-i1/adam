@@ -1,4 +1,4 @@
 options(bookdown.render.file_scope = FALSE)
-library(greybox)
-library(smooth)
-library(latex2exp)
+require("greybox")
+require("smooth")
+require("latex2exp")
