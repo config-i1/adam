@@ -272,7 +272,7 @@ Similar to HAM, one can calculate other fractional losses, which would be even l
 
 
 ### LASSO and RIDGE
-While this is not a well studied approach yet, it is possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation of ETS models [@James2017 give a good overview of these losses with examples in R], which can be formulated in ADAM ETS:
+While this is not a well studied approach yet, it is possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation of ETS models [@James2017 give a good overview of these losses with examples in R], which is formulated in ADAM ETS as:
 \begin{equation}
   \begin{aligned}
     \mathrm{LASSO} = &(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum |\hat{\theta}| \\
@@ -282,7 +282,7 @@ While this is not a well studied approach yet, it is possible to use LASSO [@Tib
 \end{equation}
 where $\theta$ is the vector of all parameters in the model and $\lambda$ is the regularisation parameter. The idea of these losses is in shrinkage of parameters. If $\lambda=0$, then the losses become equivalent to the MSE, when $\lambda=1$, the optimiser would minimise the values of parameters, ignoring the MSE part. In the context of ETS, it makes sense to shrink everything but the initial level. In order for different components to shrink with a similar speed, they need to be normalised, so here are some tricks used in ADAM ETS:
 
-1. The smoothing parameters are left intact, because they typicall lie between 0 and 1, where 0 means that the respective states are not updated over time;
+1. The smoothing parameters are left intact, because they typically lie between 0 and 1, where 0 means that the respective states are not updated over time;
 2. Damping parameter is modified to shrink towards 1, enforcing no dampening of the trend via: $\hat{\phi}^\prime=1-\hat{\phi}$;
 3. The initial level is normalised using the formula: $\hat{l}_0' = \frac{\hat{l}_0 - \bar{y}_m}{\hat{\sigma}_{y,m}}$, where $\bar{y}_m$ is the mean and $\hat{\sigma}_{y,m}$ is the standard deviation of the first $m$ actual observations, where $m$ is the highest frequency of the data (if $m=1$, then both values are taken based on the first two observations). Shrinking it to zero implies that it becomes equivalent to the mean of the first $m$ observations;
 4. If the trend is *additive*, then the initial trend component is scaled using: $\hat{b}_0' = \frac{\hat{b}_0}{\hat{\sigma}_{y,m}}$, making sure that it shrinks towards zero (no trend). In case of the *multiplicative* trend, this becomes: $\hat{b}_0' = \log{\hat{b}_0}$ , making it shrink towards 1 in the original scale (again, no trend case). The multiplicative trend can be anything between 0 and $\infty$ with 1 corresponding to no trend. Taking logarithm of it allows balancing out the cases, when $\hat{b}_0<1$ with $\hat{b}_0>1$;
@@ -296,7 +296,7 @@ Note that both LASSO and RIDGE are experimental options. If you have better idea
 
 
 ### Custom losses
-It is also theoretically possible to use other non-standard loss functions. `adam()` function allows doing that via the parameter `loss`. For example, we could estimate an ETS(A,A,N) model on the `BJsales` data using an absolute cubic loss (note that the parameters `actual`, `fitted` and `B` are compulsory for the function):
+It is also possible to use other non-standard loss functions. `adam()` function allows doing that via the parameter `loss`. For example, we could estimate an ETS(A,A,N) model on the `BJsales` data using an absolute cubic loss (note that the parameters `actual`, `fitted` and `B` are compulsory for the function):
 ```{r eval=FALSE}
 lossFunction <- function(actual, fitted, B){
   return(mean(abs(actual-fitted)^3));
@@ -304,7 +304,8 @@ lossFunction <- function(actual, fitted, B){
 adam(BJsales, "AAN", loss=lossFunction, h=10, holdout=TRUE)
 ```
 
-where `actual` is the vector of actual values $y_t$, `fitted` is the estimate of the one step ahead conditional mean $\hat{\mu}_{y,t}$ and $B$ is the vector of all estimated parameters, $\hat{\theta}$. This way, one can use more advanced estimators, such as, for example, M-estimators [@Barrow2020].
+where `actual` is the vector of actual values $y_t$, `fitted` is the estimate of the one step ahead point forecast $\hat{y}_t$ and $B$ is the vector of all estimated parameters, $\hat{\theta}$. This way, one can use more advanced estimators, such as, for example, M-estimators [@Barrow2020].
+
 
 ### Examples in R
 `adam()` has two parameters, one regulating the assumed `distribution`, and another one, regulating how the model will be estimated, what `loss` will be used for these purposes. Here are examples with combinations of different losses and an assumed Inverse Gaussian distribution for ETS(M,A,M) on `AirPassengers` data. We start with MSE, MAE and HAM:
