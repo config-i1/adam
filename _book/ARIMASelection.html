@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>15.2 ADAM ARIMA order selection | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
 
   <meta property="og:title" content="15.2 ADAM ARIMA order selection | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-11-01" />
+<meta name="date" content="2021-11-15" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,9 +33,8 @@
   
 <link rel="prev" href="ETSSelection.html"/>
 <link rel="next" href="ETSXSelection.html"/>
-<script src="libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="libs/header-attrs-2.10/header-attrs.js"></script>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -43,6 +42,7 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
+
 
 
 
@@ -420,10 +420,10 @@ div.csl-indent {
 <li class="chapter" data-level="12" data-path="multiple-frequencies-in-adam.html"><a href="multiple-frequencies-in-adam.html"><i class="fa fa-check"></i><b>12</b> Multiple frequencies in ADAM</a>
 <ul>
 <li class="chapter" data-level="12.1" data-path="model-formulation.html"><a href="model-formulation.html"><i class="fa fa-check"></i><b>12.1</b> Model formulation</a></li>
-<li class="chapter" data-level="12.2" data-path="estimation-of-multiple-seasonal-model.html"><a href="estimation-of-multiple-seasonal-model.html"><i class="fa fa-check"></i><b>12.2</b> Estimation of multiple seasonal model</a>
+<li class="chapter" data-level="12.2" data-path="ADAMMultiplIssues.html"><a href="ADAMMultiplIssues.html"><i class="fa fa-check"></i><b>12.2</b> Estimation of multiple seasonal model</a>
 <ul>
-<li class="chapter" data-level="12.2.1" data-path="estimation-of-multiple-seasonal-model.html"><a href="estimation-of-multiple-seasonal-model.html#adam-ets-issues"><i class="fa fa-check"></i><b>12.2.1</b> ADAM ETS issues</a></li>
-<li class="chapter" data-level="12.2.2" data-path="estimation-of-multiple-seasonal-model.html"><a href="estimation-of-multiple-seasonal-model.html#adam-arima-issues"><i class="fa fa-check"></i><b>12.2.2</b> ADAM ARIMA issues</a></li>
+<li class="chapter" data-level="12.2.1" data-path="ADAMMultiplIssues.html"><a href="ADAMMultiplIssues.html#adam-ets-issues"><i class="fa fa-check"></i><b>12.2.1</b> ADAM ETS issues</a></li>
+<li class="chapter" data-level="12.2.2" data-path="ADAMMultiplIssues.html"><a href="ADAMMultiplIssues.html#adam-arima-issues"><i class="fa fa-check"></i><b>12.2.2</b> ADAM ARIMA issues</a></li>
 </ul></li>
 <li class="chapter" data-level="12.3" data-path="ETSXMultipleSeasonality.html"><a href="ETSXMultipleSeasonality.html"><i class="fa fa-check"></i><b>12.3</b> Using explanatory variables for multiple seasonalities</a></li>
 <li class="chapter" data-level="12.4" data-path="MultipleFrequenciesDSTandLeap.html"><a href="MultipleFrequenciesDSTandLeap.html"><i class="fa fa-check"></i><b>12.4</b> Dealing with daylight saving and leap years</a></li>
@@ -582,14 +582,14 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 </ol>
 <p>As you can see, this algorithm relies on the idea of Box-Jenkins methodology, but takes it with a pinch of salt, checking every time if the proposed order is improving the model or not. The motivation for doing MA orders before AR is based on the understanding of what <a href="ARIMAIntro.html#AR">AR model</a> implies for forecasting. In a way, it is safer to have ARIMA(0,d,q) model than ARIMA(p,d,0), because the former is less prone to overfitting than the latter. Finally, the proposed algorithm is faster than the algorithm of <span class="citation"><a href="#ref-Svetunkov2019" role="doc-biblioref">Svetunkov and Boylan</a> (<a href="#ref-Svetunkov2019" role="doc-biblioref">2020b</a>)</span> and is more modest in the number of selected orders of the model.</p>
 <p>In order to start the algorithm, you would need to provide a parameter <code>select=TRUE</code> in the <code>orders</code>. Here is an example with Box-Jenkins data:</p>
-<div class="sourceCode" id="cb310"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb310-1"><a href="ARIMASelection.html#cb310-1" aria-hidden="true" tabindex="-1"></a>adamARIMAModel <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">model=</span><span class="st">&quot;NNN&quot;</span>,</span>
-<span id="cb310-2"><a href="ARIMASelection.html#cb310-2" aria-hidden="true" tabindex="-1"></a>                       <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="dv">3</span>,<span class="at">i=</span><span class="dv">2</span>,<span class="at">ma=</span><span class="dv">3</span>,<span class="at">select=</span><span class="cn">TRUE</span>),</span>
-<span id="cb310-3"><a href="ARIMASelection.html#cb310-3" aria-hidden="true" tabindex="-1"></a>                       <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb312"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb312-1"><a href="ARIMASelection.html#cb312-1" aria-hidden="true" tabindex="-1"></a>adamARIMAModel <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">model=</span><span class="st">&quot;NNN&quot;</span>,</span>
+<span id="cb312-2"><a href="ARIMASelection.html#cb312-2" aria-hidden="true" tabindex="-1"></a>                       <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="dv">3</span>,<span class="at">i=</span><span class="dv">2</span>,<span class="at">ma=</span><span class="dv">3</span>,<span class="at">select=</span><span class="cn">TRUE</span>),</span>
+<span id="cb312-3"><a href="ARIMASelection.html#cb312-3" aria-hidden="true" tabindex="-1"></a>                       <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
 <p>In this example, <code>orders=list(ar=3,i=2,ma=3,select=TRUE)</code> tells function that the maximum orders to check are <span class="math inline">\(p\leq 3\)</span>, <span class="math inline">\(d\leq 2\)</span> <span class="math inline">\(q\leq 3\)</span>. The resulting model is ARIMA(0,2,2) and has the following fit:</p>
-<div class="sourceCode" id="cb311"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb311-1"><a href="ARIMASelection.html#cb311-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamARIMAModel,<span class="dv">7</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-150-1.png" width="672" /></p>
-<div class="sourceCode" id="cb312"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb312-1"><a href="ARIMASelection.html#cb312-1" aria-hidden="true" tabindex="-1"></a>adamARIMAModel</span></code></pre></div>
-<pre><code>## Time elapsed: 0.64 seconds
+<div class="sourceCode" id="cb313"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb313-1"><a href="ARIMASelection.html#cb313-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamARIMAModel,<span class="dv">7</span>)</span></code></pre></div>
+<p><img src="adam_files/figure-html/unnamed-chunk-148-1.png" width="672" /></p>
+<div class="sourceCode" id="cb314"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb314-1"><a href="ARIMASelection.html#cb314-1" aria-hidden="true" tabindex="-1"></a>adamARIMAModel</span></code></pre></div>
+<pre><code>## Time elapsed: 0.61 seconds
 ## Model estimated using auto.adam() function: ARIMA(0,2,2)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 243.2819
@@ -613,13 +613,13 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <div id="ets-arima-restrictions" class="section level3" number="15.2.1">
 <h3><span class="header-section-number">15.2.1</span> ETS + ARIMA restrictions</h3>
 <p>Based on the relation between <a href="ARIMAandETS.html#ARIMAandETS">ARIMA and ETS</a>, when selecting ARIMA orders, we do not need to test some of combinations of models. For example, if we already consider ETS(A,N,N), then we do not need to check ARIMA(0,1,1) model. The recommendations for what to skip in different circumstances have been discussed in Section <a href="ETSAndARIMA.html#ETSAndARIMA">9.4</a>. Still there are different ways how to construct an ETS + ARIMA model, with different sequence between ETS selection / ARIMA selection. We suggest to start with ETS, then go to the selection of ARIMA orders. This way, we are building upon the robust forecasting model and see if it can be improved further by introducing elements that are not there. Note that given the complexity of the task of estimating all parameters for ETS and ARIMA, it is advised to use backcasting (see Section <a href="ADAMInitialisation.html#ADAMInitialisationOptAndBack">11.4.1</a>) for the initialisation of the model if a model selection is required for ETS + ARIMA. Here is an example in R:</p>
-<div class="sourceCode" id="cb314"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb314-1"><a href="ARIMASelection.html#cb314-1" aria-hidden="true" tabindex="-1"></a>adamETSARIMAModel <span class="ot">&lt;-</span></span>
-<span id="cb314-2"><a href="ARIMASelection.html#cb314-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">adam</span>(AirPassengers, <span class="at">model=</span><span class="st">&quot;PPP&quot;</span>,</span>
-<span id="cb314-3"><a href="ARIMASelection.html#cb314-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>),<span class="at">select=</span><span class="cn">TRUE</span>),</span>
-<span id="cb314-4"><a href="ARIMASelection.html#cb314-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">initial=</span><span class="st">&quot;back&quot;</span>)</span>
-<span id="cb314-5"><a href="ARIMASelection.html#cb314-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb314-6"><a href="ARIMASelection.html#cb314-6" aria-hidden="true" tabindex="-1"></a>adamETSARIMAModel</span></code></pre></div>
-<pre><code>## Time elapsed: 1.33 seconds
+<div class="sourceCode" id="cb316"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb316-1"><a href="ARIMASelection.html#cb316-1" aria-hidden="true" tabindex="-1"></a>adamETSARIMAModel <span class="ot">&lt;-</span></span>
+<span id="cb316-2"><a href="ARIMASelection.html#cb316-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">adam</span>(AirPassengers, <span class="at">model=</span><span class="st">&quot;PPP&quot;</span>,</span>
+<span id="cb316-3"><a href="ARIMASelection.html#cb316-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">3</span>),<span class="at">select=</span><span class="cn">TRUE</span>),</span>
+<span id="cb316-4"><a href="ARIMASelection.html#cb316-4" aria-hidden="true" tabindex="-1"></a>         <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">initial=</span><span class="st">&quot;back&quot;</span>)</span>
+<span id="cb316-5"><a href="ARIMASelection.html#cb316-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb316-6"><a href="ARIMASelection.html#cb316-6" aria-hidden="true" tabindex="-1"></a>adamETSARIMAModel</span></code></pre></div>
+<pre><code>## Time elapsed: 1.25 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -643,8 +643,8 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## ME: 3.416; MAE: 16.347; RMSE: 20.154
 ## sCE: 12.908%; Asymmetry: 31.9%; sMAE: 6.178%; sMSE: 0.58%
 ## MASE: 0.681; RMSSE: 0.646; rMAE: 0.164; rRMSE: 0.163</code></pre>
-<div class="sourceCode" id="cb316"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb316-1"><a href="ARIMASelection.html#cb316-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamETSARIMAModel,<span class="dv">7</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-151-1.png" width="672" /></p>
+<div class="sourceCode" id="cb318"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb318-1"><a href="ARIMASelection.html#cb318-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamETSARIMAModel,<span class="dv">7</span>)</span></code></pre></div>
+<p><img src="adam_files/figure-html/unnamed-chunk-149-1.png" width="672" /></p>
 <p>The resulting model is ETS(M,M,M) with AR elements: 3 non-seasonal ones and 1 seasonal AR, which improve the fit of the model and hopefully result in more accurate forecasts.</p>
 </div>
 </div>
@@ -671,6 +671,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -711,7 +712,7 @@ gitbook.start({
 },
 "download": ["adam.pdf"],
 "search": {
-"engine": "fuse",
+"engine": "lunr",
 "options": null
 },
 "toc": {
