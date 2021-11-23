@@ -1,7 +1,7 @@
 # Intermittent State Space Model {#ADAMIntermittent}
-So far we have discussed data that has regular occurrence. This is a characteristic of a well established product that is sold on every observation. For example, daily sales of bread in a supermarket would have this regularity. However, there are time series, where non-zero values do not happen on every observation. In the context of demand forecasting, this is called "**intermittent demand**". The conventional example of such demand is monthly sales of jet engines: they will contain a lot of zeroes, when nobody buys the product and then all of a sudden several units, again followed by zeroes. However, this problem does not only apply to such expensive exotic products - the retailers face this all the time for a variety of products, especially when sales are recorded on daily basis.
+So far we have discussed data that has regular occurrence. This is a characteristic of a variable that has non-zero values on every observation. For example, daily sales of bread in a supermarket would have this regularity. However, there are time series, where non-zero values do not happen on every observation. In the context of demand forecasting, this is called "**intermittent demand**". The conventional example of such demand is monthly sales of jet engines: they will contain a lot of zeroes, when nobody buys the product and then all of a sudden several units, when somebody decides to buy it, again followed by zeroes. However, this problem does not only apply to such expensive exotic products - the retailers face this all the time for a variety of products, especially when sales are recorded on daily basis or on even higher frequency.
 
-One of the simplest definitions of intermittent demand is that *it is the demand that happens at irregular frequency*. This definition relies on the specific frequency of data. If we work with hourly sales of products in the supermarket, it will inevitably be intermittent, because we cannot predict, when a customer will come and buy a product. However, if we aggregate this data to daily or even weekly data, the intermittence will most probably disappear, making the demand look regular. So, the problem of zeroes in the data might disappear if you select the time aggregation level correctly.
+One of the simplest definitions of intermittent demand is that *it is the demand that happens at irregular frequency*. This definition relies on the specific frequency of data. If we work with hourly sales of products in the supermarket, it will inevitably be intermittent, because we cannot predict, when a customer will come and buy a product. However, if we aggregate this data to weekly level, the intermittence will most probably disappear, making the demand look regular. So, the problem of zeroes in the data might disappear if you select the time aggregation level correctly.
 
 You might also meet the term "count data" (or "integer-valued data") in a similar context, but there is a difference between count and intermittent data. The former implies that demand can take integer values only and can be typically modelled via Poisson, Binomial or Negative Binomial distributions. It does not necessarily contain zeroes and does not explicitly allow demand to happen at random. If there are zeroes, then it is assumed that they are just one of the possible values of a distribution. In case of intermittent demand, we explicitly acknowledge that demand might not happen, but if it happens then the demand size will be greater than zero. Furthermore, intermittent demand does not necessarily need to be integer-valued. For example, daily energy consumption for charging electric vehicles would typically be intermittent (because the vehicle owners do not charge them every day), but the non-zero consumption will not be integer. Having said that, count distributions can be used in some cases of intermittent demand, but they do not necessarily always provide a good approximation of complex reality.
 
@@ -12,23 +12,23 @@ Before we move towards the proper discussion of the topic in context of ADAM, we
 \end{equation}
 where $o_t$ is the demand occurrence variable, which can be either zero or one and has some probability of occurrence $p_t$, $z_t$ is the demand sizes captured by a model (for example, ADAM ETS) and $y_t$ is the final observed demand. This model in context of intermittent demand was originally proposed by @Croston1972, but similar models (e.g. Hurdle and Zero Inflated Poisson) exist in other, non-forecasting related iterature.
 
-In this chapter, we will discuss the intermittent state space model \@ref(eq:IntermittentDemandModel), both parts of which can be modelled via ADAM models, and we will see how they can be used, what they imply and how they connect to the conventional regular demand. If ETS model is used for $z_t$ then \@ref(eq:IntermittentDemandModel) will be called iETS. So, iETS(M,N,N) model refers to the intermittent state space model, where demand sizes are modelled via ETS(M,N,N). ETS can also be used for occurrence part of the model, so if the discussion is focused on demand occurrence part of the model, $o_t$ (as in Section \@ref(ADAMOccurrence)), we will use ``oETS'' instead. Similarly, we can use terms iARIMA and oARIMA, referrin either to the full model or just an occurrence part of it. Note however that while ARIMA can be used in theory, it is not yet implemented for the occurrence part of the model. So we will focus the discussion in this chapter on ADAM ETS. Furthermore, depending on how the occurrence part is modelled, the notations above can be expanded to include references to specific parts of the occurrence part of the model. This is discussed in detail in Section \@ref(ADAMOccurrence).
+In this chapter, we will discuss the intermittent state space model \@ref(eq:IntermittentDemandModel), both parts of which can be modelled via ADAM models, and we will see how they can be used, what they imply and how they connect to the conventional regular demand. If ETS model is used for $z_t$ then \@ref(eq:IntermittentDemandModel) will be called iETS. So, iETS(M,N,N) model refers to the intermittent state space model, where demand sizes are modelled via ETS(M,N,N). ETS can also be used for occurrence part of the model, so if the discussion is focused on demand occurrence part of the model, $o_t$ (as in Section \@ref(ADAMOccurrence)), we will use ``oETS'' instead. Similarly, we can use terms iARIMA and oARIMA, referring either to the full model or just an occurrence part of it. Note however that while ARIMA can be used in theory, it is not yet implemented for the occurrence part of the model. So we will focus the discussion in this chapter on ADAM ETS. Furthermore, depending on how the occurrence part is modelled, the notations above can be expanded to include references to specific parts of the occurrence part of the model. This is discussed in detail in Section \@ref(ADAMOccurrence).
 
 This chapter is based on @Svetunkov2019a. If you want to know more about intermittent demand forecasting, @BoylanSyntetos2021 is a great textbook on the topic, covering all the main aspects of it in appropriate detail.
 
 
 ## Occurrence part of the model {#ADAMOccurrence}
-The general model \@ref(eq:IntermittentDemandModel) assumes that demand occurs randomly and that the variable $o_t$ can be either zero (no demand) or one (there is some demand). While this process can be modelled using different distributions, we propose using Bernoulli with a time varying probability (in the most general case):
+The general model \@ref(eq:IntermittentDemandModel) assumes that demand occurs randomly and that the variable $o_t$ can be either zero (no demand) or one (there is some demand). While this process can be modelled using different distributions, @Svetunkov2019a proposed using Bernoulli with a time varying probability (in the most general case):
 \begin{equation}
     o_t \sim \text{Bernoulli} \left(p_t \right) ,
   (\#eq:OccurrenceModelBernoulli)
 \end{equation}
-where $p_t$ is the probability of occurrence. In this section we will discuss different types of models for this probability. Each one has some idea behind it, and there are different mechanisms of the model construction, estimation, error calculation, update of the states and the generation of forecasts for each of them. The Probability Mass Function (PMF) of Bernoulli distribution based on this formulation is:
+where $p_t$ is the probability of occurrence. The higher it is, the more frequently the demand will happen. If $p_t=1$, then the demand becomes continuous, while with $p_t=0$, nobody buys the product at all. In this section, we will discuss different types of models for this probability. For each of them there are different mechanisms of the model construction, estimation, error calculation, update of the states and the generation of forecasts. In order to estimate any of these models using likelihood, we need to know the Probability Mass Function (PMF), which for Bernoulli distribution is:
 \begin{equation}
     f_o(o_t, p_t) = p_t^{o_t}(1-p_t)^{1-o_t}.
   (\#eq:BernoulliPMF)
 \end{equation}
-The occurrence part of the model can be estimated via the maximisation of the log-likelihood function, which comes directly from \@ref(eq:BernoulliPMF), and in the most general case is:
+The parameters of the occurrence part of the model can be then estimated via the maximisation of the log-likelihood function, which comes directly from \@ref(eq:BernoulliPMF), and in the most general case is:
 \begin{equation}
 	\ell \left(\boldsymbol{\theta}_o | o_t \right) = \sum_{o_t=1} \log(\hat{p}_t) + \sum_{o_t=0} \log(1-\hat{p}_t) ,
   (\#eq:oETSLikelihood)
@@ -41,22 +41,22 @@ y <- ts(c(rpois(20,0.25), rpois(20,0.5), rpois(20,1),
           rpois(20,2), rpois(20,3), rpois(20,5)))
 ```
 
-Here how the data looks like:
+Figure \@ref(fig:intermittentExamplePlot) shows how the data looks like:
 
-```{r}
+```{r intermittentExamplePlot, fig.cap="Example of intermittent demand data."}
 plot(y)
 ```
 
-The probability of occurrence in this model increases together with the demand sizes. This example corresponds to the situation of intermittent demand of a product becoming regular.
+The probability of occurrence in this example increases together with the demand sizes. This example corresponds to the situation of intermittent demand of a product becoming regular.
 
 
 ### Fixed probability model, oETS$_F$
-We start with the simplest case of the fixed probability of occurrence, oETS$_F$ model:
+We start with the simplest case of fixed probability of occurrence, oETS$_F$ model:
 \begin{equation}
 	o_t \sim \text{Bernoulli}(p) ,
 	(\#eq:oETSFixed)
 \end{equation}
-This model assumes that demand happens with the same probability no matter what. This might sound exotic, because in practice, there might be many factors influencing customers' desire to purchase and the impact of these factors might change over the year. But this is a very basic model, which at least can be used as a benchmark on intermittent demand data. Furthermore, it might be suitable for modelling demand on expensive high-tech products, such as jet engines, which is ``very slow'' in its nature and typically does not evolve much over time.
+This model assumes that demand happens with the same probability no matter what. This might sound exotic, because in practice, there might be many factors influencing customers' desire to purchase and the impact of these factors might change over time. But this is a very basic model, which at least can be used as a benchmark on intermittent demand data. Furthermore, it might be suitable for modelling demand on expensive high-tech products, such as jet engines, which is "very slow" in its nature and typically does not evolve much over time.
 
 When estimated via maximisation of likelihood function \@ref(eq:oETSLikelihood), the probability of occurrence is equal to:
 \begin{equation}
@@ -68,13 +68,18 @@ where $T_1$ is the number of non-zero observations and $T$ is the number of all 
 The occurrence part of the model, oETS$_F$ can be constructed using `oes()` function from `smooth` package:
 
 ```{r oETSFExample1}
-oETSFModel1 <- oes(y, h=10, holdout=TRUE,
+oETSFModel <- oes(y, h=10, holdout=TRUE,
                    occurrence="fixed")
-oETSFModel1
-plot(oETSFModel1)
+oETSFModel
 ```
 
-The plot above demonstrates the dynamics of the occurrence variable $o_t$ and the fitted and predicted probabilities. The oETS$_F$ model produces the straight line for the probability of `r round(oETSFModel1$initial,2)`, ignoring the fact that in our example the probability of occurrence has increased over time.
+The oETS$_F$ model produces the straight line for the probability of `r round(oETSFModel$initial,2)`, ignoring the fact that in our example the probability of occurrence has increased over time.
+
+```{r oETSFModel, fig.cap="Demand occurrence and probability of occurrence in the oETS$_F$ model."}
+plot(oETSFModel)
+```
+
+The plot in Figure \@ref(fig:oETSFModel) above demonstrates the dynamics of the occurrence variable $o_t$ and the fitted and predicted probabilities.  The solid line shows when zeroes and ones happen, depicting the variable $o_t$. The dashed line corresponds to the fixed probability of occurrence $\hat{p}$ in sample.
 
 
 ### Odds ratio model, oETS$_O$ {#oETSO}
