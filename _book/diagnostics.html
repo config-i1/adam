@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Chapter 14 Model diagnostics | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="Chapter 14 Model diagnostics | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-11-24" />
+<meta name="date" content="2021-12-12" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="intermittent-demand-challenges.html"/>
 <link rel="next" href="diagnosticsOmitted.html"/>
-<script src="libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -562,14 +562,14 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 </div>
 <div id="diagnostics" class="section level1" number="14">
 <h1><span class="header-section-number">Chapter 14</span> Model diagnostics</h1>
-<p>In this chapter we investigate how ADAM models can be diagnosed and improved. The majority of topics will build upon the typical model assumptions discussed in Section 12 of <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span> textbook. Some of the assumptions cannot be diagnosed properly, but for the others there are existing and well established instruments. We will consider the following assumptions and discuss how to check whether they are violated or not:</p>
+<p>In this chapter we investigate how ADAM models can be diagnosed and improved. The majority of topics will build upon the typical model assumptions discussed in Subsection <a href="modelsMethods.html#assumptions">1.4.1</a> and in Section 12 of <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span> textbook. Some of the assumptions cannot be diagnosed properly, but for the others there exist well established instruments. We will consider the following assumptions and discuss how to check whether they are violated or not:</p>
 <ol style="list-style-type: decimal">
 <li>Model is correctly specified:</li>
 </ol>
 <ol style="list-style-type: lower-alpha">
 <li><a href="diagnosticsOmitted.html#diagnosticsOmitted">No omitted variables</a>;</li>
 <li><a href="diagnosticsRedundant.html#diagnosticsRedundant">No redundant variables</a>;</li>
-<li><a href="diagnosticsTransformations.html#diagnosticsTransformations">The necessary transformation of the variables are applied</a>;</li>
+<li><a href="diagnosticsTransformations.html#diagnosticsTransformations">The necessary transformations of the variables are applied</a>;</li>
 <li><a href="diagnosticsOutliers.html#diagnosticsOutliers">No outliers in the model</a>.</li>
 </ol>
 <ol start="2" style="list-style-type: decimal">
@@ -583,13 +583,18 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <li>The distribution of residuals does not change over time.</li>
 </ol>
 <ol start="3" style="list-style-type: decimal">
-<li><a href="diagnosticsMulticollinearity.html#diagnosticsMulticollinearity">The explanatory variables are not correlated with anything but the response variable</a>;</li>
+<li><a href="diagnosticsMulticollinearity.html#diagnosticsMulticollinearity">The explanatory variables are not correlated with anything but the response variable</a>:</li>
 </ol>
-<p>All the model diagnostics is aimed at spotting patterns in residuals. If there are some, then something is probably missing in the model. In this chapter we will discuss, which instruments can be used to diagnose different types of assumptions</p>
-<p>In order to make this more actionable, we will consider a conventional regression model on <code>Seatbelts</code> data. This can be estimated equally well either with <code>adam()</code> from <code>smooth</code> or <code>alm()</code> from <code>greybox</code>. In general, I recommend using <code>alm()</code>, when no dynamic elements are present in the model. Otherwise, use <code>adam()</code> as shown below:</p>
+<ol style="list-style-type: lower-alpha">
+<li><a href="diagnosticsMulticollinearity.html#diagnosticsMulticollinearity">No multicollinearity</a>;</li>
+<li>No endogeneity (not discussed in the context of ADAM).</li>
+</ol>
+<p>All the model diagnostics is aimed at spotting patterns in residuals. If there are patterns, then something is probably missing in the model. In this chapter we will discuss, which instruments can be used to diagnose different types of assumptions</p>
+<p>Note that the proposed analysis is based mainly on visual inspection of various plots. While there are statistical tests for some of assumptions, we do not discuss them here. This is because human judgment is typically more reliable than just p-values, and people tend to misuse the latter.</p>
+<p>In order to make this more actionable, we will consider a conventional regression model on <code>Seatbelts</code> data, discussed in Section <a href="ETSXRExample.html#ETSXRExample">10.6</a>. We start with pure regression, which can be estimated equally well either with <code>adam()</code> from <code>smooth</code> or <code>alm()</code> from <code>greybox</code>. In general, I recommend using <code>alm()</code>, when no dynamic elements are present in the model. Otherwise, use <code>adam()</code> in the following way:</p>
 <div class="sourceCode" id="cb227"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb227-1"><a href="diagnostics.html#cb227-1" aria-hidden="true" tabindex="-1"></a>adamModelSeat01 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;NNN&quot;</span>,</span>
 <span id="cb227-2"><a href="diagnostics.html#cb227-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">formula=</span>drivers<span class="sc">~</span>PetrolPrice<span class="sc">+</span>kms)</span>
-<span id="cb227-3"><a href="diagnostics.html#cb227-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat01,<span class="dv">7</span>)</span></code></pre></div>
+<span id="cb227-3"><a href="diagnostics.html#cb227-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat01, <span class="dv">7</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamModelSeat01"></span>
 <img src="adam_files/figure-html/adamModelSeat01-1.png" alt="Basic regression model for the data of Road Casualties in Great Britain 1969–84." width="672" />
 <p class="caption">
@@ -615,7 +620,6 @@ Figure 14.1: Basic regression model for the data of Road Casualties in Great Bri
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -656,7 +660,7 @@ gitbook.start({
 },
 "download": ["adam.pdf"],
 "search": {
-"engine": "lunr",
+"engine": "fuse",
 "options": null
 },
 "toc": {

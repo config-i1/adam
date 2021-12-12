@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>14.9 Multicollinearity | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="14.9 Multicollinearity | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-11-24" />
+<meta name="date" content="2021-12-12" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="diagnosticsResidualsIIDDistribution.html"/>
 <link rel="next" href="ADAMSelection.html"/>
-<script src="libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -593,9 +593,9 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <p>For the discussion of multicollinearity and how to diagnose it for the regression model, we refer the reader to Section 12.3 of <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span> textbook. When it comes to dynamic models, then the situation might differ.</p>
 <p>In case of conventional <a href="ARIMA.html#ARIMA">ARIMA model</a>, multicollinearity is inevitable by construct, because of the autocorrelations between actual values. This is why sometimes Heteroskedasticity- and autocorrelation-consistent (HAC) estimators of the covariance matrix <span class="citation">(see Section 15.4 of <a href="#ref-Hanck2020" role="doc-biblioref">Hanck et al., 2020</a>)</span> of parameters are used instead of the standard ones. They are designed to fix the issue and produce standard errors of parameters that are close to those without the issue.</p>
 <p>Finally, in case of state space models, and specifically in case of <a href="ADAMX.html#ADAMX">ETS</a>, the multicollinearity might not cause as serious issues as in the case of regression. For example, it is possible to use all the values of <a href="ETSXDynamicCategories.html#ETSXDynamicCategories">categorical variable</a>, avoiding the trap of dummy variables. The values of categorical variable in this case are considered as changes relative to the baseline. The classical example of this is the seasonal model, for example, ETS(A,A,A), where the seasonal components can be considered as a set of parameters for dummy variables, expanded from the seasonal categorical variable (e.g. months of year variable). If we set <span class="math inline">\(\gamma=0\)</span>, thus making the seasonality deterministic, the ETS can still be estimated even though all values of the variable are used. This becomes apparent with the conventional ETS model, for example, from <code>forecast</code> package for R:</p>
-<div class="sourceCode" id="cb295"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb295-1"><a href="diagnosticsMulticollinearity.html#cb295-1" aria-hidden="true" tabindex="-1"></a>etsModel <span class="ot">&lt;-</span> forecast<span class="sc">::</span><span class="fu">ets</span>(AirPassengers, <span class="st">&quot;AAA&quot;</span>)</span>
-<span id="cb295-2"><a href="diagnosticsMulticollinearity.html#cb295-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate determination coefficients for seasonal states</span></span>
-<span id="cb295-3"><a href="diagnosticsMulticollinearity.html#cb295-3" aria-hidden="true" tabindex="-1"></a><span class="fu">determ</span>(etsModel<span class="sc">$</span>states[,<span class="sc">-</span><span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>)])</span></code></pre></div>
+<div class="sourceCode" id="cb297"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb297-1"><a href="diagnosticsMulticollinearity.html#cb297-1" aria-hidden="true" tabindex="-1"></a>etsModel <span class="ot">&lt;-</span> forecast<span class="sc">::</span><span class="fu">ets</span>(AirPassengers, <span class="st">&quot;AAA&quot;</span>)</span>
+<span id="cb297-2"><a href="diagnosticsMulticollinearity.html#cb297-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate determination coefficients for seasonal states</span></span>
+<span id="cb297-3"><a href="diagnosticsMulticollinearity.html#cb297-3" aria-hidden="true" tabindex="-1"></a><span class="fu">determ</span>(etsModel<span class="sc">$</span>states[,<span class="sc">-</span><span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">2</span>)])</span></code></pre></div>
 <pre><code>##        s1        s2        s3        s4        s5        s6        s7        s8 
 ## 0.9999992 0.9999992 0.9999991 0.9999991 0.9999992 0.9999992 0.9999992 0.9999991 
 ##        s9       s10       s11       s12 
@@ -626,7 +626,6 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -667,7 +666,7 @@ gitbook.start({
 },
 "download": ["adam.pdf"],
 "search": {
-"engine": "lunr",
+"engine": "fuse",
 "options": null
 },
 "toc": {

@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>15.4 Forecasts combinations in ADAM | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="15.4 Forecasts combinations in ADAM | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-11-24" />
+<meta name="date" content="2021-12-12" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="ETSXSelection.html"/>
 <link rel="next" href="ADAMUncertainty.html"/>
-<script src="libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -573,8 +573,8 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <p>The forecast combination approach implemented in ADAM is the weighted mean, based on <span class="citation"><a href="#ref-Kolassa2011" role="doc-biblioref">Kolassa</a> (<a href="#ref-Kolassa2011" role="doc-biblioref">2011</a>)</span>, who used AIC weights as proposed by <span class="citation"><a href="#ref-Burnham2004" role="doc-biblioref">Burnham and Anderson</a> (<a href="#ref-Burnham2004" role="doc-biblioref">2004</a>)</span>. The idea of this approach is to estimate all models in the pool, calculate information criteria (IC) for each of them (see discussion in Section 13.4 in <span class="citation"><a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov</a> (<a href="#ref-SvetunkovSBA" role="doc-biblioref">2021c</a>)</span>) and then calculate weights for each model. Those model that have lower ICs, will have higher weights, while the poorly performing ones will have the higher ones. The only requirement of the approach is for the parameters of models to be estimated via likelihood maximisation (see Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>). It is not important, what model is used or what distribution is assumed, as long as the models are <a href="ADAMInitialisation.html#ADAMInitialisation">initialised</a> and constructed in the same way and the likelihood is used in the estimation.</p>
 <p>When it comes to prediction interval, the correct way of calculating them for the combination is to consider the joint distribution of all forecasting models in the pool and take quantiles based on that. However, <span class="citation"><a href="#ref-Lichtendahl2013" role="doc-biblioref">Lichtendahl et al.</a> (<a href="#ref-Lichtendahl2013" role="doc-biblioref">2013</a>)</span> showed that a simpler approach of averaging the quantiles works well in practice. It is fast and efficient in terms of obtaining well-calibrated intervals.</p>
 <p>In R, <code>adam()</code> function supports the combination of ETS models via <code>model="CCC"</code> or any other combination of letters, as long as the model contains “C” in its name. For example, the function will combine all non-seasonal models if <code>model="CCN"</code> is provided. Consider the following example on Box-Jenkins series:</p>
-<div class="sourceCode" id="cb316"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb316-1"><a href="ADAMCombinations.html#cb316-1" aria-hidden="true" tabindex="-1"></a>adamETSCCN <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;CCN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">ic=</span><span class="st">&quot;AICc&quot;</span>)</span>
-<span id="cb316-2"><a href="ADAMCombinations.html#cb316-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamETSCCN,<span class="dv">7</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb318"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb318-1"><a href="ADAMCombinations.html#cb318-1" aria-hidden="true" tabindex="-1"></a>adamETSCCN <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;CCN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">ic=</span><span class="st">&quot;AICc&quot;</span>)</span>
+<span id="cb318-2"><a href="ADAMCombinations.html#cb318-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamETSCCN,<span class="dv">7</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamETSCCN"></span>
 <img src="adam_files/figure-html/adamETSCCN-1.png" alt="An example of combination of ETS non-seasonal models on Box-Jenkins time series." width="672" />
 <p class="caption">
@@ -582,21 +582,21 @@ Figure 15.1: An example of combination of ETS non-seasonal models on Box-Jenkins
 </p>
 </div>
 <p>In the example above, the function will estimate all non-seasonal models, extract AICc for each of them and then calculate weights, which we can extract for further analysis:</p>
-<div class="sourceCode" id="cb317"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb317-1"><a href="ADAMCombinations.html#cb317-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamETSCCN<span class="sc">$</span>ICw,<span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb319"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb319-1"><a href="ADAMCombinations.html#cb319-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamETSCCN<span class="sc">$</span>ICw,<span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##   ANN   MAN  AAdN   MMN  AMdN   MNN   AAN  MAdN   AMN  MMdN 
 ## 0.000 0.014 0.252 0.010 0.511 0.000 0.073 0.031 0.050 0.059</code></pre>
 <p>As can be seen from the output of weights, the level models ETS(A,N,N) and ETS(M,N,N) were further away from the best model and as a result got weights very close to zero. The fitted values in Figure <a href="ADAMCombinations.html#fig:adamETSCCN">15.1</a> are combined from all models, the residuals are equal to <span class="math inline">\(e_t = y_t - \hat{y}_t\)</span>, where <span class="math inline">\(\hat{y}_t\)</span> is the combined value. The final forecast together with the prediction interval can be generated via the <code>forecast()</code> function:</p>
-<div class="sourceCode" id="cb319"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb319-1"><a href="ADAMCombinations.html#cb319-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamETSCCN,<span class="at">h=</span><span class="dv">10</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-152-1.png" width="672" /></p>
+<div class="sourceCode" id="cb321"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb321-1"><a href="ADAMCombinations.html#cb321-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamETSCCN,<span class="at">h=</span><span class="dv">10</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
+<p><img src="adam_files/figure-html/unnamed-chunk-146-1.png" width="672" /></p>
 <p>What the function does in this case is produces forecasts and prediction intervals from each model and then uses original weights to combine them. In fact, each individual model can be extracted and used separately, if needed. Here is an example with ETS(A,Ad,N) model from the estimated pool:</p>
-<div class="sourceCode" id="cb320"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb320-1"><a href="ADAMCombinations.html#cb320-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamETSCCN<span class="sc">$</span>models<span class="sc">$</span>AAdN,<span class="at">h=</span><span class="dv">10</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-153-1.png" width="672" /></p>
+<div class="sourceCode" id="cb322"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb322-1"><a href="ADAMCombinations.html#cb322-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamETSCCN<span class="sc">$</span>models<span class="sc">$</span>AAdN,<span class="at">h=</span><span class="dv">10</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
+<p><img src="adam_files/figure-html/unnamed-chunk-147-1.png" width="672" /></p>
 <p>Alternatively, if we do not need to consider all ETS models, we can provide the pool of models, including a model with “C” in its name. Here is an example of how pure additive models can be combined:</p>
-<div class="sourceCode" id="cb321"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb321-1"><a href="ADAMCombinations.html#cb321-1" aria-hidden="true" tabindex="-1"></a>adamETSCCNPureAdditive <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, </span>
-<span id="cb321-2"><a href="ADAMCombinations.html#cb321-2" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">c</span>(<span class="st">&quot;CCN&quot;</span>,<span class="st">&quot;ANN&quot;</span>,<span class="st">&quot;AAN&quot;</span>,<span class="st">&quot;AAdN&quot;</span>), </span>
-<span id="cb321-3"><a href="ADAMCombinations.html#cb321-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb321-4"><a href="ADAMCombinations.html#cb321-4" aria-hidden="true" tabindex="-1"></a>                               <span class="at">ic=</span><span class="st">&quot;AICc&quot;</span>)</span>
-<span id="cb321-5"><a href="ADAMCombinations.html#cb321-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamETSCCNPureAdditive,<span class="dv">7</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb323"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb323-1"><a href="ADAMCombinations.html#cb323-1" aria-hidden="true" tabindex="-1"></a>adamETSCCNPureAdditive <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, </span>
+<span id="cb323-2"><a href="ADAMCombinations.html#cb323-2" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">c</span>(<span class="st">&quot;CCN&quot;</span>,<span class="st">&quot;ANN&quot;</span>,<span class="st">&quot;AAN&quot;</span>,<span class="st">&quot;AAdN&quot;</span>), </span>
+<span id="cb323-3"><a href="ADAMCombinations.html#cb323-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb323-4"><a href="ADAMCombinations.html#cb323-4" aria-hidden="true" tabindex="-1"></a>                               <span class="at">ic=</span><span class="st">&quot;AICc&quot;</span>)</span>
+<span id="cb323-5"><a href="ADAMCombinations.html#cb323-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamETSCCNPureAdditive,<span class="dv">7</span>)</span></code></pre></div>
 <p><img src="adam_files/figure-html/adamETSCCNPureAdditive-1.png" width="672" /></p>
 <p>The main issue with the combined ETS approach is that it is computationally expensive due to the estimation of all models in the pool and can also result in high memory usage. As a result, it is recommended to be smart in deciding, which models to include in the pool.</p>
 <p>While <code>adam()</code> supports IC weights combination of ETS models only, it is also possible to combine ARIMA, regression models and models with different distributions in the framework. Given that all models are initialised in the same way and that the likelihoods are calculated using similar principles, the weights can be calculated manually using formula from <span class="citation"><a href="#ref-Burnham2004" role="doc-biblioref">Burnham and Anderson</a> (<a href="#ref-Burnham2004" role="doc-biblioref">2004</a>)</span>:
@@ -605,71 +605,71 @@ Figure 15.1: An example of combination of ETS non-seasonal models on Box-Jenkins
   \tag{15.1}
 \end{equation}\]</span>
 where <span class="math inline">\(\Delta_i=\mathrm{IC}_i - \min_{i=1}^n \left(\mathrm{IC}_i\right)\)</span> is the information criteria distance from the best performing model, <span class="math inline">\(\mathrm{IC}_i\)</span> is the value of information criterion and <span class="math inline">\(n\)</span> is the number of models in the pool. For example, here how we can combine the best ETS with the best ARIMA and the ETSX(M,M,N) model in the ADAM framework, based on BICc:</p>
-<div class="sourceCode" id="cb322"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb322-1"><a href="ADAMCombinations.html#cb322-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Prepare data with explanatory variables</span></span>
-<span id="cb322-2"><a href="ADAMCombinations.html#cb322-2" aria-hidden="true" tabindex="-1"></a>BJsalesData <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fu">as.data.frame</span>(BJsales),</span>
-<span id="cb322-3"><a href="ADAMCombinations.html#cb322-3" aria-hidden="true" tabindex="-1"></a>                     <span class="fu">xregExpander</span>(BJsales.lead,<span class="fu">c</span>(<span class="sc">-</span><span class="dv">5</span><span class="sc">:</span><span class="dv">5</span>)))</span>
-<span id="cb322-4"><a href="ADAMCombinations.html#cb322-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb322-5"><a href="ADAMCombinations.html#cb322-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply models</span></span>
-<span id="cb322-6"><a href="ADAMCombinations.html#cb322-6" aria-hidden="true" tabindex="-1"></a>adamModelsPool <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">3</span>)</span>
-<span id="cb322-7"><a href="ADAMCombinations.html#cb322-7" aria-hidden="true" tabindex="-1"></a>adamModelsPool[[<span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;ZZN&quot;</span>,</span>
-<span id="cb322-8"><a href="ADAMCombinations.html#cb322-8" aria-hidden="true" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb322-9"><a href="ADAMCombinations.html#cb322-9" aria-hidden="true" tabindex="-1"></a>                            <span class="at">ic=</span><span class="st">&quot;BICc&quot;</span>)</span>
-<span id="cb322-10"><a href="ADAMCombinations.html#cb322-10" aria-hidden="true" tabindex="-1"></a>adamModelsPool[[<span class="dv">2</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;NNN&quot;</span>,</span>
-<span id="cb322-11"><a href="ADAMCombinations.html#cb322-11" aria-hidden="true" tabindex="-1"></a>                            <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="dv">3</span>,<span class="at">i=</span><span class="dv">2</span>,<span class="at">ma=</span><span class="dv">3</span>,<span class="at">select=</span><span class="cn">TRUE</span>),</span>
-<span id="cb322-12"><a href="ADAMCombinations.html#cb322-12" aria-hidden="true" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb322-13"><a href="ADAMCombinations.html#cb322-13" aria-hidden="true" tabindex="-1"></a>                            <span class="at">ic=</span><span class="st">&quot;BICc&quot;</span>)</span>
-<span id="cb322-14"><a href="ADAMCombinations.html#cb322-14" aria-hidden="true" tabindex="-1"></a>adamModelsPool[[<span class="dv">3</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsalesData, <span class="st">&quot;MMN&quot;</span>,</span>
-<span id="cb322-15"><a href="ADAMCombinations.html#cb322-15" aria-hidden="true" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb322-16"><a href="ADAMCombinations.html#cb322-16" aria-hidden="true" tabindex="-1"></a>                            <span class="at">ic=</span><span class="st">&quot;BICc&quot;</span>,</span>
-<span id="cb322-17"><a href="ADAMCombinations.html#cb322-17" aria-hidden="true" tabindex="-1"></a>                            <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
-<span id="cb322-18"><a href="ADAMCombinations.html#cb322-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb322-19"><a href="ADAMCombinations.html#cb322-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Extract BICc values</span></span>
-<span id="cb322-20"><a href="ADAMCombinations.html#cb322-20" aria-hidden="true" tabindex="-1"></a>adamModelsICs <span class="ot">&lt;-</span> <span class="fu">sapply</span>(adamModelsPool,BICc)</span>
-<span id="cb322-21"><a href="ADAMCombinations.html#cb322-21" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb322-22"><a href="ADAMCombinations.html#cb322-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate weights</span></span>
-<span id="cb322-23"><a href="ADAMCombinations.html#cb322-23" aria-hidden="true" tabindex="-1"></a>adamModelsICWeights <span class="ot">&lt;-</span> adamModelsICs <span class="sc">-</span> <span class="fu">min</span>(adamModelsICs)</span>
-<span id="cb322-24"><a href="ADAMCombinations.html#cb322-24" aria-hidden="true" tabindex="-1"></a>adamModelsICWeights[] <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="fl">0.5</span><span class="sc">*</span>adamModelsICWeights) <span class="sc">/</span></span>
-<span id="cb322-25"><a href="ADAMCombinations.html#cb322-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="fu">exp</span>(<span class="sc">-</span><span class="fl">0.5</span><span class="sc">*</span>adamModelsICWeights))</span>
-<span id="cb322-26"><a href="ADAMCombinations.html#cb322-26" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(adamModelsICWeights) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ETS&quot;</span>,<span class="st">&quot;ARIMA&quot;</span>,<span class="st">&quot;ETSX&quot;</span>)</span>
-<span id="cb322-27"><a href="ADAMCombinations.html#cb322-27" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamModelsICWeights,<span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb324"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb324-1"><a href="ADAMCombinations.html#cb324-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Prepare data with explanatory variables</span></span>
+<span id="cb324-2"><a href="ADAMCombinations.html#cb324-2" aria-hidden="true" tabindex="-1"></a>BJsalesData <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fu">as.data.frame</span>(BJsales),</span>
+<span id="cb324-3"><a href="ADAMCombinations.html#cb324-3" aria-hidden="true" tabindex="-1"></a>                     <span class="fu">xregExpander</span>(BJsales.lead,<span class="fu">c</span>(<span class="sc">-</span><span class="dv">5</span><span class="sc">:</span><span class="dv">5</span>)))</span>
+<span id="cb324-4"><a href="ADAMCombinations.html#cb324-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb324-5"><a href="ADAMCombinations.html#cb324-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply models</span></span>
+<span id="cb324-6"><a href="ADAMCombinations.html#cb324-6" aria-hidden="true" tabindex="-1"></a>adamModelsPool <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">3</span>)</span>
+<span id="cb324-7"><a href="ADAMCombinations.html#cb324-7" aria-hidden="true" tabindex="-1"></a>adamModelsPool[[<span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;ZZN&quot;</span>,</span>
+<span id="cb324-8"><a href="ADAMCombinations.html#cb324-8" aria-hidden="true" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb324-9"><a href="ADAMCombinations.html#cb324-9" aria-hidden="true" tabindex="-1"></a>                            <span class="at">ic=</span><span class="st">&quot;BICc&quot;</span>)</span>
+<span id="cb324-10"><a href="ADAMCombinations.html#cb324-10" aria-hidden="true" tabindex="-1"></a>adamModelsPool[[<span class="dv">2</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;NNN&quot;</span>,</span>
+<span id="cb324-11"><a href="ADAMCombinations.html#cb324-11" aria-hidden="true" tabindex="-1"></a>                            <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="dv">3</span>,<span class="at">i=</span><span class="dv">2</span>,<span class="at">ma=</span><span class="dv">3</span>,<span class="at">select=</span><span class="cn">TRUE</span>),</span>
+<span id="cb324-12"><a href="ADAMCombinations.html#cb324-12" aria-hidden="true" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb324-13"><a href="ADAMCombinations.html#cb324-13" aria-hidden="true" tabindex="-1"></a>                            <span class="at">ic=</span><span class="st">&quot;BICc&quot;</span>)</span>
+<span id="cb324-14"><a href="ADAMCombinations.html#cb324-14" aria-hidden="true" tabindex="-1"></a>adamModelsPool[[<span class="dv">3</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsalesData, <span class="st">&quot;MMN&quot;</span>,</span>
+<span id="cb324-15"><a href="ADAMCombinations.html#cb324-15" aria-hidden="true" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb324-16"><a href="ADAMCombinations.html#cb324-16" aria-hidden="true" tabindex="-1"></a>                            <span class="at">ic=</span><span class="st">&quot;BICc&quot;</span>,</span>
+<span id="cb324-17"><a href="ADAMCombinations.html#cb324-17" aria-hidden="true" tabindex="-1"></a>                            <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
+<span id="cb324-18"><a href="ADAMCombinations.html#cb324-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb324-19"><a href="ADAMCombinations.html#cb324-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Extract BICc values</span></span>
+<span id="cb324-20"><a href="ADAMCombinations.html#cb324-20" aria-hidden="true" tabindex="-1"></a>adamModelsICs <span class="ot">&lt;-</span> <span class="fu">sapply</span>(adamModelsPool,BICc)</span>
+<span id="cb324-21"><a href="ADAMCombinations.html#cb324-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb324-22"><a href="ADAMCombinations.html#cb324-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate weights</span></span>
+<span id="cb324-23"><a href="ADAMCombinations.html#cb324-23" aria-hidden="true" tabindex="-1"></a>adamModelsICWeights <span class="ot">&lt;-</span> adamModelsICs <span class="sc">-</span> <span class="fu">min</span>(adamModelsICs)</span>
+<span id="cb324-24"><a href="ADAMCombinations.html#cb324-24" aria-hidden="true" tabindex="-1"></a>adamModelsICWeights[] <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="fl">0.5</span><span class="sc">*</span>adamModelsICWeights) <span class="sc">/</span></span>
+<span id="cb324-25"><a href="ADAMCombinations.html#cb324-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sum</span>(<span class="fu">exp</span>(<span class="sc">-</span><span class="fl">0.5</span><span class="sc">*</span>adamModelsICWeights))</span>
+<span id="cb324-26"><a href="ADAMCombinations.html#cb324-26" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(adamModelsICWeights) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ETS&quot;</span>,<span class="st">&quot;ARIMA&quot;</span>,<span class="st">&quot;ETSX&quot;</span>)</span>
+<span id="cb324-27"><a href="ADAMCombinations.html#cb324-27" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamModelsICWeights,<span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##   ETS ARIMA  ETSX 
 ## 0.524 0.424 0.052</code></pre>
 <p>These weights can then be used for the combination of the fitted values, forecasts and prediction intervals:</p>
-<div class="sourceCode" id="cb324"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb324-1"><a href="ADAMCombinations.html#cb324-1" aria-hidden="true" tabindex="-1"></a>adamModelsPoolForecasts <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">3</span>)</span>
-<span id="cb324-2"><a href="ADAMCombinations.html#cb324-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>){</span>
-<span id="cb324-3"><a href="ADAMCombinations.html#cb324-3" aria-hidden="true" tabindex="-1"></a>    adamModelsPoolForecasts[[i]] <span class="ot">&lt;-</span> <span class="fu">forecast</span>(adamModelsPool[[i]],</span>
-<span id="cb324-4"><a href="ADAMCombinations.html#cb324-4" aria-hidden="true" tabindex="-1"></a>                                             <span class="at">h=</span><span class="dv">10</span>, <span class="at">interval=</span><span class="st">&quot;pred&quot;</span>)</span>
-<span id="cb324-5"><a href="ADAMCombinations.html#cb324-5" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb324-6"><a href="ADAMCombinations.html#cb324-6" aria-hidden="true" tabindex="-1"></a>finalForecast <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fu">sapply</span>(adamModelsPoolForecasts,</span>
-<span id="cb324-7"><a href="ADAMCombinations.html#cb324-7" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;mean&quot;</span>) <span class="sc">%*%</span> adamModelsICWeights,</span>
-<span id="cb324-8"><a href="ADAMCombinations.html#cb324-8" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">sapply</span>(adamModelsPoolForecasts,</span>
-<span id="cb324-9"><a href="ADAMCombinations.html#cb324-9" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;lower&quot;</span>) <span class="sc">%*%</span> adamModelsICWeights,</span>
-<span id="cb324-10"><a href="ADAMCombinations.html#cb324-10" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">sapply</span>(adamModelsPoolForecasts,</span>
-<span id="cb324-11"><a href="ADAMCombinations.html#cb324-11" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;upper&quot;</span>) <span class="sc">%*%</span> adamModelsICWeights)</span>
-<span id="cb324-12"><a href="ADAMCombinations.html#cb324-12" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(finalForecast) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Mean&quot;</span>, <span class="st">&quot;Lower bound (2.5%)&quot;</span>,</span>
-<span id="cb324-13"><a href="ADAMCombinations.html#cb324-13" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;Upper bound (97.5%)&quot;</span>)</span>
-<span id="cb324-14"><a href="ADAMCombinations.html#cb324-14" aria-hidden="true" tabindex="-1"></a>finalForecast <span class="ot">&lt;-</span> <span class="fu">ts</span>(finalForecast,</span>
-<span id="cb324-15"><a href="ADAMCombinations.html#cb324-15" aria-hidden="true" tabindex="-1"></a>                    <span class="at">start=</span><span class="fu">start</span>(adamModelsPoolForecasts[[i]]<span class="sc">$</span>mean))</span>
-<span id="cb324-16"><a href="ADAMCombinations.html#cb324-16" aria-hidden="true" tabindex="-1"></a>finalForecast</span></code></pre></div>
+<div class="sourceCode" id="cb326"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb326-1"><a href="ADAMCombinations.html#cb326-1" aria-hidden="true" tabindex="-1"></a>adamModelsPoolForecasts <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">3</span>)</span>
+<span id="cb326-2"><a href="ADAMCombinations.html#cb326-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>){</span>
+<span id="cb326-3"><a href="ADAMCombinations.html#cb326-3" aria-hidden="true" tabindex="-1"></a>    adamModelsPoolForecasts[[i]] <span class="ot">&lt;-</span> <span class="fu">forecast</span>(adamModelsPool[[i]],</span>
+<span id="cb326-4"><a href="ADAMCombinations.html#cb326-4" aria-hidden="true" tabindex="-1"></a>                                             <span class="at">h=</span><span class="dv">10</span>, <span class="at">interval=</span><span class="st">&quot;pred&quot;</span>)</span>
+<span id="cb326-5"><a href="ADAMCombinations.html#cb326-5" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb326-6"><a href="ADAMCombinations.html#cb326-6" aria-hidden="true" tabindex="-1"></a>finalForecast <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fu">sapply</span>(adamModelsPoolForecasts,</span>
+<span id="cb326-7"><a href="ADAMCombinations.html#cb326-7" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;mean&quot;</span>) <span class="sc">%*%</span> adamModelsICWeights,</span>
+<span id="cb326-8"><a href="ADAMCombinations.html#cb326-8" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">sapply</span>(adamModelsPoolForecasts,</span>
+<span id="cb326-9"><a href="ADAMCombinations.html#cb326-9" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;lower&quot;</span>) <span class="sc">%*%</span> adamModelsICWeights,</span>
+<span id="cb326-10"><a href="ADAMCombinations.html#cb326-10" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">sapply</span>(adamModelsPoolForecasts,</span>
+<span id="cb326-11"><a href="ADAMCombinations.html#cb326-11" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;upper&quot;</span>) <span class="sc">%*%</span> adamModelsICWeights)</span>
+<span id="cb326-12"><a href="ADAMCombinations.html#cb326-12" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(finalForecast) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Mean&quot;</span>, <span class="st">&quot;Lower bound (2.5%)&quot;</span>,</span>
+<span id="cb326-13"><a href="ADAMCombinations.html#cb326-13" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;Upper bound (97.5%)&quot;</span>)</span>
+<span id="cb326-14"><a href="ADAMCombinations.html#cb326-14" aria-hidden="true" tabindex="-1"></a>finalForecast <span class="ot">&lt;-</span> <span class="fu">ts</span>(finalForecast,</span>
+<span id="cb326-15"><a href="ADAMCombinations.html#cb326-15" aria-hidden="true" tabindex="-1"></a>                    <span class="at">start=</span><span class="fu">start</span>(adamModelsPoolForecasts[[i]]<span class="sc">$</span>mean))</span>
+<span id="cb326-16"><a href="ADAMCombinations.html#cb326-16" aria-hidden="true" tabindex="-1"></a>finalForecast</span></code></pre></div>
 <pre><code>## Time Series:
 ## Start = 141 
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6654           254.9268            260.4113
-## 142 257.7343           253.4325            262.1497
-## 143 257.7993           251.9229            263.6941
-## 144 257.8521           250.4671            265.3200
-## 145 257.8915           248.9625            266.9427
-## 146 257.9407           247.4713            268.5856
-## 147 257.9918           245.9206            270.2481
-## 148 258.0540           244.3915            271.8958
-## 149 258.0923           242.7479            273.7087
-## 150 258.1379           241.1511            275.5747</code></pre>
+## 141 257.6548           254.9102            260.3744
+## 142 257.6973           253.4120            261.9892
+## 143 257.7415           251.9086            263.5436
+## 144 257.7842           250.4306            265.1182
+## 145 257.8380           248.9476            266.7314
+## 146 257.8772           247.3956            268.4116
+## 147 257.9220           245.9146            270.1473
+## 148 257.9633           244.3536            271.7175
+## 149 258.0054           242.6768            273.5111
+## 150 258.0415           240.9490            275.2036</code></pre>
 <p>In order to see how the forecast looks like, we can plot it via <code>graphmaker()</code> function from <code>greybox</code>:</p>
-<div class="sourceCode" id="cb326"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb326-1"><a href="ADAMCombinations.html#cb326-1" aria-hidden="true" tabindex="-1"></a><span class="fu">graphmaker</span>(BJsales, finalForecast[,<span class="dv">1</span>],</span>
-<span id="cb326-2"><a href="ADAMCombinations.html#cb326-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">lower=</span>finalForecast[,<span class="dv">2</span>], <span class="at">upper=</span>finalForecast[,<span class="dv">3</span>],</span>
-<span id="cb326-3"><a href="ADAMCombinations.html#cb326-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">level=</span><span class="fl">0.95</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb328"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb328-1"><a href="ADAMCombinations.html#cb328-1" aria-hidden="true" tabindex="-1"></a><span class="fu">graphmaker</span>(BJsales, finalForecast[,<span class="dv">1</span>],</span>
+<span id="cb328-2"><a href="ADAMCombinations.html#cb328-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">lower=</span>finalForecast[,<span class="dv">2</span>], <span class="at">upper=</span>finalForecast[,<span class="dv">3</span>],</span>
+<span id="cb328-3"><a href="ADAMCombinations.html#cb328-3" aria-hidden="true" tabindex="-1"></a>           <span class="at">level=</span><span class="fl">0.95</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamCombinedfinalForecast"></span>
 <img src="adam_files/figure-html/adamCombinedfinalForecast-1.png" alt="Final forecast from the combination of ETS, ARIMA and ETSX models." width="672" />
 <p class="caption">
@@ -725,7 +725,6 @@ Figure 15.2: Final forecast from the combination of ETS, ARIMA and ETSX models.
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -766,7 +765,7 @@ gitbook.start({
 },
 "download": ["adam.pdf"],
 "search": {
-"engine": "lunr",
+"engine": "fuse",
 "options": null
 },
 "toc": {

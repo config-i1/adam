@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>14.2 Model specification: Redundant variables | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="14.2 Model specification: Redundant variables | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-11-24" />
+<meta name="date" content="2021-12-12" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="diagnosticsOmitted.html"/>
 <link rel="next" href="diagnosticsTransformations.html"/>
-<script src="libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -562,16 +562,21 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 </div>
 <div id="diagnosticsRedundant" class="section level2" number="14.2">
 <h2><span class="header-section-number">14.2</span> Model specification: Redundant variables</h2>
-<p>While there are some ways of testing for omitted variables, the redundant ones are very difficult to diagnose. Yes, we could look at the <a href="#hypothesisTesting">significance of variables</a> or compare models with and without some variables based on <a href="#informationCriteria">information criteria</a>, but even if our approaches say that a variable is not significant, this does not mean that it is not needed in the model. There can be many reasons, why a test would fail to reject H<span class="math inline">\(_0\)</span> and AIC would prefer a model without the variable under consideration. So, it comes to using judgment, trying to figure out whether a variable is needed in the model or not.</p>
-<p>In the example with Seatbelt data, <code>DriversKilled</code> would be a redundant variable. Let’s see what happens with the model in this case:</p>
-<div class="sourceCode" id="cb234"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb234-1"><a href="diagnosticsRedundant.html#cb234-1" aria-hidden="true" tabindex="-1"></a>adamModelSeat04 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;NNN&quot;</span>, </span>
-<span id="cb234-2"><a href="diagnosticsRedundant.html#cb234-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">formula=</span>drivers<span class="sc">~</span>PetrolPrice<span class="sc">+</span>kms<span class="sc">+</span></span>
-<span id="cb234-3"><a href="diagnosticsRedundant.html#cb234-3" aria-hidden="true" tabindex="-1"></a>                          front<span class="sc">+</span>rear<span class="sc">+</span>law<span class="sc">+</span>DriversKilled)</span>
-<span id="cb234-4"><a href="diagnosticsRedundant.html#cb234-4" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))</span>
-<span id="cb234-5"><a href="diagnosticsRedundant.html#cb234-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat04,<span class="dv">7</span><span class="sc">:</span><span class="dv">8</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-104-1.png" width="672" /></p>
+<p>While there are some ways of testing for omitted variables, the redundant ones are very difficult to diagnose. Yes, we could look at the significance of variables <span class="citation">(Section 5.3 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span> or compare models with and without some variables based on information criteria <span class="citation">(Section 13.4 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span>, but even if our approaches say that a variable is not significant, this does not mean that it is not needed in the model. There can be many reasons, why a test would fail to reject H<span class="math inline">\(_0\)</span> and AIC would prefer a model without the variable under consideration. So, it comes to using judgment, trying to figure out whether a variable is needed in the model or not.</p>
+<p>In the example with Seatbelt data, <code>DriversKilled</code> would be a redundant variable for the reasons explained in Section <a href="diagnosticsOmitted.html#diagnosticsOmitted">14.1</a>. Let us see what happens with the model if we include it:</p>
+<div class="sourceCode" id="cb236"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb236-1"><a href="diagnosticsRedundant.html#cb236-1" aria-hidden="true" tabindex="-1"></a>adamModelSeat04 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;NNN&quot;</span>, </span>
+<span id="cb236-2"><a href="diagnosticsRedundant.html#cb236-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">formula=</span>drivers<span class="sc">~</span>PetrolPrice<span class="sc">+</span>kms<span class="sc">+</span></span>
+<span id="cb236-3"><a href="diagnosticsRedundant.html#cb236-3" aria-hidden="true" tabindex="-1"></a>                          front<span class="sc">+</span>rear<span class="sc">+</span>law<span class="sc">+</span>DriversKilled)</span>
+<span id="cb236-4"><a href="diagnosticsRedundant.html#cb236-4" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))</span>
+<span id="cb236-5"><a href="diagnosticsRedundant.html#cb236-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat04,<span class="dv">7</span><span class="sc">:</span><span class="dv">8</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:adamModelSeat04"></span>
+<img src="adam_files/figure-html/adamModelSeat04-1.png" alt="Diagnostic plots for Model 4." width="672" />
+<p class="caption">
+Figure 14.6: Diagnostic plots for Model 4.
+</p>
+</div>
 <p>The residuals from this model look adequate, with only issue being the first 45 observations lying below the zero line. The summary of this model is:</p>
-<div class="sourceCode" id="cb235"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb235-1"><a href="diagnosticsRedundant.html#cb235-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamModelSeat04)</span></code></pre></div>
+<div class="sourceCode" id="cb237"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb237-1"><a href="diagnosticsRedundant.html#cb237-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamModelSeat04)</span></code></pre></div>
 <pre><code>## 
 ## Model estimated using alm() function: Regression
 ## Response variable: drivers
@@ -593,8 +598,14 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
 ## 2332.834 2333.443 2355.637 2357.237</code></pre>
-<p>The uncertainty around the parameter <code>DriversKilled</code> is narrow, showing that the variable has a positive impact on the <code>drivers</code>. However the issue here is not statistical, but rather fundamental: we have included the variable that is a part of our response variable. It does not explain why drivers get injured and killed, it just reflects a specific part of this relation. So it explains part of the variance, which should have been explained by other variables (e.g. <code>kms</code> and <code>law</code>), making them statistically not significant. So, based on technical analysis we would be inclined to keep the variable, but based on our understanding of the problem we should not.</p>
-<p>If we have redundant variables in the model, then the model might overfit the data, leading to narrower prediction intervals and biased forecasts. The parameters of such model are typically unbiased, but inefficient.</p>
+<p>The uncertainty around the parameter <code>DriversKilled</code> is narrow, showing that the variable has a positive impact on the <code>drivers</code>. However the issue here is not statistical, but rather fundamental: we have included the variable that is a part of our response variable. It does not explain why drivers get injured and killed, it just reflects a specific part of this relation. So it approximates part of the variance, which should have been explained by other variables (e.g. <code>kms</code> and <code>law</code>), making them statistically not significant. So, based on technical analysis we would be inclined to keep the variable, but based on our understanding of the problem we should not.</p>
+<p>If we have redundant variables in the model, then the model might overfit the data, leading to narrower prediction intervals and biased forecasts. The parameters of such model are typically unbiased, but inefficient <span class="citation">(Section 4.3 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span>.</p>
+</div>
+<h3>References</h3>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-SvetunkovSBA" class="csl-entry">
+• Svetunkov, I., 2021c. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 01.10.2021)
+</div>
 </div>
 
             </section>
@@ -607,7 +618,6 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -648,7 +658,7 @@ gitbook.start({
 },
 "download": ["adam.pdf"],
 "search": {
-"engine": "lunr",
+"engine": "fuse",
 "options": null
 },
 "toc": {

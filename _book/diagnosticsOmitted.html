@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>14.1 Model specification: Omitted variables | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.23 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="14.1 Model specification: Omitted variables | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2021-11-24" />
+<meta name="date" content="2021-12-12" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="diagnostics.html"/>
 <link rel="next" href="diagnosticsRedundant.html"/>
-<script src="libs/header-attrs-2.10/header-attrs.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -562,17 +562,23 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 </div>
 <div id="diagnosticsOmitted" class="section level2" number="14.1">
 <h2><span class="header-section-number">14.1</span> Model specification: Omitted variables</h2>
-<p>We start with one of the most important assumptions for models: model has not omitted important variables. In general this is difficult to diagnose, because typically it is not possible what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of variables are missing, the next step would be to either collect the variables themselves or their proxies. One way or another, we would need to add the missing information in the model.</p>
-<p>In some cases we might be able to diagnose this. For example, with our regression model from the previous section, we have a set of variables that are not included in the model. A simple thing to do would be to see if the residuals of our model are correlated with any of the omitted variables. We can either produce scatterplots or calculate measures of association to see if there is some relation in the residuals that is not explained by the existing structure. I will use <code>assoc()</code> and <code>spread()</code> functions from <code>greybox</code> for this:</p>
-<div class="sourceCode" id="cb228"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb228-1"><a href="diagnosticsOmitted.html#cb228-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a new matrix, removing the variables that are already in the model</span></span>
-<span id="cb228-2"><a href="diagnosticsOmitted.html#cb228-2" aria-hidden="true" tabindex="-1"></a>SeatbeltsWithResiduals <span class="ot">&lt;-</span></span>
-<span id="cb228-3"><a href="diagnosticsOmitted.html#cb228-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cbind</span>(<span class="fu">as.data.frame</span>(<span class="fu">residuals</span>(adamModelSeat01)),</span>
-<span id="cb228-4"><a href="diagnosticsOmitted.html#cb228-4" aria-hidden="true" tabindex="-1"></a>        Seatbelts[,<span class="sc">-</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">5</span>,<span class="dv">6</span>)])</span>
-<span id="cb228-5"><a href="diagnosticsOmitted.html#cb228-5" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(SeatbeltsWithResiduals)[<span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="st">&quot;residuals&quot;</span></span>
-<span id="cb228-6"><a href="diagnosticsOmitted.html#cb228-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Spread plot</span></span>
-<span id="cb228-7"><a href="diagnosticsOmitted.html#cb228-7" aria-hidden="true" tabindex="-1"></a>greybox<span class="sc">::</span><span class="fu">spread</span>(SeatbeltsWithResiduals)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-99-1.png" width="672" /></p>
-<p><code>spread()</code> function automatically detects the type of variable and produces scatterplot / <code>boxplot()</code> / <code>tableplot()</code> between them, making the final plot more readable. The plot above tells us that residuals are correlated with <code>DriversKilled</code>, <code>front</code>, <code>rear</code> and <code>law</code>, so some of these variables can be added to the model to improve it. <code>VanKilled</code> might have a weak relation with <code>drivers</code>, but judging by description does not make sense in the model (this is a part of the <code>drivers</code> variable). In our case, it is safe to add these variables, because they make sense in explaining the number of injured drivers. However, I would not add <code>DriversKilled</code> as it seems not to drive the number of deaths and injuries, but is just correlated with it for obvious reasons (<code>DriversKilled</code> is included in <code>drivers</code>). We can also calculate measures of association between variables:</p>
+<p>We start with one of the most important assumptions for models: model has not omitted important variables. In general this is difficult to diagnose, because typically it is not possible to identify what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of variables are missing, the next step would be to either collect the variables themselves or to use their proxies. The proxies are variables that are expected to be correlated with the missing variables and can partially substitute them. One way or another, we would need to add the missing information in the model.</p>
+<p>In some cases we might be able to diagnose this. For example, with our regression model estimated in the previous section, we have a set of variables that are not included in the model. A simple thing to do would be to see if the residuals of our model are correlated with any of the omitted variables. We can either produce scatterplots or calculate measures of association <span class="citation">(see Section 2.2 and Chapter 6 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span> to see if there are relations in the residuals. I will use <code>assoc()</code> and <code>spread()</code> functions from <code>greybox</code> for this:</p>
+<div class="sourceCode" id="cb228"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb228-1"><a href="diagnosticsOmitted.html#cb228-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Create a new matrix, removing the variables that are already</span></span>
+<span id="cb228-2"><a href="diagnosticsOmitted.html#cb228-2" aria-hidden="true" tabindex="-1"></a><span class="co"># in the model</span></span>
+<span id="cb228-3"><a href="diagnosticsOmitted.html#cb228-3" aria-hidden="true" tabindex="-1"></a>SeatbeltsWithResiduals <span class="ot">&lt;-</span></span>
+<span id="cb228-4"><a href="diagnosticsOmitted.html#cb228-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">cbind</span>(<span class="fu">as.data.frame</span>(<span class="fu">residuals</span>(adamModelSeat01)),</span>
+<span id="cb228-5"><a href="diagnosticsOmitted.html#cb228-5" aria-hidden="true" tabindex="-1"></a>        Seatbelts[,<span class="sc">-</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">5</span>,<span class="dv">6</span>)])</span>
+<span id="cb228-6"><a href="diagnosticsOmitted.html#cb228-6" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(SeatbeltsWithResiduals)[<span class="dv">1</span>] <span class="ot">&lt;-</span> <span class="st">&quot;residuals&quot;</span></span>
+<span id="cb228-7"><a href="diagnosticsOmitted.html#cb228-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Spread plot</span></span>
+<span id="cb228-8"><a href="diagnosticsOmitted.html#cb228-8" aria-hidden="true" tabindex="-1"></a>greybox<span class="sc">::</span><span class="fu">spread</span>(SeatbeltsWithResiduals)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:carSeatsSpread"></span>
+<img src="adam_files/figure-html/carSeatsSpread-1.png" alt="Spread plot for the residuals of model vs not included variables." width="672" />
+<p class="caption">
+Figure 14.2: Spread plot for the residuals of model vs not included variables.
+</p>
+</div>
+<p><code>spread()</code> function automatically detects the type of variable and produces based on that scatterplot / <code>boxplot()</code> / <code>tableplot()</code> between them, making the final plot more readable. The plot above tells us that residuals are correlated with <code>DriversKilled</code>, <code>front</code>, <code>rear</code> and <code>law</code>, so some of these variables can be added to the model to improve it. <code>VanKilled</code> might have a weak relation with <code>drivers</code>, but judging by description does not make sense in the model (this is a part of the <code>drivers</code> variable). Also, I would not add <code>DriversKilled</code>, as it seems not to drive the number of deaths and injuries (based on our understanding of the problem), but is just correlated with it for obvious reasons (<code>DriversKilled</code> is included in <code>drivers</code>). The other three variables (<code>front</code>, <code>rear</code> and <code>law</code>) can be safely added to the model, as they might impact the <code>drivers</code> variable. We can also calculate measures of association between variables:</p>
 <div class="sourceCode" id="cb229"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb229-1"><a href="diagnosticsOmitted.html#cb229-1" aria-hidden="true" tabindex="-1"></a>greybox<span class="sc">::</span><span class="fu">assoc</span>(SeatbeltsWithResiduals)</span></code></pre></div>
 <pre><code>## Associations: 
 ## values:
@@ -601,23 +607,46 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ## rear          &quot;pearson&quot; &quot;pearson&quot;     &quot;pearson&quot; &quot;none&quot;    &quot;pearson&quot; &quot;mcor&quot;
 ## VanKilled     &quot;pearson&quot; &quot;pearson&quot;     &quot;pearson&quot; &quot;pearson&quot; &quot;none&quot;    &quot;mcor&quot;
 ## law           &quot;mcor&quot;    &quot;mcor&quot;        &quot;mcor&quot;    &quot;mcor&quot;    &quot;mcor&quot;    &quot;none&quot;</code></pre>
-<p>Technically speaking, the output of this function tells us that all variables are correlated with residuals and can be considered in the model. I would still prefer not to add <code>DriversKilled</code> in the model for the reasons explained earlier. We can construct a new model in the following way:</p>
+<p>Technically speaking, the output of this function tells us that all variables are correlated with residuals and can be considered in the model. This is because p-values are lower than my favourite significance level of 1%, so that we can reject null hypothesis for each of the tests (which is that the respective parameters is equal to zero in the population). I would still prefer not to add <code>DriversKilled</code> and <code>VanKilled</code> variables in the model for the reasons explained earlier. We can construct a new model in the following way:</p>
 <div class="sourceCode" id="cb231"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb231-1"><a href="diagnosticsOmitted.html#cb231-1" aria-hidden="true" tabindex="-1"></a>adamModelSeat02 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;NNN&quot;</span>,</span>
 <span id="cb231-2"><a href="diagnosticsOmitted.html#cb231-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">formula=</span>drivers<span class="sc">~</span>PetrolPrice<span class="sc">+</span>kms<span class="sc">+</span></span>
-<span id="cb231-3"><a href="diagnosticsOmitted.html#cb231-3" aria-hidden="true" tabindex="-1"></a>                          front<span class="sc">+</span>rear<span class="sc">+</span>law)</span>
-<span id="cb231-4"><a href="diagnosticsOmitted.html#cb231-4" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat02,<span class="dv">7</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-101-1.png" width="672" /></p>
-<p>How can we know that we have not omitted any important variables in our new model? Unfortunately, there is no good way of knowing that. In general, we should use judgment in order to decide whether anything else is needed or not. But given that we deal with time series, we can analyse residuals over time and see if there is any structure left:</p>
-<div class="sourceCode" id="cb232"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb232-1"><a href="diagnosticsOmitted.html#cb232-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat02,<span class="dv">8</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-102-1.png" width="672" /></p>
-<p>This plot shows that the model has not captured seasonality and that there is stil some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model:</p>
-<div class="sourceCode" id="cb233"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb233-1"><a href="diagnosticsOmitted.html#cb233-1" aria-hidden="true" tabindex="-1"></a>adamModelSeat03 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;ANA&quot;</span>,</span>
-<span id="cb233-2"><a href="diagnosticsOmitted.html#cb233-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">formula=</span>drivers<span class="sc">~</span>PetrolPrice<span class="sc">+</span>kms<span class="sc">+</span></span>
-<span id="cb233-3"><a href="diagnosticsOmitted.html#cb233-3" aria-hidden="true" tabindex="-1"></a>                          front<span class="sc">+</span>rear<span class="sc">+</span>law)</span>
-<span id="cb233-4"><a href="diagnosticsOmitted.html#cb233-4" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))</span>
-<span id="cb233-5"><a href="diagnosticsOmitted.html#cb233-5" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat03,<span class="dv">7</span><span class="sc">:</span><span class="dv">8</span>)</span></code></pre></div>
-<p><img src="adam_files/figure-html/unnamed-chunk-103-1.png" width="672" /></p>
-<p>This is much better. There is no apparent missing structure in the data and no apparent omitted variables. We can now move to the next steps of diagnostics.</p>
+<span id="cb231-3"><a href="diagnosticsOmitted.html#cb231-3" aria-hidden="true" tabindex="-1"></a>                          front<span class="sc">+</span>rear<span class="sc">+</span>law)</span></code></pre></div>
+<p>The model now fits the data differently (Figure <a href="diagnosticsOmitted.html#fig:adamModelSeat02">14.3</a>):</p>
+<div class="sourceCode" id="cb232"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb232-1"><a href="diagnosticsOmitted.html#cb232-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat02, <span class="dv">7</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:adamModelSeat02"></span>
+<img src="adam_files/figure-html/adamModelSeat02-1.png" alt="The data and the fitted values for the second model." width="672" />
+<p class="caption">
+Figure 14.3: The data and the fitted values for the second model.
+</p>
+</div>
+<p>How can we know that we have not omitted any important variables in our new model? Unfortunately, there is no good way of knowing that. In general, we should use judgment in order to decide whether anything else is needed or not. But given that we deal with time series, we can analyse residuals over time and see if there is any structure left (Figure <a href="diagnosticsOmitted.html#fig:adamModelSeat02Resid">14.4</a>):</p>
+<div class="sourceCode" id="cb233"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb233-1"><a href="diagnosticsOmitted.html#cb233-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat02, <span class="dv">8</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:adamModelSeat02Resid"></span>
+<img src="adam_files/figure-html/adamModelSeat02Resid-1.png" alt="Standardised residuals vs time plot." width="672" />
+<p class="caption">
+Figure 14.4: Standardised residuals vs time plot.
+</p>
+</div>
+<p>Plot in Figure <a href="diagnosticsOmitted.html#fig:adamModelSeat02Resid">14.4</a> shows that the model has not captured seasonality and that there is still some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model, estimating ETSX instead of just regression:</p>
+<div class="sourceCode" id="cb234"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb234-1"><a href="diagnosticsOmitted.html#cb234-1" aria-hidden="true" tabindex="-1"></a>adamModelSeat03 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;ANA&quot;</span>,</span>
+<span id="cb234-2"><a href="diagnosticsOmitted.html#cb234-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">formula=</span>drivers<span class="sc">~</span>PetrolPrice<span class="sc">+</span>kms<span class="sc">+</span></span>
+<span id="cb234-3"><a href="diagnosticsOmitted.html#cb234-3" aria-hidden="true" tabindex="-1"></a>                          front<span class="sc">+</span>rear<span class="sc">+</span>law)</span></code></pre></div>
+<p>We can produce similar plots to do model diagnostics (Figue <a href="diagnosticsOmitted.html#fig:adamModelSeat03">14.5</a>):</p>
+<div class="sourceCode" id="cb235"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb235-1"><a href="diagnosticsOmitted.html#cb235-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))</span>
+<span id="cb235-2"><a href="diagnosticsOmitted.html#cb235-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelSeat03,<span class="dv">7</span><span class="sc">:</span><span class="dv">8</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:adamModelSeat03"></span>
+<img src="adam_files/figure-html/adamModelSeat03-1.png" alt="Diagnostic plots for Model 3." width="672" />
+<p class="caption">
+Figure 14.5: Diagnostic plots for Model 3.
+</p>
+</div>
+<p>In Figure <a href="diagnosticsOmitted.html#fig:adamModelSeat03">14.5</a>, we see that there is no apparent missing structure in the data and no obvious omitted variables. We can now move to the next steps of diagnostics.</p>
+</div>
+<h3>References</h3>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-SvetunkovSBA" class="csl-entry">
+• Svetunkov, I., 2021c. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 01.10.2021)
+</div>
 </div>
 
             </section>
@@ -630,7 +659,6 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -671,7 +699,7 @@ gitbook.start({
 },
 "download": ["adam.pdf"],
 "search": {
-"engine": "lunr",
+"engine": "fuse",
 "options": null
 },
 "toc": {
