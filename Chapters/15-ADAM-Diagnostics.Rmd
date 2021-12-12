@@ -1,10 +1,10 @@
 # Model diagnostics {#diagnostics}
-In this chapter we investigate how ADAM models can be diagnosed and improved. The majority of topics will build upon the typical model assumptions discussed in Section 12 of @SvetunkovSBA textbook. Some of the assumptions cannot be diagnosed properly, but for the others there are existing and well established instruments. We will consider the following assumptions and discuss how to check whether they are violated or not:
+In this chapter we investigate how ADAM models can be diagnosed and improved. The majority of topics will build upon the typical model assumptions discussed in Subsection \@ref(assumptions) and in Section 12 of @SvetunkovSBA textbook. Some of the assumptions cannot be diagnosed properly, but for the others there exist well established instruments. We will consider the following assumptions and discuss how to check whether they are violated or not:
 
 1. Model is correctly specified:
 a. [No omitted variables](#diagnosticsOmitted);
 b. [No redundant variables](#diagnosticsRedundant);
-c. [The necessary transformation of the variables are applied](#diagnosticsTransformations);
+c. [The necessary transformations of the variables are applied](#diagnosticsTransformations);
 d. [No outliers in the model](#diagnosticsOutliers).
 2. Residuals are i.i.d.:
 a. [They are not autocorrelated](#diagnosticsResidualsIIDAuto);
@@ -12,28 +12,33 @@ b. [They are homoscedastic](#diagnosticsResidualsIIDHetero);
 c. [The expectation of residuals is zero, no matter what](#diagnosticsResidualsIIDExpectation);
 d. [The residuals follow the specified distribution](#diagnosticsResidualsIIDDistribution);
 e. The distribution of residuals does not change over time.
-3. [The explanatory variables are not correlated with anything but the response variable](#diagnosticsMulticollinearity);
+3. [The explanatory variables are not correlated with anything but the response variable](#diagnosticsMulticollinearity):
+a. [No multicollinearity](#diagnosticsMulticollinearity);
+b. No endogeneity (not discussed in the context of ADAM).
 
-All the model diagnostics is aimed at spotting patterns in residuals. If there are some, then something is probably missing in the model. In this chapter we will discuss, which instruments can be used to diagnose different types of assumptions
+All the model diagnostics is aimed at spotting patterns in residuals. If there are patterns, then something is probably missing in the model. In this chapter we will discuss, which instruments can be used to diagnose different types of assumptions
 
-In order to make this more actionable, we will consider a conventional regression model on `Seatbelts` data. This can be estimated equally well either with `adam()` from `smooth` or `alm()` from `greybox`. In general, I recommend using `alm()`, when no dynamic elements are present in the model. Otherwise, use `adam()` as shown below:
+Note that the proposed analysis is based mainly on visual inspection of various plots. While there are statistical tests for some of assumptions, we do not discuss them here. This is because human judgment is typically more reliable than just p-values, and people tend to misuse the latter.
+
+In order to make this more actionable, we will consider a conventional regression model on `Seatbelts` data, discussed in Section \@ref(ETSXRExample). We start with pure regression, which can be estimated equally well either with `adam()` from `smooth` or `alm()` from `greybox`. In general, I recommend using `alm()`, when no dynamic elements are present in the model. Otherwise, use `adam()` in the following way:
 
 ```{r adamModelSeat01, fig.cap="Basic regression model for the data of Road Casualties in Great Britain 1969–84."}
 adamModelSeat01 <- adam(Seatbelts, "NNN",
                         formula=drivers~PetrolPrice+kms)
-plot(adamModelSeat01,7)
+plot(adamModelSeat01, 7, main="")
 ```
 
 This model has several issues, and in this chapter we will discuss how to diagnose and fix them.
 
 
 ## Model specification: Omitted variables {#diagnosticsOmitted}
-We start with one of the most important assumptions for models: model has not omitted important variables. In general this is difficult to diagnose, because typically it is not possible what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of variables are missing, the next step would be to either collect the variables themselves or their proxies. One way or another, we would need to add the missing information in the model.
+We start with one of the most important assumptions for models: model has not omitted important variables. In general this is difficult to diagnose, because typically it is not possible to identify what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of variables are missing, the next step would be to either collect the variables themselves or to use their proxies. The proxies are variables that are expected to be correlated with the missing variables and can partially substitute them. One way or another, we would need to add the missing information in the model.
 
-In some cases we might be able to diagnose this. For example, with our regression model from the previous section, we have a set of variables that are not included in the model. A simple thing to do would be to see if the residuals of our model are correlated with any of the omitted variables. We can either produce scatterplots or calculate measures of association to see if there is some relation in the residuals that is not explained by the existing structure. I will use `assoc()` and `spread()` functions from `greybox` for this:
+In some cases we might be able to diagnose this. For example, with our regression model estimated in the previous section, we have a set of variables that are not included in the model. A simple thing to do would be to see if the residuals of our model are correlated with any of the omitted variables. We can either produce scatterplots or calculate measures of association [see Section 2.2 and Chapter 6 of @SvetunkovSBA] to see if there are relations in the residuals. I will use `assoc()` and `spread()` functions from `greybox` for this:
 
-```{r}
-# Create a new matrix, removing the variables that are already in the model
+```{r carSeatsSpread, fig.cap="Spread plot for the residuals of model vs not included variables."}
+# Create a new matrix, removing the variables that are already
+# in the model
 SeatbeltsWithResiduals <-
   cbind(as.data.frame(residuals(adamModelSeat01)),
         Seatbelts[,-c(2,5,6)])
@@ -42,42 +47,52 @@ colnames(SeatbeltsWithResiduals)[1] <- "residuals"
 greybox::spread(SeatbeltsWithResiduals)
 ```
 
-`spread()` function automatically detects the type of variable and produces scatterplot / `boxplot()` / `tableplot()` between them, making the final plot more readable. The plot above tells us that residuals are correlated with `DriversKilled`, `front`, `rear` and `law`, so some of these variables can be added to the model to improve it. `VanKilled` might have a weak relation with `drivers`, but judging by description does not make sense in the model (this is a part of the `drivers` variable). In our case, it is safe to add these variables, because they make sense in explaining the number of injured drivers. However, I would not add `DriversKilled` as it seems not to drive the number of deaths and injuries, but is just correlated with it for obvious reasons (`DriversKilled` is included in `drivers`). We can also calculate measures of association between variables:
+`spread()` function automatically detects the type of variable and produces based on that scatterplot / `boxplot()` / `tableplot()` between them, making the final plot more readable. The plot above tells us that residuals are correlated with `DriversKilled`, `front`, `rear` and `law`, so some of these variables can be added to the model to improve it. `VanKilled` might have a weak relation with `drivers`, but judging by description does not make sense in the model (this is a part of the `drivers` variable). Also, I would not add `DriversKilled`, as it seems not to drive the number of deaths and injuries (based on our understanding of the problem), but is just correlated with it for obvious reasons (`DriversKilled` is included in `drivers`). The other three variables (`front`, `rear` and `law`) can be safely added to the model, as they might impact the `drivers` variable. We can also calculate measures of association between variables:
 ```{r}
 greybox::assoc(SeatbeltsWithResiduals)
 ```
-Technically speaking, the output of this function tells us that all variables are correlated with residuals and can be considered in the model. I would still prefer not to add `DriversKilled` in the model for the reasons explained earlier. We can construct a new model in the following way:
+Technically speaking, the output of this function tells us that all variables are correlated with residuals and can be considered in the model. This is because p-values are lower than my favourite significance level of 1%, so that we can reject null hypothesis for each of the tests (which is that the respective parameters is equal to zero in the population). I would still prefer not to add `DriversKilled` and `VanKilled` variables in the model for the reasons explained earlier. We can construct a new model in the following way:
 ```{r}
 adamModelSeat02 <- adam(Seatbelts, "NNN",
                         formula=drivers~PetrolPrice+kms+
                           front+rear+law)
-plot(adamModelSeat02,7)
 ```
 
-How can we know that we have not omitted any important variables in our new model? Unfortunately, there is no good way of knowing that. In general, we should use judgment in order to decide whether anything else is needed or not. But given that we deal with time series, we can analyse residuals over time and see if there is any structure left:
+The model now fits the data differently (Figure \@ref(fig:adamModelSeat02)):
 
-```{r}
-plot(adamModelSeat02,8)
+```{r adamModelSeat02, fig.cap="The data and the fitted values for the second model."}
+plot(adamModelSeat02, 7, main="")
 ```
 
-This plot shows that the model has not captured seasonality and that there is stil some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model:
+How can we know that we have not omitted any important variables in our new model? Unfortunately, there is no good way of knowing that. In general, we should use judgment in order to decide whether anything else is needed or not. But given that we deal with time series, we can analyse residuals over time and see if there is any structure left (Figure \@ref(fig:adamModelSeat02Resid)):
+
+```{r adamModelSeat02Resid, fig.cap="Standardised residuals vs time plot."}
+plot(adamModelSeat02, 8, main="")
+```
+
+Plot in Figure \@ref(fig:adamModelSeat02Resid) shows that the model has not captured seasonality and that there is still some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model, estimating ETSX instead of just regression:
 ```{r}
 adamModelSeat03 <- adam(Seatbelts, "ANA",
                         formula=drivers~PetrolPrice+kms+
                           front+rear+law)
+```
+
+We can produce similar plots to do model diagnostics (Figue \@ref(fig:adamModelSeat03)):
+
+```{r adamModelSeat03, fig.cap="Diagnostic plots for Model 3."}
 par(mfcol=c(1,2))
 plot(adamModelSeat03,7:8)
 ```
 
-This is much better. There is no apparent missing structure in the data and no apparent omitted variables. We can now move to the next steps of diagnostics.
+In Figure \@ref(fig:adamModelSeat03), we see that there is no apparent missing structure in the data and no obvious omitted variables. We can now move to the next steps of diagnostics.
 
 
 ## Model specification: Redundant variables {#diagnosticsRedundant}
-While there are some ways of testing for omitted variables, the redundant ones are very difficult to diagnose. Yes, we could look at the [significance of variables](#hypothesisTesting) or compare models with and without some variables based on [information criteria](#informationCriteria), but even if our approaches say that a variable is not significant, this does not mean that it is not needed in the model. There can be many reasons, why a test would fail to reject H$_0$ and AIC would prefer a model without the variable under consideration. So, it comes to using judgment, trying to figure out whether a variable is needed in the model or not.
+While there are some ways of testing for omitted variables, the redundant ones are very difficult to diagnose. Yes, we could look at the significance of variables [Section 5.3 of @SvetunkovSBA] or compare models with and without some variables based on information criteria [Section 13.4 of @SvetunkovSBA], but even if our approaches say that a variable is not significant, this does not mean that it is not needed in the model. There can be many reasons, why a test would fail to reject H$_0$ and AIC would prefer a model without the variable under consideration. So, it comes to using judgment, trying to figure out whether a variable is needed in the model or not.
 
-In the example with Seatbelt data, `DriversKilled` would be a redundant variable. Let's see what happens with the model in this case:
+In the example with Seatbelt data, `DriversKilled` would be a redundant variable for the reasons explained in Section \@ref(diagnosticsOmitted). Let us see what happens with the model if we include it:
 
-```{r}
+```{r adamModelSeat03, fig.cap="Diagnostic plots for Model 4."}
 adamModelSeat04 <- adam(Seatbelts, "NNN", 
                         formula=drivers~PetrolPrice+kms+
                           front+rear+law+DriversKilled)
@@ -89,9 +104,9 @@ The residuals from this model look adequate, with only issue being the first 45 
 ```{r}
 summary(adamModelSeat04)
 ```
-The uncertainty around the parameter `DriversKilled` is narrow, showing that the variable has a positive impact on the `drivers`. However the issue here is not statistical, but rather fundamental: we have included the variable that is a part of our response variable. It does not explain why drivers get injured and killed, it just reflects a specific part of this relation. So it explains part of the variance, which should have been explained by other variables (e.g. `kms` and `law`), making them statistically not significant. So, based on technical analysis we would be inclined to keep the variable, but based on our understanding of the problem we should not.
+The uncertainty around the parameter `DriversKilled` is narrow, showing that the variable has a positive impact on the `drivers`. However the issue here is not statistical, but rather fundamental: we have included the variable that is a part of our response variable. It does not explain why drivers get injured and killed, it just reflects a specific part of this relation. So it approximates part of the variance, which should have been explained by other variables (e.g. `kms` and `law`), making them statistically not significant. So, based on technical analysis we would be inclined to keep the variable, but based on our understanding of the problem we should not.
 
-If we have redundant variables in the model, then the model might overfit the data, leading to narrower prediction intervals and biased forecasts. The parameters of such model are typically unbiased, but inefficient.
+If we have redundant variables in the model, then the model might overfit the data, leading to narrower prediction intervals and biased forecasts. The parameters of such model are typically unbiased, but inefficient [Section 4.3 of @SvetunkovSBA].
 
 
 ## Model specification: Transformations {#diagnosticsTransformations}
@@ -105,21 +120,23 @@ and
 	y_t = \exp\left(a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + \epsilon_t\right) .
   (\#eq:multiplicativeModel)
 \end{equation}
-The latter model is equivalent to the so called "log-linear" model, but can also include logarithms of explanatory variables instead of the variables themselves.
+\@ref(eq:multiplicativeModel) is equivalent to the so called "log-linear" model, but can also include logarithms of explanatory variables instead of the variables themselves if needed.
 
-There are different ways to diagnose the problem with wrong transformations, which sometimes help in detecting it. The first one is the actuals vs fitted plot:
+There are different ways to diagnose the problem with wrong transformations. The first one is the actuals vs fitted plot (Figure \@ref(fig:adamModelSeat03ActualsFitted)):
 
-```{r}
-plot(adamModelSeat03,1)
+```{r adamModelSeat03ActualsFitted, fig.cap="Actuals vs Fitted for Model 3."}
+plot(adamModelSeat03, 1, main="")
 ```
 
-The grey dashed line on the plot corresponds to the situation, when actuals and fitted coincide (100% fit). The red line on the plot above is LOESS line, produced by `lowess()` function in R, smoothing the scatterplot to reflect the potential tendencies in the data. In the ideal situation this red line should coinside with the grey line. In addition the variability around the line should not change with the increase of fitted values. In our case there is a slight U-shape in the red line and an insignificant increase in variability around the middle of the data. This could either be due to pure randomness and thus should be ignored, or could indicate a slight non-linearity in the data. After all, we have constructed pure additive model on the data that exhibits seasonality with multiplicative characteristics, which becomes especially apparent at the end of the series, where the drop in level is accompanied by the decrease of variability of the data:
+The grey dashed line on the plot in Figure \@ref(fig:adamModelSeat03ActualsFitted) corresponds to the situation, when actuals and fitted coincide (100% fit). The red line on the plot is LOWESS line [@Cleveland1979], produced by `lowess()` function in R, smoothing the scatterplot to reflect the potential tendencies in the data. In the ideal situation this red line should coincide with the grey line. In addition the variability around the line should not change with the increase of fitted values. In our case there is a slight U-shape in the red line and a slight increase in variability around the middle of the data. This could either be due to pure randomness and thus should be ignored, or indicate a slight non-linearity in the data. After all, we have constructed pure additive model on the data that exhibits seasonality with multiplicative characteristics, which becomes especially apparent at the end of the series, where the drop in level is accompanied by the decrease of variability of the data (Figure \@ref(fig:adamModelSeat03LinearPlot)):
 
-```{r}
-plot(adamModelSeat03,7)
+```{r adamModelSeat03LinearPlot, fig.cap="Actuals and Fitted values for Model 3."}
+plot(adamModelSeat03, 7, main="")
 ```
 
-In order to diagnose this properly, we might use other instruments. One of these is the analysis of standardised residuals. The formula for the standardised residuals will differ depending on the assumed distribution and for some of them comes to the value inside the "$\exp$" part of the probability density function:
+In order to diagnose this properly, we might use other instruments. One of these is the analysis of standardised residuals.
+
+The formula for the standardised residuals $u_t$ will differ depending on the assumed distribution and for some of them comes to the value inside the "$\exp$" part of the probability density function:
 
 1. Normal, $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$: $u_t = \frac{e_t - \bar{e}}{\hat{\sigma}}$;
 2. Laplace, $\epsilon_t \sim \mathcal{Laplace}(0, s)$: $u_t = \frac{e_t - \bar{e}}{\hat{s}}$;
@@ -128,37 +145,40 @@ In order to diagnose this properly, we might use other instruments. One of these
 5. Inverse Gaussian, $1+\epsilon_t \sim \mathcal{IG}(1, s)$: $u_t = \frac{1+e_t}{\bar{e}}$;
 6. Gamma, $1+\epsilon_t \sim \mathcal{\Gamma}(s^{-1}, s)$: $u_t = \frac{1+e_t}{\bar{e}}$;
 7. Log Normal, $1+\epsilon_t \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$: $u_t = \frac{e_t - \bar{e} +\frac{\hat{\sigma}^2}{2}}{\hat{\sigma}}$.
-where $\bar{e}$ is the mean of residuals, which is typically assumed to be zero and $u_t$ is the value of standardised residuals. Note that the scales in the formulae above should be calculated via the formula with the bias correction, i.e. with the division by degrees of freedom, not the number of observations. Also, note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$ and additive error models, the formulae for the standardised residuals will be the same, only the assumptions will change (see Section \@ref(ADAMETSAdditiveDistributions)).
 
-Here is an example of a plot of fitted vs standardised residuals in R:
+Here $\bar{e}$ is the mean of residuals, which is typically assumed to be zero and $u_t$ is the value of standardised residuals. Note that the scales in the formulae above should be calculated via the formula with the bias correction, i.e. with the division by degrees of freedom, not the number of observations. Also, note that in case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$ and additive error models, the formulae for the standardised residuals will be the same, only the assumptions will change (see Section \@ref(ADAMETSAdditiveDistributions)).
 
-```{r adamModelSeat03Resid, fig.cap="Diagnostics of pure additive ETSX model."}
-plot(adamModelSeat03,2)
+Here is an example of a plot of fitted vs standardised residuals in R (Figure \@ref(fig:adamModelSeat03Resid)):
+
+```{r adamModelSeat03Resid, fig.cap="Standardised residuals vs Fitted for pure additive ETSX model."}
+plot(adamModelSeat03, 2, main="")
 ```
 
-Given that the scale of the original variable is now removed in the standardised residuals, it might be easier to spot the non-linearity. In our case it is still not apparent, but there is a slight U-shape in LOESS line and a slight change in variance. Another plot that we have already used before is standardised residuals over time:
+Given that the scale of the original variable is now removed in the standardised residuals, it might be easier to spot the non-linearity. In our case, in Figure \@ref(fig:adamModelSeat03Resid), it is still not apparent, but there is a slight U-shape in LOESS line and a slight change in variance. Another plot that we have already used before is standardised residuals over time (Figure \@ref(fig:adamModelSeat03ResidTime)):
 
-```{r}
-plot(adamModelSeat03,8)
+```{r adamModelSeat03ResidTime, fig.cap="Standardised residuals vs Time for pure additive ETSX model."}
+plot(adamModelSeat03, 8, main="")
 ```
 
-This plot shows that there is a slight decline in the residuals around year 1977. Still, there is no prominent non-linearity in the residuals, so it is not clear whether any transformations are needed or not.
+Plot in Figure \@ref(fig:adamModelSeat03ResidTime) shows that there is a slight decline in the residuals around year 1977. Still, there is no prominent non-linearity in the residuals, so it is not clear whether any transformations are needed or not.
 
-However, based on my judgment and understanding of the problem, I would expect for the number of injuries and deaths to change proportionally to the change of the level of the data: if after some external interventions the overal level of injuries and deaths would increase, we would expect a percentage decline, not a unit decline with a change of already existing variables in the model. This is why I will try a multiplicative model next:
+However, based on my judgment and understanding of the problem, I would expect for the number of injuries and deaths to change proportionally to the change of the level of the data: if after some external interventions the overall level of injuries and deaths would decrease, we would expect a percentage decline, not a unit decline with a change of already existing variables in the model. This is why I will try a multiplicative model next:
 
-```{r adamModelSeat05Resid, fig.cap="Diagnostics of pure multiplicative ETSX model."}
+```{r adamModelSeat05Resid, fig.cap="Standardised residuals vs Fitted for pure multiplicative ETSX model."}
 adamModelSeat05 <- adam(Seatbelts, "MNM",
                         formula=drivers~PetrolPrice+kms+
                           front+rear+law)
-plot(adamModelSeat05,2)
+plot(adamModelSeat05, 2, main="")
 ```
 
-The plot shows that the variability is now slightly more uniform across all fitted values, but the difference between Figures \@ref(fig:adamModelSeat03Resid) and \@ref(fig:adamModelSeat05Resid) is not very prominent. One of potential solutions in this situation is to compare the models in terms of information criteria:
+The plot in Figure \@ref(fig:adamModelSeat05Resid) shows that the variability is now slightly more uniform across all fitted values, but the difference between Figures \@ref(fig:adamModelSeat03Resid) and \@ref(fig:adamModelSeat05Resid) is not very prominent. One of potential solutions in this situation is to compare the models in terms of information criteria:
 ```{r}
 setNames(c(AICc(adamModelSeat03), AICc(adamModelSeat05)),
          c("Additive model", "Multiplicative model"))
 ```
 Based on this, we would be inclined to select the multiplicative model. My personal judgment in this specific case agrees with the information criterion.
+
+There are different types of non-linear transformations, some of which have been discussed in Chapter 11 of @SvetunkovSBA.
 
 
 ## Model specification: Outliers {#diagnosticsOutliers}
