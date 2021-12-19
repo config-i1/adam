@@ -37,29 +37,29 @@ In this case the function has applied one and the same model but with different 
 ## ADAM ETS components selection {#ETSSelection}
 Having 30 ETS models to choose from, the task of selecting the most appropriate one becomes challenging. @Petropoulos2018a show that human experts can do this task successfully if they need to choose, which components to include in time series. However, when you face the problem of fitting ETS to thousands of time series, the judgmental selection becomes infeasible. Using some sort of automatic selection becomes critically important.
 
-The basic idea underlying the components selection in ETS is based on [information criteria](#informationCriteria): we define a pool of models, we fit those models and we select the one that has the lowest information criterion. Using this approach in ETS context was first proposed by @Hyndman2002. Based on this, we can construct some pool of models (e.g. based on our understanding of the problem) and then select the one that is the most appropriate to our data. `adam()` function in `smooth` package supports the following options for the pools:
+The basic idea underlying the components selection in ETS is based on information criteria [Section 13.3 of @SvetunkovSBA]: we define a pool of models, we fit those models and we select the one that has the lowest information criterion. Using this approach in ETS context was first proposed by @Hyndman2002. Based on this, we can prepare a pool of models (e.g. based on our understanding of the problem) and then select the one that is the most appropriate to our data. `adam()` function in `smooth` package supports the following options for the pools:
 
-1. Pool of [all 30 models](#ETSTaxonomy), `model="FFF"`;
-2. Pool of [pure additive models](#ADAMETSPureAdditive), `model="XXX"`. As an option, "X" can also be used to tell function to only try additive component on the selected place. e.g. `model="MXM"` will tell function to only test ETS(M,N,M), ETS(M,A,M) and ETS(M,Ad,M) models;
-3. Pool of [pure multiplicative models](#ADAMETSPureMultiplicative), `model="YYY"`. Similarly to (2), we can tell `adam()` to only consider multiplicative component in a specific place. e.g. `model="YNY"` will consider only ETS(M,N,N) and ETS(M,N,M);
+1. Pool of all 30 models (Section \@ref(ETSTaxonomy)), `model="FFF"`;
+2. Pool of pure additive models (Section \@ref(ADAMETSPureAdditive)), `model="XXX"`. As an option, "X" can also be used to tell function to only try additive component on the selected place. e.g. `model="MXM"` will tell function to only test ETS(M,N,M), ETS(M,A,M) and ETS(M,Ad,M) models;
+3. Pool of pure multiplicative models (Section \@ref(ADAMETSPureMultiplicative)), `model="YYY"`. Similarly to (2), we can tell `adam()` to only consider multiplicative component in a specific place. e.g. `model="YNY"` will consider only ETS(M,N,N) and ETS(M,N,M);
 4. Pool of pure models only, `model="PPP"` - this is a shortcut for doing (2) and (3) and then selecting the best between the two pools;
 5. Manual pool of models, which can be provided as a vector of models, for example: `model=c("ANN","MNN","ANA","AAN")`;
 6. `model="ZZZ"`, which triggers the selection among all possible models based on branch-and-bound algorithm (see below).
 
-In the cases explained above, `adam()` will try different models and select the most appropriate one from the predefined pool. There is a trade-off, when deciding which pool to use: if you provide the bigger one, it will take more time to find the appropriate one and there is a risk of overfitting the data; if you provide the smaller pool, then the optimal model might be outside of the pool, giving you the sub-optimal one.
+In the cases above, `adam()` will try different models and select the most appropriate one from the predefined pool. There is a trade-off, when deciding which pool to use: if you provide the bigger one, it will take more time to find the appropriate model and there is a risk of overfitting the data; if you provide the smaller pool, then the optimal model might be outside of it, giving you the sub-optimal one.
 
 Furthermore, in some situations you might not need to go through all 30 models, because, for example, the seasonal component is not needed in the data. Trying out all the models would be just a waste of time. So, in order to address this issue, I have developed a branch-and-bound algorithm for the selection of the most appropriate ETS model, which is triggered via `model="ZZZ"` (the same mechanism is used in `es()` function). The idea of the algorithm is to drop the components that do not improve the model. Here how it works:
 
 1. Apply ETS(A,N,N) to the data, calculate an information criterion (IC);
 2. Apply ETS(A,N,A) to the data, calculate IC. If it is lower than (1), then this means that there is some sort of seasonal component in the data, move to step (3). Otherwise go to (4);
-3. If (2) is lower than (1), then apply ETS(M,N,M) model and calculate IC. If it is lower than it means that the data exhibits multiplicative seasonality. Go to (4);
-4. Fit the model with the additive trend component and the seasonal component selected from previous steps, which can be either "N", "A" or "M", depending on the IC value. Calculate IC for the new model and compare it with the best IC so far. If it is lower, then there is some trend component in the data. If it is not, then the trend component is not needed.
+3. If (2) is lower than (1), then apply ETS(M,N,M) model and calculate IC. If it is lower then it means that the data exhibits multiplicative seasonality. Go to (4);
+4. Fit the model with the additive trend component and the seasonal component selected from previous steps, which can be either "N", "A" or "M". Calculate IC for the new model and compare it with the best IC so far. If it is lower, then there is some trend component in the data. If it is not, then the trend component is not needed.
 
-Based on these 4 steps, we can kick off the unneeded components and reduce the pool of models to test. For example, if the algorithm shows that seasonality is not needed, but there is a trend, then we only have 10 models to test overall instead of 30: ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N), ETS(M,N,N), ETS(M,M,N), ETS(M,Md,N), ETS(A,M,N), ETS(A,Md,N), ETS(M,A,N), ETS(M,Ad,N). Also, in steps (2) and (3), if there is a trend in the data, then the model will have higher than needed smoothing parameter $\alpha$, but the seasonality will play an important role in reducing the value of IC. This is why the algorithm is in general efficient. It might not guarantee that the optimal model will be selected all the time, but it reduces the computational time.
+Based on these 4 steps, we can kick off the unneeded components and reduce the pool of models to check. For example, if the algorithm shows that seasonality is not needed, but there is a trend, then we only have 10 models to check overall instead of 30: ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N), ETS(M,N,N), ETS(M,M,N), ETS(M,Md,N), ETS(A,M,N), ETS(A,Md,N), ETS(M,A,N), ETS(M,Ad,N). In steps (2) and (3), if there is a trend in the data, then the model will have higher than needed smoothing parameter $\alpha$, but the seasonality will play an important role in reducing the value of IC. This is why the algorithm is in general efficient. It might not guarantee that the optimal model will be selected all the time, but it substantially reduces the computational time.
 
-The branch-and-bound algorithm can be combined with different types of models and is in fact also supported in `model="XXX"` and `model="YYY`, where the pool of models for steps (1) - (4) is restricted by the pure models only.
+The branch-and-bound algorithm can be combined with different types of model pools and is in fact also supported in `model="XXX"` and `model="YYY"`, where the pool of models for steps (1) - (4) is restricted by the pure ones only. This would also work in the combinations of the style `model="XYZ"`, where the function would form the pool of the following models: ETS(A,N,N), ETS(A,M,N), ETS(A,Md,N), ETS(A,N,A), ETS(A,M,A), ETS(A,Md,A), ETS(A,N,M), ETS(A,M,M) and ETS(A,Md,M).
 
-Finally, while the branch-and-bound algorithm is quite efficient, it might end up providing a mixed model, which might not be very suitable for the data. So, it is recommended to think of the possible pool of models prior to applying it to the data. For example, in some cases you might realise that additive seasonality is not needed, and that the data can be either non-seasonal or with multiplicative seasonality. In this case, you can explore the `model="YZY"` option, aligning the error term with the seasonal component.
+Finally, while the branch-and-bound algorithm is efficient, it might end up providing a mixed model, which might not be very suitable for the data. So, it is recommended to think of the possible pool of models prior to applying it to the data. For example, in some cases you might realise that additive seasonality is not needed, and that the data can be either non-seasonal or with multiplicative seasonality. In this case, you can explore the `model="YZY"` option, aligning the error term with the seasonal component.
 
 Here is an example with automatically selected ETS model using the branch-and-bound algorithm described above:
 ```{r}
@@ -67,13 +67,13 @@ adamETSModel <- adam(AirPassengers, model="ZZZ", h=12, holdout=TRUE)
 adamETSModel
 ```
 
-In this specific example, the optimal model will coincide with the one selected via `model="FFF"` and `model="ZXZ"`, although this does not necessarily is the case universally.
+In this specific example, the optimal model will coincide with the one selected via `model="FFF"` and `model="ZXZ"` (the reader is encouraged to try these selection mechanisms on their own), although this does not necessarily hold universally.
 
 
 ## ADAM ARIMA order selection {#ARIMASelection}
 While ETS has 30 models to choose from, ARIMA has many more options. For example, selecting the non-seasonal ARIMA with / without constant restricting the orders with $p \leq 3$, $d \leq 2$ and $q \leq 3$ leads to the combination of $3 \times 2 \times 3 \times 2 = 36$ possible ARIMA models. If we increase the possible orders to 5 or even more, we will need to go through hundreds of models. Adding the seasonal part increases this number by an order of magnitude. This means that we cannot just test all possible ARIMA models and select the most appropriate one, we need to be smart in the selection proces.
 
-@Hyndman2008Forecast developed an efficient mechanism of ARIMA order selection based on statistical tests (for stationarity and seasonality), reducing the number of models to test to reasonable ammount. @Svetunkov2019 developed an alternative mechanism, relying purely on information criteria, which works especially well on seasonal data, but potentially may lead to models that overfit the data (this is implemented in `auto.ssarima()` and `auto.msarima()` functions in `smooth` package). We also have the [Box-Jenkins approach](#BJApproach) for ARIMA orders selection, which relies on the analysis of [ACF](#ACF) and [PACF](#PACF), but we should not forget the [limitations of that approach](#BJApproachSummary). Finally, @Sagaert2021 proposed the [stepwise trace forward approach](#ETSXSelection), which relies on partial correlations and uses the information criteria to test model on each iteration. Building upon all of that, I have developed the following algorithm for order selection of ADAM ARIMA:
+@Hyndman2008Forecast developed an efficient mechanism of ARIMA order selection based on statistical tests (for stationarity and seasonality), reducing the number of models to test to reasonable ammount. @Svetunkov2019 developed an alternative mechanism, relying purely on information criteria, which works especially well on seasonal data, but potentially may lead to models that overfit the data (this is implemented in `auto.ssarima()` and `auto.msarima()` functions in `smooth` package). We also have the Box-Jenkins approach discussed in Section \@ref(BJApproach) for ARIMA orders selection, which relies on the analysis of ACF (Subsection \@ref(ACF)) and PACF (Subsection \@ref(PACF)), but we should not forget the limitations of that approach (Subsection \@ref(BJApproachSummary)). Finally, @Sagaert2021 proposed the stepwise trace forward approach (discussed briefly in Section \@ref(ETSXSelection)), which relies on partial correlations and uses the information criteria to test model on each iteration. Building upon all of that, I have developed the following algorithm for order selection of ADAM ARIMA:
 
 1. Determine the order of differences by fitting all possible combinations of ARIMA models with $P_j=0$ and $Q_j=0$ for all lags $j$. This includes trying the models with and without the constant term. The order $D_j$ is then determined via the model with the lowest IC;
 2. Then iteratively, starting from the highest seasonal lag and moving to the lag of 1 do for every lag $m_j$:
@@ -83,50 +83,48 @@ c. Define, what should be the order of MA based on the lag of the autocorrelatio
 d. Calculate IC, and if it is lower than for the previous best model, keep the new MA order;
 e. Repeat (a) - (d) while there is an improvement in IC;
 f. Do steps (a) - (e) for AR order, substituting ACF with PACF of the residuals of the best model;
-g. Move to the next seasonal lag;
-3. Try out several restricted ARIMA models of the order $q=d$ (this is based on (1) and the restrictions provided by user). The motivation for this comes from the idea of relation between [ARIMA and ETS](#ARIMAandETS).
+g. Move to the next seasonal lag and go to step (a);
+3. Try out several restricted ARIMA models of the order $q=d$ (this is based on (1) and the restrictions provided by user). The motivation for this comes from the idea of relation between ARIMA and ETS (Section \@ref(ARIMAandETS)).
 
-As you can see, this algorithm relies on the idea of Box-Jenkins methodology, but takes it with a pinch of salt, checking every time if the proposed order is improving the model or not. The motivation for doing MA orders before AR is based on the understanding of what [AR model](#AR) implies for forecasting. In a way, it is safer to have ARIMA(0,d,q) model than ARIMA(p,d,0), because the former is less prone to overfitting than the latter. Finally, the proposed algorithm is faster than the algorithm of @Svetunkov2019 and is more modest in the number of selected orders of the model.
+As you can see, this algorithm relies on the idea of Box-Jenkins methodology, but takes it with a pinch of salt, checking every time if the proposed order is improving the model or not. The motivation for doing MA orders before AR is based on the understanding of what AR model implies for forecasting (Section \@ref(AR)). In a way, it is safer to have ARIMA(0,d,q) model than ARIMA(p,d,0), because the former is less prone to overfitting than the latter. Finally, the proposed algorithm is faster than the algorithm of @Svetunkov2019 and is more modest in the number of selected orders of the model.
 
-In order to start the algorithm, you would need to provide a parameter `select=TRUE` in the `orders`. Here is an example with Box-Jenkins data:
+In R, in order to start the algorithm, you would need to provide a parameter `select=TRUE` in the `orders`. Here is an example with Box-Jenkins sales data:
 ```{r}
 adamARIMAModel <- adam(BJsales, model="NNN",
                        orders=list(ar=3,i=2,ma=3,select=TRUE),
                        h=10, holdout=TRUE)
 ```
-In this example, `orders=list(ar=3,i=2,ma=3,select=TRUE)` tells function that the maximum orders to check are $p\leq 3$, $d\leq 2$ $q\leq 3$. The resulting model is `r adamARIMAModel$model` and has the following fit:
-```{r}
+In this example, `orders=list(ar=3,i=2,ma=3,select=TRUE)` tells function that the maximum orders to check are $p\leq 3$, $d\leq 2$ $q\leq 3$. The resulting model is `r adamARIMAModel$model`, which has the fit shown in Figure \@ref(fig:adamARIMAModelFitExample).
+
+```{r adamARIMAModelFitExample, fig.cap="Actuals, fitted and forecast for the Box-Jenkins Sales data.", echo=FALSE}
 plot(adamARIMAModel,7)
-adamARIMAModel
 ```
 
 Note that when optimal initials are used, the resulting model will be parsimonious. If we want to have a more flexible model, we can use a different initialisation, and in some cases the algorithm will select a model with higher orders of AR, I and MA.
 
 
 ### ETS + ARIMA restrictions
-Based on the relation between [ARIMA and ETS](#ARIMAandETS), when selecting ARIMA orders, we do not need to test some of combinations of models. For example, if we already consider ETS(A,N,N), then we do not need to check ARIMA(0,1,1) model. The recommendations for what to skip in different circumstances have been discussed in Section \@ref(ETSAndARIMA). Still there are different ways how to construct an ETS + ARIMA model, with different sequence between ETS selection / ARIMA selection. We suggest to start with ETS, then go to the selection of ARIMA orders. This way, we are building upon the robust forecasting model and see if it can be improved further by introducing elements that are not there. Note that given the complexity of the task of estimating all parameters for ETS and ARIMA, it is advised to use backcasting (see Section \@ref(ADAMInitialisationOptAndBack)) for the initialisation of the model if a model selection is required for ETS + ARIMA. Here is an example in R:
+Based on the relation between ARIMA and ETS (see Section \@ref(ARIMAandETS)), when selecting ARIMA orders, we do not need to test some of combinations of models. For example, if we already consider ETS(A,N,N), then we do not need to check ARIMA(0,1,1) model. The recommendations for what to skip in different circumstances have been discussed in Section \@ref(ETSAndARIMA). Still there are different ways how to construct an ETS + ARIMA model, with different sequence between ETS selection / ARIMA selection. We suggest to start with ETS, then go to the selection of ARIMA orders. This way, we are building upon the robust forecasting model and see if it can be improved further by introducing elements that are not there. Note that given the complexity of the task of estimating all parameters for ETS and ARIMA, it is advised to use backcasting (see Section \@ref(ADAMInitialisationOptAndBack)) for the initialisation of such model. Here is an example in R:
 
 ```{r}
 adamETSARIMAModel <-
     adam(AirPassengers, model="PPP",
          orders=list(ar=c(3,3),i=c(2,1),ma=c(3,3),select=TRUE),
          h=10, holdout=TRUE, initial="back")
-
 adamETSARIMAModel
-plot(adamETSARIMAModel,7)
 ```
 
-The resulting model is ETS(M,M,M) with AR elements: 3 non-seasonal ones and 1 seasonal AR, which improve the fit of the model and hopefully result in more accurate forecasts.
+The resulting model is ETS(M,M,M) with AR elements: 3 non-seasonal and 1 seasonal AR, which improve the fit of the model and hopefully result in more accurate forecasts.
 
 
 ## Explanatory variables selection {#ETSXSelection}
-There are different approaches for [automatic variables selection](#informationCriteria), but not all of them are efficient in the context of dynamic models. For example, backward stepwise might be either not feasible in case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This is because the ADAMX model needs to be refitted and reestimated over and over again using recursive relations based, for example, on the state space model \@ref(eq:ETSXADAMStateSpacePureAdditiveFull). The classical stepwise forward might also be too slow, because it has polynomial computational time. So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.
+There are different approaches for automatic variables selection, but not all of them are efficient in the context of dynamic models. For example, backward stepwise might be either not feasible in case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This is because the ADAMX model needs to be refitted and reestimated over and over again using recursive relations based on the state space model \@ref(eq:ETSXADAMStateSpacePureAdditiveFull). The classical stepwise forward might also be too slow, because it has polynomial computational time as well. So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.
 
-In order to make the mechanism doable in a limitted time, we rely on @Sagaert2021 approach of stepwise trace forward selection of variables. It is the approach that uses the partial correlations between variables in order to identify, which of the variables to include on each iteration, and has because of that linear computational time. Still, doing that in the proper ADAMX would take more time than needed, so one of the possibles solutions is to do variables selection in ADAMX in the following steps:
+In order to make the mechanism efficient in a limited time, we rely on @Sagaert2021 approach of stepwise trace forward selection of variables. It is the approach that uses the partial correlations between variables in order to identify, which of the variables to include on each iteration. It has the linear computational time instead of the polynomial. Still, doing that in the proper ADAMX would take more time than needed, because of the fitting of the dynamic model. So one of the possibles solutions is to do variables selection in ADAMX in the following steps:
 
-1. Estimate and fit the ETS model;
-2. Extract the residuals of the ETS model;
-3. Select the most suitable variables, explaining the residuals, based on an information criterion;
+1. Estimate and fit the ADAM model;
+2. Extract the residuals of the ADAM model;
+3. Select the most suitable variables, explaining the residuals, based on the trace forward approach and the selected information criterion;
 4. Estimate the ADAMX model with the selected explanatory variables.
 
 The residuals in step (2) might vary from model to model, depending on the type of the error term and the selected distribution:
@@ -137,7 +135,7 @@ The residuals in step (2) might vary from model to model, depending on the type 
 
 So, the extracted residuals should be formulated based on the distributional assumptions of each model.
 
-In R, step (3) is done using the `stepwise()` function from `greybox` package, which supports all the distributions discussed in the previous chapters.
+In R, step (3) is done using the `stepwise()` function from `greybox` package, which supports all the distributions discussed in the previous chapters. The only thing that needs to be modified is the number of degrees of freedom: the function should take the number of all estimated parameters into account. This is done internally via the `df` parameter in `stepwise()`.
 
 While the suggested approach has obvious limitations (e.g. smoothing parameters can be higher than needed, explaining the variability otherwise explained by variables), it is efficient in terms of computational time.
 
@@ -145,19 +143,18 @@ In order to see how it works, we use SeatBelt data:
 ```{r}
 SeatbeltsData <- Seatbelts[,c("drivers","kms","PetrolPrice","law")]
 ```
-We have already [had a look at this data earlier](#ETSXRExample), so we can move directly to the selection part:
+We have already had a look at this data earlier in Section \@ref(ETSXRExample), so we can move directly to the selection part:
 
 ```{r}
 adamModelETSXMNMSelect <- adam(SeatbeltsData, "MNM",
                                h=12, holdout=TRUE,
                                regressors="select")
-plot(forecast(adamModelETSXMNMSelect, h=12, interval="prediction"))
 summary(adamModelETSXMNMSelect)
 ```
 
-Note that the function might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality.
+Note that the function might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality. This is discussed in Section \@ref(ADAMUncertaintyVCOV).
 
-Based on the summary from the model, we can see that neither `kms`, nor `PetrolPrice` improve the model in terms of AICc. We could check them manually in order to see if the selection worked out well in our case (construct sink regression as a benchmark):
+Based on the summary from the model, we can see that neither `kms`, nor `PetrolPrice` improve the model in terms of AICc (they were not included in the model). We could check them manually in order to see if the selection worked out well in our case (construct sink regression as a benchmark):
 
 ```{r}
 adamModelETSXMNMSink <- adam(SeatbeltsData, "MNM",
@@ -165,66 +162,69 @@ adamModelETSXMNMSink <- adam(SeatbeltsData, "MNM",
 summary(adamModelETSXMNMSink)
 ```
 
-We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the "true model". While `adamModelETSXMNMSelect` might not be the best possible model in terms of information criteria, it is still a reasonable one and allows making different decisions.
-<!-- For example, we can see from the summary of the model that the introduction of law has reduced the number of accidents with drivers by approximately 23.79%. However, this is an average effect, and the true one lies somewhere between -34.06% and -13.53% (with the 95% confidence). -->
+We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the "true model". While `adamModelETSXMNMSelect` might not be the best possible model in terms of information criteria, it is still a reasonable one and  can be used for further inference.
 
 
 ## Forecasts combinations in ADAM {#ADAMCombinations}
-When it comes to achieving as accurate as possible forecasts in practice, the best and the most robust (in terms of not failing) approach is producing combined forecasts. The main motivation for combining comes from the idea that there is no one best forecasting method for everything - methods might perform very well in some conditions and fail in the others, and in practice it is typically not possible to say, which of the cases you face. Furthermore, the model selected on one sample might differ from the model selected for the same sample but with one more observation. Thus there is a model uncertainty [as defined by @Chatfield1996] and the safer option is to produce forecasts from several models and then combine them to get the final forecast. This way, the potential damage from an inaccurate forecast hopefully will be reduced.
+When it comes to achieving as accurate forecasts as possible in practice, the best and the most robust (in terms of not failing) approach is producing combined forecasts. The main motivation for combining comes from the idea that there is no one best forecasting method for everything - methods might perform very well in some conditions and fail in the others, and in practice it is typically not possible to say, which of the cases you face. Furthermore, the model selected on one sample might differ from the model selected for the same sample but with one more observation. Thus there is a model uncertainty [as defined by @Chatfield1996] and the safer option is to produce forecasts from several models and then combine them to get the final forecast. This way, the potential damage from an inaccurate forecast hopefully will be reduced.
 
 There are many different technique for combining forecasts, the non-exhaustive list includes:
 
-1. **Simple average**, which works fine as long as you do not have extremely poor methods;
-2. **Median**, which produces good combinations, when the pool of models is limited and might contain those that produce forecasts very different from the others (e.g. explosive forecasts). However, when a big pool of models is considered, then median might ignore important information and lead to decreases in accuracy, as noted by @Jose2008. @Stock2004 conducted an experiment on macroeconomic data, and medians performed poorer than the other approaches (probably because of the high number of forecasting methods), while median-based combination worked well for @Petropoulos2020, who considered only 4 forecasting methods;
-3. **Trimmed and / or Winsorized mean**, which drop extreme forecasts, when calculating the mean and as was shown by @Jose2008 work well in case of big pools of models, outperforming medians and simple average;
-4. **Weighted mean**, which assigns weights to each forecast and produces a combined forecast based on them. While this approach sounds more reasonable than the others, there is no guarantee that it will work, because the weights need to be estimated and might change with the change of sample size or a pool of models. @Claeskens2016 explain why in many cases the simple average approach outperforms weighted averages: it does not require estimation of weights and thus does not introduce as much uncertainty. However, when done smartly, combinations can be beneficial in terms of accuracy, as shown for example, in @Kolassa2011 and @Kourentzes2019c.
+1. **Simple average**, which works fine as long as you do not have extremely poorly performing methods;
+2. **Median**, which produces good combinations, when the pool of models is relatively small and might contain those that produce very different forecasts from the others (e.g. explosive trajectories). However, when a big pool of models is considered, the median might ignore important information and lead to decrease in accuracy, as noted by @Jose2008. @Stock2004 conducted an experiment on macroeconomic data, and medians performed poorer than the other approaches (probably because of the high number of forecasting methods), while median-based combination worked well for @Petropoulos2020, who considered only 4 forecasting approaches;
+3. **Trimmed and / or Winsorized mean**, which drop extreme forecasts, when calculating the mean and, as was shown by @Jose2008, work well in case of big pools of models, outperforming medians and simple average;
+4. **Weighted mean**, which assigns weights to each forecast and produces a combined forecast based on them. While this approach sounds more reasonable than the others, there is no guarantee that it will work better, because the weights need to be estimated and might change with the change of sample size or a pool of models. @Claeskens2016 explain why in many cases the simple average approach outperforms weighted averages: it does not require estimation of weights and thus does not introduce as much uncertainty. However, when done smartly, combinations can be beneficial in terms of accuracy, as shown for example, in @Kolassa2011 and @Kourentzes2019c.
 
-The forecast combination approach implemented in ADAM is the weighted mean, based on @Kolassa2011, who used AIC weights as proposed by @Burnham2004. The idea of this approach is to estimate all models in the pool, calculate information criteria (IC) for each of them (see discussion in Section 13.4 in @SvetunkovSBA) and then calculate weights for each model. Those model that have lower ICs, will have higher weights, while the poorly performing ones will have the higher ones. The only requirement of the approach is for the parameters of models to be estimated via likelihood maximisation (see Section \@ref(ADAMETSEstimationLikelihood)). It is not important, what model is used or what distribution is assumed, as long as the models are [initialised](#ADAMInitialisation) and constructed in the same way and the likelihood is used in the estimation.
+The forecast combination approach implemented in ADAM is the weighted mean, based on @Kolassa2011, who used AIC weights as proposed by @Burnham2004. The idea of this approach is to estimate all models in the pool, calculate information criteria (IC) for each of them [see discussion in Section 13.4 in @SvetunkovSBA] and then calculate weights for each model. Those models that have lower ICs, will have higher weights, while the poorly performing ones will have the higher ones. The only requirement of the approach is for the parameters of models to be estimated via likelihood maximisation (see Section \@ref(ADAMETSEstimationLikelihood)). It is not important, what model is used or what distribution is assumed, as long as the models are initialised (see discussion in Section \@ref(ADAMInitialisation)) and constructed in the same way and the likelihood is used in the estimation.
 
-When it comes to prediction interval, the correct way of calculating them for the combination is to consider the joint distribution of all forecasting models in the pool and take quantiles based on that. However, @Lichtendahl2013 showed that a simpler approach of averaging the quantiles works well in practice. It is fast and efficient in terms of obtaining well-calibrated intervals.
+When it comes to prediction interval, the correct way of calculating them for the combination is to consider the joint distribution of all forecasting models in the pool and take quantiles based on that. However, @Lichtendahl2013 showed that a simpler approach of averaging the quantiles works well in practice. This approach implies producing prediction intervals for all the models in the pool and then averaging the obtained values. It is fast and efficient in terms of obtaining well-calibrated intervals.
 
-In R, `adam()` function supports the combination of ETS models via `model="CCC"` or any other combination of letters, as long as the model contains "C" in its name. For example, the function will combine all non-seasonal models if `model="CCN"` is provided. Consider the following example on Box-Jenkins series:
+In R, `adam()` function supports the combination of ETS models via `model="CCC"` or any other combination of letters, as long as the model contains "C" in its name. For example, the function will combine all non-seasonal models if `model="CCN"` is provided. Consider the following example on Box-Jenkins sales series:
 
-```{r adamETSCCN, fig.cap="An example of combination of ETS non-seasonal models on Box-Jenkins time series."}
+```{r}
 adamETSCCN <- adam(BJsales, "CCN", h=10, holdout=TRUE, ic="AICc")
-plot(adamETSCCN,7)
 ```
 
-In the example above, the function will estimate all non-seasonal models, extract AICc for each of them and then calculate weights, which we can extract for further analysis:
+In the code above, the function will estimate all non-seasonal models, extract AICc for each of them and then calculate weights, which we can extract for further analysis:
 
 ```{r}
 round(adamETSCCN$ICw,3)
 ```
-As can be seen from the output of weights, the level models ETS(A,N,N) and ETS(M,N,N) were further away from the best model and as a result got weights very close to zero. The fitted values in Figure \@ref(fig:adamETSCCN) are combined from all models, the residuals are equal to $e_t = y_t - \hat{y}_t$, where $\hat{y}_t$ is the combined value. The final forecast together with the prediction interval can be generated via the `forecast()` function:
+As can be seen from the output of weights, the level models ETS(A,N,N) and ETS(M,N,N) were further away from the best model and as a result got weights very close to zero.
 
-```{r}
+The fitted values are combined from all models, the residuals are equal to $e_t = y_t - \hat{y}_t$, where $\hat{y}_t$ is the combined value. The final forecast together with the prediction interval can be generated via the `forecast()` function (Figure \@ref(fig:adamETSCCN)):
+
+```{r adamETSCCN, fig.cap="An example of combination of ETS non-seasonal models on Box-Jenkins sale time series."}
 plot(forecast(adamETSCCN,h=10,interval="prediction"))
 ```
 
 What the function does in this case is produces forecasts and prediction intervals from each model and then uses original weights to combine them. In fact, each individual model can be extracted and used separately, if needed. Here is an example with ETS(A,Ad,N) model from the estimated pool:
 
-```{r}
+```{r adamETSCCNAAdN, fig.cap="An example of combination of ETS non-seasonal models on Box-Jenkins sale time series."}
 plot(forecast(adamETSCCN$models$AAdN,h=10,interval="prediction"))
 ```
 
-Alternatively, if we do not need to consider all ETS models, we can provide the pool of models, including a model with "C" in its name. Here is an example of how pure additive models can be combined:
+As can be seen from the plots in Figures \@ref(fig:adamETSCCN) and \@ref(fig:adamETSCCNAAdN), due to the highest weight, ETS(A,Ad,N) and ETS(C,C,N) models have produced very similar point forecasts and prediction intervals.
 
-```{r adamETSCCNPureAdditive}
+Alternatively, if we do not need to consider all ETS models, we can provide the pool of models, including a model with "C" in its name. Here is an example of how pure additive non seasonal models can be combined:
+
+```{r adamETSCCNPureAdditive, eval=FALSE}
 adamETSCCNPureAdditive <- adam(BJsales, 
                                c("CCN","ANN","AAN","AAdN"), 
                                h=10, holdout=TRUE,
                                ic="AICc")
-plot(adamETSCCNPureAdditive,7)
 ```
 
 The main issue with the combined ETS approach is that it is computationally expensive due to the estimation of all models in the pool and can also result in high memory usage. As a result, it is recommended to be smart in deciding, which models to include in the pool.
 
+
+### Other combination approaches
 While `adam()` supports IC weights combination of ETS models only, it is also possible to combine ARIMA, regression models and models with different distributions in the framework. Given that all models are initialised in the same way and that the likelihoods are calculated using similar principles, the weights can be calculated manually using formula from @Burnham2004:
 \begin{equation}
     w_i = \frac{\exp\left(-\frac{1}{2}\Delta_i\right)}{\sum_{j=1}^n \exp\left(-\frac{1}{2}\Delta_j\right)},
   (\#eq:ETSADAMStateSpaceEstimated)
 \end{equation}
-where $\Delta_i=\mathrm{IC}_i - \min_{i=1}^n \left(\mathrm{IC}_i\right)$ is the information criteria distance from the best performing model, $\mathrm{IC}_i$ is the value of information criterion and $n$ is the number of models in the pool. For example, here how we can combine the best ETS with the best ARIMA and the ETSX(M,M,N) model in the ADAM framework, based on BICc:
+where $\Delta_i=\mathrm{IC}_i - \min_{i=1}^n \left(\mathrm{IC}_i\right)$ is the information criteria distance from the best performing model, $\mathrm{IC}_i$ is the value of information criterion of model $i$ and $n$ is the number of models in the pool. For example, here how we can combine the best ETS with the best ARIMA and the ETSX(M,M,N) model in the ADAM framework, based on BICc:
 
 ```{r}
 # Prepare data with explanatory variables
@@ -259,18 +259,22 @@ round(adamModelsICWeights,3)
 These weights can then be used for the combination of the fitted values, forecasts and prediction intervals:
 ```{r}
 adamModelsPoolForecasts <- vector("list",3)
+# Produce forecasts from the three models
 for(i in 1:3){
     adamModelsPoolForecasts[[i]] <- forecast(adamModelsPool[[i]],
                                              h=10, interval="pred")
 }
+# Produce combined conditional means and prediction intervals
 finalForecast <- cbind(sapply(adamModelsPoolForecasts,
                               "[[","mean") %*% adamModelsICWeights,
                        sapply(adamModelsPoolForecasts,
                               "[[","lower") %*% adamModelsICWeights,
                        sapply(adamModelsPoolForecasts,
                               "[[","upper") %*% adamModelsICWeights)
+# Give the appropriate names
 colnames(finalForecast) <- c("Mean", "Lower bound (2.5%)",
                              "Upper bound (97.5%)")
+# Transform the table in the ts format (for convenience)
 finalForecast <- ts(finalForecast,
                     start=start(adamModelsPoolForecasts[[i]]$mean))
 finalForecast
@@ -283,6 +287,8 @@ graphmaker(BJsales, finalForecast[,1],
            lower=finalForecast[,2], upper=finalForecast[,3],
            level=0.95)
 ```
+
+The plot in Figure \@ref(fig:adamCombinedfinalForecast) demonstrates the slightly increasing trajectory with expanding prediction interval. The point forecast (conditional mean) corresponds to the trajectory observed on the last several observations, just before the forecast origin. The future values are inside the prediction interval, so overall this can be considered as a reasonable forecast.
 
 <!-- ## Pooling -->
 
