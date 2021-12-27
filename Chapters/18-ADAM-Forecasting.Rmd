@@ -230,20 +230,20 @@ Finally, `forecast.adam()` will automatically select between "parametric", "appr
 
 
 ## Other aspects of forecast uncertainty {#forecastingADAMOther}
-There are other elements related to forecasting and taking uncertainty into account that we have not discussed in the previous sections. They are related to the previous sections but did not align with them well to be included there. so, we discuss them in this section.
+There are other elements related to forecasting and taking uncertainty into account that we have not discussed in the previous sections. Here we discuss several special cases, where forecasting approaches might differ from the conventional ones.
 
 ### Constructing intervals for intermittent demand model
-When it comes to constructing prediction intervals for intermittent state space model (see Section \@ref(ADAMIntermittent)), then there is an important aspect that should be taken into account. Given that the model consists of two parts: demand sizes and demand occurrence - the prediction interval should take the uncertainty from both into account. In this case we should first predict what the probability of occurrence of demand will be for the h steps ahead and then based on this probability decide, what the width of the interval should be. For example, if we estimate that the demand will occur with probability $\hat{p}_{t+h|t} = 0.8$, then this means that we expect that in 20% of the cases we will observe zeroes. This should reduce the confidence level for the demand sizes. Formally speaking, this comes to the following equation:
+When it comes to constructing prediction intervals for intermittent state space model (see Section \@ref(ADAMIntermittent)), then there is an important aspect that should be taken into account. Given that the model consists of two parts: demand sizes and demand occurrence, the prediction interval should take the uncertainty from both parts into account. In this case we should first predict what the probability of occurrence of demand will be for the h steps ahead and then based on this probability decide, what the width of the interval should be. For example, if we estimate that the demand will occur with probability $\hat{p}_{t+h|t} = 0.8$, then this means that we expect that in 20% of the cases we will observe zeroes. This should reduce the confidence level for the demand sizes. Formally speaking, this comes to the following equation:
 \begin{equation}
     F_y(y_{t+h} \leq q) = \hat{p}_{t+h|t} F_z(z_{t+h} \leq q) +(1 -\hat{p}_{t+h|t}),
     (\#eq:statCDF)
 \end{equation}
-where $F_y(\cdot)$ is the cumulative distribution function of demand, $F_z(\cdot)$ is the cumulative distribution function of the demand sizes, $\hat{p}_{t+h|t}$ is the h steps ahead expected probability of occurrence and $Q$ is the quantile of the distribution. In the formula \@ref(eq:statCDF), we know the expected probability and we know the confidence level $F_y(y_{t+h} \leq q)$. The unknown element is the $F_z(z_{t+h} \leq q)$. So after regrouping elements we get:
+where $F_y(\cdot)$ is the cumulative distribution function of demand, $F_z(\cdot)$ is the cumulative distribution function of the demand sizes, $\hat{p}_{t+h|t}$ is the h steps ahead expected probability of occurrence and $q$ is the quantile of distribution. In the formula \@ref(eq:statCDF), we know the expected probability and we know the confidence level $F_y(y_{t+h} \leq q)$. The unknown element is the $1-\alpha = F_z(z_{t+h} \leq q)$. So after regrouping elements we get:
 \begin{equation}
     F_z(z_{t+h} \leq q) = \frac{F_y(y_{t+h} \leq q) -(1 -\hat{p}_{t+h|t})}{\hat{p}_{t+h|t}}.
     (\#eq:statCDFDemandSizes)
 \end{equation}
-For example, if the confidence level is 0.95 and the expected probability of occurrence is 0.8, then $F_z(z_{t+h} \leq q) = \frac{0.95 - 0.2}{0.8} = 0.9375$. Assuming the distribution for the demand sizes, we can use formula \@ref(eq:predictionIntervalGeneral) to construct the parametric prediction interval. Alternatively, we can use any other approach discussed in Section \@ref(ADAMForecastingPI) to generate the intervals.
+For example, if the confidence level is 0.95 and the expected probability of occurrence is 0.8, then $F_z(z_{t+h} \leq q) = \frac{0.95 - 0.2}{0.8} = 0.9375$. Assuming a distribution for the demand sizes, we can use formula \@ref(eq:predictionIntervalGeneral) to construct the parametric prediction interval. Alternatively, we can use any other approach discussed in Section \@ref(ADAMForecastingPI) to generate the intervals.
 
 
 ### One-sided prediction interval {#forecastingADAMOtherOneSided}
@@ -257,17 +257,17 @@ In some cases we might not need both bounds of the interval. For example, when w
 ### Cumulative over the horizon forecast {#forecastingADAMOtherCumulative}
 Another related thing to consider, when producing forecasts in practice is that in some contexts the classical point forecast is not needed. Instead, the cumulative over the forecast horizon (or over the lead time) might be more suitable. The classical example is the safety stock calculation based on the lead time (time between the order of product and its delivery). In this situation we need to make sure that while the product is being delivered, we do not run out of stock, thus still satisfying the selected level of demand (e.g. 95%), but now over the whole period of time rather than on every separate observation.
 
-In case of **pure additive ADAM models**, there are analytical formulae for the conditional expectations and conditional variance that can be used in forecasting. These formulae come directly from the recursive relation \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) [for derivations for simpler cases, see for example, @Hyndman2008b, @Svetunkov2017]:
+In case of **pure additive ADAM models**, there are analytical formulae for the conditional expectations and conditional variance for this case that can be used in forecasting. These formulae come directly from the recursive relation \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) [for derivations in a simpler case, see for example, @Hyndman2008b, @Svetunkov2017]:
 \begin{equation}
   \begin{aligned}
     \mu_{Y,t,h} = \text{E}(Y_{c,t,h}|t) = & \sum_{j=1}^h \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{j}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
-    \sigma^2_{Y,h} = \text{V}(Y_{c,t,h}|t) = & \left(1 + \sum_{k=1}^{h-1} \left((h-k) \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{k}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) + 1 \right) \right) \sigma^2
+    \sigma^2_{Y,h} = \text{V}(Y_{c,t,h}|t) = & \left(1 + \sum_{k=1}^{h-1} \left(1+ (h-k) \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{k}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) \right) \right) \sigma^2
   \end{aligned},
   (\#eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVarianceCumulative)
 \end{equation}
 where $Y_{c,t,h}=\sum_{j=1}^h y_{t+j}$ is the cumulative actual value and all the other variables have been defined in Section \@ref(adamETSPureAdditiveRecursive). Based on these expectation and variance, we can construct prediction interval as discussed in Section \@ref(ADAMForecastingPI).
 
-In cases of **multiplicative and mixed ADAM models**, there are no closed forms for the conditional expectation and variance. As a result, the simulation similar to the one discussed in Section \@ref(ADAMForecastingExpectationSimulations) is needed to produce all possible paths for the next $h$ steps ahead. The main difference would be that before taking expectation or quantiles, the paths would need to be aggregated over the forecast horizon $h$. This approach together with the idea of one-sided prediction interval can then be directly used for the calculation of the safety stock over the lead time.
+In cases of **multiplicative and mixed ADAM models**, there are no closed forms for the conditional expectation and variance. As a result, the simulations similar to the one discussed in Subsection \@ref(ADAMForecastingExpectationSimulations) are needed to produce all possible paths for the next $h$ steps ahead. The main difference would be that before taking expectation or quantiles, the paths would need to be aggregated over the forecast horizon $h$. This approach together with the idea of one-sided prediction interval can then be directly used for the calculation of the safety stock over the lead time.
 
 
 ### Example in R {#forecastingADAMOtherExample}
@@ -291,7 +291,7 @@ adamModeliETSForecast <- forecast(adamModeliETS, h=7,
                                   interval="prediction",
                                   side="upper")
 ```
-Given that we deal with cumulative values, the basic plot will not be helpful, we should produce a different one (see Figure \@ref(fig:adamModeliETSCumulative)).
+Given that we deal with cumulative values, the basic plot will not be helpful, we should produce a different one (see Figure \@ref(fig:adamModeliETSCumulative)):
 
 ```{r adamModeliETSCumulative, fig.cap="Cumulative demand, expectation and the upper bound based on iETS model."}
 plot(sum(adamModeliETS$holdout), ylab="Cumulative demand",
@@ -304,9 +304,11 @@ abline(h=adamModeliETSForecast$upper, col="grey", lwd=2)
 
 What Figure \@ref(fig:adamModeliETSCumulative) demonstrates is that for the holdout period of 7 days, the cumulative demand was around `r sum(adamModeliETS$holdout)` units, while the upper bound of the interval was approximately `r round(adamModeliETSForecast$upper,0)`. Based on that upper bound we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
+In order to see if the approach is adequate, we would need to apply it in either a rolling origin fashion (Section \@ref(rollingOrigin)), or to a set of products to collect the distribution of related error measures.
+
 
 ### Confidence interval
-Finally, we can construct a confidence interval for some statistics. As discussed in Section 5.2 of @SvetunkovSBA, it can be constructed for the mean, for a parameter, for fitted values etc. In our context, we might be interested in the confidence interval for the conditional h steps ahead expectation. This implies that we are interested in the uncertainty of the line, not of the actual values. This means that the confidence interval can only be constructed for the model that takes the uncertainty of parameters into account (as discussed in Section \@ref(ADAMUncertainty)). The construction of confidence interval in this case relies on the normal distribution, based on Central Limit Theorem, as long as the basic assumptions for the model and CLT are satisfied (see Section 4.2 and Chapter 12 of @SvetunkovSBA). Technically speaking, the construction of confidence interval comes to capturing the model ucnertainty discussed in Chapter \@ref(ADAMUncertainty).
+Finally, we can construct a confidence interval for some statistics. As discussed in Section 5.2 of @SvetunkovSBA, it can be constructed for the mean, for a parameter, for fitted values etc. In our context, we might be interested in the confidence interval for the conditional h steps ahead expectation. This implies that we are interested in the uncertainty of the line, not of the actual values, which can only be constructed for the model that takes the uncertainty of parameters into account (as discussed in Section \@ref(ADAMUncertainty)). The construction of confidence interval in this case relies on the normal distribution, based on Central Limit Theorem, as long as the basic assumptions for the model and CLT are satisfied [see Section 4.2 and Chapter 12 of @SvetunkovSBA]. Technically speaking, the construction of confidence interval comes to capturing the model ucnertainty discussed in Chapter \@ref(ADAMUncertainty).
 
 #### Example in R
 The only way how the confidence interval can be constructed for ADAM models is via the `reforecast()` function. Consider the example with ADAM ETS(A,Ad,N) on `BJSales` data as in Section \@ref(ADAMForecastingPIExample):
@@ -328,4 +330,4 @@ load("data/adamModelConfidence.Rdata")
 plot(adamModelConfidence)
 ```
 
-Figure \@ref(fig:adamModelConfidence) shows the uncertainty around the point forecast based on the uncertainty of parameters of the model. As can be seen, the interval is narrow, demonstrating that the conditional expectation would not change much if the sample sizes changes. The fact that the actual values are systematically above the forecast does not mean anything, because the confidence interval does not consider the uncertainty of actual values. 
+Figure \@ref(fig:adamModelConfidence) shows the uncertainty around the point forecast based on the uncertainty of parameters of the model. As can be seen, the interval is narrow, demonstrating that the conditional expectation would not change much if the parameters of the model would vary slightly. The fact that the actual values are systematically above the forecast does not mean anything, because the confidence interval does not consider the uncertainty of actual values. 
