@@ -91,7 +91,7 @@ From the summary above, we can see that the parameter $\theta_2$ is close to zer
 This estimate of uncertainty via confidence intervals might also be useful to see what can happen with the estimates of parameters if the sample size increases: will they change substantially or not. If they do, then the decisions made on Monday based on the available data might differ substantially from the decisions made on Tuesday. So, in the ideal world we would want to have as narrow confidence intervals as possible.
 
 
-## Conditional variance with uncertain parameters
+## Conditional variance with uncertain parameters {#conditionalVarianceUncertainty}
 We now consider two special cases with pure additive state space models:
 
 (1) When the values of the initial state vector are unknown;
@@ -213,11 +213,11 @@ Unfortunately, the conditional variances for the other models are more complicat
 
 
 ## Multi-scenarios for ADAM states {#adamRefitted}
-As discussed in the previous sections, it is difficult to capture the impact of the uncertainty about the parameters on the states of the model and as a result difficult to take it into account on the forecasting stage. Furthermore, so far we have only discussed pure additive models, for which it is at least possible to do some derivations. When it comes to models with multiplicative components, it becomes close to impossible to demonstrate how the uncertainty propagates over time. In order to overcome these limitations, we develop a simulation-based approach that relies on the selected model form.
+As discussed in the Section \@ref(conditionalVarianceUncertainty), it is difficult to capture the impact of the uncertainty about the parameters on the states of the model and as a result difficult to take it into account on the forecasting stage. Furthermore, so far we have only discussed pure additive models, for which it is at least possible to do some derivations. When it comes to models with multiplicative components, it becomes close to impossible to demonstrate how the uncertainty propagates over time. In order to overcome these limitations, we develop a simulation-based approach that relies on the selected model form.
 
-The idea of the approach is to get the covariance matrix of the parameters of the selected model (see Section \@ref(ADAMUncertaintyVCOV)) and then generate $n$ sets of parameters randomly from rectified multivariate normal distribution using the matrix and the values of estimated parameters. After that the model is applied to the data with each combination of generated parameters, states, fitted values and residuals are extracted from it to get their distribution. This way we propagate the uncertainty about the parameters from the first observation to the last. The final states can also be used to produce point forecasts and prediction intervals based each set of parameters. These scenarios allow producing more adequate prediction intervals from the model and / or confidence intervals for the fitted values, states and conditional expectations. All of this is done without additional assumptions (as it is done in bagging), relying fully on the model. However, the approach is computationally expensive, as it requires fitting all the $n$ models to the data, although no estimation is needed for them. If the uncertainty about the model needs to be taken into account, then the combination of models can be used, as described in Section \@ref(ADAMCombinations).
+The idea of the approach is to get the covariance matrix of the parameters of the selected model (see Section \@ref(ADAMUncertaintyVCOV)) and then generate $n$ sets of parameters randomly from rectified multivariate normal distribution using the matrix and the values of estimated parameters. After that the model is applied to the data with each combination of generated parameters to get the states, fitted values and residuals from it. This way we propagate the uncertainty about the parameters from the first observation to the last. The final states can also be used to produce point forecasts and prediction intervals based on each set of parameters. These scenarios allow producing more adequate prediction intervals from the model and / or confidence intervals for the fitted values, states and conditional expectations. All of this is done without additional assumptions (as it is done in bagging), relying fully on the model. However, the approach is computationally expensive, as it requires fitting all the $n$ models to the data, although no estimation is needed for them. If the uncertainty about the model needs to be taken into account as well, then the combination of models can be used, as described in Section \@ref(ADAMCombinations).
 
-`smooth` package has the method `reapply()` that implements this approach for `adam()` models. This works with ADAM ETS, ARIMA, regression and any combination between them. Here is an example in R with $n=1000$:
+`smooth` package has the method `reapply()` that implements this approach for `adam()` models. This works with ADAM ETS, ARIMA, regression and any combination of the three. Here is an example in R with $n=1000$:
 
 ```{r adamETSRefitted, fig.cap="Refitted ADAM ETS(M,M,M) model on AirPassengers data."}
 adamModelETS <- adam(AirPassengers, "MMM", h=10, holdout=TRUE)
@@ -225,19 +225,19 @@ adamModelETSRefitted <- reapply(adamModelETS, nsim=1000)
 plot(adamModelETSRefitted)
 ```
 
-Figure \@ref(fig:adamETSRefitted) demonstrates how the approach works on the example of `AirPassengers` data and ETS(M,M,M) model. The grey areas around the fitted line show quantiles from the fitted values, forming confidence intervals of width 95%, 80%, 60%, 40% and 20%. They show how the fitted value would vary, if the estimates of parameters would different from the estimated ones. Note that there was a warning about the covariance matrix of parameters, which typically arises if the optimal value of the loss function was not reached. If this happens, I would recommend tuning the optimiser (see Section \@ref(ADAMInitialisation)). For example, we could try more iterations via setting `maxeval` parameter or reestimating the model, providing the estimates of parameters in `B`. If these fail and the bounds from the `reapply()` are too wide, then it might make sense considering backcasting for the initialisation.
+Figure \@ref(fig:adamETSRefitted) demonstrates how the approach works on the example of `AirPassengers` data with ETS(M,M,M) model. The grey areas around the fitted line show quantiles from the fitted values, forming confidence intervals of width 95%, 80%, 60%, 40% and 20%. They show how the fitted value would vary, if the parameters would differ from the estimated ones. Note that there was a warning about the covariance matrix of parameters, which typically arises if the optimal value of the loss function was not reached. If this happens, I would recommend tuning the optimiser (see Section \@ref(ADAMInitialisation)). For example, we could try more iterations via setting `maxeval` parameter to a higher value or re-estimating the model, providing the estimates of parameters in `B`. If these fail and the bounds from the `reapply()` are too wide, then it might make sense considering backcasting for the initialisation.
 
 The `adamModelETSRefitted` object contains several variables, including:
 
 - `adamModelETSRefitted$states` - the array of states of dimensions $k \times (T+m) \times n$, where $m$ is the maximum lag of the model, $k$ is the number of components and $T$ is the sample size;
-- `adamModelETSRefitted$refitted` - distribution of fitted values of dimensions $ T \times n$;
+- `adamModelETSRefitted$refitted` - distribution of fitted values of dimensions $T \times n$;
 - `adamModelETSRefitted$transition` - the array of transition matrices of the size $k \times k \times n$;
 - `adamModelETSRefitted$measurement` - the array of measurement matrices of the size $(T+m) \times k \times n$;
 - `adamModelETSRefitted$persistence` - the persistence matrix of the size $k \times n$;
 
 The last three will contain the random parameters (smoothing, damping and AR/MA parameters), which is why they are provided along with the other values.
 
-As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on artificial, non-seasonal data (see Figure \@ref(fig:adamARIMARefitted):
+As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on artificial, non-seasonal data (see Figure \@ref(fig:adamARIMARefitted)):
 
 ```{r eval=FALSE}
 y <- rnorm(200,100,10)
@@ -266,4 +266,4 @@ plot(adamModelARIMARefitted2)
 plot(adamModelARIMARefitted2)
 ```
 
-The approach described in this section is still a work in progress. While it works in theory, there are still computational difficulties with the calculation of Hessian matrix. If the covariance matrix is not estimated accurately, it might contain high variances, leading to the higher than needed uncertainty of the model. This will then result in unreasonable confidence bounds and finally lead to extremely wide prediction intervals.
+The approach described in this section is still a work in progress. While it works in theory, there are computational difficulties with the calculation of Hessian matrix. If the covariance matrix is not estimated accurately, it might contain high variances, leading to the higher than needed uncertainty of the model. This will then result in unreasonable confidence bounds and finally lead to extremely wide prediction intervals.
