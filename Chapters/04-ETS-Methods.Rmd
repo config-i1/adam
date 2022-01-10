@@ -1,8 +1,7 @@
 # Conventional Exponential Smoothing {#ETSConventional}
+Now that we know how time series can be decomposed into components, we can discuss the exponential smoothing methods, focusing on the most popular ones. We do not detail how the methods were originally derived and how to work with them. Instead, we focus on their connection with ETS and the main ideas behind the conventional ETS.
 
-Now that we know how time series can be decomposed into components, we can discuss the exponential smoothing methods, focusing on the most popular ones. We do not go into many details of how the methods were originally derived and how to work with them. Instead, we focus on their connection with ETS and then on the main ideas behind the conventional ETS.
-
-The reader interested in the topic of the history of exponential smoothing, how it was developed and what papers contributed towards the development of the field, can refer to the reviews of @Gardner1985 and @Gardner2006. They summarise all the progress in the area of exponential smoothing up until 1985 and until 2006 respectively.
+The reader interested in the history of exponential smoothing, how it was developed, and what papers contributed to the field can refer to the reviews of @Gardner1985 and @Gardner2006. They summarise all the progress in exponential smoothing up until 1985 and until 2006 respectively.
 
 
 ## Simple Exponential Smoothing {#SES}
@@ -11,9 +10,9 @@ We start our discussion of exponential smoothing with the original Simple Expone
   \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \hat{y}_{t},
   (\#eq:BrownMethod)
 \end{equation}
-where $\hat{\alpha}$ is the smoothing parameter, defined by analyst and which is typically restricted with (0, 1) region (this region is actually arbitrary and we will see in Section \@ref(ETSParametersBounds) what is the correct one). This is one of the simplest forecasting methods, and the smoothing parameter in it is typically interpreted as a weight between the actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value $\hat{y}_{t}$ and the new information is neglected. If $\hat{\alpha}=0$ then the method becomes equivalent to Global Mean method, discussed in Section \@ref(GlobalMean). When it is close to one, then mainly the actual value ${y}_{t}$ is taken into account. If $\hat{\alpha}=1$, then the method transforms into Naïve, discussed in Section \@ref(Naive). By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
+where $\hat{\alpha}$ is the smoothing parameter defined by analyst and which is typically restricted with (0, 1) region (this region is arbitrary, and we will see in Section \@ref(ETSParametersBounds) what is the correct one). This is one of the simplest forecasting methods. The smoothing parameter is typically interpreted as a weight between the actual value and the predicted one-step-ahead. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value $\hat{y}_{t}$ and the new information is neglected. If $\hat{\alpha}=0$, then the method becomes equivalent to the Global Mean method, discussed in Section \@ref(GlobalMean). When it is close to one, then mainly the actual value ${y}_{t}$ is taken into account. If $\hat{\alpha}=1$, then the method transforms into Naïve, discussed in Section \@ref(Naive). By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
 
-Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ in order to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature, but the state of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function [@Hyndman2002]. Typically MSE (see Section \@ref(errorMeasures)) is used as one, minimising the squares of one step ahead forecast errors.
+Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature. Still, the state of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function [@Hyndman2002]. Typically MSE (see Section \@ref(errorMeasures)) is used as one, minimising the squares of one step ahead forecast errors.
 
 
 ### Examples of application
@@ -25,7 +24,7 @@ ourModel <- es(y, model="ANN", h=10, persistence=0)
 plot(ourModel, 7, main="")
 ```
 
-As we see from Figure \@ref(fig:SESExample1), the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure \@ref(fig:SESExample2) shows an example with level shift in the data.
+As we see from Figure \@ref(fig:SESExample1), the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure \@ref(fig:SESExample2) shows an example with a level shift in the data.
 
 ```{r SESExample2, fig.cap="An example with a time series and SES forecast. $\\hat{\\alpha}=0.1$"}
 y <- c(rnorm(50,100,10),rnorm(50,130,10))
@@ -33,7 +32,7 @@ ourModel <- es(y, model="ANN", h=10, persistence=0.1)
 plot(ourModel, 7, main="")
 ```
 
-With $\hat{\alpha}=0.1$, SES manages to get to the new level, but now the method starts adapting to noise a little bit -- it follows the peaks and troughs and repeats them with a lag, but with much smaller magnitude (see Figure \@ref(fig:SESExample2)). If we increase the smoothing parameter, it will react to the changes much faster, but it will also react more to noise. This is shown in Figure \@ref(fig:SESExamples) with different smoothing parameters values.
+With $\hat{\alpha}=0.1$, SES manages to get to the new level, but now the method starts adapting to noise a little bit -- it follows the peaks and troughs and repeats them with a lag, but with a much smaller magnitude (see Figure \@ref(fig:SESExample2)). Increasing the smoothing parameter, the model will react to the changes much faster, at the cost of responding more to noise. This is shown in Figure \@ref(fig:SESExamples) with different smoothing parameters values.
 
 ```{r SESExamples, fig.cap="SES with different smoothing parameters applied to the same data.", echo=FALSE}
 par(mfcol=c(3,1), mar=c(2,2,3,1))
@@ -64,7 +63,7 @@ plot(ourModel, 7, main=paste0("SES with alpha=",
                               round(ourModel$persistence,3)))
 ```
 
-This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$, but it has been shown in the literature that the optimisation of smoothing parameter on average leads to improvements in terms of forecasting accuracy [see, for example, @Fildes1992].
+This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$. Still, it has been shown in the literature that the optimisation of smoothing parameters on average leads to improvements in terms of forecasting accuracy [see, for example, @Fildes1992].
 
 
 ### Why "exponential"? {#whyExponential}
@@ -94,7 +93,7 @@ plot(0.25*(1-0.25)^c(0:30), type="b",
      xlab="Time lags", ylab="Weights")
 ```
 
-This explains the name "exponential". The term "smoothing" comes from the idea that the parameter $\hat{\alpha}$ should be selected so that the method smooths the original time series and not to react to noise.
+This explains the name "exponential". The term "smoothing" comes from the idea that the parameter $\hat{\alpha}$ should be selected so that the method smooths the original time series and does not react to noise.
 
 ### Error correction form of SES
 Finally, an alternative form of SES is known as error correction form and involves some simple permutations, taking that $e_t=y_t-\hat{y}_t$ is the one step ahead forecast error, formula \@ref(eq:BrownMethod) can be written as:
@@ -102,14 +101,14 @@ Finally, an alternative form of SES is known as error correction form and involv
   \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
   (\#eq:SESErrorCorrection)
 \end{equation}
-In this form, the smoothing parameter $\hat{\alpha}$ has a different meaning: it regulates how much the model reacts to the forecast error. In this interpretation it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero, in order to filter out the noise, not to adapt to it.
+In this form, the smoothing parameter $\hat{\alpha}$ has a different meaning: it regulates how much the model reacts to the forecast error. In this interpretation, it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero to filter out the noise, not to adapt to it.
 
-As you see, SES is a very simple method. It is easy to explain to practitioners and it is very easy to implement in practice. However, this is just a forecasting method (see Section \@ref(modelsMethods)), so it just provides a way of generating point forecasts, but does not explain where the error comes from and how to generate prediction intervals.
+As you see, SES is a straightforward method. It is easy to explain to practitioners, and it is very easy to implement in practice. However, this is just a forecasting method (see Section \@ref(modelsMethods)), so it provides a way of generating point forecasts but does not explain where the error comes from and how to create prediction intervals.
 
 
 ## SES and ETS {#SESandETS}
 ### ETS(A,N,N)
-There have been several tries to develop statistical models, underlying SES, and we know now that it has underlying ARIMA(0,1,1), local level MSOE [Multiple Source of Error, @Muth1960] and SSOE [Single Source of Error, @Snyder1985] models. According to @Hyndman2002, the ETS(A,N,N) model also underlies the SES method. It can be formulated in the following way, as discussed in Section \@ref(ETSTaxonomyMaths):
+There have been several tries to develop statistical models underlying SES, and we know now that it has underlying ARIMA(0,1,1), local level MSOE [Multiple Source of Error, @Muth1960] and SSOE [Single Source of Error, @Snyder1985] models. According to @Hyndman2002, the ETS(A,N,N) model also underlies the SES method. It can be formulated in the following way, as discussed in Section \@ref(ETSTaxonomyMaths):
 \begin{equation}
   \begin{aligned}
     & y_{t} = l_{t-1} + \epsilon_t \\
@@ -135,7 +134,7 @@ The one step ahead forecast from ETS(A,N,N) is $\hat{y}_t=\hat{l}_{t-1}$ (see Se
     \hat{y}_t + e_t = \hat{y}_{t-1} + \hat{\alpha} e_{t-1} + e_t .
   (\#eq:ETSANNEstimation2)
 \end{equation}
-Cancelling out $e_t$ and shifting everything by one step ahead, we obtain the error correction form \@ref(eq:SESErrorCorrection) of SES. But now, the main benefit of having the model \@ref(eq:ETSANN) instead of just the method \@ref(eq:SESErrorCorrection) is in having a flexible framework, which allows adding other components, selecting the most appropriate ones, estimating parameters in a consistent way [see Section 4.3 of @SvetunkovSBA], producing prediction intervals etc.
+Cancelling out $e_t$ and shifting everything by one step ahead, we obtain the error correction form \@ref(eq:SESErrorCorrection) of SES. But now, the main benefit of having the model \@ref(eq:ETSANN) instead of just the method \@ref(eq:SESErrorCorrection) is in having a flexible framework, which allows adding other components, selecting the most appropriate ones, consistently estimating parameters [see Section 4.3 of @SvetunkovSBA], producing prediction intervals etc.
 
 In order to see the data that corresponds to the ETS(A,N,N) we can use `sim.es()` function from `smooth` package. Here are several examples with different smoothing parameters values:
 
@@ -164,7 +163,7 @@ for(i in 1:6){
 }
 ```
 
-This simple simulation shows that the smoothing parameter in ETS(A,N,N) controls the variability in the data (Figure \@ref(fig:DGPetsANNExample)): the higher $\alpha$ is, the higher variability is and less predictable the data becomes. With the higher values of $\alpha$, the level changes faster, also leading to the increased uncertainty about the future values of the level in the data.
+This simple simulation shows that the smoothing parameter in ETS(A,N,N) controls the variability in the data (Figure \@ref(fig:DGPetsANNExample)): the higher $\alpha$ is, the higher variability is and less predictable the data becomes. With the higher values of $\alpha$, the level changes faster, leading to increased uncertainty about the future values of the level in the data.
 
 When it comes to the application of this model to the data, the conditional h steps ahead mean corresponds to the point forecast and is equal to the last observed level:
 \begin{equation}
@@ -186,14 +185,14 @@ y <- sim.es("ANN", 120, 1, 12, persistence=0.3, initial=1000)
 es(y$data, "ANN", h=12, interval=TRUE, holdout=TRUE, silent=FALSE)
 ```
 
-As we see from Figure \@ref(fig:ETSANNExample), the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected, because we deal with an in-sample estimation. Also, notice that with such a smoothing parameter, the prediction interval is widening with the increase of the forecast horizon. If the smoothing parameter was lower, then the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with $\alpha=0.01$ on the same data (Figure \@ref(fig:ETSANNExamplealpha0.1))
+As we see from Figure \@ref(fig:ETSANNExample), the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected because we deal with an in-sample estimation. Also, notice that with such a smoothing parameter, the prediction interval widens with the increase of the forecast horizon. If the smoothing parameter were lower, the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with $\alpha=0.01$ on the same data (Figure \@ref(fig:ETSANNExamplealpha0.1))
 
 ```{r ETSANNExamplealpha0.1, fig.cap="ETS(A,N,N) with $\\hat{\\alpha}=0.01$ applied to the data generated from the same model with $\\alpha=0.3$."}
 ourModel <- es(y$data, "ANN", h=12, interval=TRUE,
                holdout=TRUE, silent=FALSE, persistence=0.01)
 ```
 
-Figure \@ref(fig:ETSANNExamplealpha0.1) shows that the prediction interval does not expand, but at the same time is wider than needed, and the forecast is biased -- the model does not keep up to the fast changing time series. So, it is important to correctly estimate the smoothing parameters not only to approximate the data, but also to produce less biased point forecast and more appropriate prediction interval.
+Figure \@ref(fig:ETSANNExamplealpha0.1) shows that the prediction interval does not expand, but at the same time is wider than needed, and the forecast is biased -- the model does not keep up to the fast-changing time series. So, it is essential to correctly estimate the smoothing parameters not only to approximate the data but also to produce a less biased point forecast and a more appropriate prediction interval.
 
 ### ETS(M,N,N)
 @Hyndman2008b demonstrate that there is another ETS model, underlying SES. It is the model with multiplicative error, which is formulated in the following way, as mentioned in Chapter \@ref(ETSTaxonomyMaths):
@@ -223,10 +222,10 @@ Finally, opening the brackets, we get the SES in the form similar to \@ref(eq:SE
   (\#eq:ETSMNNEstimation4)
 \end{equation}
 
-This example demonstrates once again the difference between a forecasting method and a model. When we use SES, we ignore the distributional assumptions, which restricts the usage of the method. When we use a model, we assume a specific structure, which on one hand makes it more restrictive, but on the other hand gives it additional features. The main ones in case of ETS(M,N,N) in comparison with ETS(A,N,N) are:
+This example again demonstrates the difference between a forecasting method and a model. When we use SES, we ignore the distributional assumptions, which restricts the usage of the method. When we use a model, we assume a specific structure, which on the one hand, makes it more restrictive, but on the other hand, gives it additional features. The main ones in the case of ETS(M,N,N) in comparison with ETS(A,N,N) are:
 
 1. The variance of the actual values in ETS(M,N,N) increases with the increase of the level $l_{t}$. This allows modelling heteroscedasticity situation in the data;
-2. If $(1+\epsilon_t)$ is always positive, then the ETS(M,N,N) model will always produce only positive forecasts (both point and interval). This makes this model applicable in principle to the data with low level.
+2. If $(1+\epsilon_t)$ is always positive, then the ETS(M,N,N) model will always produce only positive forecasts (both point and interval). This makes this model applicable in principle to the data with low levels.
 
 An alternative to \@ref(eq:ETSMNN) would be the model \@ref(eq:ETSANN) applied to the data in logarithms (assuming that the data we work with is always positive), implying that:
 \begin{equation}
@@ -236,7 +235,7 @@ An alternative to \@ref(eq:ETSMNN) would be the model \@ref(eq:ETSANN) applied t
   \end{aligned} .
   (\#eq:ETSANNLogs)
 \end{equation}
-However, in order to produce forecasts from \@ref(eq:ETSANNLogs) exponentiation is needed, which might make the application of the model more difficult than needed. The ETS(M,N,N) on the other hand does not rely on exponentiation, making it safe in cases, when very high values are produced by the model (e.g. `exp(1000)` returns infinity in R).
+However, to produce forecasts from \@ref(eq:ETSANNLogs), exponentiation is needed, making the application of the model more difficult than needed. The ETS(M,N,N), on the other hand, does not rely on exponentiation, making it safe in cases when the model produces very high values (e.g. `exp(1000)` returns infinity in R).
 
 Finally, the conditional h steps ahead mean of ETS(M,N,N) corresponds to the point forecast and is equal to the last observed level, but only if $\mathrm{E}(1+\epsilon_t)=1$:
 \begin{equation}
@@ -257,9 +256,9 @@ Conceptually, the data in Figure \@ref(fig:ETSMNNExample) looks very similar to 
 
 
 ## Several examples of ETS and related exponential smoothing methods {#ETSExamples}
-There are other exponential smoothing methods, which include more components, as discussed in Section \@ref(tsComponents). This includes but is not limited to: Holt's [@Holt2004b, originally proposed in 1957], Holt-Winter's [@Winters1960], multiplicative trend [@Pegels1969], Damped trend [originally proposed by @Roberts1982 and then picked up by @Gardner1985a], Damped trend Holt-Winters [@Gardner1989] and damped multiplicative trend [@Taylor2003] methods. We will not discuss them here one by one, as we will not use them further in this textbook. Instead we will focus on ETS models, underlying them.
+There are other exponential smoothing methods, which include more components, as discussed in Section \@ref(tsComponents). This includes but is not limited to: Holt's [@Holt2004b, originally proposed in 1957], Holt-Winter's [@Winters1960], multiplicative trend [@Pegels1969], Damped trend [originally proposed by @Roberts1982 and then picked up by @Gardner1985a], Damped trend Holt-Winters [@Gardner1989] and damped multiplicative trend [@Taylor2003] methods. We will not discuss them here one by one, as we will not use them further in this textbook. Instead, we will focus on the ETS models underlying them.
 
-We already understand that there can be different components in time series and that they can interact with each other either in an additive or a multiplicative way, which gives us the aforementioned taxonomy, discussed in Section \@ref(ETSTaxonomy). In this section, we consider several examples of ETS models and their relations to the conventional exponential smoothing methods.
+We already understand that there can be different components in time series and that they can interact either in an additive or a multiplicative way, which gives us the taxonomy above, discussed in Section \@ref(ETSTaxonomy). This section considers several examples of ETS models and their relations to the conventional exponential smoothing methods.
 
 ### ETS(A,A,N) {#ETSAAN}
 This is also sometimes known as local trend model and is formulated similar to ETS(A,N,N), but with addition of the trend equation. It underlies Holt's method [@Ord1997]:
@@ -271,7 +270,7 @@ This is also sometimes known as local trend model and is formulated similar to E
   \end{aligned} ,
   (\#eq:ETSAAN)
 \end{equation}
-where $\beta$ is the smoothing parameter for the trend component. It has a similar idea as ETS(A,N,N): the states evolve over time, and the speed of their change depends on the values of $\alpha$ and $\beta$. The trend is not deterministic in this model: both the intercept and the slope change over time. The higher the smoothing parameters are, the more uncertain it is, what the level and the slope will be, thus higher the uncertainty about the future values is.
+where $\beta$ is the smoothing parameter for the trend component. It has a similar idea as ETS(A,N,N): the states evolve, and the speed of their change depends on the values of $\alpha$ and $\beta$. The trend is not deterministic in this model: both the intercept and the slope change over time. The higher the smoothing parameters are, the more uncertain the level and the slope will be; thus, the higher the uncertainty about the future values is.
 
 Here is an example of the data that corresponds to the ETS(A,A,N) model:
 
@@ -281,7 +280,7 @@ y <- sim.es("AAN", 120, 1, 12, persistence=c(0.3,0.1),
 plot(y)
 ```
 
-The series in Figure \@ref(fig:ETSAANExample) demonstrates trend that changes over time. If we needed to produce forecasts for this data, we would capture the dynamics of trend component and then use the last values of it for the several steps ahead prediction. 
+The series in Figure \@ref(fig:ETSAANExample) demonstrates a trend that changes over time. If we needed to produce forecasts for this data, we would capture the dynamics of the trend component and then use the last values for the several steps ahead prediction. 
 
 The point forecast h steps ahead from this model is a straight line with a slope $b_t$ (as shown in Table \@ref(tab:ETSAdditiveError) from Section \@ref(ETSTaxonomyMaths)):
 \begin{equation}
@@ -299,7 +298,7 @@ If you want to experiment with the model and see how its parameters influence th
 ```{r eval=FALSE}
 esModel <- es(y$data, h=10, silent=FALSE, persistence=c(0.2,0.1))
 ```
-where `persistence` is the vector of smoothing parameters (first $\hat\alpha$, then $\hat\beta$). By changing their values, we will make model less / more responsive to the changes in the data.
+where `persistence` is the vector of smoothing parameters (first $\hat\alpha$, then $\hat\beta$). By changing their values, we will make the model less/more responsive to the changes in the data.
 
 
 ### ETS(A,Ad,N) {#ETSAAdN}
@@ -312,7 +311,7 @@ This is the model that underlies Damped trend method [@Roberts1982]:
   \end{aligned} ,
   (\#eq:ETSAAdN)
 \end{equation}
-where $\phi$ is the dampening parameter, typically lying between 0 and 1. If it is equal to zero, then the model reduces to ETS(A,N,N), \@ref(eq:ETSANN). If it is equal to one, then it becomes equivalent to ETS(A,A,N), \@ref(eq:ETSAAN). The dampening parameter slows down the trend, making it non-linear. An example of data that corresponds to ETS(A,Ad,N) is provided in Figure \@ref(fig:ETSAAdNExample).
+where $\phi$ is the dampening parameter, typically lying between 0 and 1. If it is equal to zero, the model reduces to ETS(A,N,N), \@ref(eq:ETSANN). If it is equal to one, it becomes equivalent to ETS(A,A,N), \@ref(eq:ETSAAN). The dampening parameter slows down the trend, making it non-linear. An example of data that corresponds to ETS(A,Ad,N) is provided in Figure \@ref(fig:ETSAAdNExample).
 
 ```{r ETSAAdNExample, fig.cap="An example of ETS(A,Ad,N) data."}
 y <- sim.es("AAdN", 120, 1, 12, persistence=c(0.3,0.1),
@@ -320,7 +319,7 @@ y <- sim.es("AAdN", 120, 1, 12, persistence=c(0.3,0.1),
 plot(y)
 ```
 
-Visually it is typically difficult to distinguish ETS(A,A,N) from ETS(A,Ad,N) data. So, when applying ETS, some other model selection techniques are recommended (see Section \@ref(ETSSelection)).
+Visually it is typically challenging to distinguish ETS(A,A,N) from ETS(A,Ad,N) data. So, some other model selection techniques are recommended (see Section \@ref(ETSSelection)).
 
 The point forecast from this model is a bit more complicated (see Section \@ref(ETSTaxonomyMaths)):
 \begin{equation}
@@ -347,7 +346,7 @@ Finaly, this is an exotic model with additive error and trend, but multiplicativ
   \end{aligned} ,
   (\#eq:ETSAAM)
 \end{equation}
-where $s_t$ is the seasonal component and $\gamma$ is its smoothing parameter. This is one of the potentially unstable models, which due to the mix of components might produce unreasonable forecasts, because the seasonal component might become negative, while in the multiplicative model it should always be positive. Still, it might work on the strictly positive high level data. Figure \@ref(fig:ETSAAMExample) shows how the data for this model can look like.
+where $s_t$ is the seasonal component and $\gamma$ is its smoothing parameter. This is one of the potentially unstable models, which due to the mix of components, might produce unreasonable forecasts because the seasonal component might become negative, while in the multiplicative model, it should always be positive. Still, it might work on the strictly positive high-level data. Figure \@ref(fig:ETSAAMExample) shows how the data for this model can look like.
 
 ```{r ETSAAMExample, fig.cap="An example of ETS(A,A,M) data."}
 y <- sim.es("AAM", 120, 1, 4, persistence=c(0.3,0.05,0.2),
@@ -374,13 +373,13 @@ esModel <- es(y, h=10, silent=FALSE)
 The point forecasts produced from this model do not correspond to the conditional expectations. This was discussed in Section \@ref(ETSTaxonomyMaths).
 :::
 
-@Hyndman2008b argue that in ETS models, the error term should be aligned with the seasonal component, because it is difficult to motivate why the amplitude of seasonality increases with the increase of level, while the variability of the error term stays the same. So, they recommend using ETS(M,A,M) instead of ETS(A,A,M), if you deal with positive high volume data. This is a reasonable recommendation, but keep in mind that both models might break if you deal with low volume data.
+@Hyndman2008b argue that in ETS models, the error term should be aligned with the seasonal component because it is difficult to motivate why the amplitude of seasonality increases with the increase of level, while the variability of the error term stays the same. So, they recommend using ETS(M,A,M) instead of ETS(A,A,M) if you deal with positive high volume data. This is a reasonable recommendation, but keep in mind that both models might break if you deal with low volume data.
 
 
 ## ETS assumptions, estimation and selection
-There are several assumptions that need to hold for the conventional ETS models in order for them to work properly. Some of them have already been discussed in Section \@ref(assumptions), and we will not discuss them here again. What is important in our context is that the conventional ETS assumes that the error term $\epsilon_t$ follows normal distribution with zero mean and variance $\sigma^2$. Normal distribution is defined for positive, negative and zero values. This is not a big deal for additive models, which assume that the actual value can be anything. And it is not an issue for the multiplicative models, when we deal with high level positive data (e.g. thousands of units): the variance of the error term will be small enough for the $\epsilon_t$ not to become less than minus one. However, if the level of the data is low, then the variance of the error term can be large enough for the normally distributed error to cover negative values, less than minus one. This implies that the error term $1+\epsilon_t$ can become negative, and the model will break. This is a potential flaw in the conventional ETS model with the multiplicative error term. So, what the conventional multiplicative error ETS model assumes in fact is that **the data we work with is strictly positive and has high level values**.
+Several assumptions need to hold for the conventional ETS models to work properly. Some of them have already been discussed in Section \@ref(assumptions), and we will not discuss them here again. What is important in our context is that the conventional ETS assumes that the error term $\epsilon_t$ follows the normal distribution with zero mean and variance $\sigma^2$. The normal distribution is defined for positive, negative and zero values. This is not a big deal for additive models, which assume that the actual value can be anything. And it is not an issue for the multiplicative models when we deal with high-level positive data (e.g. thousands of units): the variance of the error term will be small enough for the $\epsilon_t$ not to become less than minus one. However, if the level of the data is low, then the variance of the error term can be large enough for the normally distributed error to cover negative values, less than minus one. This implies that the error term $1+\epsilon_t$ can become negative, and the model will break. This is a potential flaw in the conventional ETS model with the multiplicative error term. So, what the standard multiplicative error ETS model assumes, in fact, is that **the data we work with is strictly positive and has high-level values**.
 
-Based on the assumption of normality of error term, the ETS model can be estimated via the maximisation of likelihood [see Chapter 13 of @SvetunkovSBA], which is equivalent to the minimisation of the mean squared one step ahead forecast error $e_t$. Note that in order to apply the ETS models to the data, we also need to know the initial values of components, $\hat{l}_0, \hat{b}_0, \hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}$. The conventional approach is to estimate these values together with the smoothing parameters during the maximisation of likelihood. As a result, the optimisation might involve a large number of parameters. In addition, the variance of the error term is considered as an additional parameter in the maximum likelihood estimation, so the number of parameters for different models is (here "*" stands for any type):
+Based on the assumption of normality of error term, the ETS model can be estimated via the maximisation of likelihood [see Chapter 13 of @SvetunkovSBA], which is equivalent to the minimisation of the mean squared one step ahead forecast error $e_t$. Note that in order to apply the ETS models to the data, we also need to know the initial values of components, $\hat{l}_0, \hat{b}_0, \hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}$. The conventional approach is to estimate these values together with the smoothing parameters during likelihood maximisation. As a result, the optimisation might involve a large number of parameters. In addition, the variance of the error term is considered as an additional parameter in the maximum likelihood estimation, so the number of parameters for different models is (here "*" stands for any type):
 
 1. ETS(\*,N,N) -- 3 parameters: $\hat{l}_0$, $\hat{\alpha}$ and $\hat{\sigma}^2$;
 2. ETS(\*,\*,N) -- 5 parameters: $\hat{l}_0$, $\hat{b}_0$, $\hat{\alpha}$, $\hat{\beta}$ and $\hat{\sigma}^2$;
@@ -389,16 +388,16 @@ Based on the assumption of normality of error term, the ETS model can be estimat
 5. ETS(\*,\*,\*) -- 6+m-1 parameters: $\hat{l}_0$, $\hat{b}_0$, $\hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}$, $\hat{\alpha}$, $\hat{\beta}$, $\hat{\gamma}$ and $\hat{\sigma}^2$;
 6. ETS(\*,\*d,\*) -- 7+m-1 parameters: $\hat{l}_0$, $\hat{b}_0$, $\hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}$, $\hat{\alpha}$, $\hat{\beta}$, $\hat{\gamma}$, $\hat{\phi}$ and $\hat{\sigma}^2$.
 
-Note that in case of seasonal models we typically make sure that the initial seasonal indices are normalised, so we only need to estimate $m-1$ of them, the last one is calculated based on the linear combination of the others. For example, for the additive seasonality, it is equal to $-\sum_{j=1}^{m-1} s_j$, because the sum of all the indices should be equal to zero.
+Note that in the case of seasonal models, we typically make sure that the initial seasonal indices are normalised, so we only need to estimate $m-1$ of them, the last one is calculated based on the linear combination of the others. For example, for the additive seasonality, it is equal to $-\sum_{j=1}^{m-1} s_j$ because the sum of all the indices should be equal to zero.
 
-When it comes to the selection of the most appropriate model, the conventional approach involves the application of all models to the data and then selecting the most appropriate of them based on an information criteria [see Section 13.4 of @SvetunkovSBA]. This was first proposed by @Hyndman2002. In case of the conventional ETS model, this relies on the likelihood value of normal distribution, used in the estimation of the model.
+When it comes to selecting the most appropriate model, the conventional approach involves the application of all models to the data and then selecting the most appropriate of them based on an information criterion [see Section 13.4 of @SvetunkovSBA]. This was first proposed by @Hyndman2002. In the case of the conventional ETS model, this relies on the likelihood value of normal distribution used in the estimation of the model.
 
-Finally, the assumption of normality is used for the generation of prediction intervals from the model. There are typically two ways of doing that:
+Finally, the assumption of normality is used to generate prediction intervals from the model. There are typically two ways of doing that:
 
 1. Calculating the variance of multiple steps ahead forecast error and then using it for the intervals construction [see Chapter 6 of @Hyndman2008b];
 2. Generating thousands of possible paths for the components of the series and the actual values and then taking the necessary quantiles for the prediction intervals;
 
-Typically, (1) is applied for pure additive models, where the closed forms for the variances are known and the assumption of normality holds for several steps ahead. In some special cases of mixed models, there are approximations for variances that work on small horizons [see Section 6.4 of @Hyndman2008b]. But in all the other cases (2) should be used, despite being typically slower than (1) and producing bounds that differ slightly from run to run due to randomness.
+Typically, (1) is applied for pure additive models, where the closed forms for the variances are known, and the assumption of normality holds for several steps ahead. In some special cases of mixed models, approximations for variances work on short horizons [see Section 6.4 of @Hyndman2008b]. But in all the other cases, (2) should be used, despite being typically slower than (1) and producing bounds that differ slightly from run to run due to randomness.
 
 
 ## State space form of ETS {#ETSConventionalModel}
@@ -452,7 +451,7 @@ Some of mixed models have more complicated persistence function values. For exam
 \end{equation}
 which results in the state space model discussed in subsection \@ref(ETSAAMModel).
 
-The compact form \@ref(eq:ETSConventionalStateSpace) is thus convenient, it underlies all the 30 ETS models discussed in the Sections \@ref(ETSTaxonomy) and \@ref(ETSTaxonomyMaths). Unfortunately, they cannot be used directly for the derivation of conditional values, so they are needed just for the general understanding of ETS and can be used in coding.
+The compact form \@ref(eq:ETSConventionalStateSpace) is thus convenient, it underlies all the 30 ETS models discussed in the Sections \@ref(ETSTaxonomy) and \@ref(ETSTaxonomyMaths). Unfortunately, they cannot be used directly for deriving conditional values, so they are needed just for the general understanding of ETS and can be used in coding.
 
 
 ### Pure additive state space model {#ETSConventionalModelAdditive}
@@ -464,7 +463,7 @@ The more useful state space model in ETS framework is the pure additive one, whi
   \end{aligned},
   (\#eq:ETSConventionalStateSpaceAdditive)
 \end{equation}
-where $\mathbf{w}$ is the measurement vector, showing how the components form the structure, $\mathbf{F}$ is the transition matrix, showing how components interact with each other and change over time (e.g. level is equal to the previous level plus trend) and $\mathbf{g}$ is the persistence vector, containing smoothing parameters. The conditional expectation and variance can be derived based on \@ref(eq:ETSConventionalStateSpaceAdditive), together with bounds on the smoothing parameters for any model that can be formulated in this way. And, as mentioned above, any pure additive ETS model can be written in the form \@ref(eq:ETSConventionalStateSpaceAdditive), which means that all of them have relatively simple analytical formulae for the aforementioned statistics. For example, the h steps ahead conditional expectation and variance of the model \@ref(eq:ETSConventionalStateSpaceAdditive) are [@Hyndman2008b, Chapter 6]:
+where $\mathbf{w}$ is the measurement vector, showing how the components form the structure, $\mathbf{F}$ is the transition matrix, showing how components interact with each other and change over time (e.g. level is equal to the previous level plus trend) and $\mathbf{g}$ is the persistence vector, containing smoothing parameters. The conditional expectation and variance can be derived based on \@ref(eq:ETSConventionalStateSpaceAdditive), together with bounds on the smoothing parameters for any model that can be formulated in this way. And, as mentioned above, any pure additive ETS model can be written in the form \@ref(eq:ETSConventionalStateSpaceAdditive), which means that all of them have relatively simple analytical formulae for the statistics mentioned above. For example, the h steps ahead conditional expectation and variance of the model \@ref(eq:ETSConventionalStateSpaceAdditive) are [@Hyndman2008b, Chapter 6]:
 \begin{equation}
   \begin{aligned}
     \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = & \mathbf{w}^\prime \mathbf{F}^{h-1} \mathbf{v}_{t} \\
@@ -476,9 +475,9 @@ where $\sigma^2$ is the variance of the error term. Formulae \@ref(eq:ETSConvent
 
 
 ## Parameters bounds {#ETSParametersBounds}
-While, it is accepted by many practitioners and academics that the smoothing parameters of ETS models should lie between zero and one, this is not entirely true for the models. There are, in fact, several possible restrictions on smoothing parameters, and it is worth discussing them separately:
+While many practitioners and academics accept that the smoothing parameters of ETS models should lie between zero and one, this is not entirely true for the models. There are, in fact, several possible restrictions on smoothing parameters, and it is worth discussing them separately:
 
-1. **Classical or conventional** bounds are $\alpha, \beta, \gamma \in (0,1)$. The idea behind them originates from the simple exponential smoothing method (Section \@ref(SES)), where it is logical to restrict the bounds with this region, because then the smoothing parameters regulate, what weight the actual value $y_t$ will have and what weight will be asigned to the predicted one $\hat{y}_t$. @Hyndman2008b showed that this condition is sometimes too loose and in other cases is too restrictive to some ETS models. @Brenner1968 was one of the first to show that the bounds are wider than this region for many exponential smoothing methods. Still, the conventional restriction is the most often used in practice, just because it is nice to work with.
+1. **Classical or conventional** bounds are $\alpha, \beta, \gamma \in (0,1)$. The idea behind them originates from the simple exponential smoothing method (Section \@ref(SES)), where it is logical to restrict the bounds with this region because then the smoothing parameters regulate what weight the actual value $y_t$ will have and what weight will be assigned to the predicted one $\hat{y}_t$. @Hyndman2008b showed that this condition is sometimes too loose and, in other cases, is too restrictive to some ETS models. @Brenner1968 was one of the first to show that the bounds are wider than this region for many exponential smoothing methods. Still, the conventional restriction is the most often used in practice, just because it is nice to work with.
 
 2. **Usual or traditional** bounds are those that satisfy the set of the following equations:
 \begin{equation}
@@ -489,14 +488,14 @@ While, it is accepted by many practitioners and academics that the smoothing par
   \end{aligned},
   (\#eq:ETSUsualBounds)
 \end{equation}
-This set of restrictions guarantees that the weights decline over time exponentially (see Section \@ref(whyExponential)) and the ETS models have the property of "averaging" the values over time. In the lower boundary condition, the components of the model become deterministic and we can say that they are calculated as the global averages of the values over time.
+This set of restrictions guarantees that the weights decline over time exponentially (see Section \@ref(whyExponential)), and the ETS models have the property of "averaging" the values over time. In the lower boundary condition, the model's components become deterministic, and we can say that they are calculated as the global averages of the values over time.
 
-3. **Admissible** bounds, satisfying stability condition. The idea here is that the most recent observation should have higher weight than the older ones, which is regulated via the smoothing parameters. However, in this case we do not impose the restriction of exponential decay of weights on the models, so they can oscillate or decay harmonially, as long as their absolute values decrease over time. The condition is more complicated mathematically than the previous two and will be discussed later in the textbook for the pure additive models (see Section \@ref(ADAMETSPureAdditive)), but here are several examples for bounds, satisfying this condition [from Chapter 10 of @Hyndman2008b]:
+3. **Admissible** bounds, satisfying stability condition. The idea here is that the most recent observation should have a higher weight than the older ones, which is regulated via the smoothing parameters. However, in this case, we do not impose the restriction of exponential decay of weights on the models, so they can oscillate or decay harmonically as long as their absolute values decrease over time. The condition is more complicated mathematically than the previous two. It will be discussed later in the textbook for the pure additive models (see Section \@ref(ADAMETSPureAdditive)), but here are several examples for bounds, satisfying this condition [from Chapter 10 of @Hyndman2008b]:
 
 - ETS(A,N,N): $\alpha \in (0, 2)$;
 - ETS(A,A,N): $\alpha \in (0, 2); \beta \in (0, 4-2\alpha)$;
 - ETS(A,N,A): $\alpha \in \left(\frac{-2}{m-1}, 2-\gamma\right); \gamma \in (\max(-m\alpha, 0), 2-\alpha)$;
 
-As you see, the admissible bounds are much wider than the conventional and usual ones. In fact, smoothing parameters can become either negative or greater than one in some cases for some models, which is hard to interpret, but might inicate that the data is difficult to predict. Furthermore, the admissible bounds correspond to the parameters restrictions for ARIMA models, underlying some of pure additive ETS models. In a way, they are more natural for the ETS models than the other two, because they follow from the formulation and arise naturally. However, their usage in practice has been met with mixed success, with only handful of papers using them instead of (1) or (2) [e.g. @Gardner2008; mention that they appear in some cases and @Snyder2017 use them in their model].
+As you see, the admissible bounds are much wider than the conventional and usual ones. In fact, smoothing parameters can become either negative or greater than one in some cases for some models, which is hard to interpret but might indicate that the data is difficult to predict. Furthermore, the admissible bounds correspond to the restrictions of the parameters for ARIMA models, underlying some of pure additive ETS models. In a way, they are more natural for the ETS models than the other two because they follow the formulation and arise naturally. However, their usage in practice has been met with mixed success, with only a handful of papers using them instead of (1) or (2) [e.g. @Gardner2008; mention that they appear in some cases and @Snyder2017 use them in their model].
 
-In the R code, the admissible bounds are calculated based on the discount matrix, which will be discussed in the context of pure additive ADAM ETS models in the chapter \@ref(ADAMETSPureAdditive).
+The admissible bounds are calculated based on the discount matrix in the R code, which will be discussed in the context of pure additive ADAM ETS models in the chapter \@ref(ADAMETSPureAdditive).
