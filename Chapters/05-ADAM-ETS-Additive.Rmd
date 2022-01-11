@@ -1,5 +1,5 @@
 # Pure additive ADAM ETS {#ADAMETSIntroduction}
-Now that we are familiar with the conventional ETS, we can move to the discussion of ADAM implementation of it, which has several important differences from the classical one. We start the discussion with the pure additive models, which are much easier to work with than other ETS models. This chapter focuses on technical details of the model, discussing general formulation in algebraic form, then moving to recursive relations, that are needed in order to understand how to produce forecasts from the model and how to estimate it correctly (i.e. impose restrictions on the parameters). Finally, we discuss the distributional assumptions for ADAM ETS, introducing not only the Normal distribution, but also showing how to use Laplace, S, Generalised Normal, Log Normal, Gamma and Inverse Gaussian distributions in the context.
+Now that we are familiar with the conventional ETS, we can move to the discussion of ADAM implementation, which has several important differences from the classical one. We start the discussion with the pure additive models, which are much easier to work with than other ETS models. This chapter focuses on technical details of the model, discussing general formulation in algebraic form, then moving to recursive relations, which are needed to understand how to produce forecasts from the model and how to estimate it correctly (i.e. impose restrictions on the parameters). Finally, we discuss the distributional assumptions for ADAM ETS, introducing not only the Normal distribution but also showing how to use Laplace, S, Generalised Normal, Log-Normal, Gamma and Inverse Gaussian distributions in the context.
 
 
 ## Model formulation {#ADAMETSPureAdditive}
@@ -53,7 +53,7 @@ Substituting \@ref(eq:ETSADAMAAAMatrices) into \@ref(eq:ETSADAMAAAMatrixForm), w
   \end{aligned},
   (\#eq:ETSADAMStateSpacePureAdditive)
 \end{equation}
-where $\mathbf{w}$ is the measurement vector, $\mathbf{F}$ is the transition matrix, $\mathbf{g}$ is the persistence vector and $\mathbf{v}_{t-\mathbf{l}}$ is the vector of lagged components and $\mathbf{l}$ is the vector of lags. The important thing to note is that ADAM model is based on the model discussed in Section \@ref(ETSConventionalModelAdditive), it is formulated using lags of components rather than the transition of them over time. This comes to the elements of the vector $\mathbf{l}$. Just for the comparison, the conventional ETS(A,A,A), formulated according to \@ref(eq:ETSConventionalStateSpace) would have the following transition matrix (instead of \@ref(eq:ETSADAMAAAMatrices)):
+where $\mathbf{w}$ is the measurement vector, $\mathbf{F}$ is the transition matrix, $\mathbf{g}$ is the persistence vector and $\mathbf{v}_{t-\mathbf{l}}$ is the vector of lagged components and $\mathbf{l}$ is the vector of lags. The important thing to note is that the ADAM model is based on the model discussed in Section \@ref(ETSConventionalModelAdditive). It is formulated using lags of components rather than their transition over time. This comes to the elements of the vector $\mathbf{l}$. Just for the comparison, the conventional ETS(A,A,A), formulated according to \@ref(eq:ETSConventionalStateSpace) would have the following transition matrix (instead of \@ref(eq:ETSADAMAAAMatrices)):
 \begin{equation}
   \mathbf{F} = \begin{pmatrix} 1 & 1 & \mathbf{0}^\prime_{m-1} & 0 \\ 0 & 1 & \mathbf{0}^\prime_{m-1} & 0 \\ 0 & 0 & \mathbf{0}^\prime_{m-1} & 1 \\ \mathbf{0}_{m-1} & \mathbf{0}_{m-1} & \mathbf{I}_{m-1} & \mathbf{0}_{m-1} \end{pmatrix},
   (\#eq:ETSADAMAAAMatricesTransition)
@@ -149,7 +149,7 @@ which is the same conditional expectation and variance as in the Section \@ref(E
 
 
 ## Stability and forecastability conditions {#stabilityConditionAdditiveError}
-Another important aspect of the pure additive model \@ref(eq:ETSADAMStateSpacePureAdditive) is the restriction on the smoothing parameters. This is related to the stability and forecastability conditions of the model. The **stability** implies that the weights for observations decay over time (Section \@ref(whyExponential)), guaranteeing that the newer ones will have higher weights than the older ones. If this condition holds, then the model behaves "steadily", forgetting eventually the past values. The **forecastability** does not guarantee that the weights decay, but it guarantees that the initial value of the state vector will have a constant impact on forecasts, i.e. will not increase in weight with the increase of the forecast horizon. An example of the non-stable, but forecastable model is ETS(A,N,N) with $\alpha=0$. In this case it reverts to the global level model (Section \@ref(GlobalMean)), where the initial value impacts the final forecast in the same way as it does for the first observation.
+Another important aspect of the pure additive model \@ref(eq:ETSADAMStateSpacePureAdditive) is the restriction on the smoothing parameters. This is related to the stability and forecastability conditions of the model. The **stability** implies that the weights for observations decay over time (Section \@ref(whyExponential)), guaranteeing that the newer ones will have higher weights than the older ones. If this condition holds, the model behaves "steadily", forgetting the past values eventually. The **forecastability** does not guarantee that the weights decay, but it guarantees that the initial value of the state vector will have a constant impact on forecasts, i.e. will not increase in weight with the increase of the forecast horizon. An example of the non-stable, but forecastable model is ETS(A,N,N) with $\alpha=0$. In this case, it reverts to the global level model (Section \@ref(GlobalMean)), where the initial value impacts the final forecast in the same way as it does for the first observation.
 
 In order to obtain both conditions, we need to use a reduced form of ETS by inserting the measurement equation in the transition equation via $\epsilon_t= {y}_{t} -\mathbf{w}^\prime \mathbf{v}_{t-\mathbf{l}}$:
 \begin{equation}
@@ -170,23 +170,23 @@ In order to better understand what we plan to discuss in this section, consider 
   \end{aligned}.
   (\#eq:ETSADAMStateSpaceANNBackRecursion01)
 \end{equation}
-which corresponds to the formula of Simple Exponential Smoothing from Section \@ref(SES). The discount matrix in this case is $\mathbf{D}=1-\alpha$. If we now substitute the values for the level on the right hand side of the equation \@ref(eq:ETSADAMStateSpaceANNBackRecursion01) by the previous values of the level, we will obtain the recursion that we have already discussed in Section \@ref(whyExponential), but now in terms of the "true" components and parameters:
+which corresponds to the formula of Simple Exponential Smoothing from Section \@ref(SES). The discount matrix, in this case, is $\mathbf{D}=1-\alpha$. If we now substitute the values for the level on the right-hand side of the equation \@ref(eq:ETSADAMStateSpaceANNBackRecursion01) by the previous values of the level, we will obtain the recursion that we have already discussed in Section \@ref(whyExponential), but now in terms of the "true" components and parameters:
 \begin{equation}
   \begin{aligned}
     l_{t} = & {\alpha} \sum_{j=0}^{t-1} (1 -{\alpha})^j {y}_{t-j} + (1 -{\alpha})^t l_0,
   \end{aligned}.
   (\#eq:ETSADAMStateSpaceANNBackRecursion02)
 \end{equation}
-The *stability* condition for ETS(A,N,N) is that the discount value $1-\alpha$ is less than or equal to one by absolute value. This way the weights will decay in time because of the exponentiation in \@ref(eq:ETSADAMStateSpaceANNBackRecursion02) to the power of $j$. This condition is satisfied, when $\alpha \in(0, 2)$, which is the admissible bound discussed in Section \@ref(ETSParametersBounds).
+The *stability* condition for ETS(A,N,N) is that the discount value $1-\alpha$ is less than or equal to one by absolute value. This way, the weights will decay in time because of the exponentiation in \@ref(eq:ETSADAMStateSpaceANNBackRecursion02) to the power of $j$. This condition is satisfied when $\alpha \in(0, 2)$, which is admissible bound discussed in Section \@ref(ETSParametersBounds).
 
-As for the *forecastability* condition, in this case it implies that $\lim\limits_{t\rightarrow\infty}(1 -{\alpha})^t = \text{const}$, which means that the effect of the initial state on future values stays the same. This is achievable, for example, when $\alpha=0$, but is violated, when $\alpha<0$ or $\alpha\geq 2$. So, the bounds for the smoothing parameters in the ETS(A,N,N) model, guaranteeing the forecastability of the model (i.e. making it useful) are:
+As for the *forecastability* condition, in this case it implies that $\lim\limits_{t\rightarrow\infty}(1 -{\alpha})^t = \text{const}$, which means that the effect of the initial state on future values stays the same. This is achievable, for example, when $\alpha=0$, but is violated, when $\alpha<0$ or $\alpha\geq 2$. So, the bounds for the smoothing parameters in the ETS(A,N,N) model, guaranteeing the forecastability of the model (i.e. making it useful), are:
 \begin{equation}
   \alpha \in [0, 2) .
   (\#eq:ETSADAMStateSpaceANNBounds)
 \end{equation}
 
 ### Comming back to the general case
-In general case, the logic is the same as with ETS(A,N,N), but it implies the usage of linear algebra. Due to our lagged formulation, the recursion becomes more complicated:
+In the general case, the logic is the same as with ETS(A,N,N), but it implies the usage of linear algebra. Due to our lagged formulation, the recursion becomes more complicated:
 \begin{equation}
   \begin{aligned}
     \mathbf{v}_{t} = & \mathbf{D}_{m_1}^{\lceil\frac{t}{m_1}\rceil} \mathbf{v}_{0} + \sum_{j=0}^{\lceil\frac{t}{m_1}\rceil-1} \mathbf{D}_{m_1}^{j} y_{t -j m_1} + \\
@@ -248,12 +248,12 @@ The possibility of application of these distributions arises from the reformulat
   \end{aligned}.
   (\#eq:ETSADAMStateSpacePureAdditiveReformulated)
 \end{equation}
-The connection between the two formulations becomes apparent, when opening the brackets in the measurement equation of \@ref(eq:ETSADAMStateSpacePureAdditiveReformulated). Note that in this case the model assumes that the data is strictly positive and while it might be possible to fit the model on the data with negative values, the calculation of the scale and the likelihood might become impossible. Using alternative losses (e.g. MSE) is a possible solution in this case.
+The connection between the two formulations becomes apparent when opening the brackets in the measurement equation of \@ref(eq:ETSADAMStateSpacePureAdditiveReformulated). Note that in this case, the model assumes that the data is strictly positive, and while it might be possible to fit the model on the data with negative values, the calculation of the scale and the likelihood might become impossible. Using alternative losses (e.g. MSE) is a possible solution in this case.
 
 
 ## Examples of application {#ADAMETSPureAdditiveExamples}
 ### Non-seasonal data
-In order to see how the pure additive ADAM ETS works, we will try it out using `adam()` function from `smooth` package for R on Box-Jenkins sales data. We start with plotting the data:
+To see how the pure additive ADAM ETS works, we will try it out using the `adam()` function from the `smooth` package for R on Box-Jenkins sales data. We start with plotting the data:
 
 ```{r BJsalesDataPlot, fig.cap="Box-Jenkins sales data."}
 plot(BJsales)
@@ -265,7 +265,7 @@ adamModel <- adam(BJsales, "AAN")
 adamModel
 ```
 
-The output of the model summarises, which specific model was estimated, assuming what distribution, how it was estimated and what the values of smoothing parameters are. It also reports the sample size, degrees of freedom and also produces [see Section 13.4 of @SvetunkovSBA]. We can compare this model with the ETS(A,N,N) in order to see, which of them performs better in terms of information criteria (e.g. in terms of AICc):
+The model's output summarises which specific model was constructed, assuming what distribution, how it was estimated, and the values of smoothing parameters. It also reports the sample size, the number of parameters, degrees of freedom and produces information criteria [see Section 13.4 of @SvetunkovSBA]. We can compare this model with the ETS(A,N,N) to see which of them performs better in terms of information criteria (e.g. in terms of AICc):
 ```{r}
 adam(BJsales, "ANN")
 ```
@@ -276,7 +276,7 @@ plot(forecast(adamModel, h=10,
               interval="prediction", level=c(0.9,0.95)))
 ```
 
-Notice that the smoothing parameters of ETS(A,A,N) are very high, with $\alpha=1$. This might mean that the maximum of the likelihood is achieved in the *admissible* bounds. We can try it out and see what happens:
+Notice that the smoothing parameters of ETS(A,A,N) are very high, with $\alpha=1$. This might mean that the maximum likelihood is achieved in the *admissible* bounds. We can try it out and see what happens:
 
 ```{r}
 adamModel <- adam(BJsales, "AAN", bounds="admissible")
@@ -318,7 +318,7 @@ The prediction interval in this case is slightly wider than in the previous one,
 plot(AirPassengers)
 ```
 
-Now we will check what happens in the case of seasonal data. We use `AirPassengers` data, plotted in Figure \@ref(fig:AirPassengersPlot), which actually has multiplicative seasonality. But for purposes of demonstration, we will see what happens, when we use the wrong model with additive seasonality. We will withhold 12 observations to look closer at the performance of the ETS(A,A,A) model in this case:
+Now we will check what happens in the case of seasonal data. We use `AirPassengers` data, plotted in Figure \@ref(fig:AirPassengersPlot), which has multiplicative seasonality. But for demonstration purposes, we will see what happens when we use the wrong model with additive seasonality. We will withhold 12 observations to look closer at the performance of the ETS(A,A,A) model in this case:
 
 ```{r}
 adamModel <- adam(AirPassengers, "AAA", lags=12,
@@ -326,7 +326,7 @@ adamModel <- adam(AirPassengers, "AAA", lags=12,
 ```
 
 ::: remark
-The `lags` parameter in this specific case is not necessary, because the function will get the frequency from the `ts` object automatically. If we were to provide a vector of values instead of the `ts` object, we would need to specify the correct lag. Note that `1` (lag for level and trend) is not needed -- the function will always use it anyway.
+In this specific case, the `lags` parameter is not necessary because the function will automatically get the frequency from the `ts` object. If we were to provide a vector of values instead of the `ts` object, we would need to specify the correct lag. Note that `1` (lag for level and trend) is unnecessary; the function will always use it anyway.
 :::
 
 ::: remark
@@ -341,13 +341,13 @@ adamModel <- adam(AirPassengers, "AAA", lags=12,
 adamModel
 ```
 
-Notice that because we fit the additive seasonal model to the data with multiplicative seasonality, the smoothing parameter $\gamma$ has become large -- the seasonal component needs to be updated in order to keep up with the changing seasonal profile. In addition, because we use `holdout` parameter, the function now also reports the error measures for the point forecasts on that part of data. This can be useful, when you want to compare the performance of several models on a time series. Here how the forecast from ETS(A,A,A) looks on this data:
+Notice that because we fit the seasonal additive model to the data with multiplicative seasonality, the smoothing parameter $\gamma$ has become large -- the seasonal component needs to be updated to keep up with the changing seasonal profile. In addition, because we use the `holdout` parameter, the function also reports the error measures for the point forecasts on that part of the data. This can be useful when comparing the performance of several models on a time series. Here is how the forecast from ETS(A,A,A) looks on this data:
 
 ```{r AirPassengersAAAForecast, fig.cap="Forecast for air passengers data using ETS(A,A,A) model.", echo=FALSE}
 plot(forecast(adamModel, h=12, interval="prediction"))
 ```
 
-Figure \@ref(fig:AirPassengersAAAForecast) demonstrates that while the fit to the data is far from perfect, due to a pure coincidence the point forecast from this model is decent.
+Figure \@ref(fig:AirPassengersAAAForecast) demonstrates that while the fit to the data is far from perfect, due to a pure coincidence, the point forecast from this model is decent.
 
 In order to see how the ADAM ETS decomposes the data into components, we can plot it via the `plot()` method with `which` parameter:
 
@@ -355,4 +355,4 @@ In order to see how the ADAM ETS decomposes the data into components, we can plo
 plot(adamModel, which=12)
 ```
 
-We can see on the graph in Figure \@ref(fig:AirPassengersAAADecomposition) that the residuals still contain some seasonality in them, so there is a room for improvement. Most probably, this happened because the data exhibits multiplicative seasonality rather than the additive one. For now, we do not aim to fix this issue.
+We can see on the graph in Figure \@ref(fig:AirPassengersAAADecomposition) that the residuals still contain some seasonality, so there is room for improvement. This probably happened because the data exhibits multiplicative seasonality rather than the additive one. For now, we do not aim to fix this issue.
