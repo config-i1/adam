@@ -565,12 +565,12 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 </div>
 <div id="ETSXSelection" class="section level2" number="15.3">
 <h2><span class="header-section-number">15.3</span> Explanatory variables selection</h2>
-<p>There are different approaches for automatic variables selection, but not all of them are efficient in the context of dynamic models. For example, backward stepwise might be either not feasible in case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This is because the ADAMX model needs to be refitted and reestimated over and over again using recursive relations based on the state space model <a href="ADAMXFormulation.html#eq:ETSXADAMStateSpacePureAdditiveFull">(10.4)</a>. The classical stepwise forward might also be too slow, because it has polynomial computational time as well. So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.</p>
-<p>In order to make the mechanism efficient in a limited time, we rely on <span class="citation"><a href="#ref-Sagaert2021" role="doc-biblioref">Sagaert and Svetunkov</a> (<a href="#ref-Sagaert2021" role="doc-biblioref">2021</a>)</span> approach of stepwise trace forward selection of variables. It is the approach that uses the partial correlations between variables in order to identify, which of the variables to include on each iteration. It has the linear computational time instead of the polynomial. Still, doing that in the proper ADAMX would take more time than needed, because of the fitting of the dynamic model. So one of the possibles solutions is to do variables selection in ADAMX in the following steps:</p>
+<p>There are different approaches for automatic variable selection, but not all of them are efficient in the context of dynamic models. For example, backward stepwise might be either not feasible in the case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This is because the ADAMX model needs to be refitted and reestimated repeatedly using recursive relations based on the state space model <a href="ADAMXFormulation.html#eq:ETSXADAMStateSpacePureAdditiveFull">(10.4)</a>. The classical stepwise forward might also be too slow because it has polynomial computational time as well. So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.</p>
+<p>To make the mechanism efficient in a limited time, we rely on the <span class="citation"><a href="#ref-Sagaert2021" role="doc-biblioref">Sagaert and Svetunkov</a> (<a href="#ref-Sagaert2021" role="doc-biblioref">2022</a>)</span> approach of stepwise trace forward selection of variables. It is the approach that uses partial correlations between variables to identify which variables to include in each iteration. It has linear computational time instead of the polynomial. Still, doing that in the proper ADAMX would take more time than needed because of the fitting of the dynamic model. So one of the possible solutions is to make variables selection in ADAMX in the following steps:</p>
 <ol style="list-style-type: decimal">
 <li>Estimate and fit the ADAM model;</li>
 <li>Extract the residuals of the ADAM model;</li>
-<li>Select the most suitable variables, explaining the residuals, based on the trace forward approach and the selected information criterion;</li>
+<li>Select the most suitable variables, explaining the residuals, based on the trace forward stepwise approach and the selected information criterion;</li>
 <li>Estimate the ADAMX model with the selected explanatory variables.</li>
 </ol>
 <p>The residuals in step (2) might vary from model to model, depending on the type of the error term and the selected distribution:</p>
@@ -580,9 +580,9 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <li>Multiplicative error and Log Normal, Inverse Gaussian or Gamma: <span class="math inline">\(1+e_t\)</span>.</li>
 </ul>
 <p>So, the extracted residuals should be formulated based on the distributional assumptions of each model.</p>
-<p>In R, step (3) is done using the <code>stepwise()</code> function from <code>greybox</code> package, which supports all the distributions discussed in the previous chapters. The only thing that needs to be modified is the number of degrees of freedom: the function should take the number of all estimated parameters into account. This is done internally via the <code>df</code> parameter in <code>stepwise()</code>.</p>
+<p>In R, step (3) is done using the <code>stepwise()</code> function from the <code>greybox</code> package, supporting all the distributions discussed in the previous chapters. The only thing that needs to be modified is the number of degrees of freedom: the function should consider all estimated parameters. This is done internally via the <code>df</code> parameter in <code>stepwise()</code>.</p>
 <p>While the suggested approach has obvious limitations (e.g. smoothing parameters can be higher than needed, explaining the variability otherwise explained by variables), it is efficient in terms of computational time.</p>
-<p>In order to see how it works, we use SeatBelt data:</p>
+<p>To see how it works, we use SeatBelt data:</p>
 <div class="sourceCode" id="cb306"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb306-1"><a href="ETSXSelection.html#cb306-1" aria-hidden="true" tabindex="-1"></a>SeatbeltsData <span class="ot">&lt;-</span> Seatbelts[,<span class="fu">c</span>(<span class="st">&quot;drivers&quot;</span>,<span class="st">&quot;kms&quot;</span>,<span class="st">&quot;PetrolPrice&quot;</span>,<span class="st">&quot;law&quot;</span>)]</span></code></pre></div>
 <p>We have already had a look at this data earlier in Section <a href="ETSXRExample.html#ETSXRExample">10.6</a>, so we can move directly to the selection part:</p>
 <div class="sourceCode" id="cb307"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb307-1"><a href="ETSXSelection.html#cb307-1" aria-hidden="true" tabindex="-1"></a>adamModelETSXMNMSelect <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
@@ -623,7 +623,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 ##      AIC     AICc      BIC     BICc 
 ## 2266.378 2269.715 2317.465 2326.131</code></pre>
 <p>Note that the function might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality. This is discussed in Section <a href="ADAMUncertaintyVCOV.html#ADAMUncertaintyVCOV">16.1</a>.</p>
-<p>Based on the summary from the model, we can see that neither <code>kms</code>, nor <code>PetrolPrice</code> improve the model in terms of AICc (they were not included in the model). We could check them manually in order to see if the selection worked out well in our case (construct sink regression as a benchmark):</p>
+<p>Based on the summary from the model, we can see that neither <code>kms</code> nor <code>PetrolPrice</code> improve the model in terms of AICc (they were not included in the model). We could check them manually to see if the selection worked out well in our case (construct sink regression as a benchmark):</p>
 <div class="sourceCode" id="cb310"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb310-1"><a href="ETSXSelection.html#cb310-1" aria-hidden="true" tabindex="-1"></a>adamModelETSXMNMSink <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
 <span id="cb310-2"><a href="ETSXSelection.html#cb310-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb310-3"><a href="ETSXSelection.html#cb310-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamModelETSXMNMSink)</span></code></pre></div>
@@ -667,7 +667,7 @@ This book is in <b><a href="open.html#open">Open Review</a></b>. I want your fee
 <h3>References</h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-Sagaert2021" class="csl-entry">
-• Sagaert, Y.R., Svetunkov, I., 2021. <span class="nocase">Variables Selection Using Partial Correlations and Information Criteria</span>.
+• Sagaert, Y., Svetunkov, I., 2022. <span class="nocase">Trace Forward Stepwise: Automatic Selection of Variables in No Time</span>. <a href="https://doi.org/10.13140/RG.2.2.34995.35369">https://doi.org/10.13140/RG.2.2.34995.35369</a>
 </div>
 </div>
 
