@@ -564,13 +564,13 @@ div.csl-indent {
 <p>The conventional assumption for the error term in ETS is that <span class="math inline">\(\epsilon_t\sim\mathcal{N}(0,\sigma^2)\)</span>, which guarantees that the conditional expectation of the model will be equal to the point forecasts when the trend and seasonal components are not multiplicative. In general, ETS works well in many cases with this assumption, mainly when the data is strictly positive, and the level of series is high (e.g. thousands of units). However, this assumption might become unhelpful when dealing with lower-level data because the models may start generating non-positive values, which contradicts the idea of pure multiplicative ETS models. <span class="citation"><a href="#ref-Akram2009" role="doc-biblioref">Akram et al.</a> (<a href="#ref-Akram2009" role="doc-biblioref">2009</a>)</span> studied the ETS models with multiplicative error and suggested that applying ETS on data in logarithms is a better approach than just using ETS(M,Y,Y) models (here “Y” stands for non-additive components). However, this approach sidesteps the ETS taxonomy, creating a new group of models. An alternative (also discussed in <span class="citation"><a href="#ref-Akram2009" role="doc-biblioref">Akram et al.</a> (<a href="#ref-Akram2009" role="doc-biblioref">2009</a>)</span>) is to assume that the error term <span class="math inline">\(1+\epsilon_t\)</span> follows some distribution for positive data. The authors mentioned log Normal, truncated and Gamma distributions but never explored them further.</p>
 <p><span class="citation"><a href="#ref-Svetunkov2020ETS" role="doc-biblioref">Svetunkov and Boylan</a> (<a href="#ref-Svetunkov2020ETS" role="doc-biblioref">2020a</a>)</span> discussed several options for the distribution of <span class="math inline">\(1+\epsilon_t\)</span> in ETS, including log Normal, Gamma and Inverse Gaussian. Other distributions for positive data can be applied as well, but their usage might become complicated, because they need to meet condition <span class="math inline">\(\mathrm{E}(1+\epsilon_t)=1\)</span> in order for the expectation to coincide with the point forecasts for models with non-multiplicative trend and seasonality. For example, if the error term follows log Normal distribution, then this restriction implies that the location of the distribution should be non-zero: <span class="math inline">\(1+\epsilon_t\sim\mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2},\sigma^2\right)\)</span>. Using this principle the following distributions can be used for ADAM ETS:</p>
 <ol style="list-style-type: decimal">
-<li>Inverse Gaussian: <span class="math inline">\(\left(1+\epsilon_t \right) \sim \mathcal{IG}(1, s)\)</span>, so that <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \mathcal{IG}(\mu_t, s)\)</span>;</li>
-<li>Gamma: <span class="math inline">\(\left(1+\epsilon_t \right) \sim \Gamma (s^{-1}, s)\)</span>, so that <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \Gamma (s^{-1}, s \mu_t)\)</span>;</li>
-<li>Log Normal: <span class="math inline">\(\left(1+\epsilon_t \right) \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)\)</span> so that <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \mathrm{log}\mathcal{N}(\log \mu_t -\frac{\sigma^2}{2}, \sigma^2)\)</span>.</li>
+<li>Inverse Gaussian: <span class="math inline">\(\left(1+\epsilon_t \right) \sim \mathcal{IG}(1, \sigma^2)\)</span>, so that <span class="math inline">\(y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{IG}(\mu_{y,t}, \sigma^2)\)</span>;</li>
+<li>Gamma: <span class="math inline">\(\left(1+\epsilon_t \right) \sim \Gamma (\sigma^{-2}, \sigma^2)\)</span>, so that <span class="math inline">\(y_t = \mu_{y,t} (1+\epsilon_t) \sim \Gamma (\sigma^{-2}, \sigma^2 \mu_{y,t})\)</span>;</li>
+<li>Log Normal: <span class="math inline">\(\left(1+\epsilon_t \right) \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)\)</span> so that <span class="math inline">\(y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathrm{log}\mathcal{N}(\log \mu_{y,t} -\frac{\sigma^2}{2}, \sigma^2)\)</span>.</li>
 </ol>
 <p>The MLE of <span class="math inline">\(s\)</span> in <span class="math inline">\(\mathcal{IG}\)</span> is straightforward and is:
 <span class="math display" id="eq:ETSMultiplicativeErrorMLESigmaIG">\[\begin{equation}
-    \hat{s} = \frac{1}{T} \sum_{t=1}^{T} \frac{e_{t}^2}{1+e_t} ,
+    \hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^{T} \frac{e_{t}^2}{1+e_t} ,
     \tag{6.16}
 \end{equation}\]</span>
 where <span class="math inline">\(e_t\)</span> is the estimate of the error term <span class="math inline">\(\epsilon_t\)</span>. However, when it comes to the MLE of scale parameter for the log Normal distribution with the aforementioned restrictions, it is more complicated and is <span class="citation">(<a href="#ref-Svetunkov2020ETS" role="doc-biblioref">Svetunkov and Boylan, 2020a</a>)</span>:
@@ -580,32 +580,33 @@ where <span class="math inline">\(e_t\)</span> is the estimate of the error term
 \end{equation}\]</span>
 Finally, MLE of <span class="math inline">\(s\)</span> in <span class="math inline">\(\mathcal{\Gamma}\)</span> does not have a closed form. Luckily, method of moments can be used to obtain its value <span class="citation">(<a href="#ref-Svetunkov2020ETS" role="doc-biblioref">Svetunkov and Boylan, 2020a</a>)</span>:
 <span class="math display" id="eq:ETSMultiplicativeErrorMLESigmaGamma">\[\begin{equation}
-    \hat{s} = \frac{1}{T} \sum_{t=1}^{T} e_{t}^2 .
+    \hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^{T} e_{t}^2 .
     \tag{6.18}
-\end{equation}\]</span></p>
+\end{equation}\]</span>
+This value will coincide with the variance of the error term, given the imposed restrictions on the <span class="math inline">\(\Gamma\)</span> distribution.</p>
 <p>Even if we deal with strictly positive high level data, it is not necessary to limit the distribution with Normal only. The following distributions can be applied as well:</p>
 <ol style="list-style-type: decimal">
-<li>Normal: <span class="math inline">\(\epsilon_t \sim \mathcal{N}(0, \sigma^2)\)</span>, implying that <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \mathcal{N}(\mu_t, \mu_t^2 \sigma^2)\)</span>;</li>
-<li>Laplace: <span class="math inline">\(\epsilon_t \sim \mathcal{Laplace}(0, s)\)</span>, meaning that <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \mathcal{Laplace}(\mu_t, \mu_t s)\)</span>;</li>
-<li>S: <span class="math inline">\(\epsilon_t \sim \mathcal{S}(0, s)\)</span>, so that <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \mathcal{S}(\mu_t, \sqrt{\mu_t} s)\)</span>;</li>
-<li>Generalised Normal: <span class="math inline">\(\epsilon_t \sim \mathcal{GN}(0, s, \beta)\)</span> and <span class="math inline">\(y_t = \mu_t (1+\epsilon_t) \sim \mathcal{GN}(\mu_t, \mu_t^\beta s)\)</span>;
+<li>Normal: <span class="math inline">\(\epsilon_t \sim \mathcal{N}(0, \sigma^2)\)</span>, implying that <span class="math inline">\(y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{N}(\mu_{y,t}, \mu_{y,t}^2 \sigma^2)\)</span>;</li>
+<li>Laplace: <span class="math inline">\(\epsilon_t \sim \mathcal{Laplace}(0, s)\)</span>, meaning that <span class="math inline">\(y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{Laplace}(\mu_{y,t}, \mu_{y,t} s)\)</span>;</li>
+<li>S: <span class="math inline">\(\epsilon_t \sim \mathcal{S}(0, s)\)</span>, so that <span class="math inline">\(y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{S}(\mu_{y,t}, \sqrt{\mu_{y,t}} s)\)</span>;</li>
+<li>Generalised Normal: <span class="math inline">\(\epsilon_t \sim \mathcal{GN}(0, s, \beta)\)</span> and <span class="math inline">\(y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{GN}(\mu_{y,t}, \mu_{y,t}^\beta s)\)</span>;
 <!-- 5. Logistic: $\epsilon_t \sim \mathcal{Logis}(0, s)$; -->
 <!-- 6. Student's t: $\epsilon_t \sim \mathcal{t}(\nu)$; -->
-<!-- 5. Asymmetric Laplace: $\epsilon_t \sim \mathcal{ALaplace}(0, s, \alpha)$ with $y_t = \mu_t (1+\epsilon_t) \sim \mathcal{ALaplace}(\mu_t, \mu_t s, \alpha)$. --></li>
+<!-- 5. Asymmetric Laplace: $\epsilon_t \sim \mathcal{ALaplace}(0, s, \alpha)$ with $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{ALaplace}(\mu_{y,t}, \mu_{y,t} s, \alpha)$. --></li>
 </ol>
 <p>Note that the MLE of scale parameters for these distributions will be calculated differently than in the case of pure additive models. For example, for the normal distribution it is:
 <span class="math display" id="eq:ETSMultiplicativeErrorMLESigmaNormal">\[\begin{equation}
-    \hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T \frac{y_t-\hat{\mu}_t}{\hat{\mu}_t} ,
+    \hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T \frac{y_t-\hat{\mu}_{y,t}}{\hat{\mu}_{y,t}} ,
     \tag{6.19}
 \end{equation}\]</span>
 where the main difference from the additive error case arises from the measurement equation of the multiplicative error models:
 <span class="math display" id="eq:ETSMultiplicativeErrorMeasurement">\[\begin{equation}
-    y_t = \mu_t (1+\epsilon_t),
+    y_t = \mu_{y,t} (1+\epsilon_t),
     \tag{6.20}
 \end{equation}\]</span>
 implying that
 <span class="math display" id="eq:ETSMultiplicativeErrorFormula">\[\begin{equation}
-    e_t = \frac{y_t-\hat{\mu}_t}{\hat{\mu}_t}.
+    e_t = \frac{y_t-\hat{\mu}_{y,t}}{\hat{\mu}_{y,t}}.
     \tag{6.21}
 \end{equation}\]</span>
 The estimates of scale can then be used in the next phase, when parameters are optimised via the maximisation of respective log-likelihood function. The maximum likelihood approach is in case of ADAM models is discussed in detail in Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>.</p>
