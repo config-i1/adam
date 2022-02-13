@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-02-07" />
+<meta name="date" content="2022-02-13" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -570,22 +570,32 @@ div.csl-indent {
 <p>Fourth, more specialised models, such as iETS, will produce positively biased estimates of the smoothing parameters, whatever the estimator is used <span class="citation">(see explanation in <a href="#ref-Svetunkov2019a" role="doc-biblioref">Svetunkov and Boylan, 2019</a>)</span>. This is caused by the assumption that the potential demand might change between the observed sales. In this situation, the components would evolve slowly, while we would only see their values before the set of zeroes and afterwards, which will make the applied model catch up to the data, increasing the values of smoothing parameters. This also implies that such forecasting methods as Croston <span class="citation">(<a href="#ref-Croston1972" role="doc-biblioref">Croston, 1972</a>)</span> and TSB <span class="citation">(<a href="#ref-Teunter2011" role="doc-biblioref">Teunter et al., 2011</a>)</span> would also result in positively biased estimates of parameters if we assume that demand might change between the non-zero observations. Practically speaking, this means that the smoothing parameters will be higher than needed, implying more rapid changes in components and higher uncertainty in final forecasts. There is currently no solution to this problem.</p>
 <p>Finally, summarising this chapter, intermittent demand forecasting is a complex problem. Differences between various forecasting models and methods on such data might be insignificant, and it would be challenging to select the appropriate one. Furthermore, point forecasts on intermittent demand are difficult to grasp and make actionable (unless you are interested in lead time forecasts, to get an idea about the expected demand over a period of time). All of this means that intermittent demand should be avoided if possible. Yes, you can have fancy models for it, but do you need to? For example, do you need to look at daily demand on products if decisions are made on a weekly basis (e.g. how many units of pasta should a supermarket order for the next week)? In many cases thinking about the problem carefully would allow avoiding intermittent demand, making the life of analysts easier. But if it is not possible, then ADAM iETS and iARIMA models can be considered potential solutions in some situations.</p>
 
-<!-- # Scale model for ADAM -->
+<!-- # Scale model for ADAM {#ADAMscaleModel} -->
 <!-- So far, we have focused our discussion on the location of a model (e.g. conditional mean, point forecasts), neglecting the fact that in some situations the variance of a model might exhibit some time-varying patterns. In statistics, this is called "heteroscedasticity" and implies that the variance of the residuals of a model is not constant. In some cases we might get away with multiplicative model, which takes care of heteroscedasticity caused by changing level of data if the variance is proportional to its value. But there might be situations, where variance changes due to some external factors, not necessarily available to the analyst. In this situation, it should be captured separately using a different model. -->
 <!-- In this chapter, we discuss existing models for time varying variance, such as ARCH and GARCH, then move to the discussion of their implementation in ADAM framework and their relation to ADAM Scale Model. We finish by discussing how such model can be estimated in real life. This chapter is inspired by GAMLSS model, which models the scale of distribution using functions of explanatory variables. We build upon that introducing the dynamic element in the model. -->
-<!-- ## ARCH and GARCH models -->
-<!-- The formulation, basic principles -->
-<!-- ## ADAM SM -->
+<!-- ## Model formulation -->
 <!-- Connection with the conventional one, ETS, ARIMA and Regression with Scale Model -->
 <!-- We extend the general ADAM framework, introduced in Section \@ref(ADAMIntermittentFull) with the introduction of the non-constant variance in the following way: -->
 <!-- \begin{equation} -->
 <!--   \begin{aligned} -->
 <!--     & y_t = o_t z_t \\ -->
-<!--     & z_{t} = w(\mathbf{v}_{t-\mathbf{l}}) + r(\mathbf{v}_{t-\mathbf{l}}) \epsilon_t \\ -->
-<!--     & \epsilon_t = \varsigma({\mathbf{v}_{\epsilon,t-\mathbf{l}}}) \upsilon_t \\ -->
-<!--     & \mathbf{v}_{t} = f(\mathbf{v}_{t-\mathbf{l}}) + g(\mathbf{v}_{t-\mathbf{l}}) \epsilon_t -->
+<!--     & z_t \sim \mathcal{D}(\mu_{z,t}, \sigma^2_t) \\ -->
+<!--     & \mu_{z,t} = w_z(\mathbf{v}_{z,t-\mathbf{l}_z}) \\ -->
+<!--     & \sigma^2_t = w_\sigma(\mathbf{v}_{\sigma, t-\mathbf{l}_\sigma}) -->
 <!--   \end{aligned}, -->
-<!--   (\#eq:ETSADAMStateSpaceScale) -->
+<!--   (\#eq:ADAMStateSpaceSM) -->
+<!-- \end{equation} -->
+<!-- where $\mathcal{D}$ is the assumed distribution. -->
+<!-- In case of additive error model, the demand sizes part of the model can be written as: -->
+<!-- \begin{equation} -->
+<!--   \begin{aligned} -->
+<!--     & z_t = \mathbf{w}^\prime_z \mathbf{v}_{z,t-\mathbf{l_1}} + \epsilon_t \\ -->
+<!--     & \mathbf{v}_{z,t} = \mathbf{F}_z \mathbf{v}_{z,t-\mathbf{l}_z} + \mathbf{g}_z \epsilon_t \\ -->
+<!--     & \epsilon_t^2 = \sigma_t^2 \xi_t \\ -->
+<!--     & \sigma^2_t = \exp \left(\mathbf{w}^\prime_\sigma \log(\mathbf{v}_{\sigma,t-\mathbf{l}_\sigma})\right) \\ -->
+<!--     \log \mathbf{v}_{\sigma,t} = & \mathbf{F}_\sigma \log \mathbf{v}_{\sigma,t-\mathbf{l}_\sigma} + \log(\mathbf{1}_k + \mathbf{g}_\sigma \xi_t) -->
+<!--   \end{aligned}, -->
+<!--   (\#eq:ADAMStateSpaceSMAdditive) -->
 <!-- \end{equation} -->
 <!-- where the error term function $\varsigma({\mathbf{v}_{\xi,t-\mathbf{l}}})$ depends on its own states and set of explanatory variables. -->
 <!-- In case of multiplicative error model, for example with $\Gamma$ distribution, the SM model assumes that: $1+\epsilon_{t+h} \sim \Gamma(s_{t+h}^{-1}, s_{t+h})$. This should be used in the DGP in simulations. -->
@@ -593,6 +603,8 @@ div.csl-indent {
 <!-- How the residuals are extracted, how the stuff is initialised, estimated and then forecasts are produced -->
 <!-- ## Forecasting with ADAM SM -->
 <!-- ## Example in R -->
+<!-- ## Connection with ARCH and GARCH -->
+<!-- The formulation, basic principles -->
 <!-- ## ADAM SM order selection -- add this to Chapter 16 -->
 
 </div>
