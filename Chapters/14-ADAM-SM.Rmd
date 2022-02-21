@@ -1,10 +1,62 @@
-<!-- # Scale model for ADAM {#ADAMscaleModel} -->
-<!-- So far, we have focused our discussion on the location of a model (e.g. conditional mean, point forecasts), neglecting the fact that in some situations the variance of a model might exhibit some time-varying patterns. In statistics, this is called "heteroscedasticity" and implies that the variance of the residuals of a model is not constant. In some cases we might get away with multiplicative model, which takes care of heteroscedasticity caused by changing level of data if the variance is proportional to its value. But there might be situations, where variance changes due to some external factors, not necessarily available to the analyst. In this situation, it should be captured separately using a different model. -->
+# Scale model for ADAM {#ADAMscaleModel}
+So far, we have focused our discussion on the location of a model (e.g. conditional mean, point forecasts), neglecting the fact that in some situations the variance of a model might exhibit some time-varying patterns. In statistics, this is called "heteroscedasticity" and implies that the variance of the residuals of a model is not constant. In some cases we might get away with multiplicative model, which takes care of heteroscedasticity caused by changing level of data if the variance is proportional to its value. But there might be situations, where variance changes due to some external factors, not necessarily available to the analyst. In this situation, it should be captured separately using a different model.
 
-<!-- In this chapter, we discuss existing models for time varying variance, such as ARCH and GARCH, then move to the discussion of their implementation in ADAM framework and their relation to ADAM Scale Model. We finish by discussing how such model can be estimated in real life. This chapter is inspired by GAMLSS model, which models the scale of distribution using functions of explanatory variables. We build upon that introducing the dynamic element in the model. -->
+In this chapter, we discuss the scale model for ADAM ETS / ARIMA / Regression, the model that allows capturing time varying variance and using it for forecasting. We discuss how this model is formulated, how it can be estimated and then move to the discussion of its relation to such models as ARCH and GARCH. This chapter is inspired by GAMLSS model, which models the scale of distribution using functions of explanatory variables. We build upon that introducing the dynamic element in the model.
 
 
-<!-- ## Model formulation -->
+## Model formulation
+We start our discussion with an example of ETS model and then move to the more general one.
+
+### An example with ETS(A,N,N)
+Consider ETS(A,N,N) model (which was discussed in Section \@ref(SESandETS)), which has the following measurement equation:
+\begin{equation}
+    y_t = l_{t-1} + \epsilon_t,
+    (\#eq:ETSANNScaleModel01)
+\end{equation}
+where the most commonly used assumption for the error term is:
+\begin{equation*}
+    \epsilon_t \sim \mathcal{N}(0, \sigma^2) .
+\end{equation*}
+The same error term can be represented as a multiplication of the standard normal variable by the standard deviation:
+\begin{equation}
+    \epsilon_t = \sigma \eta_t,
+    (\#eq:ETSANNScaleModel02)
+\end{equation}
+where $\eta_t \sim \mathcal{N}(0, 1)$. Now consider the situation when instead of the constant variance $\sigma^2$ we have one that changes over time either because of its own dynamics or because of the influence of explanatory variables. In that case we will add the subscript $t$ to the variance in \@ref(eq:ETSANNScaleModel02) to have:
+\begin{equation}
+    \epsilon_t = \sigma_t \eta_t.
+    (\#eq:ETSANNScaleModel03)
+\end{equation}
+The variance in the model \@ref(eq:ETSANNScaleModel03) can be modelled explicitly using a model. The thing to keep in mind is that such model needs to be pure multiplicative to guarantee that the variance will not become zero or even negative. For simplicity, consider that we use ETS(M,N,N) for the variance in \@ref(eq:ETSANNScaleModel03). The only thing to keep in mind is that in the case of Normal distribution, the scale is equal to variance rather than standard deviation, so such model can be written in the conventional form as:
+\begin{equation}
+  \begin{aligned}
+    \epsilon_t^2 = l_{\sigma,t-1} \eta_t^2 \\
+    l_{\sigma,t} = l_{\sigma,t-1} \left(1 + \alpha_\sigma (\eta_t^2-1)\right)
+  \end{aligned},
+  (\#eq:ETSANNScaleModel04)
+\end{equation}
+Note that although the part $\left(1 + \alpha_\sigma (\eta_t^2-1)\right)$ looks slightly different than the respective part $\left(1 + \alpha \epsilon_t \right)$  in the conventional ETS(M,N,N), they are equivalent: if we substitute $\xi_t = \eta_t^2-1$ in \@ref(eq:ETSANNScaleModel04), we will arrive to the conventional ETS(M,N,N) model. The fitted values and forecasts from the model \@ref(eq:ETSANNScaleModel04) will correspond to the time varying variance. We can use all the properties of pure multiplicative models discussed in Chapter \@ref(ADAMETSPureMultiplicativeChapter) to get:
+\begin{equation}
+    \sigma_{t+h} = l_{\sigma,t-1} .
+  (\#eq:ETSANNScaleModel05)
+\end{equation}
+In order to construct this model, we would need to initialise it with an estimate of the level $\hat{l}_{\sigma,0}$ and then use the recursive formula:
+\begin{equation}
+  \begin{aligned}
+    \hat{\eta}_t^2 = \frac{\epsilon_t^2}{\hat{\sigma}^2_{t}} \\
+    \hat{\sigma}^2_{t} = \hat{l}_{\sigma,t-1} \\
+    \hat{l}_{\sigma,t} = \hat{l}_{\sigma,t-1} (1 + \hat{\alpha}_\sigma (\eta_t-1))
+  \end{aligned}.
+  (\#eq:ETSANNScaleModel06)
+\end{equation}
+As can be seen from this example, constructing a scale model for ADAM is not a difficult task. Estimating it is also a relatively simple task: it can be done via maximisation of the log-likelihood function of the normal distribution (see Section \@ref(ADAMETSEstimationLikelihood)) - the only thing that will change in comparison with the conventional estimation is the fitted values of $\hat{\sigma}^2_{t}$ for the variance generated from \@ref(eq:ETSANNScaleModel06):
+\begin{equation}
+    \ell(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & -\frac{T}{2} \log(2 \pi \sigma_t^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma_t^2} .
+  (\#eq:ETSANNScaleModelLogLik)
+\end{equation}
+The thing to keep in mind is that the final ETS(A,N,N) model \@ref(eq:ETSANNScaleModel01) with the scale model \@ref(eq:ETSANNScaleModel04) will have four parameters instead of 3 as in the case of a simpler model: 2 for the location part of the model (initial level $l_{0}$ and smoothing parameter $\alpha$) and 2 for the scale part of the model (initial level $l_{\sigma,0}$ and smoothing parameter $\alpha_\sigma$).
+
+
 <!-- Connection with the conventional one, ETS, ARIMA and Regression with Scale Model -->
 
 <!-- We extend the general ADAM framework, introduced in Section \@ref(ADAMIntermittentFull) with the introduction of the non-constant variance in the following way: -->
