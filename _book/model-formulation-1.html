@@ -461,7 +461,7 @@ div.csl-indent {
 <ul>
 <li class="chapter" data-level="14.1" data-path="model-formulation-1.html"><a href="model-formulation-1.html"><i class="fa fa-check"></i><b>14.1</b> Model formulation</a>
 <ul>
-<li class="chapter" data-level="14.1.1" data-path="model-formulation-1.html"><a href="model-formulation-1.html#an-example-with-etsann"><i class="fa fa-check"></i><b>14.1.1</b> An example with ETS(A,N,N)</a></li>
+<li class="chapter" data-level="14.1.1" data-path="model-formulation-1.html"><a href="model-formulation-1.html#an-example-with-etsann-with-normal-distribution"><i class="fa fa-check"></i><b>14.1.1</b> An example with ETS(A,N,N) with Normal distribution</a></li>
 </ul></li>
 </ul></li>
 <li class="chapter" data-level="15" data-path="diagnostics.html"><a href="diagnostics.html"><i class="fa fa-check"></i><b>15</b> Model diagnostics</a>
@@ -569,8 +569,8 @@ div.csl-indent {
 <div id="model-formulation-1" class="section level2" number="14.1">
 <h2><span class="header-section-number">14.1</span> Model formulation</h2>
 <p>We start our discussion with an example of ETS model and then move to the more general one.</p>
-<div id="an-example-with-etsann" class="section level3" number="14.1.1">
-<h3><span class="header-section-number">14.1.1</span> An example with ETS(A,N,N)</h3>
+<div id="an-example-with-etsann-with-normal-distribution" class="section level3" number="14.1.1">
+<h3><span class="header-section-number">14.1.1</span> An example with ETS(A,N,N) with Normal distribution</h3>
 <p>Consider ETS(A,N,N) model (which was discussed in Section <a href="SESandETS.html#SESandETS">4.2</a>), which has the following measurement equation:
 <span class="math display" id="eq:ETSANNScaleModel01">\[\begin{equation}
     y_t = l_{t-1} + \epsilon_t,
@@ -603,21 +603,22 @@ Note that although the part <span class="math inline">\(\left(1 + \alpha_\sigma 
     \sigma_{t+h} = l_{\sigma,t-1} .
   \tag{14.5}
 \end{equation}\]</span>
-In order to construct this model, we would need to initialise it with an estimate of the level <span class="math inline">\(\hat{l}_{\sigma,0}\)</span> and then use the recursive formula:
+In order to construct this model, we need to collect the residuals <span class="math inline">\(e_t\)</span> of the location model <a href="model-formulation-1.html#eq:ETSANNScaleModel01">(14.1)</a>, square them and use in the following system of equations:
 <span class="math display" id="eq:ETSANNScaleModel06">\[\begin{equation}
   \begin{aligned}
-    &amp;\hat{\eta}_t^2 = \frac{\epsilon_t^2}{\hat{\sigma}^2_{t}} \\
     &amp;\hat{\sigma}^2_{t} = \hat{l}_{\sigma,t-1} \\
+    &amp;\hat{\eta}_t^2 = \frac{e_t^2}{\hat{\sigma}^2_{t}} \\
     &amp;\hat{l}_{\sigma,t} = \hat{l}_{\sigma,t-1} (1 + \hat{\alpha}_\sigma (\eta_t-1))
   \end{aligned}.
   \tag{14.6}
 \end{equation}\]</span>
-As can be seen from this example, constructing a scale model for ADAM is not a difficult task. Estimating it is also a relatively simple task: it can be done via maximisation of the log-likelihood function of the normal distribution (see Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>) - the only thing that will change in comparison with the conventional estimation is the fitted values of <span class="math inline">\(\hat{\sigma}^2_{t}\)</span> for the variance generated from <a href="model-formulation-1.html#eq:ETSANNScaleModel06">(14.6)</a>:
+In order for this to work, we need to estimate <span class="math inline">\(\hat{l}_{\sigma,0}\)</span> and <span class="math inline">\(\hat{\alpha}_\sigma\)</span>, which can be done in the conventional way by maximising the log-likelihood function of the normal distribution (see Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>) - the only thing that will change in comparison with the conventional estimation is the fitted values of <span class="math inline">\(\hat{\sigma}^2_{t}\)</span> for the variance generated from <a href="model-formulation-1.html#eq:ETSANNScaleModel06">(14.6)</a>:
 <span class="math display" id="eq:ETSANNScaleModelLogLik">\[\begin{equation}
     \ell(\boldsymbol{\theta}, {\sigma}_t^2 | \mathbf{y}) = -\frac{T}{2} \log(2 \pi \sigma_t^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma_t^2} .
   \tag{14.7}
 \end{equation}\]</span>
 The thing to keep in mind is that the final ETS(A,N,N) model <a href="model-formulation-1.html#eq:ETSANNScaleModel01">(14.1)</a> with the scale model <a href="model-formulation-1.html#eq:ETSANNScaleModel04">(14.4)</a> will have four parameters instead of 3 as in the case of a simpler model: 2 for the location part of the model (initial level <span class="math inline">\(l_{0}\)</span> and smoothing parameter <span class="math inline">\(\alpha\)</span>) and 2 for the scale part of the model (initial level <span class="math inline">\(l_{\sigma,0}\)</span> and smoothing parameter <span class="math inline">\(\alpha_\sigma\)</span>).</p>
+<p>As can be seen from this example, constructing and estimating the scale model for ADAM is not a difficult task. Following similar principles, we can apply any other pure multiplicative model for scale, including ETS(Y,Y,Y) (Chapter <a href="ADAMETSPureMultiplicativeChapter.html#ADAMETSPureMultiplicativeChapter">6</a>), log ARIMA (Section <a href="StateSpaceARIMA.html#ADAMARIMAPureMultiplicative">9.1.4</a>) or a multiplicative regression. Furthermore, the location model ETS(A,N,N) can be substituted by any other ETS / ARIMA / Regression model - the same principles as discussed in this Subsection can be applied to them. The only restriction in all of this is that both parts of the model should be estimated via maximisation of likelihood - other methods typically do not estimate the scale of distribution explicitly.</p>
 <!-- Connection with the conventional one, ETS, ARIMA and Regression with Scale Model -->
 <!-- We extend the general ADAM framework, introduced in Section \@ref(ADAMIntermittentFull) with the introduction of the non-constant variance in the following way: -->
 <!-- \begin{equation} -->
