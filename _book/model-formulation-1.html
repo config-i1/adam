@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-02-21" />
+<meta name="date" content="2022-02-23" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -462,6 +462,7 @@ div.csl-indent {
 <li class="chapter" data-level="14.1" data-path="model-formulation-1.html"><a href="model-formulation-1.html"><i class="fa fa-check"></i><b>14.1</b> Model formulation</a>
 <ul>
 <li class="chapter" data-level="14.1.1" data-path="model-formulation-1.html"><a href="model-formulation-1.html#an-example-with-etsann-with-normal-distribution"><i class="fa fa-check"></i><b>14.1.1</b> An example with ETS(A,N,N) with Normal distribution</a></li>
+<li class="chapter" data-level="14.1.2" data-path="model-formulation-1.html"><a href="model-formulation-1.html#general-case"><i class="fa fa-check"></i><b>14.1.2</b> General case</a></li>
 </ul></li>
 </ul></li>
 <li class="chapter" data-level="15" data-path="diagnostics.html"><a href="diagnostics.html"><i class="fa fa-check"></i><b>15</b> Model diagnostics</a>
@@ -622,6 +623,38 @@ In order for this to work, we need to estimate <span class="math inline">\(\hat{
 \end{equation}\]</span>
 The thing to keep in mind is that the final ETS(A,N,N) model <a href="model-formulation-1.html#eq:ETSANNScaleModel01">(14.1)</a> with the scale model <a href="model-formulation-1.html#eq:ETSANNScaleModel04">(14.4)</a> will have four parameters instead of 3 as in the case of a simpler model: 2 for the location part of the model (initial level <span class="math inline">\(l_{0}\)</span> and smoothing parameter <span class="math inline">\(\alpha\)</span>) and 2 for the scale part of the model (initial level <span class="math inline">\(l_{\sigma,0}\)</span> and smoothing parameter <span class="math inline">\(\alpha_\sigma\)</span>).</p>
 <p>As can be seen from this example, constructing and estimating the scale model for ADAM is not a difficult task. Following similar principles, we can apply any other pure multiplicative model for scale, including ETS(Y,Y,Y) (Chapter <a href="ADAMETSPureMultiplicativeChapter.html#ADAMETSPureMultiplicativeChapter">6</a>), log ARIMA (Section <a href="StateSpaceARIMA.html#ADAMARIMAPureMultiplicative">9.1.4</a>) or a multiplicative regression. Furthermore, the location model ETS(A,N,N) can be substituted by any other ETS / ARIMA / Regression model - the same principles as discussed in this Subsection can be applied to them. The only restriction in all of this is that both parts of the model should be estimated via maximisation of likelihood - other methods typically do not estimate the scale of distribution explicitly.</p>
+</div>
+<div id="general-case" class="section level3" number="14.1.2">
+<h3><span class="header-section-number">14.1.2</span> General case</h3>
+<p>More generally speaking, scale model can be created for any ETS/ARIMA/Regression location model. Following from the discussion in Section <a href="ADAMETSGeneral.html#ADAMETSGeneral">7.1</a>, the general location model can be written as:
+<span class="math display">\[\begin{equation*}
+  \begin{aligned}
+    {y}_{t} = &amp; w(\mathbf{v}_{t-\mathbf{l}}) + r(\mathbf{v}_{t-\mathbf{l}}) \epsilon_t \\
+    \mathbf{v}_{t} = &amp; f(\mathbf{v}_{t-\mathbf{l}}) + g(\mathbf{v}_{t-\mathbf{l}}) \epsilon_t
+  \end{aligned}
+\end{equation*}\]</span>
+If we assume that <span class="math inline">\(\epsilon_t \sim \mathcal{N}(0,\sigma^2_t)\)</span>, then the general scale ETS model can be formulated as (Section <a href="ADAMETSPureMultiplicative.html#ADAMETSPureMultiplicative">6.1</a>:
+<span class="math display" id="eq:ADAMSMGeneralETS">\[\begin{equation}
+  \begin{aligned}
+        \epsilon_t^2 = &amp; \exp \left(\mathbf{w}^\prime \log(\mathbf{v}_{\sigma,t-\mathbf{l}})\right)\eta_{t}^2\\
+        \log \mathbf{v}_{\sigma,t} = &amp; \mathbf{F}_\sigma \log \mathbf{v}_{\sigma,t-\mathbf{l}} + \log(\mathbf{1}_k + \mathbf{g}_\sigma (\eta_t^2-1))
+  \end{aligned},
+  \tag{14.8}
+\end{equation}\]</span>
+while the scale model with ARIMA elements will have a different transition equation (Subsection <a href="StateSpaceARIMA.html#ADAMARIMAPureMultiplicative">9.1.4</a>):
+<span class="math display" id="eq:ADAMSMGeneralARIMA">\[\begin{equation}
+  \log \mathbf{v}_{\sigma,t} = \mathbf{F}_\sigma \log \mathbf{v}_{\sigma,t-\mathbf{l}} + \mathbf{g}_\sigma \log(\eta_t^2)
+  \tag{14.9}
+\end{equation}\]</span>
+Finally, the transition equation for the scale model with regression (dynamic parameters, discussed in Section <a href="ADAMXDynamic.html#ADAMXDynamic">10.3</a>) should be:
+<span class="math display" id="eq:ADAMSMGeneralReg">\[\begin{equation}
+  a_{i,t} = a_{i,t-1} +  \left \lbrace \begin{aligned}
+                  &amp;\delta_i \frac{\log(\eta_t^2)}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}, \text{ if } x_{i,t}\neq 0 \\
+                  &amp;0 \text{ otherwise }
+            \end{aligned} \right.
+  \tag{14.10}
+\end{equation}\]</span>
+The main thing that unites the parts <a href="model-formulation-1.html#eq:ADAMSMGeneralETS">(14.8)</a>, <a href="model-formulation-1.html#eq:ADAMSMGeneralARIMA">(14.9)</a> and <a href="model-formulation-1.html#eq:ADAMSMGeneralReg">(14.10)</a> is that all the three parts of the model should be pure multiplicative in order to avoid potential issues with negative numbers. The construction and estimation of the scale model in this case becomes similar to the one discussed for the ETS(A,N,N) example above. When it comes to forecasting of the conditional h-steps-ahead scale, given the limitations of the pure multiplicative model discussed in Section <a href="pureMultiplicativeExpectationAndVariance.html#pureMultiplicativeExpectationAndVariance">6.3</a>, it needs to be obtained via simulations - this way the forecast from the ADAM model will coincide with the expectation, which in case of <a href="model-formulation-1.html#eq:ADAMSMGeneralETS">(14.8)</a>, <a href="model-formulation-1.html#eq:ADAMSMGeneralARIMA">(14.9)</a> and <a href="model-formulation-1.html#eq:ADAMSMGeneralReg">(14.10)</a> will give the conditional h-steps-ahead scale. All the principles discussed in Sections <a href="ADAMETSPureMultiplicative.html#ADAMETSPureMultiplicative">6.1</a>, <a href="StateSpaceARIMA.html#ADAMARIMAPureMultiplicative">9.1.4</a> and <a href="ADAMXDynamic.html#ADAMXDynamic">10.3</a> can be used directly for the scale model without any limitations.</p>
 <!-- Connection with the conventional one, ETS, ARIMA and Regression with Scale Model -->
 <!-- We extend the general ADAM framework, introduced in Section \@ref(ADAMIntermittentFull) with the introduction of the non-constant variance in the following way: -->
 <!-- \begin{equation} -->
