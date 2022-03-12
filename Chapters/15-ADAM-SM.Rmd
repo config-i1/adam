@@ -73,7 +73,8 @@ More generally speaking, scale model can be created for any ETS/ARIMA/Regression
 If we assume that $\epsilon_t \sim \mathcal{N}(0,\sigma^2_t)$, then the general scale model with ETS+ARIMA+Reg elements can be formulated as (Section \@ref(ADAMETSPureMultiplicative), Subsection \@ref(ADAMARIMAPureMultiplicative) and Section \@ref(ADAMXDynamic)):
 \begin{equation}
   \begin{aligned}
-		& \epsilon_t^2 = \exp \left(\mathbf{w}_E^\prime \log(\mathbf{v}_{E,\sigma,t-\mathbf{l}_E}) + \mathbf{w}_A^\prime \log(\mathbf{v}_{A,\sigma,t-\mathbf{l}_A}) + \mathbf{a}_t \mathbf{x}_t \right)\eta_{t}^2\\
+		& \epsilon_t^2 = \sigma_t^2 \eta_{t}^2 \\
+		& \sigma_t^2 = \exp \left(\mathbf{w}_E^\prime \log(\mathbf{v}_{E,\sigma,t-\mathbf{l}_E}) + \mathbf{w}_A^\prime \log(\mathbf{v}_{A,\sigma,t-\mathbf{l}_A}) + \mathbf{a}_t \mathbf{x}_t \right)\eta_{t}^2\\
 		& \log \mathbf{v}_{E,\sigma,t} = \mathbf{F}_{E,\sigma} \log \mathbf{v}_{E,\sigma,t-\mathbf{l}_E} + \log(\mathbf{1}_k + \mathbf{g}_{E\sigma} (\eta_t^2-1))\\
     & \log \mathbf{v}_{A,\sigma,t} = \mathbf{F}_{A,\sigma} \log \mathbf{v}_{A,\sigma,t-\mathbf{l}_A} + \mathbf{g}_{A,\sigma} \log(\eta_t^2) \\
     & \mathbf{a}_{t} = \mathbf{a}_{t-1} + \mathbf{z}_t \mathbf{g}_{R,\sigma} \log(\eta_t^2)
@@ -83,7 +84,50 @@ If we assume that $\epsilon_t \sim \mathcal{N}(0,\sigma^2_t)$, then the general 
 The main thing that unites all the parts of the model is that they should be pure multiplicative in order to avoid potential issues with negative numbers. The construction and estimation of the scale model in this case becomes similar to the one discussed for the ETS(A,N,N) example above. When it comes to forecasting of the conditional h-steps-ahead scale, given the limitations of the pure multiplicative model discussed in Section \@ref(pureMultiplicativeExpectationAndVariance), it needs to be obtained via simulations - this way the forecast from the ADAM model will coincide with the expectation, which in case of \@ref(eq:ADAMSMGeneral) will give the conditional h-steps-ahead scale. All the principles discussed in Sections \@ref(ADAMETSPureMultiplicative), \@ref(ADAMARIMAPureMultiplicative) and \@ref(ADAMXDynamic) can be used directly for the scale model without any limitations.
 
 
-<!-- ## Distributional assumptions -->
+### Other distributions
+The examples above focused on the Normal distribution, but ADAM supports other distributions as well. Depending on the error term, these are:
+
+1. Additive error term (Section \@ref(ADAMETSAdditiveDistributions)):
+a. Normal: $\epsilon_t \sim \mathcal{N}(0, \sigma_t^2)$;
+b. Laplace: $\epsilon_t \sim \mathcal{Laplace}(0, s_t)$;
+c. S: $\epsilon_t \sim \mathcal{S}(0, s_t)$;
+d. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s_t, \beta)$;
+e. Log Normal: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma_t^2}{2}, \sigma_t^2\right)$;
+f. Inverse Gaussian: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \mathcal{IG}(1, \sigma_t^2)$;
+g. Gamma: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \mathcal{\Gamma}(\sigma_t^{-2}, \sigma_t^2)$;
+2. Multiplicative error term (Sections \@ref(ADAMETSMultiplicativeDistributions)):
+a. Normal: $\epsilon_t \sim \mathcal{N}(0, \sigma_t^2)$;
+b. Laplace: $\epsilon_t \sim \mathcal{Laplace}(0, s_t)$;
+c. S: $\epsilon_t \sim \mathcal{S}(0, s_t)$;
+d. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s_t, \beta)$;
+g. Log Normal: $\left(1+\epsilon_t \right) \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma_t^2}{2}, \sigma_t^2\right)$;
+e. Inverse Gaussian: $\left(1+\epsilon_t \right) \sim \mathcal{IG}(1, \sigma_t^2)$;
+f. Gamma: $\left(1+\epsilon_t \right) \sim \Gamma (\sigma^{-2}, \sigma_t^2)$.
+
+The error terms in these cases can also be presented in a form, similar to \@ref(eq:ETSANNScaleModel03) to get the first equation in \@ref(eq:ADAMSMGeneral) for the respective distributions:
+
+1. Additive error term:
+a. Normal: $\epsilon_t^2 = \sigma_t^2 \eta_t^2$, where $\eta_t \sim \mathcal{N}(0, 1)$ or accidentally $\eta_t^2 \sim \chi^2(1)$;
+b. Laplace: $|\epsilon_t| = s_t |\eta_t|$, where $\eta_t \sim \mathcal{Laplace}(0, 1)$;
+c. S: $0.5 |\epsilon_t|^{0.5} = s_t |\eta_t|^{0.5}$, where $\eta_t \sim \mathcal{S}(0, 1)$;
+d. Generalised Normal: $\beta |\epsilon_t|^{\beta} = s_t |\eta_t|^{\beta}$, where $\eta_t \sim \mathcal{GN}(0, 1, \beta)$;
+e. Log Normal: $\log\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) = \sigma_t |\eta_t|-\frac{\sigma_t^2}{2}$, where $\eta_t \sim \mathcal{N}(0, 1)$;
+f. Inverse Gaussian: $\frac{\left(\frac{\epsilon_t}{\mu_{y,t}} \right)^2}{\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right)}=\sigma^2_t \eta_t$, where $\eta_t \sim \chi^2(1)$;
+g. Gamma: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) = \sigma_t^2 \eta_t$, so that $\eta_t \sim \mathcal{\Gamma}(\sigma_t^{-2}, 1)$;
+2. Multiplicative error term (Sections \@ref(ADAMETSMultiplicativeDistributions)):
+a. Normal: $\epsilon_t^2 = \sigma_t^2 \eta_t^2$, where $\eta_t \sim \mathcal{N}(0, 1)$;
+b. Laplace: $|\epsilon_t| = s_t |\eta_t|$, where $\eta_t \sim \mathcal{Laplace}(0, 1)$;
+c. S: $0.5 |\epsilon_t|^{0.5} = s_t |\eta_t|^{0.5}$, where $\eta_t \sim \mathcal{S}(0, 1)$;
+d. Generalised Normal: $\beta |\epsilon_t|^{\beta} = s_t |\eta_t|^{\beta}$, where $\eta_t \sim \mathcal{GN}(0, 1, \beta)$;
+g. Log Normal: $\log\left(1+\epsilon_t \right) = \sigma_t |\eta_t|-\frac{\sigma_t^2}{2}$, where $\eta_t \sim \mathcal{N}(0, 1)$;
+e. Inverse Gaussian: $\frac{\epsilon_t ^2}{\left(1+\epsilon_t \right)}=\sigma^2_t \eta_t$, where $\eta_t \sim \chi^2(1)$;
+f. Gamma: $\left(1+\epsilon_t \right) = \sigma_t^2 \eta_t$, so that $\eta_t \sim \mathcal{\Gamma}(\sigma_t^{-2}, 1)$.
+
+The relations between $\epsilon_t$ and $\eta_t$ in $\mathcal{S}$ and $\mathcal{GN}$ introduces constants, which arises because of how the scales in those distributions are estimated (see Section \@ref(ADAMETSEstimationLikelihood)). The relation between the error term $\epsilon_t$ and the $\eta_t$ in Log Normal distribution is especially complicated, because in order for the latter to be standard normal, the former needs to be transformed according to the formula above. In case of Inverse Gaussian, the relation between the error terms is more complicated, because in order to make the $\eta_t$ independent of scale parameter, some transformations are needed. Finally, in case of Gamma distribution, $\eta_t$ cannot be made independent of the scale parameter.
+
+The equations above can be used instead of the first equation in \@ref(eq:ADAMSMGeneral) to create and estimate Scale Model for the chosen distribution: the other four equations in \@ref(eq:ADAMSMGeneral) will be exactly the same.
+
+
 
 
 <!-- ## Connection with ARCH and GARCH -->
