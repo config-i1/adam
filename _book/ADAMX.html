@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>Chapter 10 Explanatory variables in ADAM | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="Chapter 10 Explanatory variables in ADAM | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-03-18" />
+<meta name="date" content="2022-03-19" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="ADAMARIMAExamples.html"/>
 <link rel="next" href="ADAMXFormulation.html"/>
-<script src="libs/header-attrs-2.8/header-attrs.js"></script>
-<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -571,7 +571,7 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ADAMX" class="section level1" number="10">
 <h1><span class="header-section-number">Chapter 10</span> Explanatory variables in ADAM</h1>
-<p>In real life, the need for explanatory variables arises when some external factors influence the response variable, which cannot be ignored and impact the final forecasts. Examples of such variables in the demand forecasting context include price changes, promotional activities, temperature etc. In some cases, the changes in these factors would not substantially impact the demand, but they would be essential for improving accuracy in others. If we omit this information from the model, this will be damaging for both point forecasts and prediction intervals <span class="citation">(see discussion in Chapter 12 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span>.</p>
+<p>In real life, the need for explanatory variables arises when some external factors influence the response variable, which cannot be ignored and impact the final forecasts. Examples of such variables in the demand forecasting context include price changes, promotional activities, temperature etc. In some cases, the changes in these factors would not substantially impact the demand, but they would be essential for improving accuracy in others. If we omit this information from the model, this will be damaging for both point forecasts and prediction intervals <span class="citation">(see discussion in Chapter 12 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021</a>)</span>.</p>
 <p>While the inclusion of explanatory variables in the context of ARIMA models is a relatively well-studied topic <span class="citation">(for example, this was discussed by <a href="#ref-Box1976" role="doc-biblioref">Box and Jenkins, 1976</a>)</span>, in the case of ETS, there is only a Chapter 9 in <span class="citation"><a href="#ref-Hyndman2008b" role="doc-biblioref">Hyndman et al.</a> (<a href="#ref-Hyndman2008b" role="doc-biblioref">2008</a>)</span> and a handful of papers. <span class="citation"><a href="#ref-Koehler2012" role="doc-biblioref">Koehler et al.</a> (<a href="#ref-Koehler2012" role="doc-biblioref">2012</a>)</span> discuss the mechanism detection and approximation of outliers via an ETSX model (ETS with explanatory variables). The authors show that if an outlier appears at the end of the series, it will seriously impact the final forecast. However, if it appears either in the middle or at the beginning of the series, the impact on the final forecast is typically negligible. This is relevant to our discussion because there is a direct link between dealing with outliers in <span class="citation"><a href="#ref-Koehler2012" role="doc-biblioref">Koehler et al.</a> (<a href="#ref-Koehler2012" role="doc-biblioref">2012</a>)</span> and including explanatory variables in ETSX in terms of how the model is formulated in these two situations. <span class="citation"><a href="#ref-Kourentzes2015" role="doc-biblioref">Kourentzes and Petropoulos</a> (<a href="#ref-Kourentzes2015" role="doc-biblioref">2016</a>)</span> used ETSX successfully for promotional modelling, demonstrating that it outperforms the conventional ETS in terms of point forecasts accuracy in cases when promotions happen.</p>
 <p>The state-space model <a href="ADAMETSGeneral.html#eq:ETSADAMStateSpace">(7.1)</a> can be easily extended by including additional components and explanatory variables. This chapter discusses the main aspects of ADAM with explanatory variables, how it is formulated, and how the more advanced models can be built upon it. Furthermore, the parameters for these additional components can either be fixed (static) or change over time (dynamic). We discuss both in the following sections. We also show that the stability and forecastability conditions, discussed in Section <a href="stabilityConditionAdditiveError.html#stabilityConditionAdditiveError">5.4</a> for the pure additive ETS model, will be different in the case of the ETSX model and that the classical definitions should be updated to cater for the introduction of the explanatory variables. We also briefly discuss the inclusion of categorical variables in the ETSX model and show that the seasonal ETS models can be considered special cases of ADAM ETSX in some situations.</p>
 <p>Furthermore, we will use the terms “<strong>deterministic</strong>” and “<strong>stochastic</strong>” explanatory variables to denote the situations when the values of these variables are known in advance or can be controlled by us. An example of the former would be the price of a product or a promotion that we decide to have. An example of the latter would be the temperature.</p>
@@ -592,7 +592,7 @@ div.csl-indent {
 • Kourentzes, N., Petropoulos, F., 2016. <span class="nocase">Forecasting with multivariate temporal aggregation: The case of promotional modelling</span>. International Journal of Production Economics. 181, 145–153. <a href="https://doi.org/10.1016/j.ijpe.2015.09.011">https://doi.org/10.1016/j.ijpe.2015.09.011</a>
 </div>
 <div id="ref-SvetunkovSBA" class="csl-entry">
-• Svetunkov, I., 2021c. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 01.10.2021)
+• Svetunkov, I., 2021. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 01.10.2021)
 </div>
 </div>
 
@@ -606,7 +606,6 @@ div.csl-indent {
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -646,6 +645,10 @@ gitbook.start({
 "text": null
 },
 "download": ["Svetunkov (2022) - ADAM.pdf"],
+"search": {
+"engine": "fuse",
+"options": null
+},
 "toc": {
 "collapse": "section"
 }

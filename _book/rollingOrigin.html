@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>2.4 Rolling origin | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="2.4 Rolling origin | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-03-18" />
+<meta name="date" content="2022-03-19" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="errorMeasuresSelection.html"/>
 <link rel="next" href="statisticalTests.html"/>
-<script src="libs/header-attrs-2.8/header-attrs.js"></script>
-<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -577,7 +577,7 @@ div.csl-indent {
 <p>When there is a need to select the most appropriate forecasting model or method for the data, the forecaster usually splits the sample into two parts: in-sample (aka “training set”) and holdout sample (aka out-sample or “test set”). The model is estimated on the in-sample, and its forecasting performance is evaluated <a href="errorMeasures.html#errorMeasures">using some error measure</a> on the holdout sample.</p>
 <p>Using this procedure only once is known as “fixed origin” evaluation. However, this might give a misleading impression of the accuracy of forecasting methods. If, for example, the time series contains outliers or level shifts, a poor model might perform better in fixed origin evaluation than a more appropriate one. Besides, a good performance might happen by chance. So it makes sense to have a more robust evaluation technique. An alternative procedure known as “rolling origin” evaluation is one such technique.</p>
 <p>In rolling origin evaluation, the forecasting origin is repeatedly moved forward, and forecasts are produced from each origin <span class="citation">(<a href="#ref-Tashman2000" role="doc-biblioref">Tashman, 2000</a>)</span>. This technique allows obtaining several forecast errors for time series, which gives a better understanding of how the models perform. This can be considered a time series analogue to cross-validation techniques <span class="citation">(<a href="#ref-WikipediaCrossValidation2020" role="doc-biblioref">Wikipedia, 2020</a>)</span>. Here is a simple graphical representation, courtesy of <a href="https://kourentzes.com/forecasting/">Nikos Kourentzes</a>.</p>
-<div class="figure"><span id="fig:ROProcessAnimation"></span>
+<div class="figure"><span style="display:block;" id="fig:ROProcessAnimation"></span>
 <img src="images/03-ROAnimation.gif" alt="Rolling origin illustrated, by Nikos Kourentzes" width="75%" />
 <p class="caption">
 Figure 2.4: Rolling origin illustrated, by Nikos Kourentzes
@@ -587,21 +587,21 @@ Figure 2.4: Rolling origin illustrated, by Nikos Kourentzes
 <div id="principles-of-rolling-origin" class="section level3" number="2.4.1">
 <h3><span class="header-section-number">2.4.1</span> Principles of Rolling origin</h3>
 <p>Figure <a href="rollingOrigin.html#fig:ROProcessCO">2.5</a> <span class="citation">(<a href="#ref-Svetunkov2017" role="doc-biblioref">Svetunkov and Petropoulos, 2018</a>)</span> illustrates the basic idea behind rolling origin. White cells correspond to the in-sample data, while the light grey cells correspond to the three-steps-ahead forecasts. The time series in the figure has 25 observations, and forecasts are produced for eight origins starting from observation 15. The model is estimated on the first in-sample set, and forecasts are created for the holdout. Next, another observation is added to the end of the in-sample set, the test set is advanced, and the procedure is repeated. The process stops when there is no more data left. This is a rolling origin with a <strong>constant holdout</strong> sample size. As a result of this procedure, eight one to three steps ahead forecasts are produced. Based on them, we can calculate the preferred error measures and choose the best performing model (see Section <a href="errorMeasures.html#errorMeasuresAggregate">2.1.2</a>).</p>
-<div class="figure"><span id="fig:ROProcessCO"></span>
+<div class="figure"><span style="display:block;" id="fig:ROProcessCO"></span>
 <img src="images/03-ROProcessCO.gif" alt="Rolling origin with constant holdout size" width="75%" />
 <p class="caption">
 Figure 2.5: Rolling origin with constant holdout size
 </p>
 </div>
 <p>Another option for producing forecasts via rolling origin would be to continue with rolling origin even when the test sample is smaller than the forecast horizon, as shown in Figure <a href="rollingOrigin.html#fig:ROProcessNoCO">2.6</a>. In this case, the procedure continues until origin 22, when the last complete set of three-steps-ahead forecasts can be produced but continues with a decreasing forecasting horizon. So the two-steps-ahead forecast is produced from origin 23, and only a one-step-ahead forecast is produced from origin 24. As a result, we obtain ten one-step-ahead forecasts, nine two-steps-ahead forecasts and eight three-steps-ahead forecasts. This is a rolling origin with a <strong>non-constant holdout</strong> sample size, which can be helpful with small samples when we don’t have enough observations.</p>
-<div class="figure"><span id="fig:ROProcessNoCO"></span>
+<div class="figure"><span style="display:block;" id="fig:ROProcessNoCO"></span>
 <img src="images/03-ROProcessNoCO.gif" alt="Rolling origin with non-constant holdout size" width="75%" />
 <p class="caption">
 Figure 2.6: Rolling origin with non-constant holdout size
 </p>
 </div>
 <p>Finally, in both cases above, we had the <strong>increasing in-sample</strong> size. However, we might need a <strong>constant in-sample</strong> for some research purposes. Figure <a href="rollingOrigin.html#fig:ROProcessCOCI">2.7</a> demonstrates such a setup. In this case, in each iteration, we add an observation to the end of the in-sample series and remove one from the beginning (dark grey cells).</p>
-<div class="figure"><span id="fig:ROProcessCOCI"></span>
+<div class="figure"><span style="display:block;" id="fig:ROProcessCOCI"></span>
 <img src="images/03-ROProcessCOCI.gif" alt="Rolling origin with constant in-sample size" width="75%" />
 <p class="caption">
 Figure 2.7: Rolling origin with constant in-sample size
@@ -646,7 +646,7 @@ Figure 2.7: Rolling origin with constant in-sample size
 <span id="cb27-2"><a href="rollingOrigin.html#cb27-2" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span>, mean, <span class="at">na.rm=</span><span class="cn">TRUE</span>) <span class="sc">/</span></span>
 <span id="cb27-3"><a href="rollingOrigin.html#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(returnedValues1<span class="sc">$</span>actuals)</span></code></pre></div>
 <pre><code>##         h1         h2         h3 
-## 0.09896645 0.10737016 0.09650589</code></pre>
+## 0.06590743 0.07007227 0.07003757</code></pre>
 <p>In this example, we use the <code>apply()</code> function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with another one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:</p>
 <div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="rollingOrigin.html#cb29-1" aria-hidden="true" tabindex="-1"></a>ourCall <span class="ot">&lt;-</span> <span class="st">&quot;predict(arima(x=data,order=c(1,1,2)),n.ahead=h)&quot;</span></span>
 <span id="cb29-2"><a href="rollingOrigin.html#cb29-2" aria-hidden="true" tabindex="-1"></a>returnedValues2 <span class="ot">&lt;-</span> <span class="fu">ro</span>(y, <span class="at">h=</span><span class="dv">3</span>, <span class="at">origins=</span><span class="dv">8</span>,</span>
@@ -655,13 +655,13 @@ Figure 2.7: Rolling origin with constant in-sample size
 <span id="cb29-5"><a href="rollingOrigin.html#cb29-5" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span>, mean, <span class="at">na.rm=</span><span class="cn">TRUE</span>) <span class="sc">/</span></span>
 <span id="cb29-6"><a href="rollingOrigin.html#cb29-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(returnedValues2<span class="sc">$</span>actuals)</span></code></pre></div>
 <pre><code>##         h1         h2         h3 
-## 0.09336479 0.10830943 0.09655524</code></pre>
+## 0.05851117 0.06502260 0.06512451</code></pre>
 <p>Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.</p>
 <p>We can also plot the forecasts from the rolling origin, which shows how the models behave:</p>
 <div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="rollingOrigin.html#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">1</span>))</span>
 <span id="cb31-2"><a href="rollingOrigin.html#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(returnedValues1)</span>
 <span id="cb31-3"><a href="rollingOrigin.html#cb31-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(returnedValues2)</span></code></pre></div>
-<div class="figure"><span id="fig:roExample01"></span>
+<div class="figure"><span style="display:block;" id="fig:roExample01"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/roExample01-1.png" alt="Rolling origin performance of two forecasting methods" width="768" />
 <p class="caption">
 Figure 2.8: Rolling origin performance of two forecasting methods
@@ -677,13 +677,13 @@ Figure 2.8: Rolling origin performance of two forecasting methods
 <span id="cb32-5"><a href="rollingOrigin.html#cb32-5" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(aeValuesh1) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ARIMA(0,1,1)&quot;</span>,<span class="st">&quot;ARIMA(1,1,2)&quot;</span>)</span>
 <span id="cb32-6"><a href="rollingOrigin.html#cb32-6" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(aeValuesh1)</span>
 <span id="cb32-7"><a href="rollingOrigin.html#cb32-7" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(<span class="fu">apply</span>(aeValuesh1,<span class="dv">2</span>,mean),<span class="at">pch=</span><span class="dv">16</span>,<span class="at">col=</span><span class="st">&quot;red&quot;</span>)</span></code></pre></div>
-<div class="figure"><span id="fig:roExample02"></span>
+<div class="figure"><span style="display:block;" id="fig:roExample02"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/roExample02-1.png" alt="Boxplots of error measures of two methods." width="672" />
 <p class="caption">
 Figure 2.9: Boxplots of error measures of two methods.
 </p>
 </div>
-<p>The boxplots in Figure <a href="rollingOrigin.html#fig:roExample02">2.9</a> can be interpreted as any other boxplots applied to random variables <span class="citation">(see, for example, discussion in Section 2.2 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021c</a>)</span>.</p>
+<p>The boxplots in Figure <a href="rollingOrigin.html#fig:roExample02">2.9</a> can be interpreted as any other boxplots applied to random variables <span class="citation">(see, for example, discussion in Section 2.2 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2021</a>)</span>.</p>
 </div>
 </div>
 <h3>References</h3>
@@ -692,7 +692,7 @@ Figure 2.9: Boxplots of error measures of two methods.
 • Petropoulos, F., Kourentzes, N., 2015. <span class="nocase">Forecast combinations for intermittent demand</span>. Journal of the Operational Research Society. 66, 914–924. <a href="https://doi.org/10.1057/jors.2014.62">https://doi.org/10.1057/jors.2014.62</a>
 </div>
 <div id="ref-SvetunkovSBA" class="csl-entry">
-• Svetunkov, I., 2021c. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 01.10.2021)
+• Svetunkov, I., 2021. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 01.10.2021)
 </div>
 <div id="ref-Svetunkov2017" class="csl-entry">
 • Svetunkov, I., Petropoulos, F., 2018. <span class="nocase">Old dog, new tricks: a modelling view of simple moving averages</span>. International Journal of Production Research. 56, 6034–6047. <a href="https://doi.org/10.1080/00207543.2017.1380326">https://doi.org/10.1080/00207543.2017.1380326</a>
@@ -715,7 +715,6 @@ Figure 2.9: Boxplots of error measures of two methods.
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -755,6 +754,10 @@ gitbook.start({
 "text": null
 },
 "download": ["Svetunkov (2022) - ADAM.pdf"],
+"search": {
+"engine": "fuse",
+"options": null
+},
 "toc": {
 "collapse": "section"
 }

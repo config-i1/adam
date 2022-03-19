@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>9.5 Examples of application | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="9.5 Examples of application | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-03-18" />
+<meta name="date" content="2022-03-19" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="ETSAndARIMA.html"/>
 <link rel="next" href="ADAMX.html"/>
-<script src="libs/header-attrs-2.8/header-attrs.js"></script>
-<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -571,7 +571,7 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ADAMARIMAExamples" class="section level2" number="9.5">
 <h2><span class="header-section-number">9.5</span> Examples of application</h2>
-<p>Building upon the example with <code>AirPassengers</code> data from Section <a href="ARIMAExampleInR.html#ARIMAExampleInRSeasonal">8.5.2</a>, we will construct several multiplicative ARIMA models and see which one is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(0,2,2)<span class="math inline">\(_{12}\)</span>, which had AICc of 1046.424. We will do something similar here, using Log-Normal distribution, thus working with logARIMA. To understand what model can be used in this case, we can take the logarithm of data and see what happens with the components of time series:</p>
+<p>Building upon the example with <code>AirPassengers</code> data from Section <a href="ARIMAExampleInR.html#ARIMAExampleInRSeasonal">8.5.2</a>, we will construct several multiplicative ARIMA models and see which one is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(0,2,2)<span class="math inline">\(_{12}\)</span>, which had AICc of 1028.828. We will do something similar here, using Log-Normal distribution, thus working with logARIMA. To understand what model can be used in this case, we can take the logarithm of data and see what happens with the components of time series:</p>
 <div class="sourceCode" id="cb133"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb133-1"><a href="ADAMARIMAExamples.html#cb133-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">log</span>(AirPassengers))</span></code></pre></div>
 <p><img src="Svetunkov--2022----ADAM_files/figure-html/unnamed-chunk-49-1.png" width="672" /></p>
 <p>We still have the trend in the data, and the seasonality now corresponds to the additive rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking the first differences for the seasonal should suffice because the logarithmic transform will take care of the expanding seasonal pattern in the data. So we can test several models with different options for ARIMA orders:</p>
@@ -597,13 +597,13 @@ div.csl-indent {
 <p>The thing that is different between the models is the non-seasonal part. Using the connection with ETS (discussed in Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>), the first model should work on local level data, the second should be optimal for the local trend series, and the third one is placed somewhere in between the two. We can compare the models using AICc:</p>
 <div class="sourceCode" id="cb135"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb135-1"><a href="ADAMARIMAExamples.html#cb135-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sapply</span>(adamModelLogSARIMA, AICc)</span></code></pre></div>
 <pre><code>## logSARIMA(0,1,1)(0,1,1)[12] logSARIMA(0,2,2)(0,1,1)[12] 
-##                    994.5576                   1115.2734 
+##                    982.5764                   1096.8616 
 ## logSARIMA(1,1,2)(0,1,1)[12] 
-##                   1022.6285</code></pre>
+##                    993.0431</code></pre>
 <p>It looks like the logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{12}\)</span> is more appropriate for the data. In order to make sure that we did not miss anything, we analyse the residuals of this model (Figure <a href="ADAMARIMAExamples.html#fig:logSARIMAACF">9.1</a>):</p>
 <div class="sourceCode" id="cb137"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb137-1"><a href="ADAMARIMAExamples.html#cb137-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">1</span>))</span>
 <span id="cb137-2"><a href="ADAMARIMAExamples.html#cb137-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamModelLogSARIMA[[<span class="dv">1</span>]],<span class="dv">10</span><span class="sc">:</span><span class="dv">11</span>)</span></code></pre></div>
-<div class="figure"><span id="fig:logSARIMAACF"></span>
+<div class="figure"><span style="display:block;" id="fig:logSARIMAACF"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/logSARIMAACF-1.png" alt="ACF and PACF of logSARIMA(0,1,1)(0,1,1)$_{12}$." width="672" />
 <p class="caption">
 Figure 9.1: ACF and PACF of logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{12}\)</span>.
@@ -612,7 +612,7 @@ Figure 9.1: ACF and PACF of logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_
 <p>We can see that there are no significant coefficient on either ACF or PACF, so there is nothing else to improve in this model. We can then produce forecast from the model and see how it performed on the holdout sample (Figure <a href="ADAMARIMAExamples.html#fig:logSARIMAForecast">9.2</a>):</p>
 <div class="sourceCode" id="cb138"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb138-1"><a href="ADAMARIMAExamples.html#cb138-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamModelLogSARIMA[[<span class="dv">1</span>]],<span class="at">h=</span><span class="dv">12</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>),</span>
 <span id="cb138-2"><a href="ADAMARIMAExamples.html#cb138-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">main=</span><span class="fu">paste0</span>(adamModelLogSARIMA[[<span class="dv">1</span>]]<span class="sc">$</span>model,<span class="st">&quot; with Log-Normal distribution&quot;</span>))</span></code></pre></div>
-<div class="figure"><span id="fig:logSARIMAForecast"></span>
+<div class="figure"><span style="display:block;" id="fig:logSARIMAForecast"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/logSARIMAForecast-1.png" alt="Forecast from logSARIMA(0,1,1)(0,1,1)$_{12}$." width="672" />
 <p class="caption">
 Figure 9.2: Forecast from logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{12}\)</span>.
@@ -621,47 +621,47 @@ Figure 9.2: Forecast from logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{1
 <p>The ETS model closest to the logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{12}\)</span> would probably be ETS(M,M,M), because the former has both seasonal and non-seasonal differences (see discussion in Subsection <a href="ARIMAandETS.html#ARIMAETSOther">8.4.4</a>):</p>
 <div class="sourceCode" id="cb139"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb139-1"><a href="ADAMARIMAExamples.html#cb139-1" aria-hidden="true" tabindex="-1"></a>adamModelETS <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MMM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb139-2"><a href="ADAMARIMAExamples.html#cb139-2" aria-hidden="true" tabindex="-1"></a>adamModelETS</span></code></pre></div>
-<pre><code>## Time elapsed: 0.18 seconds
+<pre><code>## Time elapsed: 0.1 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
-## Loss function type: likelihood; Loss function value: 468.7832
+## Loss function type: likelihood; Loss function value: 468.5176
 ## Persistence vector g:
 ##  alpha   beta  gamma 
-## 0.8544 0.0211 0.0000 
+## 0.7684 0.0206 0.0000 
 ## 
 ## Sample size: 132
 ## Number of estimated parameters: 17
 ## Number of degrees of freedom: 115
 ## Information criteria:
 ##       AIC      AICc       BIC      BICc 
-##  971.5664  976.9348 1020.5740 1033.6805 
+##  971.0351  976.4036 1020.0428 1033.1492 
 ## 
 ## Forecast errors:
-## ME: -5.07; MAE: 15.045; RMSE: 21.269
-## sCE: -23.18%; Asymmetry: -19.3%; sMAE: 5.732%; sMSE: 0.657%
-## MASE: 0.625; RMSSE: 0.679; rMAE: 0.198; rRMSE: 0.207</code></pre>
+## ME: -5.617; MAE: 15.496; RMSE: 21.938
+## sCE: -25.677%; Asymmetry: -23.1%; sMAE: 5.903%; sMSE: 0.698%
+## MASE: 0.643; RMSSE: 0.7; rMAE: 0.204; rRMSE: 0.213</code></pre>
 <p>Comparing information criteria, ETS(M,M,M) should be preferred to logARIMA, but in terms of accuracy on the holdout, logARIMA is more accurate than ETS on this data:</p>
 <div class="sourceCode" id="cb141"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb141-1"><a href="ADAMARIMAExamples.html#cb141-1" aria-hidden="true" tabindex="-1"></a>adamModelLogSARIMA[[<span class="dv">1</span>]]</span></code></pre></div>
-<pre><code>## Time elapsed: 0.41 seconds
+<pre><code>## Time elapsed: 0.24 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[12]
-## Distribution assumed in the model: Log Normal
-## Loss function type: likelihood; Loss function value: 478.9136
+## Distribution assumed in the model: Log-Normal
+## Loss function type: likelihood; Loss function value: 472.923
 ## ARMA parameters of the model:
 ## MA:
 ##  theta1[1] theta1[12] 
-##    -0.2357    -0.4972 
+##    -0.2785    -0.5530 
 ## 
 ## Sample size: 132
 ## Number of estimated parameters: 16
 ## Number of degrees of freedom: 116
 ## Information criteria:
 ##       AIC      AICc       BIC      BICc 
-##  989.8271  994.5576 1035.9520 1047.5009 
+##  977.8460  982.5764 1023.9708 1035.5197 
 ## 
 ## Forecast errors:
-## ME: -14.723; MAE: 15.617; RMSE: 20.464
-## sCE: -67.309%; Asymmetry: -92.8%; sMAE: 5.949%; sMSE: 0.608%
-## MASE: 0.648; RMSSE: 0.653; rMAE: 0.205; rRMSE: 0.199</code></pre>
+## ME: -12.968; MAE: 13.971; RMSE: 19.143
+## sCE: -59.285%; Asymmetry: -91.7%; sMAE: 5.322%; sMSE: 0.532%
+## MASE: 0.58; RMSSE: 0.611; rMAE: 0.184; rRMSE: 0.186</code></pre>
 
 </div>
 <!-- </div> -->
@@ -676,7 +676,6 @@ Figure 9.2: Forecast from logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{1
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -716,6 +715,10 @@ gitbook.start({
 "text": null
 },
 "download": ["Svetunkov (2022) - ADAM.pdf"],
+"search": {
+"engine": "fuse",
+"options": null
+},
 "toc": {
 "collapse": "section"
 }

@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>15.2 Connection with ARCH and GARCH | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This textbook explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.22 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.24 and GitBook 2.6.7" />
 
   <meta property="og:title" content="15.2 Connection with ARCH and GARCH | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -24,7 +24,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-03-18" />
+<meta name="date" content="2022-03-19" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -33,8 +33,9 @@
   
 <link rel="prev" href="model-formulation-1.html"/>
 <link rel="next" href="ADAMSelection.html"/>
-<script src="libs/header-attrs-2.8/header-attrs.js"></script>
-<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<script src="libs/header-attrs-2.11/header-attrs.js"></script>
+<script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-table.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -42,7 +43,6 @@
 <link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-clipboard.css" rel="stylesheet" />
-
 
 
 
@@ -571,37 +571,52 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="connection-with-arch-and-garch" class="section level2" number="15.2">
 <h2><span class="header-section-number">15.2</span> Connection with ARCH and GARCH</h2>
-<p>Scale model is not a new invention. Engle (1982) proposed an Autoregressive Conditional Heteroscedasticity (ARCH) model to capture the time varying variance using lagged values of the squared error term. Bollerslev (1986) expanded the idea by also including lagged values of variance, introducing a Generalised ARCH (GARCH), which can be formulated as:
+<p>Scale model is not a new invention. The literature knows models that focus on modelling dynamic of scale of distribution or more specifically of second moment (e.g. variance) of it. <span class="citation"><a href="#ref-Engle1982" role="doc-biblioref">Engle</a> (<a href="#ref-Engle1982" role="doc-biblioref">1982</a>)</span> proposed an Autoregressive Conditional Heteroscedasticity (ARCH) model to capture the time varying variance using lagged values of the squared error term. <span class="citation"><a href="#ref-Bollerlev1986" role="doc-biblioref">Bollerslev</a> (<a href="#ref-Bollerlev1986" role="doc-biblioref">1986</a>)</span> expanded the idea by also including lagged values of variance, introducing a Generalised ARCH (GARCH), which can be formulated as:
 <span class="math display" id="eq:GARCH">\[\begin{equation}
-    \sigma_t^2 = a_0 + a_1 \sigma_{t-1}^2 + \dots + a_p \sigma_{t-p}^2 + b_1 \epsilon_{t-1}^2 + \dots + b_q \epsilon_{t-q}^2 ,
+    \sigma_t^2 = a_0 + a_1 \sigma_{t-1}^2 + \dots + a_q \sigma_{t-q}^2 + b_1 \epsilon_{t-1}^2 + \dots + b_p \epsilon_{t-p}^2 ,
     \tag{15.9}
 \end{equation}\]</span>
-where <span class="math inline">\(\epsilon_t\sim \mathcal{N}(0,\sigma_t^2)\)</span> and <span class="math inline">\(a_j\)</span> and <span class="math inline">\(b_j\)</span> are the parameters of the model, which all lie between zero and one to guarantee that the resulting value is positive. To make sure that the produced values are always positive, <a href="https://doi.org/10.1080/07474938608800097">Geweke (1986)</a> suggested to build GARCH in logarithms, leading to the model:
+where <span class="math inline">\(\epsilon_t\sim \mathcal{N}(0,\sigma_t^2)\)</span> and <span class="math inline">\(a_j\)</span> and <span class="math inline">\(b_j\)</span> are the parameters of the model, which all lie between zero and one to guarantee that the resulting value is positive. To make sure that the produced values are always positive, <span class="citation"><a href="#ref-Geweke1986" role="doc-biblioref">Geweke</a> (<a href="#ref-Geweke1986" role="doc-biblioref">1986</a>)</span> and <span class="citation"><a href="#ref-Pantula1986" role="doc-biblioref">Pantula</a> (<a href="#ref-Pantula1986" role="doc-biblioref">1986</a>)</span> suggested to build GARCH in logarithms, leading to the model:
 <span class="math display" id="eq:logGARCH">\[\begin{equation}
-    \log \sigma_t^2 = a_0 + a_1 \log \sigma_{t-1}^2 + \dots + a_p \log \sigma_{t-p}^2 + b_1 \log \epsilon_{t-1}^2 + \dots + b_q \log \epsilon_{t-q}^2 .
+    \log \sigma_t^2 = a_0 + a_1 \log \sigma_{t-1}^2 + \dots + a_q \log \sigma_{t-q}^2 + b_1 \log \epsilon_{t-1}^2 + \dots + b_p \log \epsilon_{t-p}^2 .
     \tag{15.10}
 \end{equation}\]</span>
 Psaradakis (1999) pointed out that the model <a href="connection-with-arch-and-garch.html#eq:logGARCH">(15.10)</a> is equivalent to ARMA(p,q) applied to logarithms of squared error <span class="math inline">\(\epsilon_t^2\)</span>. In our notations it can be written as:
 <span class="math display" id="eq:logGARCHARMA">\[\begin{equation}
-    \log \epsilon_t^2 = a_0 + b_1^\prime \log \epsilon_{t-1}^2 + \dots + b_q^\prime \log \epsilon_{t-q}^2 + a_1^\prime \log \eta_{t-1}^2 + \dots + a_p^\prime \log \eta_{t-p}^2 + \log \eta_t^2,
+    \log \epsilon_t^2 = a_0 + b_1^\prime \log \epsilon_{t-1}^2 + \dots + b_p^\prime \log \epsilon_{t-p}^2 + a_1^\prime \log \eta_{t-1}^2 + \dots + a_q^\prime \log \eta_{t-q}^2 + \log \eta_t^2,
     \tag{15.11}
 \end{equation}\]</span>
 which can be obtained by substituting <span class="math inline">\(\log \sigma_{t-j}^2 = \log \epsilon_{t-j}^2 - \log \eta_{t-j}^2\)</span> for all <span class="math inline">\(j\)</span>. Given the connection of logARMA with logGARCH and the discussion in Subsection <a href="StateSpaceARIMA.html#ADAMARIMAPureMultiplicative">9.1.4</a>, the model <a href="connection-with-arch-and-garch.html#eq:logGARCHARMA">(15.11)</a> is just a special case of the scale model for ADAM, being a special case of <a href="model-formulation-1.html#eq:ADAMSMGeneral">(15.8)</a>. ADAM Scale Model not only supports the ARMA elements, but it also allows for explicit time series components modelling in the variance and the usage of explanatory variables.</p>
 <div class="remark">
-<p><span id="unlabeled-div-26" class="remark"><em>Remark</em>. </span>GARCH and log-GARCH typically assume that the error term follows Normal distribution: <span class="math inline">\(\epsilon_t \sim \mathcal{N}(0, \sigma_t^2)\)</span> - and model the variance, while ADAM Scale Model works with several other distributions, discussed in Subsection <a href="model-formulation-1.html#SMDistributions">15.1.3</a> and is focused on modelling scale (variance is a special case of scale).</p>
+<p><span id="unlabeled-div-25" class="remark"><em>Remark</em>. </span>GARCH and log-GARCH typically assume that the error term follows Normal distribution: <span class="math inline">\(\epsilon_t \sim \mathcal{N}(0, \sigma_t^2)\)</span> - and model the variance, while ADAM Scale Model works with several other distributions, discussed in Subsection <a href="model-formulation-1.html#SMDistributions">15.1.3</a> and is focused on modelling scale (variance is a special case of scale).</p>
 </div>
-<p>Furthermore, it can be shown that ETS(M,N,N) applied to the <span class="math inline">\(\epsilon_t^2\)</span> can be considered as a special case of GARCH(1,1) with the restriction on parameter <span class="math inline">\(a_1=1-b_1\)</span>, <span class="math inline">\(b_1= \alpha\)</span> and <span class="math inline">\(a_0=0\)</span>, because the latter becomes equivalent to SES:
+<p>Furthermore, it can be shown that ETS(M,N,N) applied to the <span class="math inline">\(\epsilon_t^2\)</span> can be considered as a special case of GARCH(1,1) with the restriction on parameter <span class="math inline">\(a_1=1-b_1\)</span>, <span class="math inline">\(b_1= \alpha\)</span> and <span class="math inline">\(a_0=0\)</span>, because the latter becomes equivalent to SES <span class="citation">(<a href="#ref-Geweke1986" role="doc-biblioref">Geweke, 1986</a>)</span>:
 <span class="math display" id="eq:GARCHSES">\[\begin{equation}
     \sigma_t^2 = (1-\alpha) \sigma_{t-1}^2 + \alpha \epsilon_{t-1}^2 .
     \tag{15.12}
 \end{equation}\]</span>
 The connection of SES and ETS(M,N,N) has been discussed in Subsection <a href="SESandETS.html#ETSMNNSES">4.2.2</a>.</p>
-<p>Coming back to the original GARCH model, Bollerslev (1986) argue that GARCH, being equivalent to ARMA, will be a stationary process if its parameters are restricted so that <span class="math inline">\(\sum_{j=1}^p a_j + \sum_{j=1}^q b_j &lt; 0\)</span> and <span class="math inline">\(a_j, b_j \in [0,1)\)</span> for all <span class="math inline">\(j\)</span>. For ADAM ARIMA, this means that the model can also be applied to the data without logarithmic transform as long as these restrictions are satisfied.</p>
+<p>Coming back to the original GARCH model, <span class="citation"><a href="#ref-Bollerlev1986" role="doc-biblioref">Bollerslev</a> (<a href="#ref-Bollerlev1986" role="doc-biblioref">1986</a>)</span> argue that GARCH, being equivalent to ARMA, will be a stationary process if its parameters are restricted so that <span class="math inline">\(\sum_{j=1}^p a_j + \sum_{j=1}^q b_j &lt; 0\)</span> and <span class="math inline">\(a_j, b_j \in [0,1)\)</span> for all <span class="math inline">\(j\)</span>. For ADAM ARIMA, this means that the model can also be applied to the data without logarithmic transform as long as these restrictions are satisfied.</p>
 <!-- ## Model diagnostics -->
 <!-- ## Example in R -->
 
 </div>
 <!-- </div> -->
+<h3>References</h3>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-Bollerlev1986" class="csl-entry">
+• Bollerslev, T., 1986. <span class="nocase">Generalized autoregressive conditional heteroskedasticity</span>. Journal of Econometrics. 31, 307–327. <a href="https://doi.org/10.1016/0304-4076(86)90063-1">https://doi.org/10.1016/0304-4076(86)90063-1</a>
+</div>
+<div id="ref-Engle1982" class="csl-entry">
+• Engle, R.F., 1982. <span class="nocase">Autoregressive Conditional Heteroscedasticity with Estimates of the Variance of United Kingdom Inflation</span>. Econometrica. 50, 987. <a href="https://doi.org/10.2307/1912773">https://doi.org/10.2307/1912773</a>
+</div>
+<div id="ref-Geweke1986" class="csl-entry">
+• Geweke, J., 1986. <span>Comment</span>. Econometric Reviews. 5, 57–61. <a href="https://doi.org/10.1080/07474938608800097">https://doi.org/10.1080/07474938608800097</a>
+</div>
+<div id="ref-Pantula1986" class="csl-entry">
+• Pantula, S.G., 1986. <span>Comment</span>. Econometric Reviews. 5, 71–74. <a href="https://doi.org/10.1080/07474938608800099">https://doi.org/10.1080/07474938608800099</a>
+</div>
+</div>
 
             </section>
 
@@ -613,7 +628,6 @@ The connection of SES and ETS(M,N,N) has been discussed in Subsection <a href="S
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
-<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
 <script src="libs/gitbook-2.6.7/js/clipboard.min.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
 <script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
@@ -653,6 +667,10 @@ gitbook.start({
 "text": null
 },
 "download": ["Svetunkov (2022) - ADAM.pdf"],
+"search": {
+"engine": "fuse",
+"options": null
+},
 "toc": {
 "collapse": "section"
 }
