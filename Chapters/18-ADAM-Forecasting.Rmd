@@ -5,13 +5,13 @@ In this chapter, we start the discussion with the principles behind calculating 
 
 
 ## Conditional expectation {#ADAMForecastingExpectation}
-As discussed in sections \@ref(pureAdditiveExpectationAndVariance) and \@ref(pureMultiplicativeExpectationAndVariance), the conditional h steps ahead expectation is in general available only for the pure additive models. In the cases of pure multiplicative ones, the point forecasts would correspond to conditional expectations only for $h \leq m$ for seasonal models and $h=1$ for models with the trend. The one exception is the ETS(M,N,N) model, where the point forecast corresponds to the conditional expectation for any horizon as long as the expectation of the error term $1+\epsilon_t$ is equal to one. When it comes to the mixed models (Section \@ref(ADAMETSMixedModels)), the situation would depend on the specific model, but in general, the same logic as for the pure multiplicative ones applies. In this case, the conditional expectations need to be obtained via other means. This is when the simulations come into play.
+As discussed in Sections \@ref(pureAdditiveExpectationAndVariance) and \@ref(pureMultiplicativeExpectationAndVariance), the conditional h steps ahead expectation is in general available only for the pure additive models. In the cases of pure multiplicative ones, the point forecasts would correspond to conditional expectations only for $h \leq m$ for seasonal models and $h=1$ for models with the trend. The one exception is the ETS(M,N,N) model, where the point forecast corresponds to the conditional expectation for any horizon as long as the expectation of the error term $1+\epsilon_t$ is equal to one. When it comes to the mixed models (Section \@ref(ADAMETSMixedModels)), the situation would depend on the specific model, but in general, the same logic as for the pure multiplicative ones applies. In this case, the conditional expectations need to be obtained via other means. This is when the simulations come into play.
 
 
 ### Simulating demand trajectories {#ADAMForecastingExpectationSimulations}
 The general idea of this approach is to use the estimated parameters, last obtained state vector (level, trend, seasonal, ARIMA components etc.) and the estimate of the scale of distribution to generate the possible paths of the data. The simulation itself is done in several steps after obtaining parameters, states and scale:
 
-1. Generate $n \times h$ (where $n$ is the number of time series to produce) random variables for the error term, $\epsilon_t$ or $1+\epsilon_t$ -- depending on the type of error and assumed distribution in the model (the latter was discussed in Sections \@ref(ADAMETSAdditiveDistributions) and \@ref(ADAMETSMultiplicativeDistributions));
+1. Generate $n \times h$ (where $n$ is the number of time series to produce) random variables for the error term, $\epsilon_t$ or $1+\epsilon_t$ -- depending on the type of error, assumed distribution in the model (the latter was discussed in Sections \@ref(ADAMETSAdditiveDistributions) and \@ref(ADAMETSMultiplicativeDistributions)) and estimated parameters of distribution (typically, scale);
 2. Generate actual values from $n$ models with the provided state vector, transition, measurement and persistence matrices and the generated error terms for the subsequent $h$ observations. In a general case, this is done using the model \@ref(eq:ETSADAMStateSpace);
 3. Take expectations for each horizon from 1 to $h$.
 
@@ -58,17 +58,34 @@ lines(apply(y$data,1,quantile,0.975),
 Based on the plot in Figure \@ref(fig:adamForecastSimulated), we can see what the conditional h steps ahead expectation (black line) and what the 95% prediction interval will be for the data based on the ETS(M,M,N) model with the parameters mentioned above.
 
 
+## Conditional variance and scale {#ADAMForecastingVariance}
+Similar to conditional expectations, as we have discussed in Sections \@ref(pureAdditiveExpectationAndVariance) and \@ref(pureMultiplicativeExpectationAndVariance), the conditional h steps ahead variance is in general available only for the pure additive models. While the conditional expectation might be required on its own to use as a point forecast, the conditional variance is typically needed to produce prediction intervals. However, it becomes useful only in cases of distributions that support convolution (addition of random variables), which limits its usefulness to pure additive model and to additive models applied to the data in logarithms. For example, if we deal with Inverse Gaussian distribution, then the h-steps-ahead values will not follow Inverse Gaussian distribution, and we would need to revert to simulations in order to obtain the proper statistics for it. Another situation would be a multiplicative error model that relies on Normal distribution - the product of Normal distributions is not a Normal distribution, so the statistics would need to be obtained using simulations again.
+
+If we deal with pure additive model with either Normal, Laplace, S or Generalised Normal distributions, then the formulae derived in Section \@ref(pureAdditiveExpectationAndVariance) can be used to produce h-steps-ahead conditional variance. Having obtained those values, we can then produce conditional h-steps-ahead scales for the distributions (which would be needed, for example, to generate quantiles from these distributions), using the relations between the variance and scale in those distributions (discussed in Section \@ref(distribution)):
+
+1. Normal: scale is $\sigma^2_h$;
+2. Laplace: $s_h = \sigma_h \sqrt{\frac{1}{2}}$;
+3. S: $s_h = \sqrt{\sigma_h}\sqrt[4]{\frac{1}{120}}$;
+4. Generalised Normal: $s_h = \sigma_h \sqrt{\frac{\Gamma(1/\beta)}{\Gamma(3/\beta)}}$.
+
+If the variance is needed for the other combinations of model/distributions, simulations would need to be done to produce multiple trajectories, similar to how it was done in Subsection \@ref(ADAMForecastingExpectationSimulations). An alternative to this would be the calculation of in-sample multistep forecast errors (similar to how it was discussed in Sections \@ref(multistepLosses) and \@ref(diagnosticsResidualsIIDExpectationMultiple)). Having the matrix of forecast errors, we can then calculate variance for each horizon $h$.
 
 
-<!-- ## Conditional variance and scale {#ADAMForecastingVariance} -->
-<!-- Basic analytical one for pure additive models -->
+### Scale model
+In case of the scale model (Chapter \@ref(ADAMscaleModel)), the situation becomes more complicated, because we no longer assume that the variance of the error term is constant (homoscedastic) -- we now assume that it is a model on its own. In this case, we need to take a step back to the recursion \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) and when taking the variance, introduce the time varying variance $\sigma_{t+h}^2$.
 
-<!-- Connection with scales of distributions -->
+::: remark
+Note the difference between $\sigma_{t+h}^2$ and $\sigma_{h}^2$ in our notations - the former is the variance of the error term for the specific step $t+h$, while the latter is the conditional variance $h$ steps ahead, which is derived based on the assumption of homoscedasticity.
+:::
 
-<!-- Analytical one for scale model and its connection with the conventional one -->
+Making that substitution leads to the following analytical formula for the h-steps-ahead conditional variance in case of scale model:
+\begin{equation}
+    \text{V}(y_{t+h}|t) = \sum_{i=1}^d \left(\mathbf{w}_{m_i}^\prime \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}^\prime_{m_i} (\mathbf{F}_{m_i}^\prime)^{j-1} \mathbf{w}_{m_i} \sigma_{t+h-j}^2 \right) + \sigma_{t+h}^2 .
+  (\#eq:ETSADAMFullWithScaleModelVariance)
+\end{equation}
+This variance can then be used, for example, to produce quantiles from the assumed distribution.
 
-
-
+As mentioned above, in case of the not purely additive model or model with other distributions than Normal, Laplace, S or Generalised Normal, the conditional variance can be obtained using simulations. In case of the scale model, the principles will be the same, just assuming that each error term $\epsilon_{t+h}$ has its own scale, obtained from the estimated scale model. The rest of the logic will be exactly the same as discussed in Subsection \@ref(ADAMForecastingExpectationSimulations).
 
 
 ## Prediction intervals {#ADAMForecastingPI}
@@ -77,7 +94,13 @@ As discussed in Section 5.2 of @SvetunkovSBA, a prediction interval is needed to
     y_{t+j} \in (\hat{y}_{t+j} + z_{\alpha/2} \hat{\sigma}_j^2, \hat{y}_{t+j} + z_{1-\alpha/2} \hat{\sigma}_j^2),
     (\#eq:predictionInterval)
 \end{equation}
-where $\hat{y}_{t+j}$ is the estimate of $\mu_{y,t+j}$, $j$ steps ahead conditional expectation, $\hat{\sigma}_j^2$ is the estimate of ${\sigma}_j^2$, $j$ steps ahead variance of the error term (for example, calculated via the formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVariance)) and $z$ is z-statistics (quantile of standard normal distribution) for the selected significance level $\alpha$. *Note that $\alpha$ has nothing to do with the smoothing parameters for the level of ETS models*. This type of prediction interval can be called **parametric**. It assumes a specific distribution and relies on the other assumptions about the constructed model (such as residuals are i.i.d., see Section \@ref(diagnostics)). Most importantly, it assumes that the $j$ steps ahead value follows a specific distribution, related to the one for the error term. In case of normal distribution, the assumption $\epsilon_t\sim\mathcal{N}(0,\sigma^2)$ implies that $y_{t+1}\sim\mathcal{N}(\mu_{y,t+1}, \sigma_1^2)$ and due to *convolution* of random variables (the sum of random variables follows the same distribution as individual variables, but with different parameters), that $y_{t+j}\sim\mathcal{N}(\mu_{y,t+j},\sigma_j^2)$ for all $j$ from 1 to $h$.
+where $\hat{y}_{t+j}$ is the estimate of $\mu_{y,t+j}$, $j$ steps ahead conditional expectation, $\hat{\sigma}_j^2$ is the estimate of ${\sigma}_j^2$, $j$ steps ahead variance of the error term obtained using principles discussed in Section \@ref(ADAMForecastingVariance) (for example, calculated via the formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVariance)) and $z$ is z-statistics (quantile of standard normal distribution) for the selected significance level $\alpha$.
+
+::: remark
+Note that $\alpha$ has nothing to do with the smoothing parameters for the level of ETS models.
+:::
+
+This type of prediction interval can be called **parametric**. It assumes a specific distribution and relies on the other assumptions about the constructed model (such as residuals are i.i.d., see Section \@ref(diagnostics)). Most importantly, it assumes that the $j$ steps ahead value follows a specific distribution, related to the one for the error term. In case of normal distribution, the assumption $\epsilon_t\sim\mathcal{N}(0,\sigma^2)$ implies that $y_{t+1}\sim\mathcal{N}(\mu_{y,t+1}, \sigma_1^2)$ and due to *convolution* of random variables (the sum of random variables follows the same distribution as individual variables, but with different parameters), that $y_{t+j}\sim\mathcal{N}(\mu_{y,t+j},\sigma_j^2)$ for all $j$ from 1 to $h$.
 
 The interval produced via \@ref(eq:predictionInterval) corresponds to two quantiles from normal distribution and can be written in a more general form as:
 \begin{equation}
