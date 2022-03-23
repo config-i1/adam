@@ -371,7 +371,7 @@ We intentionally added all four dummy variables in \@ref(eq:ETSXDynamicDummiesSe
   \end{aligned} .
   (\#eq:ADAMETSANAQuarterly)
 \end{equation}
-So, this comparison shows on one hand that the mechanism of ADAMX{D} is natural for the ADAM model, and on the other hand that using the same smoothing parameters for categorical variables can be a reasonable idea, especially in cases when we do not have grounds to assume that each category of the variable should evolve independently.
+So, this comparison shows on one hand that the mechanism of ADAMX{D} is natural for the ADAM, and on the other hand that using the same smoothing parameters for categorical variables can be a reasonable idea, especially in cases when we do not have grounds to assume that each category of the variable should evolve independently.
 
 
 ## Examples of application {#ETSXRExample}
@@ -388,14 +388,14 @@ plot(SeatbeltsData)
 Apparently, the `drivers` variable exhibits seasonality but does not seem to have a trend. The type of seasonality is challenging to determine, but we will assume that it is multiplicative for now. A simple ETS(M,N,M) model applied to the data will produce the following (we will withhold the last 12 observations for the forecast evaluation, Figure \@ref(fig:SeatbeltsForecast)):
 
 ```{r SeatbeltsForecast, fig.cap="The actual values for drivers and a forecast from ETS(M,N,M) model."}
-adamModelETSMNM <- adam(SeatbeltsData[,"drivers"], "MNM",
-                        h=12, holdout=TRUE)
-plot(forecast(adamModelETSMNM, h=12, interval="prediction"))
+adamETSMNMSeat <- adam(SeatbeltsData[,"drivers"], "MNM",
+                       h=12, holdout=TRUE)
+plot(forecast(adamETSMNMSeat, h=12, interval="prediction"))
 ```
 
 This simple model already does a fine job fitting the data and producing forecasts. However, the forecast is biased and is lower than needed because of the sudden drop in the level of series, which can only be explained by the introduction of the new law in the UK in 1983, making the seatbelts compulsory for drivers. Due to the sudden drop, the smoothing parameter for the level of series is higher than needed, leading to wider intervals and less accurate forecasts. Here is the output of the model:
 ```{r}
-adamModelETSMNM
+adamETSMNMSeat
 ```
 
 In order to further explore the data we will produce the scatterplots and boxplots between the variables using `spread()` function from `greybox` package (Figure \@ref(fig:driversSpread)):
@@ -407,53 +407,53 @@ spread(SeatbeltsData)
 Figure \@ref(fig:driversSpread) shows a negative relation between `kms` and `drivers`: the higher the distance driven, the lower the total of car drivers killed or seriously injured. A similar relation is observed between the PetrolPrice and drivers (when the prices are high, people tend to drive less, thus causing fewer incidents). Interestingly, the increase of both variables causes the variance of the response variable to decrease (heteroscedasticity effect). Using a multiplicative error model and including the variables in logarithms, in this case, might address this potential issue. Note that we do not need to take the logarithm of `drivers`, as we already use the model with multiplicative error. Finally, the legislation of a new law seems to have caused a decrease in the number of causalities. To have a better model in terms of explanatory and predictive power, we should include all three variables. This is how we can do that using `adam()`:
 
 ```{r}
-adamModelETSXMNM <- adam(SeatbeltsData, "MNM", h=12, holdout=TRUE,
-                         formula=drivers~log(kms)+log(PetrolPrice)+law)
+adamETSXMNMSeat <- adam(SeatbeltsData, "MNM", h=12, holdout=TRUE,
+                        formula=drivers~log(kms)+log(PetrolPrice)+law)
 ```
 
 The parameter `formula` in general is not compulsory. It can either be substituted by `formula=drivers~.` or dropped completely -- the function would fit the model of the first variable in the matrix from everything else. We need it in our case because we introduce log-transformations of some explanatory variables.
 
 ```{r SeatbeltsForecastX, fig.cap="The actual values for drivers and a forecast from ETSX(M,N,M) model."}
-plot(forecast(adamModelETSXMNM, h=12, interval="prediction"))
+plot(forecast(adamETSXMNMSeat, h=12, interval="prediction"))
 ```
 
 Figure \@ref(fig:SeatbeltsForecastX) shows the forecast from the second model, which is slightly more accurate. More importantly, the prediction interval is narrower than in the simple ETS(M,N,M) because now the model takes the external information into account. Here is the summary of the second model:
 
 ```{r}
-adamModelETSXMNM
+adamETSXMNMSeat
 ```
 
-Note that the smoothing parameter $\alpha$ has reduced from `r round(adamModelETSMNM$persistence["alpha"],2)` to `r round(adamModelETSXMNM$persistence["alpha"],2)`. This led to the reduction in error measures. For example, based on MASE, we can conclude that the model with explanatory variables is more precise than the simple univariate ETS(M,N,M). Still, we could try introducing the update of the parameters for the explanatory variables to see how it works (it might be unnecessary for this data):
+Note that the smoothing parameter $\alpha$ has reduced from `r round(adamETSMNMSeat$persistence["alpha"],2)` to `r round(adamETSXMNMSeat$persistence["alpha"],2)`. This led to the reduction in error measures. For example, based on MASE, we can conclude that the model with explanatory variables is more precise than the simple univariate ETS(M,N,M). Still, we could try introducing the update of the parameters for the explanatory variables to see how it works (it might be unnecessary for this data):
 ```{r SeatbeltsForecastXD, fig.cap="The actual values for drivers and a forecast from ETSX(M,N,M){D} model."}
-adamModelETSXMNMD <- adam(SeatbeltsData, "MNM", h=12, holdout=TRUE,
-                          formula=drivers~log(kms)+log(PetrolPrice)+law,
-                          regressors="adapt")
+adamETSXMNMDSeat <- adam(SeatbeltsData, "MNM", h=12, holdout=TRUE,
+                         formula=drivers~log(kms)+log(PetrolPrice)+law,
+                         regressors="adapt")
 ```
 
 In this specific case, the difference between the ETSX and ETSX{D} models is infinitesimal in terms of the accuracy of final forecasts and prediction intervals. Here is the output of the model:
 ```{r}
-adamModelETSXMNMD
+adamETSXMNMDSeat
 ```
 
 We can spot that the error measures of the dynamic model are a bit higher than the ones from the static one (e.g., compare MASE and RMSSE of models). In addition, the information criteria are slightly lower for the static model. So based on all of this, we should probably use the static one for forecasting and analytical purposes. To see the effect of the explanatory variables on the number of incidents with drivers, we can look at the parameters for those variables:
 
 ```{r, warning=FALSE}
-adamModelETSXMNM$initial$xreg
+adamETSXMNMSeat$initial$xreg
 ```
 
-Based on that, we can conclude that the introduction of the law reduced on average the number of incidents by approximately `r abs(round(adamModelETSXMNM$initial$xreg[3],2))*100`%, while the increase of the petrol price by 1% leads on average to decrease in the number of incidents by `r abs(round(adamModelETSXMNM$initial$xreg[2],2))`%. Finally, the distance negatively impacts the incidents as well, reducing it on average by `r abs(round(adamModelETSXMNM$initial$xreg[1],1))`% for each 1% increase in the distance. This is the standard interpretation of parameters, which we can use based on the estimated model [see, for example, discussion in Section 8.3 of @SvetunkovSBA]. We will discuss how to do the analysis using ADAM in Chapter \@ref(ADAMUncertainty), introducing the standard errors and confidence intervals for the parameters.
+Based on that, we can conclude that the introduction of the law reduced on average the number of incidents by approximately `r abs(round(adamETSXMNMSeat$initial$xreg[3],2))*100`%, while the increase of the petrol price by 1% leads on average to decrease in the number of incidents by `r abs(round(adamETSXMNMSeat$initial$xreg[2],2))`%. Finally, the distance negatively impacts the incidents as well, reducing it on average by `r abs(round(adamETSXMNMSeat$initial$xreg[1],1))`% for each 1% increase in the distance. This is the standard interpretation of parameters, which we can use based on the estimated model [see, for example, discussion in Section 8.3 of @SvetunkovSBA]. We will discuss how to do the analysis using ADAM in Chapter \@ref(ADAMUncertainty), introducing the standard errors and confidence intervals for the parameters.
 
 Finally, `adam()` has some shortcuts when a matrix of variables is provided with no formula, assuming that the necessary expansion has already been done. This leads to the decrease in computational time of the function and becomes especially useful when working on large samples of data. Here is an example with ETSX(M,N,N):
 ```{r eval=FALSE}
 # Create matrix for the model
 SeatbeltsDataExpanded <-
   ts(model.frame(drivers~log(kms)+log(PetrolPrice)+law,
-              SeatbeltsData),
-  start=start(SeatbeltsData), frequency=frequency(SeatbeltsData))
+                 SeatbeltsData),
+     start=start(SeatbeltsData), frequency=frequency(SeatbeltsData))
 # Fix the names of variables
 colnames(SeatbeltsDataExpanded) <-
   make.names(colnames(SeatbeltsDataExpanded))
 # Apply the model
-adamModelETSXMNMExpanded <- adam(SeatbeltsDataExpanded, "MNM",
-                                 lags=12, h=12, holdout=TRUE)
+adamETSXMNMExpandedSeat <- adam(SeatbeltsDataExpanded, "MNM",
+                                lags=12, h=12, holdout=TRUE)
 ```

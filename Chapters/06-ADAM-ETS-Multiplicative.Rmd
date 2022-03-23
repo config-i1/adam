@@ -196,14 +196,14 @@ The distributional assumptions impact both the estimation of models and the pred
 We continue our examples with the same Box-Jenkins sales data by fitting the ETS(M,M,N) model, but this time with a holdout of 10 observations:
 
 ```{r}
-adamModel <- adam(BJsales, "MMN", h=10, holdout=TRUE)
-adamModel
+adamETSBJ <- adam(BJsales, "MMN", h=10, holdout=TRUE)
+adamETSBJ
 ```
 
 The output above is similar to the one we discussed in Section \@ref(ADAMETSPureAdditiveExamples), so we can compare the two models using various criteria and select the most appropriate. Even though the default distribution for the multiplicative error models in ADAM is $\Gamma$, we can compare this model with the ETS(A,A,N) via information criteria. For example, here are the AICc for the two models:
 ```{r}
 # ETS(M,M,N)
-AICc(adamModel)
+AICc(adamETSBJ)
 # ETS(A,A,N)
 AICc(adam(BJsales, "AAN", h=10, holdout=TRUE))
 ```
@@ -212,13 +212,13 @@ The comparison is fair because both models were estimated via likelihood, and bo
 Figure \@ref(fig:BJSalesadamETSMMN) shows how the model fits the data and what forecast it produces. Note that the function produces the **point forecast** in this case, which is not equivalent to the conditional expectation! The point forecast undershoots the actual values in the holdout.
 
 ```{r BJSalesadamETSMMN, fig.cap="Model fit for Box-Jenkins Sales data from ETS(M,M,N).", echo=FALSE}
-plot(adamModel,7,main="")
+plot(adamETSBJ,7,main="")
 ```
 
 If we want to produce the forecasts (conditional expectation and prediction interval) from the model, we can do it, using the same command as in Section \@ref(ADAMETSPureAdditiveExamples):
 
 ```{r BJSalesadamETSMMNForecast, fig.cap="Forecast for Box-Jenkins Sales data from ETS(M,M,N).", echo=FALSE}
-plot(forecast(adamModel, h=10,
+plot(forecast(adamETSBJ, h=10,
               interval="prediction", level=0.95))
 ```
 
@@ -226,15 +226,15 @@ Note that, when we ask for "prediction" interval, the `forecast()` function will
 
 The forecast with prediction interval is shown in Figure \@ref(fig:BJSalesadamETSMMNForecast). The conditional expectation is not very different from the point forecast in this example. This is because the variance of the error term is close to zero, thus bringing the two close to each other:
 ```{r}
-sigma(adamModel)^2
+sigma(adamETSBJ)^2
 ```
 
 We can also compare the performance of ETS(M,M,N) with $\Gamma$ distribution and the conventional ETS(M,M,N), assuming normality:
 
 ```{r}
-adamModelNormal <- adam(BJsales, "MMN", h=10, holdout=TRUE,
+adamETSBJNormal <- adam(BJsales, "MMN", h=10, holdout=TRUE,
                         distribution="dnorm")
-adamModelNormal
+adamETSBJNormal
 ```
 In this specific example, the two distributions produce very similar results with almost indistinguishable estimates of parameters.
 
@@ -243,16 +243,16 @@ In this specific example, the two distributions produce very similar results wit
 The `AirPassengers` data used in Section \@ref(ADAMETSPureAdditiveExamples) has (as we discussed) multiplicative seasonality. So, the ETS(M,M,M) model might be more suitable than the pure additive one that we used previously:
 
 ```{r}
-adamModel <- adam(AirPassengers, "MMM", h=12, holdout=TRUE)
-adamForecast <- forecast(adamModel, h=12, interval="prediction")
-adamModel
+adamETSAir <- adam(AirPassengers, "MMM", h=12, holdout=TRUE)
+adamForecast <- forecast(adamETSAir, h=12, interval="prediction")
+adamETSAir
 ```
 
 Notice that the smoothing parameter $\gamma=0$, which implies that we deal with the data with deterministic multiplicative seasonality. Comparing the information criteria (e.g. AICc) with the ETS(A,A,A) (discussed in Section \@ref(ADAMETSPureAdditiveExamplesETSAAA)), the pure multiplicative model does a better job at fitting the data than the additive one:
 ```{r}
-adamModelAdditive <- adam(AirPassengers, "AAA", lags=12,
-                          h=12, holdout=TRUE)
-AICc(adamModelAdditive)
+adamETSAirAdditive <- adam(AirPassengers, "AAA", lags=12,
+                           h=12, holdout=TRUE)
+AICc(adamETSAirAdditive)
 ```
 The conditional expectation and prediction interval from this model are mroe adequate as well (Figure \@ref(fig:AirPassengersMMMForecast)):
 
@@ -262,11 +262,11 @@ plot(adamForecast, main="")
 
 If we want to calculate the error measures based on the conditional expectation, we can use the `measures()` function from `greybox` package the following way:
 ```{r}
-measures(adamModel$holdout,adamForecast$mean,actuals(adamModel))
+measures(adamETSAir$holdout,adamForecast$mean,actuals(adamETSAir))
 ```
 These can be compared with the measures from the ETS(A,A,A) model:
 ```{r}
-measures(adamModel$holdout,adamModelAdditive$forecast,actuals(adamModel))
+measures(adamETSAir$holdout,adamETSAirAdditive$forecast,actuals(adamETSAir))
 ```
 
 Comparing, for example, MSE from the two models, we can conclude that the pure multiplicative model is more accurate than the pure additive one.
@@ -274,14 +274,14 @@ Comparing, for example, MSE from the two models, we can conclude that the pure m
 We can also produce the plot of the time series decomposition according to ETS(M,M,M) (see Figure \@ref(fig:AirPassengersMMMDecomposition)).
 
 ```{r AirPassengersMMMDecomposition, fig.cap="Decomposition of air passengers data using ETS(M,M,M) model.", echo=FALSE}
-plot(adamModel,12)
+plot(adamETSAir,12)
 ```
 
 The plot in Figure \@ref(fig:AirPassengersMMMDecomposition) shows that the residuals are more random for the pure multiplicative model than for the ETS(A,A,A), but there still might be some structure left. The autocorrelation and partial autocorrelation functions (discussed in Section \@ref(BJApproach)) might help in understanding this better:
 
 ```{r AirPassengersMMMACFPACF, fig.cap="ACF and PACF of residuals of ETS(M,M,M) model."}
 par(mfcol=c(2,1), mar=c(2,4,2,1))
-plot(adamModel,10:11)
+plot(adamETSAir,10:11)
 ```
 
 The plot in Figure \@ref(fig:AirPassengersMMMDecomposition) shows that there is still some correlation left in the residuals, which could be either due to pure randomness or imperfect estimation of the model. Tuning the parameters of the optimiser or selecting a different model might solve the problem.

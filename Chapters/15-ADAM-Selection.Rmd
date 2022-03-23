@@ -13,7 +13,7 @@ So far, we have managed to avoid discussing the topic of model selection and com
 
 In this chapter, we discuss these questions. We start with principles based on information criteria [addressed in Chapter 13 of @SvetunkovSBA] for ETS and ARIMA. We then move to selecting explanatory variables and finish with topics related to the combination of models.
 
-Before we do that, we need to recall the distributional assumptions in ADAM, which play an essential role if the model is estimated via the maximisation of the likelihood function (Section \@ref(ADAMETSEstimationLikelihood)). In this case, an information criterion (IC) can be calculated and used for the selection of the most appropriate model. Based on this, we can fit several ADAM models with different distributions and then select the one that leads to the lowest IC. Here is the list of the supported distributions in ADAM:
+Before we do that, we need to recall the distributional assumptions in ADAM, which play an essential role if the model is estimated via the maximisation of the likelihood function (Section \@ref(ADAMETSEstimationLikelihood)). In this case, an information criterion (IC) can be calculated and used for the selection of the most appropriate model. Based on this, we can fit several ADAMs with different distributions and then select the one that leads to the lowest IC. Here is the list of the supported distributions in ADAM:
 
 - Normal;
 - Laplace;
@@ -23,12 +23,12 @@ Before we do that, we need to recall the distributional assumptions in ADAM, whi
 - Inverse Gaussian;
 - Gamma.
 
-The function `auto.adam()` implements this automatic selection of distribution based on IC for the provided vector of `distribution` by a user. This selection procedure can be combined with other selection techniques for different elements of the ADAM model discussed in the following sections of the textbook.
+The function `auto.adam()` implements this automatic selection of distribution based on IC for the provided vector of `distribution` by a user. This selection procedure can be combined with other selection techniques for different elements of the ADAM discussed in the following sections of the textbook.
 
 Here is an example of selection of distribution for a specific model, ETS(M,M,N) on Box-Jenkins data using `auto.adam()`:
 ```{r}
-adamModel <- auto.adam(BJsales, model="MMN", h=10, holdout=TRUE)
-adamModel
+adamAutoETSBJ <- auto.adam(BJsales, model="MMN", h=10, holdout=TRUE)
+adamAutoETSBJ
 ```
 
 In this case, the function has applied one and the same model but with different distributions, estimated it using likelihood and selected the one that has the lowest AICc value. It looks like log Normal is the most appropriate distribution for ETS(M,M,N) on this data.
@@ -128,8 +128,8 @@ There are different approaches for automatic variable selection, but not all of 
 
 To make the mechanism efficient in a limited time, we rely on the @Sagaert2021 approach of stepwise trace forward selection of variables. It is the approach that uses partial correlations between variables to identify which variables to include in each iteration. It has linear computational time instead of the polynomial. Still, doing that in the proper ADAMX would take more time than needed because of the fitting of the dynamic model. So one of the possible solutions is to make variables selection in ADAMX in the following steps:
 
-1. Estimate and fit the ADAM model;
-2. Extract the residuals of the ADAM model;
+1. Estimate and fit the ADAM;
+2. Extract the residuals of the ADAM;
 3. Select the most suitable variables, explaining the residuals, based on the trace forward stepwise approach and the selected information criterion;
 4. Estimate the ADAMX model with the selected explanatory variables.
 
@@ -152,10 +152,10 @@ SeatbeltsData <- Seatbelts[,c("drivers","kms","PetrolPrice","law")]
 We have already had a look at this data earlier in Section \@ref(ETSXRExample), so we can move directly to the selection part:
 
 ```{r}
-adamModelETSXMNMSelect <- adam(SeatbeltsData, "MNM",
+adamETSXMNMSelectSeat <- adam(SeatbeltsData, "MNM",
                                h=12, holdout=TRUE,
                                regressors="select")
-summary(adamModelETSXMNMSelect)
+summary(adamETSXMNMSelectSeat)
 ```
 
 ::: remark
@@ -165,12 +165,12 @@ The function might complain about the observed Fisher Information. This only mea
 Based on the summary from the model, we can see that neither `kms` nor `PetrolPrice` improve the model in terms of AICc (they were not included in the model). We could check them manually to see if the selection worked out well in our case (construct sink regression as a benchmark):
 
 ```{r}
-adamModelETSXMNMSink <- adam(SeatbeltsData, "MNM",
+adamETSXMNMSinkSeat <- adam(SeatbeltsData, "MNM",
                              h=12, holdout=TRUE)
-summary(adamModelETSXMNMSink)
+summary(adamETSXMNMSinkSeat)
 ```
 
-We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the "true model". While `adamModelETSXMNMSelect` might not be the best possible model in terms of information criteria, it is still a reasonable one and can be used for further inference.
+We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the "true model". While `adamETSXMNMSelectSeat` might not be the best possible model in terms of information criteria, it is still a reasonable one and can be used for further inference.
 
 
 ## Forecasts combinations in ADAM {#ADAMCombinations}
@@ -240,51 +240,51 @@ BJsalesData <- cbind(as.data.frame(BJsales),
                      xregExpander(BJsales.lead,c(-5:5)))
 
 # Apply models
-adamModelsPool <- vector("list",3)
-adamModelsPool[[1]] <- adam(BJsales, "ZZN",
-                            h=10, holdout=TRUE,
-                            ic="BICc")
-adamModelsPool[[2]] <- adam(BJsales, "NNN",
-                            orders=list(ar=3,i=2,ma=3,select=TRUE),
-                            h=10, holdout=TRUE,
-                            ic="BICc")
-adamModelsPool[[3]] <- adam(BJsalesData, "MMN",
-                            h=10, holdout=TRUE,
-                            ic="BICc",
-                            regressors="select")
+adamPoolBJ <- vector("list",3)
+adamPoolBJ[[1]] <- adam(BJsales, "ZZN",
+                        h=10, holdout=TRUE,
+                        ic="BICc")
+adamPoolBJ[[2]] <- adam(BJsales, "NNN",
+                        orders=list(ar=3,i=2,ma=3,select=TRUE),
+                        h=10, holdout=TRUE,
+                        ic="BICc")
+adamPoolBJ[[3]] <- adam(BJsalesData, "MMN",
+                        h=10, holdout=TRUE,
+                        ic="BICc",
+                        regressors="select")
 
 # Extract BICc values
-adamModelsICs <- sapply(adamModelsPool,BICc)
+adamsICs <- sapply(adamPoolBJ,BICc)
 
 # Calculate weights
-adamModelsICWeights <- adamModelsICs - min(adamModelsICs)
-adamModelsICWeights[] <- exp(-0.5*adamModelsICWeights) /
-    sum(exp(-0.5*adamModelsICWeights))
-names(adamModelsICWeights) <- c("ETS","ARIMA","ETSX")
-round(adamModelsICWeights,3)
+adamsICWeights <- adamsICs - min(adamsICs)
+adamsICWeights[] <- exp(-0.5*adamsICWeights) /
+                    sum(exp(-0.5*adamsICWeights))
+names(adamsICWeights) <- c("ETS","ARIMA","ETSX")
+round(adamsICWeights,3)
 ```
 
 These weights can then be used for the combination of the fitted values, forecasts and prediction intervals:
 ```{r}
-adamModelsPoolForecasts <- vector("list",3)
+adamPoolBJForecasts <- vector("list",3)
 # Produce forecasts from the three models
 for(i in 1:3){
-    adamModelsPoolForecasts[[i]] <- forecast(adamModelsPool[[i]],
-                                             h=10, interval="pred")
+  adamPoolBJForecasts[[i]] <- forecast(adamPoolBJ[[i]],
+                                       h=10, interval="pred")
 }
 # Produce combined conditional means and prediction intervals
-finalForecast <- cbind(sapply(adamModelsPoolForecasts,
-                              "[[","mean") %*% adamModelsICWeights,
-                       sapply(adamModelsPoolForecasts,
-                              "[[","lower") %*% adamModelsICWeights,
-                       sapply(adamModelsPoolForecasts,
-                              "[[","upper") %*% adamModelsICWeights)
+finalForecast <- cbind(sapply(adamPoolBJForecasts,
+                              "[[","mean") %*% adamsICWeights,
+                       sapply(adamPoolBJForecasts,
+                              "[[","lower") %*% adamsICWeights,
+                       sapply(adamPoolBJForecasts,
+                              "[[","upper") %*% adamsICWeights)
 # Give the appropriate names
 colnames(finalForecast) <- c("Mean", "Lower bound (2.5%)",
                              "Upper bound (97.5%)")
 # Transform the table in the ts format (for convenience)
 finalForecast <- ts(finalForecast,
-                    start=start(adamModelsPoolForecasts[[i]]$mean))
+                    start=start(adamPoolBJForecasts[[i]]$mean))
 finalForecast
 ```
 

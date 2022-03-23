@@ -104,7 +104,7 @@ This leads to the SSOE state space model based on \@ref(eq:MSARIMAMeasurement02)
   \end{aligned},
   (\#eq:ADAMARIMAExpanded)
 \end{equation}
-which can be formulated in the conventional form as a pure additive ADAM model (Section \@ref(ADAMETSPureAdditive)):
+which can be formulated in the conventional form as a pure additive ADAM (Section \@ref(ADAMETSPureAdditive)):
 \begin{equation*}
   \begin{aligned}
     &{y}_{t} = \mathbf{w}^\prime \mathbf{v}_{t-\mathbf{l}} + \epsilon_t \\
@@ -388,60 +388,60 @@ where the subscript reflects, which part corresponds to which model: "E" - ETS, 
 
 
 ## Examples of application {#ADAMARIMAExamples}
-Building upon the example with `AirPassengers` data from Section \@ref(ARIMAExampleInRSeasonal), we will construct several multiplicative ARIMA models and see which one is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(0,2,2)$_{12}$, which had AICc of `r round(min(sapply(adamModelSARIMA, AICc)),3)`. We will do something similar here, using Log-Normal distribution, thus working with logARIMA. To understand what model can be used in this case, we can take the logarithm of data and see what happens with the components of time series:
+Building upon the example with `AirPassengers` data from Section \@ref(ARIMAExampleInRSeasonal), we will construct several multiplicative ARIMA models and see which one is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(0,2,2)$_{12}$, which had AICc of `r round(min(sapply(adamSARIMAAir, AICc)),3)`. We will do something similar here, using Log-Normal distribution, thus working with logARIMA. To understand what model can be used in this case, we can take the logarithm of data and see what happens with the components of time series:
 ```{r}
 plot(log(AirPassengers))
 ```
 
 We still have the trend in the data, and the seasonality now corresponds to the additive rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking the first differences for the seasonal should suffice because the logarithmic transform will take care of the expanding seasonal pattern in the data. So we can test several models with different options for ARIMA orders:
 ```{r}
-adamModelLogSARIMA <- vector("list",3)
+adamLogSARIMAAir <- vector("list",3)
 # logSARIMA(0,1,1)(0,1,1)[12]
-adamModelLogSARIMA[[1]] <-
+adamLogSARIMAAir[[1]] <-
   adam(AirPassengers, "NNN", lags=c(1,12),
        orders=list(ar=c(0,0), i=c(1,1), ma=c(1,1)),
        h=12, holdout=TRUE, distribution="dlnorm")
 # logSARIMA(0,2,2)(0,1,1)[12]
-adamModelLogSARIMA[[2]] <-
+adamLogSARIMAAir[[2]] <-
   adam(AirPassengers, "NNN", lags=c(1,12),
        orders=list(ar=c(0,0), i=c(2,1), ma=c(2,2)),
        h=12, holdout=TRUE, distribution="dlnorm")
 # logSARIMA(1,1,2)(0,1,1)[12]
-adamModelLogSARIMA[[3]] <-
+adamLogSARIMAAir[[3]] <-
   adam(AirPassengers, "NNN", lags=c(1,12),
        orders=list(ar=c(1,0), i=c(1,1), ma=c(2,1)),
        h=12, holdout=TRUE, distribution="dlnorm")
-names(adamModelLogSARIMA) <- c("logSARIMA(0,1,1)(0,1,1)[12]",
-                               "logSARIMA(0,2,2)(0,1,1)[12]",
-                               "logSARIMA(1,1,2)(0,1,1)[12]")
+names(adamLogSARIMAAir) <- c("logSARIMA(0,1,1)(0,1,1)[12]",
+                             "logSARIMA(0,2,2)(0,1,1)[12]",
+                             "logSARIMA(1,1,2)(0,1,1)[12]")
 ```
 The thing that is different between the models is the non-seasonal part. Using the connection with ETS (discussed in Section \@ref(ARIMAandETS)), the first model should work on local level data, the second should be optimal for the local trend series, and the third one is placed somewhere in between the two. We can compare the models using AICc:
 ```{r}
-sapply(adamModelLogSARIMA, AICc)
+sapply(adamLogSARIMAAir, AICc)
 ```
 It looks like the logSARIMA(0,1,1)(0,1,1)$_{12}$ is more appropriate for the data. In order to make sure that we did not miss anything, we analyse the residuals of this model (Figure \@ref(fig:logSARIMAACF)):
 
 ```{r logSARIMAACF, fig.cap="ACF and PACF of logSARIMA(0,1,1)(0,1,1)$_{12}$."}
 par(mfcol=c(2,1), mar=c(2,2,2,1))
-plot(adamModelLogSARIMA[[1]],10:11)
+plot(adamLogSARIMAAir[[1]],10:11)
 ```
 
 We can see that there are no significant coefficient on either ACF or PACF, so there is nothing else to improve in this model. We can then produce forecast from the model and see how it performed on the holdout sample (Figure \@ref(fig:logSARIMAForecast)):
 
 ```{r logSARIMAForecast, fig.cap="Forecast from logSARIMA(0,1,1)(0,1,1)$_{12}$."}
-plot(forecast(adamModelLogSARIMA[[1]],h=12,interval="prediction"),
-     main=paste0(adamModelLogSARIMA[[1]]$model," with Log-Normal distribution"))
+plot(forecast(adamLogSARIMAAir[[1]],h=12,interval="prediction"),
+     main=paste0(adamLogSARIMAAir[[1]]$model," with Log-Normal distribution"))
 ```
 
 The ETS model closest to the logSARIMA(0,1,1)(0,1,1)$_{12}$ would probably be ETS(M,M,M), because the former has both seasonal and non-seasonal differences (see discussion in Subsection \@ref(ARIMAETSOther)):
 
 ```{r}
-adamModelETS <- adam(AirPassengers, "MMM", h=12, holdout=TRUE)
-adamModelETS
+adamETSAir <- adam(AirPassengers, "MMM", h=12, holdout=TRUE)
+adamETSAir
 ```
 
 Comparing information criteria, ETS(M,M,M) should be preferred to logARIMA, but in terms of accuracy on the holdout, logARIMA is more accurate than ETS on this data:
 
 ```{r}
-adamModelLogSARIMA[[1]]
+adamLogSARIMAAir[[1]]
 ```

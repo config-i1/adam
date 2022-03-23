@@ -1,7 +1,7 @@
 # Forecasting with ADAM {#ADAMForecasting}
 Finally, we come to the technicalities of producing forecasts using ADAM. We have already discussed how conditional expectations can be generated from some of the models (e.g. Sections \@ref(pureAdditiveExpectationAndVariance), \@ref(pureMultiplicativeExpectationAndVariance), \@ref(ADAMARIMARecursiveMoments), \@ref(ADAMXConventionalConditionalMoments) and \@ref(ADAMXDynamicMoments)), but we have not discussed this in necessary detail. Furthermore, as discussed in Section \@ref(forecastingPlanningAnalytics), forecasts should align with specific decisions, but we have not discussed how to do that.
 
-In this chapter, we start the discussion with the principles behind calculating the conditional expectations from ADAM models (including ETS, ARIMA, regression and their combinations). We then discuss various methods for prediction intervals construction, starting from the basic parametric ones and ending with empirical and those that take the uncertainty of parameters into account (building upon Chapter \@ref(ADAMUncertainty)). Finally, we discuss prediction intervals for the intermittent state space model (Chapter \@ref(ADAMIntermittent)), one-sided intervals and cumulative forecasts over the forecast horizon, which is useful in practice, especially when inventory decisions need to be made. We also discuss the confidence interval for the conditional mean, which is not as important as the other topics mentioned above but is still worth discussing.
+In this chapter, we start the discussion with the principles behind calculating the conditional expectations from ADAM (including ETS, ARIMA, regression and their combinations). We then discuss various methods for prediction intervals construction, starting from the basic parametric ones and ending with empirical and those that take the uncertainty of parameters into account (building upon Chapter \@ref(ADAMUncertainty)). Finally, we discuss prediction intervals for the intermittent state space model (Chapter \@ref(ADAMIntermittent)), one-sided intervals and cumulative forecasts over the forecast horizon, which is useful in practice, especially when inventory decisions need to be made. We also discuss the confidence interval for the conditional mean, which is not as important as the other topics mentioned above but is still worth discussing.
 
 
 ## Conditional expectation {#ADAMForecastingExpectation}
@@ -45,7 +45,7 @@ plot(y$data[,1], ylab="Sales", ylim=range(y$data),
      col=rgb(0.8,0.8,0.8,0.4), xlab="Horizon")
 # Plot all the generated lines
 for(i in 2:nsim){
-    lines(y$data[,i], col=rgb(0.8,0.8,0.8,0.4))
+  lines(y$data[,i], col=rgb(0.8,0.8,0.8,0.4))
 }
 # Add conditional mean and quantiles
 lines(apply(y$data,1,mean))
@@ -81,7 +81,7 @@ Note the difference between $\sigma_{t+h}^2$ and $\sigma_{h}^2$ in our notations
 Making that substitution leads to the following analytical formula for the h-steps-ahead conditional variance in case of scale model:
 \begin{equation}
     \text{V}(y_{t+h}|t) = \sum_{i=1}^d \left(\mathbf{w}_{m_i}^\prime \sum_{j=1}^{\lceil\frac{h}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}^\prime_{m_i} (\mathbf{F}_{m_i}^\prime)^{j-1} \mathbf{w}_{m_i} \sigma_{t+h-j}^2 \right) + \sigma_{t+h}^2 .
-  (\#eq:ETSADAMFullWithScaleModelVariance)
+    (\#eq:ETSADAMFullWithScaleModelVariance)
 \end{equation}
 This variance can then be used, for example, to produce quantiles from the assumed distribution.
 
@@ -174,14 +174,14 @@ The more theoretically correct approach is to take the multistep variance of exp
 ### Example in R {#ADAMForecastingPIExample}
 All the types of intervals discussed in this Section are implemented for the `adam()` models in `smooth` package. In order to demonstrate how they work and how they differ, we consider the example with ETS model on `BJSales` data:
 ```{r}
-adamModel <- adam(BJsales, h=10, holdout=TRUE)
-modelType(adamModel)
+adamETSBJ <- adam(BJsales, h=10, holdout=TRUE)
+modelType(adamETSBJ)
 ```
-The model selected above is ETS(`r substr(modelType(adamModel),1,1)`,`r substr(modelType(adamModel),2,nchar(modelType(adamModel))-1)`,`r substr(modelType(adamModel),nchar(modelType(adamModel)),nchar(modelType(adamModel)))`). In order to make sure that the parametric intervals are suitable, we can do model diagnostics (see Section \@ref(diagnostics)), producing plots shown in Figure \@ref(fig:adamModelDiagnostics).
+The model selected above is ETS(`r substr(modelType(adamETSBJ),1,1)`,`r substr(modelType(adamETSBJ),2,nchar(modelType(adamETSBJ))-1)`,`r substr(modelType(adamETSBJ),nchar(modelType(adamETSBJ)),nchar(modelType(adamETSBJ)))`). In order to make sure that the parametric intervals are suitable, we can do model diagnostics (see Section \@ref(diagnostics)), producing plots shown in Figure \@ref(fig:adamModelDiagnostics).
 
-```{r adamModelDiagnostics, fig.cap="Diagnostics of the ADAM model on BJSales data."}
+```{r adamModelDiagnostics, fig.cap="Diagnostics of the ADAM on BJSales data."}
 par(mfcol=c(2,3))
-plot(adamModel,c(2,4,6,8,10:11))
+plot(adamETSBJ,c(2,4,6,8,10:11))
 ```
 
 The model's residuals do not exhibit any serious issues. Given that this is a pure additive model, we can conclude that the parametric intervals would be appropriate for this situation and produce the plot with them.
@@ -190,21 +190,21 @@ The only thing that these intervals do not take into account is the uncertainty 
 
 ```{r adamModelPIComplete, fig.cap="Prediction intervals for ADAM on BJSales data."}
 par(mfcol=c(1,2))
-plot(forecast(adamModel,h=10,interval="parametric"),
+plot(forecast(adamETSBJ,h=10,interval="parametric"),
      main="Parametric prediction interval", ylim=c(200,280))
-plot(forecast(adamModel,h=10,interval="complete",nsim=100),
+plot(forecast(adamETSBJ,h=10,interval="complete",nsim=100),
      main="Complete prediction interval", ylim=c(200,280))
 ```
 
 The resulting complete parametric interval shown in Figure \@ref(fig:adamModelPIComplete) will not be substantially different from the parametric one, maybe slightly wider. This is because the smoothing parameters of the model are high, thus the model forgets the initial states fast, and the uncertainty does not propagate to the last observation as much as in the case of lower values of parameters:
 ```{r}
-summary(adamModel)
+summary(adamETSBJ)
 ```
 
 Figure \@ref(fig:adamModelPIRefitted) demonstrates what happens with the fitted values when we take the uncertainty into account.
 
 ```{r adamModelPIRefitted, fig.cap="Refitted values for ADAM on BJSales data."}
-plot(reapply(adamModel))
+plot(reapply(adamETSBJ))
 ```
 
 As we see from Figure \@ref(fig:adamModelPIRefitted), the uncertainty around the line is narrow at the end of the sample, so the prediction intervals are similar between the two methods.
@@ -215,7 +215,7 @@ To make things more complicated and exciting, we introduce explanatory variable 
 BJsalesData <- cbind(as.data.frame(BJsales),
                      xregExpander(BJsales.lead,c(-3:3)))
 colnames(BJsalesData)[1] <- "y"
-adamModelX <- adam(BJsalesData, "YYY",
+adamETSXBJ <- adam(BJsalesData, "YYY",
                    h=10, holdout=TRUE,
                    regressors="select")
 ```
@@ -223,13 +223,13 @@ adamModelX <- adam(BJsalesData, "YYY",
 I have asked the function specifically to do the selection between pure multiplicative models (see Section \@ref(ETSSelection)). We will then construct several types of prediction intervals and compare them:
 
 ```{r warning=FALSE}
-adamModelPI <- vector("list",6)
+adamETSXBJPI <- vector("list",6)
 intervalType <- c("approximate", "semiparametric",
                   "nonparametric", "simulated",
                   "empirical", "complete")
 for(i in 1:6){
-  adamModelPI[[i]] <- forecast(adamModelX, h=10,
-                               interval=intervalType[i])
+  adamETSXBJPI[[i]] <- forecast(adamETSXBJ, h=10,
+                                interval=intervalType[i])
 }
 ```
 
@@ -238,17 +238,17 @@ These can be plotted in Figure \@ref(fig:adamModelXPI6Plots).
 ```{r adamModelXPI6Plots, fig.cap="Different prediction intervals for ADAM ETS(M,N,N) on BJSales data"}
 par(mfcol=c(3,2), mar=c(2,2,2,1))
 for(i in 1:6){
-  plot(adamModelPI[[i]],main=paste0(intervalType[i]," interval"))
+  plot(adamETSXBJPI[[i]],main=paste0(intervalType[i]," interval"))
 }
 ```
 
-The thing to notice is how the width and shape of intervals change depending on the used approach. The approximate and simulated intervals look very similar because the selected model is ETSX(M,N,N) with a standard error of `r round(sigma(adamModelX),3)` (thus, the approximation works well). The complete interval is similar because the estimated smoothing parameter $\alpha=1$ (hence, the forgetting happens instantaneously). However, it has a slightly different shape because the number of iterations for the interval was low (`nsim=100` for `interval="complete"` by default). The semiparametric interval is the widest as it calculates the forecast errors directly but still uses the normal approximation. Both nonparametric and empirical are skewed because the in-sample forecast errors followed skewed distributions, which can be seen via the plot (see Figure \@ref(fig:adamModelXForecastErrors)):
+The thing to notice is how the width and shape of intervals change depending on the used approach. The approximate and simulated intervals look very similar because the selected model is ETSX(M,N,N) with a standard error of `r round(sigma(adamETSXBJ),3)` (thus, the approximation works well). The complete interval is similar because the estimated smoothing parameter $\alpha=1$ (hence, the forgetting happens instantaneously). However, it has a slightly different shape because the number of iterations for the interval was low (`nsim=100` for `interval="complete"` by default). The semiparametric interval is the widest as it calculates the forecast errors directly but still uses the normal approximation. Both nonparametric and empirical are skewed because the in-sample forecast errors followed skewed distributions, which can be seen via the plot (see Figure \@ref(fig:adamModelXForecastErrors)):
 
 ```{r adamModelXForecastErrors, fig.cap="Distribution of in-sample multistep forecast errors from ADAM ETSX(M,N,N) model on BJSales data. Red point correspond to mean values."}
-adamModelXForecastErrors <- rmultistep(adamModelX,h=10)
-boxplot(1+adamModelXForecastErrors)
+adamETSXBJForecastErrors <- rmultistep(adamETSXBJ,h=10)
+boxplot(1+adamETSXBJForecastErrors)
 abline(h=1,col="red")
-points(apply(1+adamModelXForecastErrors,2,mean),
+points(apply(1+adamETSXBJForecastErrors,2,mean),
        col="red",pch=16)
 ```
 
@@ -293,17 +293,17 @@ In some cases, we might not need both bounds of the interval. For example, when 
 ### Cumulative over the horizon forecast {#forecastingADAMOtherCumulative}
 Another related thing to consider when producing forecasts in practice is that the point forecast is not needed in some contexts. Instead, the cumulative over the forecast horizon (or over the lead time) might be more suitable. The classic example is the safety stock calculation based on the lead time (time between the order of product and its delivery). In this situation, we need to make sure that while the product is being delivered, we do not run out of stock, thus still satisfying the selected level of demand (e.g. 95%), but now over the whole period of time rather than on every separate observation.
 
-In the case of **pure additive ADAM models**, there are analytical formulae for the conditional expectations and conditional variance for this case that can be used in forecasting. These formulae come directly from the recursive relation \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) [for derivations in a simpler case, see for example, @Hyndman2008b, @Svetunkov2017]:
+In the case of **pure additive ADAM**, there are analytical formulae for the conditional expectations and conditional variance for this case that can be used in forecasting. These formulae come directly from the recursive relation \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) [for derivations in a simpler case, see for example, @Hyndman2008b, @Svetunkov2017]:
 \begin{equation}
-  \begin{aligned}
-    \mu_{Y,t,h} = \text{E}(Y_{c,t,h}|t) = & \sum_{j=1}^h \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \mathbf{F}_{m_i}^{\lceil\frac{j}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
-    \sigma^2_{Y,h} = \text{V}(Y_{c,t,h}|t) = & \left(1 + \sum_{k=1}^{h-1} \left(1+ (h-k) \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{k}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) \right) \right) \sigma^2
-  \end{aligned},
-  (\#eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVarianceCumulative)
+    \begin{aligned}
+        \mu_{Y,t,h} = \text{E}(Y_{c,t,h}|t) = & \sum_{j=1}^h \sum_{i=1}^d \left(\mathbf{w}_{m_i}'     \mathbf{F}_{m_i}^{\lceil\frac{j}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
+        \sigma^2_{Y,h} = \text{V}(Y_{c,t,h}|t) = & \left(1 + \sum_{k=1}^{h-1} \left(1+ (h-k) \sum_{i=1}^d \left(\mathbf{w}_{m_i}' \sum_{j=1}^{\lceil\frac{k}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}'_{m_i} (\mathbf{F}_{m_i}')^{j-1} \mathbf{w}_{m_i} \right) \right) \right) \sigma^2
+    \end{aligned},
+    (\#eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVarianceCumulative)
 \end{equation}
 where $Y_{c,t,h}=\sum_{j=1}^h y_{t+j}$ is the cumulative actual value and all the other variables have been defined in Section \@ref(adamETSPureAdditiveRecursive). Based on these expectation and variance, we can construct prediction interval as discussed in Section \@ref(ADAMForecastingPI).
 
-In cases of **multiplicative and mixed ADAM models**, there are no closed forms for the conditional expectation and variance. As a result, simulations similar to the one discussed in Subsection \@ref(ADAMForecastingExpectationSimulations) are needed to produce all possible paths for the next $h$ steps ahead. The main difference would be that before taking the expectation or quantiles, the paths would need to be aggregated over the forecast horizon $h$. This approach, together with the idea of a one-sided prediction interval, can be directly used to calculate the safety stock over the lead time.
+In cases of **multiplicative and mixed ADAM**, there are no closed forms for the conditional expectation and variance. As a result, simulations similar to the one discussed in Subsection \@ref(ADAMForecastingExpectationSimulations) are needed to produce all possible paths for the next $h$ steps ahead. The main difference would be that before taking the expectation or quantiles, the paths would need to be aggregated over the forecast horizon $h$. This approach, together with the idea of a one-sided prediction interval, can be directly used to calculate the safety stock over the lead time.
 
 
 ### Example in R {#forecastingADAMOtherExample}
@@ -315,30 +315,30 @@ y <- ts(c(rpois(20,0.25), rpois(20,0.5), rpois(20,1),
 For simplicity, we apply iETS(M,Md,N) model with odds ratio occurrence:
 
 ```{r}
-adamModeliETS <- adam(y, "MMdN", occurrence="odds-ratio",
-                      h=7, holdout=TRUE)
-plot(adamModeliETS,7)
+adamiETSy <- adam(y, "MMdN", occurrence="odds-ratio",
+                  h=7, holdout=TRUE)
+plot(adamiETSy,7)
 ```
 
 To make this setting closer to a possible real-life situation, we assume that the lead time is seven days, and we need to satisfy the 99% of demand for the last seven observations based on our model. Thus we produce the upper bound for the cumulative values for the confidence level of 99%:
 ```{r}
-adamModeliETSForecast <- forecast(adamModeliETS, h=7,
-                                  cumulative=TRUE,
-                                  interval="prediction",
-                                  side="upper")
+adamiETSyForecast <- forecast(adamiETSy, h=7,
+                              cumulative=TRUE,
+                              interval="prediction",
+                              side="upper")
 ```
 Given that we deal with cumulative values, the basic plot will not be helpful, we should produce a different one (see Figure \@ref(fig:adamModeliETSCumulative)):
 
 ```{r adamModeliETSCumulative, fig.cap="Cumulative demand, expectation and the upper bound based on iETS model."}
-plot(sum(adamModeliETS$holdout), ylab="Cumulative demand",
+plot(sum(adamiETSy$holdout), ylab="Cumulative demand",
      xlab="", pch=16,
-     ylim=range(c(0, sum(adamModeliETS$holdout),
-                  adamModeliETSForecast$upper)))
-abline(h=adamModeliETSForecast$mean, col="blue", lwd=2)
-abline(h=adamModeliETSForecast$upper, col="grey", lwd=2)
+     ylim=range(c(0, sum(adamiETSy$holdout),
+                  adamiETSyForecast$upper)))
+abline(h=adamiETSyForecast$mean, col="blue", lwd=2)
+abline(h=adamiETSyForecast$upper, col="grey", lwd=2)
 ```
 
-What Figure \@ref(fig:adamModeliETSCumulative) demonstrates is that for the holdout period of 7 days, the cumulative demand was around `r sum(adamModeliETS$holdout)` units, while the upper bound of the interval was approximately `r round(adamModeliETSForecast$upper,0)`. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \@ref(fig:adamModeliETSCumulative) demonstrates is that for the holdout period of 7 days, the cumulative demand was around `r sum(adamiETSy$holdout)` units, while the upper bound of the interval was approximately `r round(adamiETSyForecast$upper,0)`. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section \@ref(rollingOrigin)) or to a set of products to collect the distribution of related error measures.
 
@@ -347,16 +347,16 @@ To see if the approach is suitable, we would need to apply it in either a rollin
 Finally, we can construct a confidence interval for some statistics. As discussed in Section 5.2 of @SvetunkovSBA, it can be built for the mean, a parameter, fitted values, etc. In our context, we might be interested in the confidence interval for the conditional h steps ahead expectation. This implies that we are interested in the uncertainty of the line, not of the actual values, which can only be constructed for the model that takes the uncertainty of parameters into account (as discussed in Section \@ref(ADAMUncertainty)). The construction of confidence interval, in this case, relies on the normal distribution, based on Central Limit Theorem, as long as the basic assumptions for the model and CLT are satisfied [see Section 4.2 and Chapter 12 of @SvetunkovSBA]. Technically speaking, the construction of confidence interval comes to capturing the model uncertainty discussed in Chapter \@ref(ADAMUncertainty).
 
 #### Example in R
-The only way how the confidence interval can be constructed for ADAM models is via the `reforecast()` function. Consider the example with ADAM ETS(A,Ad,N) on `BJSales` data as in Section \@ref(ADAMForecastingPIExample):
+The only way how the confidence interval can be constructed for ADAM is via the `reforecast()` function. Consider the example with ADAM ETS(A,Ad,N) on `BJSales` data as in Section \@ref(ADAMForecastingPIExample):
 ```{r}
-adamModel <- adam(BJsales, h=10, holdout=TRUE)
+adamETSBJ <- adam(BJsales, h=10, holdout=TRUE)
 ```
 The confidence interval for this model can be produced either directly via `reforecast()` or via `forecast()`, which will call it for you:
 
 ```{r eval=FALSE}
-adamModelConfidence <- forecast(adamModel, h=10,
+adamETSBJConfidence <- forecast(adamETSBJ, h=10,
                                 interval="confidence", nsim=1000)
-plot(adamModelConfidence)
+plot(adamETSBJConfidence)
 ```
 
 Note that I have increased the number of iterations for the simulation to get a more accurate confidence interval around the conditional expectation. This will consume more memory, as the operation involves creating 1000 sample paths for the fitted values and another 1000 for the holdout sample forecasts.

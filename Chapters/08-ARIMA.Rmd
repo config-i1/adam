@@ -717,22 +717,22 @@ plot(BJsales)
 
 It seems to exhibit the trend in the data, so we can consider ARIMA(1,1,2), ARIMA(0,2,2) and ARIMA(1,1,1) models. We do not consider models with drift in this example, because they would imply the same slope over time for the whole series, which does not seem to be the case here:
 ```{r}
-adamModelARIMA <- vector("list",3)
+adamARIMABJ <- vector("list",3)
 # ARIMA(1,1,2)
-adamModelARIMA[[1]] <- adam(BJsales, "NNN", orders=c(1,1,2),
-                            h=10, holdout=TRUE)
+adamARIMABJ[[1]] <- adam(BJsales, "NNN", orders=c(1,1,2),
+                         h=10, holdout=TRUE)
 # ARIMA(0,2,2)
-adamModelARIMA[[2]] <- adam(BJsales, "NNN", orders=c(0,2,2),
-                            h=10, holdout=TRUE)
+adamARIMABJ[[2]] <- adam(BJsales, "NNN", orders=c(0,2,2),
+                         h=10, holdout=TRUE)
 # ARIMA(1,1,1)
-adamModelARIMA[[3]] <- adam(BJsales, "NNN", orders=c(1,1,1),
-                            h=10, holdout=TRUE)
-names(adamModelARIMA) <- c("ARIMA(1,1,2)", "ARIMA(0,2,2)",
-                           "ARIMA(1,1,1)")
+adamARIMABJ[[3]] <- adam(BJsales, "NNN", orders=c(1,1,1),
+                         h=10, holdout=TRUE)
+names(adamARIMABJ) <- c("ARIMA(1,1,2)", "ARIMA(0,2,2)",
+                        "ARIMA(1,1,1)")
 ```
 In the code above, we need to tell `adam()` to use `model="NNN"` to switch off the ETS part of the model. Comparing information criteria (we will use AICc) of the three models, we can select the most appropriate one:
 ```{r}
-sapply(adamModelARIMA, AICc)
+sapply(adamARIMABJ, AICc)
 ```
 
 ::: remark
@@ -742,7 +742,7 @@ Note that this comparison is possible in `adam()` (and in `ssarima()` and `msari
 Based on this comparison, it looks like the ARIMA(0,2,2) is the most appropriate model (among the three) for the data. Here how the fit and the forecast from the model looks (Figure \@ref(fig:adamARIMAPlotBJSales)):
 
 ```{r adamARIMAPlotBJSales, fig.cap="BJSales series and ARIMA(0,2,2)"}
-plot(adamModelARIMA[[2]], 7)
+plot(adamARIMABJ[[2]], 7)
 ```
 
 Comparing this model with the ETS(A,A,N), we will see a slight difference because the two models are initialised and estimated differently:
@@ -754,7 +754,7 @@ If we are interested in a more classical Box-Jenkins approach, we can always ana
 
 ```{r adamARIMAPlotBJSalesACFPACF, fig.cap="ACF and PACF of ARIMA(0,2,2) on BJSales data"}
 par(mfcol=c(1,2))
-plot(adamModelARIMA[[2]], c(10,11), main="")
+plot(adamARIMABJ[[2]], c(10,11), main="")
 ```
 
 As we see from the plot in Figure \@ref(fig:adamARIMAPlotBJSalesACFPACF), all autocorrelation coefficients lie inside the confidence interval, implying that there are no significant AR / MA lags to include in the model.
@@ -762,49 +762,49 @@ As we see from the plot in Figure \@ref(fig:adamARIMAPlotBJSalesACFPACF), all au
 ### Seasonal data {#ARIMAExampleInRSeasonal}
 Similarly to the previous cases, we use Box-Jenkins AirPassengers data, which exhibits a multiplicative seasonality and a trend. We will model this using SARIMA(0,2,2)(0,1,1)$_{12}$, SARIMA(0,2,2)(1,1,1)$_{12}$ and SARIMA(0,2,2)(1,1,0)$_{12}$ models, which are selected to see what type of seasonal ARIMA is more appropriate to the data:
 ```{r}
-adamModelSARIMA <- vector("list",3)
+adamSARIMAAir <- vector("list",3)
 # SARIMA(0,2,2)(0,1,1)[12]
-adamModelSARIMA[[1]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                             orders=list(ar=c(0,0), i=c(2,1),
-                                         ma=c(2,1)),
-                             h=12, holdout=TRUE)
+adamSARIMAAir[[1]] <- adam(AirPassengers, "NNN", lags=c(1,12),
+                           orders=list(ar=c(0,0), i=c(2,1),
+                                       ma=c(2,1)),
+                           h=12, holdout=TRUE)
 # SARIMA(0,2,2)(1,1,1)[12]
-adamModelSARIMA[[2]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                             orders=list(ar=c(0,1), i=c(2,1),
-                                         ma=c(2,1)),
-                             h=12, holdout=TRUE)
+adamSARIMAAir[[2]] <- adam(AirPassengers, "NNN", lags=c(1,12),
+                           orders=list(ar=c(0,1), i=c(2,1),
+                                       ma=c(2,1)),
+                           h=12, holdout=TRUE)
 # SARIMA(0,2,2)(1,1,0)[12]
-adamModelSARIMA[[3]] <- adam(AirPassengers, "NNN", lags=c(1,12),
-                             orders=list(ar=c(0,1), i=c(2,1),
-                                         ma=c(2,0)),
-                             h=12, holdout=TRUE)
-names(adamModelSARIMA) <- c("SARIMA(0,2,2)(0,1,1)[12]",
-                            "SARIMA(0,2,2)(1,1,1)[12]",
-                            "SARIMA(0,2,2)(1,1,0)[12]")
+adamSARIMAAir[[3]] <- adam(AirPassengers, "NNN", lags=c(1,12),
+                           orders=list(ar=c(0,1), i=c(2,1),
+                                       ma=c(2,0)),
+                           h=12, holdout=TRUE)
+names(adamSARIMAAir) <- c("SARIMA(0,2,2)(0,1,1)[12]",
+                          "SARIMA(0,2,2)(1,1,1)[12]",
+                          "SARIMA(0,2,2)(1,1,0)[12]")
 ```
 Note that now that we have a seasonal component, we need to provide the SARIMA lags: 1 and $m=12$ and specify `orders` differently -- as a list with values for AR, I and MA orders separately. This is done because the SARIMA implemented in `adam()` supports multiple seasonality (e.g. you can have `lags=c(1,24,24*7)` if you want). The resulting information criteria of models are:
 ```{r}
-sapply(adamModelSARIMA, AICc)
+sapply(adamSARIMAAir, AICc)
 ```
 It looks like the first model is slightly better than the other two, so we will use it in order to produce forecasts (see Figure \@ref(fig:adamSARIMAPlotAir)):
 
 ```{r adamSARIMAPlotAir, fig.cap="Forecast of AirPassengers data from SARIMA(0,2,2)(0,1,1)$_{12}$ model."}
-plot(forecast(adamModelSARIMA[[1]], h=12,
+plot(forecast(adamSARIMAAir[[1]], h=12,
               interval="prediction"),
      main="")
 ```
 
 This model is directly comparable with ETS models, so here is, for example, AICc of ETS(M,A,M) on the same data:
 ```{r}
-AICc(adamModelETS <- adam(AirPassengers, "MAM",
-                          h=12, holdout=TRUE))
+AICc(adamETSAir <- adam(AirPassengers, "MAM",
+                        h=12, holdout=TRUE))
 ```
 
 It is lower than for the SARIMA model, which means that ETS(M,A,M) is more appropriate to the data in terms of information criteria than SARIMA(0,2,2)(0,1,1)$_{12}$. We can also investigate if there is a way to improve ETS(M,A,M) by adding some ARMA components (Figure \@ref(fig:adamETSPlotAirACFPACF)):
 
 ```{r adamETSPlotAirACFPACF, fig.cap="ACF and PACF of ETS(M,A,M) on AirPassengers data"}
 par(mfcol=c(1,2))
-plot(adamModelETS, c(10,11), main="")
+plot(adamETSAir, c(10,11), main="")
 ```
 
 Judging by the plots in Figure \@ref(fig:adamETSPlotAirACFPACF), significant correlation coefficients exist for some lags. Still, it is not clear whether they appear due to the type I error or not. Just to check, we will see if adding SARIMA(0,0,0)(0,0,1)$_{12}$ helps (reduces AICc) in this case:
