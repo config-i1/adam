@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-03-31" />
+<meta name="date" content="2022-04-11" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -585,7 +585,7 @@ div.csl-indent {
 <p><span id="unlabeled-div-3" class="remark"><em>Remark</em>. </span>The text in this section is based on the vignette for the <a href="https://cran.r-project.org/package=greybox">greybox package</a>, written by the author of this monograph.</p>
 </div>
 <p>When there is a need to select the most appropriate forecasting model or method for the data, the forecaster usually splits the sample into two parts: in-sample (aka “training set”) and holdout sample (aka out-sample or “test set”). The model is estimated on the in-sample, and its forecasting performance is evaluated <a href="errorMeasures.html#errorMeasures">using some error measure</a> on the holdout sample.</p>
-<p>Using this procedure only once is known as “fixed origin” evaluation. However, this might give a misleading impression of the accuracy of forecasting methods. If, for example, the time series contains outliers or level shifts, a poor model might perform better in fixed origin evaluation than a more appropriate one. Besides, a good performance might happen by chance. So it makes sense to have a more robust evaluation technique. An alternative procedure known as “rolling origin” evaluation is one such technique.</p>
+<p>Using this procedure only once is known as “fixed origin” evaluation. However, this might give a misleading impression of the accuracy of forecasting methods. If, for example, the time series contains outliers or level shifts, a poor model might perform better in fixed origin evaluation than a more appropriate one just by chance. So it makes sense to have a more robust evaluation technique, where the model’s performance is evaluated several times, not just once. An alternative procedure known as “rolling origin” evaluation is one such technique.</p>
 <p>In rolling origin evaluation, the forecasting origin is repeatedly moved forward, and forecasts are produced from each origin <span class="citation">(<a href="#ref-Tashman2000" role="doc-biblioref">Tashman, 2000</a>)</span>. This technique allows obtaining several forecast errors for time series, which gives a better understanding of how the models perform. This can be considered a time series analogue to cross-validation techniques <span class="citation">(<a href="#ref-WikipediaCrossValidation2020" role="doc-biblioref">Wikipedia, 2020</a>)</span>. Here is a simple graphical representation, courtesy of <a href="https://kourentzes.com/forecasting/">Nikos Kourentzes</a>.</p>
 <div class="figure"><span style="display:block;" id="fig:ROProcessAnimation"></span>
 <img src="images/03-ROAnimation.gif" alt="Rolling origin illustrated, by Nikos Kourentzes" width="75%" />
@@ -655,8 +655,8 @@ Figure 2.7: Rolling origin with constant in-sample size
 <div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb27-1"><a href="rollingOrigin.html#cb27-1" aria-hidden="true" tabindex="-1"></a><span class="fu">apply</span>(<span class="fu">abs</span>(returnedValues1<span class="sc">$</span>holdout <span class="sc">-</span> returnedValues1<span class="sc">$</span>pred),</span>
 <span id="cb27-2"><a href="rollingOrigin.html#cb27-2" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span>, mean, <span class="at">na.rm=</span><span class="cn">TRUE</span>) <span class="sc">/</span></span>
 <span id="cb27-3"><a href="rollingOrigin.html#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(returnedValues1<span class="sc">$</span>actuals)</span></code></pre></div>
-<pre><code>##         h1         h2         h3 
-## 0.09741976 0.07668368 0.08619456</code></pre>
+<pre><code>##        h1        h2        h3 
+## 0.1456704 0.1652038 0.1592864</code></pre>
 <p>In this example, we use the <code>apply()</code> function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with another one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:</p>
 <div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb29-1"><a href="rollingOrigin.html#cb29-1" aria-hidden="true" tabindex="-1"></a>ourCall <span class="ot">&lt;-</span> <span class="st">&quot;predict(arima(x=data,order=c(1,1,2)),n.ahead=h)&quot;</span></span>
 <span id="cb29-2"><a href="rollingOrigin.html#cb29-2" aria-hidden="true" tabindex="-1"></a>returnedValues2 <span class="ot">&lt;-</span> <span class="fu">ro</span>(y, <span class="at">h=</span><span class="dv">3</span>, <span class="at">origins=</span><span class="dv">8</span>,</span>
@@ -664,8 +664,8 @@ Figure 2.7: Rolling origin with constant in-sample size
 <span id="cb29-4"><a href="rollingOrigin.html#cb29-4" aria-hidden="true" tabindex="-1"></a><span class="fu">apply</span>(<span class="fu">abs</span>(returnedValues2<span class="sc">$</span>holdout <span class="sc">-</span> returnedValues2<span class="sc">$</span>pred),</span>
 <span id="cb29-5"><a href="rollingOrigin.html#cb29-5" aria-hidden="true" tabindex="-1"></a>      <span class="dv">1</span>, mean, <span class="at">na.rm=</span><span class="cn">TRUE</span>) <span class="sc">/</span></span>
 <span id="cb29-6"><a href="rollingOrigin.html#cb29-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(returnedValues2<span class="sc">$</span>actuals)</span></code></pre></div>
-<pre><code>##         h1         h2         h3 
-## 0.09430757 0.07221007 0.08473700</code></pre>
+<pre><code>##        h1        h2        h3 
+## 0.1463169 0.1644911 0.1579121</code></pre>
 <p>Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.</p>
 <p>We can also plot the forecasts from the rolling origin, which shows how the models behave:</p>
 <div class="sourceCode" id="cb31"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb31-1"><a href="rollingOrigin.html#cb31-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">1</span>))</span>
