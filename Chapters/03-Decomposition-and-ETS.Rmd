@@ -48,10 +48,10 @@ plot(ts(level+growth+seasonal+error, frequency=4),
      type="l", xlab="Time", ylab="Sales", ylim=c(80,160), main="Trend-seasonal time series")
 ```
 
-Figure \@ref(fig:allExample) shows artificial time series with the above components. The level, growth, and seasonal components in those plots are **deterministic**, they are fixed and do not evolve over time (growth is positive and equal to 1 from year to year). However, in real life, typically, these components will have more complex dynamics, changing over time and thus demonstrating their **stochastic** nature. For example, in the case of stochastic seasonality, the seasonal shape might change, and instead of having peaks in sales in January, the data would exhibit peaks in May due to the change in consumers' behaviour.
+Figure \@ref(fig:allExample) shows artificial time series with the above components. The level, growth, and seasonal components in those plots are **deterministic**, they are fixed and do not evolve over time (growth is positive and equal to 1 from year to year). However, in real life, typically, these components will have more complex dynamics, changing over time and thus demonstrating their **stochastic** nature. For example, in the case of stochastic seasonality, the seasonal shape might change, and instead of having peaks in sales in December, the data would exhibit peaks in February due to the change in consumers' behaviour.
 
 ::: remark
-Each textbook and paper might use slightly different names to refer to the aforementioned components. For example, in classical decomposition [@Persons1919], it is assumed that (1) and (2) jointly represent a "trend" component so that a model will contain error, trend and seasonality. This decomposition has modifications, which include cyclical component(s).
+Each textbook and paper might use slightly different names to refer to the aforementioned components. For example, in classical decomposition [@Persons1919], it is assumed that (1) and (2) jointly represent a "trend" component so that a model will contain error, trend and seasonality.
 :::
 
 When it comes to ETS, the growth component (2) is called "trend", so the model consists of the four components: level, trend, seasonal and the error term. We will use the ETS formulation in this monograph. According to this formulation, the components can interact in one of two ways: additively or multiplicatively. The pure additive model, in this case, can be summarised as:
@@ -64,7 +64,7 @@ where $l_{t-1}$ is the level, $b_{t-1}$ is the trend, $s_{t-m}$ is the seasonal 
     y_t = l_{t-1} b_{t-1} s_{t-m} \varepsilon_t ,
     (\#eq:PureMultiplicative)
 \end{equation}
-where $\varepsilon_t$ is the error term with a mean of one. The interpretation of the model \@ref(eq:PureAdditive) is that the different components add up to each other, so, for example, the sales increase over time by the value $b_{t-1}$, each January they typically change by the amount $s_{t-m}$, and that there is still some randomness in the model. The pure additive models can be applied to data with positive, negative and zero values. In the case of the multiplicative model \@ref(eq:PureMultiplicative), the interpretation is different, showing by how many times the sales change over time and from one season to another. The sales, in this case, will change every January by $(s_{t-m}-1)$% from the baseline. The model \@ref(eq: PureMultiplicative) only works on strictly positive data (data with purely negative values are also possible but rare in practice).
+where $\varepsilon_t$ is the error term with a mean of one. The interpretation of the model \@ref(eq:PureAdditive) is that the different components add up to each other, so, for example, the sales increase over time by the value $b_{t-1}$, each January they typically change by the amount $s_{t-m}$, and that in addition there is some randomness in the model. The pure additive models can be applied to data with positive, negative and zero values. In the case of the multiplicative model \@ref(eq:PureMultiplicative), the interpretation is different, showing by how many times the sales change over time and from one season to another. The sales, in this case, will change every January by $(s_{t-m}-1)$% from the baseline. The model \@ref(eq: PureMultiplicative) only works on strictly positive data (data with purely negative values are also possible but rare in practice).
 
 It is also possible to define mixed models in which, for example, the trend is additive but the other components are multiplicative:
 \begin{equation}
@@ -76,10 +76,10 @@ These models work well in practice when the data has large values far from zero.
 
 ## Classical Seasonal Decomposition {#ClassicalDecomposition}
 ### How to do?
-One of the classical textbook methods for decomposing the time series into unobservable components is "Classical Seasonal Decomposition" [@Persons1919]. It assumes either a pure additive or pure multiplicative model, is done using centred moving averages and is focused on approximation, not forecasting. The idea of the method can be summarised in the following steps:
+One of the classical textbook methods for decomposing the time series into unobservable components is "Classical Seasonal Decomposition" [@Persons1919]. It assumes either a pure additive or pure multiplicative model, is done using centred moving averages and is focused on splitting the data into components, not on forecasting. The idea of the method can be summarised in the following steps:
 
 1. Decide which of the models to use based on the type of seasonality in the data: additive \@ref(eq:PureAdditive) or multiplicative \@ref(eq:PureMultiplicative)
-2. Smooth the data using a centred moving average (CMA) of order equal to the periodicity of the data $m$. If $m$ is the an number then the formula is:
+2. Smooth the data using a centred moving average (CMA) of order equal to the periodicity of the data $m$. If $m$ is an odd number then the formula is:
 \begin{equation}
     d_t = \frac{1}{m}\sum_{i=-(m-1)/2}^{(m-1)/2} y_{t+i},
     (\#eq:CMAOdd)
@@ -109,26 +109,34 @@ The functions in R typically allow selecting between additive and multiplicative
 :::
 
 ### A couple of examples
-An example of the classical decomposition in R is the `decompose()` function from `stats` package. Here is an example with pure multiplicative model and `AirPassengers` data:
-```{r decomposeAirPassengers}
+An example of the classical decomposition in R is the `decompose()` function from `stats` package. Here is an example with pure multiplicative model and `AirPassengers` data (Figure \@ref(fig:decomposeAirPassengers)).
+
+```{r decomposeAirPassengers, fig.cap="Decomposition of AirPassengers time series according to multiplicative model."}
 ourDecomposition <- decompose(AirPassengers,
                               type="multiplicative")
-plot(ourDecomposition)
+plot(ourDecomposition, main="")
 ```
 
-We can see that the function has smoothed the original series and produced the seasonal indices. Note that the trend component has gaps at the beginning and the end. This is because the method relies on CMA (see above). Note also that the error term still contains some seasonal elements, which is a downside of such a simple decomposition procedure. However, the lack of precision in this method is compensated by the simplicity and speed of calculation. Note again that the trend component in `decompose()` function is in fact $d_t = l_{t}+b_{t}$.
+We can see from Figure \@ref(fig:decomposeAirPassengers) that the function has smoothed the original series and produced the seasonal indices. Note that the trend component has gaps at the beginning and the end. This is because the method relies on CMA (see above). Note also that the error term still contains some seasonal elements, which is a downside of such a simple decomposition procedure. However, the lack of precision in this method is compensated by the simplicity and speed of calculation. Note again that the trend component in `decompose()` function is in fact $d_t = l_{t}+b_{t}$.
 
-Here is an example of decomposition of the **non-seasonal data** (we assume pure additive model in this example):
-```{r decomposeRandomNoise}
+Figure \@ref(fig:decomposeRandomNoise) shows an example of decomposition of the **non-seasonal data** (we assume pure additive model in this example).
+
+```{r decomposeRandomNoise, fig.cap="Decomposition of AirPassengers time series according to additive model."}
 y <- ts(c(1:100)+rnorm(100,0,10),frequency=12)
 ourDecomposition <- decompose(y, type="additive")
 plot(ourDecomposition)
 ```
 
-As you can see, the original data is not seasonal, but the decomposition assumes that it is and proceeds with the default approach returning a seasonal component. You get what you ask for.
+As we can see from Figure \@ref(fig:decomposeRandomNoise), the original data is not seasonal, but the decomposition assumes that it is and proceeds with the default approach returning a seasonal component. You get what you ask for.
 
-### Other techniques
-There are other techniques that decompose series into error, trend and seasonal components but make different assumptions about each component. The general procedure, however, always remains the same: (1) smooth the original series, (2) extract the seasonal components, (3) smooth them out. The methods differ in the smoother they use (LOESS, e.g., uses a bisquare function instead of CMA), and in some cases, multiple rounds of smoothing are performed to make sure that the components are split correctly.
+### Other decomposition techniques
+There are other techniques that decompose series into error, trend and seasonal components but make different assumptions about each component. The general procedure, however, always remains the same:
+
+1. smooth the original series,
+2. extract the seasonal components,
+3. smooth them out.
+
+The methods differ in the smoother they use (e.g., LOESS uses a bisquare function instead of CMA), and in some cases, multiple rounds of smoothing are performed to make sure that the components are split correctly.
 
 There are many functions in R that implement seasonal decomposition. Here is a small selection:
 
@@ -138,19 +146,19 @@ There are many functions in R that implement seasonal decomposition. Here is a s
 - `msdecompose()` from the `smooth` package does a classical decomposition for multiple seasonal series.
 
 ### "Why bother?"
-"Why to decompose?" you may wonder at this point. Understanding the idea behind decompositions and how to perform them helps understand ETS, which relies on it. From a practical point of view, it can be helpful if you want to see if there is a trend in the data and whether the residuals contain outliers or not. It will _not_ show you if the data is seasonal as the seasonality is _assumed_ in the decomposition (I stress this because many students think otherwise). Additionally, when seasonality cannot be added to the model under consideration decomposing the series, predicting the trend and then reseasonalising can be a viable solution. Finally, the values from the decomposition can be used as starting points for the estimation of components in ETS or other dynamic models relying on the error-trend-seasonality.
+"Why to decompose?" you may wonder at this point. Understanding the idea behind decompositions and how to perform them helps understand ETS, which relies on it. From a practical point of view, it can be helpful if you want to see if there is a trend in the data and whether the residuals contain outliers or not. It will _not_ show you if the data is seasonal as the seasonality is _assumed_ in the decomposition (I stress this because many students think otherwise). Additionally, when seasonality cannot be added to a particular model under consideration, decomposing the series, predicting the trend and then reseasonalising can be a viable solution. Finally, the values from the decomposition can be used as starting points for the estimation of components in ETS or other dynamic models relying on the error-trend-seasonality.
 
 
 ## Simple forecasting methods {#simpleForecastingMethods}
 Now that we understand that time series might contain different components and that there are approaches for their decomposition, we can introduce several simple forecasting methods that can be used in practice, at least as benchmarks. Their usage aligns with the idea of forecasting principles discussed in Section \@ref(forecastingPrinciples).
 
 ### Naïve {#Naive}
-Naïve is one of the simplest forecasting methods. According to each, the one-step-ahead forecast is equal to the most recent actual value:
+Naïve is one of the simplest forecasting methods. According to it, the one-step-ahead forecast is equal to the most recent actual value:
 \begin{equation}
     \hat{y}_t = y_{t-1} .
     (\#eq:Naive)
 \end{equation}
-Using this approach might sound naïve indeed, but there are cases where it is very hard to outperform the method. Consider an example with temperature forecasting. If we want to know what the temperature outside will be in 5 minutes, then Naïve would be typically very accurate: the temperature in 5 minutes will be the same as it is right now. The statistical model underlying Naïve is called "Random Walk" and is written as:
+Using this approach might sound naïve indeed, but there are cases where it is very hard to outperform the method. Consider an example with temperature forecasting. If we want to know what the temperature outside will be in 5 minutes, then Naïve would be typically very accurate: the temperature in 5 minutes will be the same as it is right now. The statistical model underlying Naïve is called the "Random Walk" and is written as:
 \begin{equation}
     y_t = y_{t-1} + \epsilon_t.
     (\#eq:RandomWalk)
@@ -166,11 +174,11 @@ plot(testModel, 7, main="")
 
 As shown from the plot in Figure \@ref(fig:naiveExample), Naïve lags behind the actual time series by one observation because of how it is constructed via equation \@ref(eq:Naive). The point forecast corresponds to the straight line parallel to the x-axis. Given that the data was generated from Random Walk, the point forecast shown in Figure \@ref(fig:naiveExample) is the best possible forecast for the time series, even though it exhibits rapid changes in the level.
 
-Note that if the time series exhibits level shifts or other types of unexpected changes in dynamics, Naïve will update rapidly and reach the new level instantaneously. However, because it only has a memory of one (last) observation, it will not filter out the noise in the data but rather copy it into the future. So, it has limited usefulness in practice. However, being the simplest possible forecasting method, it is considered one of the basic forecasting benchmarks. If your model cannot beat it, it is not worth using.
+Note that if the time series exhibits level shifts or other types of unexpected changes in dynamics, Naïve will update rapidly and reach the new level instantaneously. However, because it only has a memory of one (last) observation, it will not filter out the noise in the data but rather copy it into the future. So, it has limited usefulness in demand forecasting (although it has applications in financial analysis). However, being the simplest possible forecasting method, it is considered one of the basic forecasting benchmarks. If your model cannot beat it, it is not worth using.
 
 
 ### Global Mean {#GlobalMean}
-While Naïve considered only one observation (the most recent one), global mean (aka "global average") relies on all the observations in the data:
+While Naïve considered only one observation (the most recent one), the global mean (aka "global average") relies on all the observations in the data:
 \begin{equation}
     \hat{y}_t = \bar{y} = \frac{1}{T} \sum_{t=1}^T y_{t} ,
     (\#eq:GlobalMean)
@@ -200,7 +208,7 @@ Naïve and Global Mean can be considered as opposite points in the spectrum of p
 \end{equation}
 which implies going through time series with something like a "window" of $m$ observations and using their average for forecasting. The order $m$ determines the length of the memory of the method: if it is equal to 1, then \@ref(eq:SMA) turns into Naïve, while in the case of $m=T$ it transforms into Global Mean. The order $m$ is typically decided by a forecaster, keeping in mind that the lower $m$ corresponds to the shorter memory method, while the higher one corresponds to the longer one.
 
-@Svetunkov2017 have shown that SMA has an underlying non-stationary AR(m) model with $\phi_j=\frac{1}{m}$ for all $j=1, \dots, m$. While the conventional approach to forecasting from SMA is to produce the straight line, equal to the last obtained observation, @Svetunkov2017 demonstrate that, in general, the point forecast does not correspond to the straight line.
+@Svetunkov2017 have shown that SMA has an underlying non-stationary AR(m) model with $\phi_j=\frac{1}{m}$ for all $j=1, \dots, m$. While the conventional approach to forecasting from SMA is to produce the straight line, equal to the last fitted value, @Svetunkov2017 demonstrate that, in general, the point forecast does not correspond to the straight line.
 
 ```{r SMAExample, fig.cap="Examples of SMA time series and several SMA models of different orders applied to it."}
 y <- sim.sma(10,120)
@@ -225,7 +233,7 @@ plot(testModel, 7, main=testModel$model)
 
 Figure \@ref(fig:SMAExample) demonstrates the time series generated from SMA(10) and several SMA models applied to it. We can see that the higher orders of SMA lead to smoother fitted lines and calmer point forecasts. On the other hand, the SMA of a very high order, such as SMA(110), does not follow the changes in time series efficiently, ignoring the potential changes in level. Given the difficulty with selecting the order $m$, @Svetunkov2017 proposed using information criteria for the order selection of SMA in practice.
 
-Finally, an attentive reader has already spotted that the formula for SMA corresponds to the procedure of CMA of an odd order from equation \@ref(eq:CMAOdd). They are similar, but they have a different purpose: CMA is needed to smooth out the series, the calculated values are inserted in the middle of the average, while SMA is used for forecasting, and the point forecasts are inserted at the end of the average.
+Finally, an attentive reader has already spotted that the formula for SMA corresponds to the procedure of CMA of an odd order from equation \@ref(eq:CMAOdd). They are similar, but they have a different purpose: CMA is needed to smooth out the series, the calculated values are inserted in the middle of the average, while SMA is used for forecasting, and the point forecasts are inserted at the last period of the average.
 
 
 ### Random Walk with drift {#RWWithDrift}
@@ -260,10 +268,10 @@ Finally, in the case of seasonal data, there is a simple forecasting method that
 \end{equation}
 where $m$ is the seasonal frequency. This method has an underlying model, Seasonal Random Walk:
 \begin{equation}
-    \hat{y}_t = y_{t-m} + \epsilon_t.
+    y_t = y_{t-m} + \epsilon_t.
     (\#eq:RWSeasonal)
 \end{equation}
-Similar to Naïve, the higher variability of the error term $\epsilon_t$ in \@ref(eq:RWSeasonal) is, the faster the data exhibit changes. Seasonal Naïve does not require estimation of any parameters and thus is considered one of the popular benchmarks in seasonal data. Figure \@ref(fig:NaiveSeasonalExample) demonstrates how the data generated from seasonal Random Walk looks and how the point forecast from the seasonal Naïve applied to this data performs.
+Similar to Naïve, the higher variability of the error term $\epsilon_t$ in \@ref(eq:RWSeasonal) is, the faster the data exhibit changes. Seasonal Naïve does not require estimation of any parameters and thus is considered one of the popular benchmarks to use with seasonal data. Figure \@ref(fig:NaiveSeasonalExample) demonstrates how the data generated from seasonal Random Walk looks and how the point forecast from the seasonal Naïve applied to this data performs.
 
 ```{r NaiveSeasonalExample, fig.cap="Seasonal Random Walk and Seasonal Naïve."}
 y <- sim.ssarima(orders=list(i=1), lags=4,
@@ -339,9 +347,9 @@ for(i in 1:15){
 
 Things to note from the plots in Figure \@ref(fig:ETSTaxonomyAdditive):
 
-1. When seasonality is multiplicative, its amplitude increases with the increase of the level of the data, while with additive seasonality, the amplitude is constant. Compare, for example, ETS(A,A,A) with ETS(A,A,M): for the former, the distance between the highest and the lowest points in the first year is roughly the same as in the last year. In the case of ETS(A,A,M) the distance increases with the increase in the level of series.
-2. When the trend is multiplicative, data exhibits exponential growth/decay result.
-3. The damped trend models slow down both additive and multiplicative trends.
+1. When seasonality is multiplicative, its amplitude increases with the increase of the level of the data, while with additive seasonality, the amplitude is constant. Compare, for example, ETS(A,A,A) with ETS(A,A,M): for the former, the distance between the highest and the lowest points in the first year is roughly the same as in the last year. In the case of ETS(A,A,M) the distance increases with the increase in the level of series;
+2. When the trend is multiplicative, data exhibits exponential growth/decay;
+3. The damped trend models slow down both additive and multiplicative trends;
 4. It is practically impossible to distinguish additive and multiplicative seasonality if the level of series does not change because the amplitude of seasonality will be constant in both cases (compare ETS(A,N,A) and ETS(A,N,M)).
 
 Figure \@ref(fig:ETSTaxonomyMultiplicative) demonstrates a similar plot for the multiplicative error models.
@@ -366,11 +374,11 @@ for(i in 16:30){
 
 The plots in Figure \@ref(fig:ETSTaxonomyMultiplicative) show roughly the same idea as the additive case, the main difference being that the variance of the error increases with the increase of the level of the data -- this becomes clearer on ETS(M,A,N) and ETS(M,M,N) data. This property is called heteroscedasticity in statistics, and @Hyndman2008b argue that the main benefit of the multiplicative error models is in capturing this feature.
 
-We will discuss the most important ETS family members in the following chapters. Not all the models in this taxonomy are sensible, and some are typically ignored entirely. Although ADAM implements the entire taxonomy, we will discuss potential issues and what to expect from them.
+We will discuss the most important ETS family members in the following chapters. Note that not all the models in this taxonomy are sensible, and some are typically ignored entirely (this applies mainly to models with a mixture of additive and multiplicative components). ADAM implements the entire taxonomy, but we need to be aware of the potential issues with some of models, and we will discuss what to expect from them in different situations.
 
 
 ## Mathematical models in the ETS taxonomy {#ETSTaxonomyMaths}
-I hope that it becomes more apparent to the reader how the ETS framework is built upon the idea of time series decomposition (from Section \@ref(tsComponents)). By introducing different components, defining their types, and adding the equations for their update, we can construct models that would work better on the time series. The equations discussed in Section \@ref(tsComponents) represent so-called "measurement" or "observation" equations of the ETS models. But we should also consider the potential change in components over time. The "transition" or "state" equation is supposed to reflect this change: they explain how the level, trend or seasonal components evolve.
+I hope that it becomes more apparent to the reader how the ETS framework is built upon the idea of time series decomposition (from Section \@ref(tsComponents)). By introducing different components, defining their types, and adding the equations for their update, we can construct models that would work better in capturing the key features of the time series. The equations discussed in Section \@ref(tsComponents) represent so-called "measurement" or "observation" equations of the ETS models. But we should also consider the potential change in components over time. The "transition" or "state" equations are supposed to reflect this change: they explain how the level, trend or seasonal components evolve.
 
 As discussed in Section \@ref(ETSTaxonomy), given different types of components and their interactions, we end up with 30 models in the taxonomy. Tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) summarise mathematically all 30 ETS models shown graphically on Figures \@ref(fig:ETSTaxonomyAdditive) and \@ref(fig:ETSTaxonomyMultiplicative), presenting formulae for measurement and transition equations.
 
@@ -544,14 +552,14 @@ From a statistical point of view, formulae in Tables \@ref(tab:ETSAdditiveError)
 
 Table \@ref(tab:ETSModelsForecasts) summarises:
 
-- Conditional one step ahead expectation $\mu_{y,t} = \mu_{y,t|t-1}$;
+- Conditional one step ahead expectation $\mu_{y,t} \equiv \mu_{y,t|t-1}$;
 - Multiple steps ahead point forecast $\hat{y}_{t+h}$;
 - Conditional multiple steps ahead expectation $\mu_{y,t+h|t}$;
 
-In the case of the additive error models, the point forecasts correspond to the expectations only when the expectation of the error term is zero, i.e. $\text{E}(\epsilon_t)=0$. In contrast, in the case of the multiplicative one, the condition is changed to $\text{E}(1+\epsilon_t)=1$.
+In the case of the additive error models, the point forecasts correspond to the expectations only when the expectation of the error term is zero, i.e. $\text{E}(\epsilon_t)=0$. In contrast, in the case of the multiplicative models, the condition is changed to $\text{E}(1+\epsilon_t)=1$.
 
 ::: remark
-**Not all the point forecasts of ETS models correspond to conditional expectations**. This issue applies to the models with multiplicative trend and/or multiplicative seasonality. This is because the ETS model assumes that different states are correlated (they have the same source of error), and as a result, multiple steps ahead values (when h>1) of states introduce products of error terms. So, the conditional expectations in these cases might not have analytical forms ("n.c.f." in Table \@ref(tab:ETSModelsForecasts) stands for "no closed-form"), and when working with these models, simulations might be required. This does not apply to the one-step-ahead forecasts, for which all the classical formulae work.
+**Not all the point forecasts of ETS models correspond to conditional expectations**. This issue applies to the models with multiplicative trend and/or multiplicative seasonality. This is because the ETS model assumes that different states are correlated (they have the same source of error), and as a result, multiple steps ahead values (when h>1) of states introduce products of error terms. So, the conditional expectations in these cases might not have analytical forms ("n.c.f." in Table \@ref(tab:ETSModelsForecasts) stands for "no closed-form"), and when working with these models, simulations might be required. This does not apply to the one-step-ahead forecasts, for which all the classical formulae work. This issue is discussed in Section \@ref(pureMultiplicativeExpectationAndVariance).
 :::
 
 ```{r ETSModelsForecasts, echo=FALSE}
