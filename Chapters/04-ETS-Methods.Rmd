@@ -10,9 +10,9 @@ We start our discussion of exponential smoothing with the original Simple Expone
   \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \hat{y}_{t},
   (\#eq:BrownMethod)
 \end{equation}
-where $\hat{\alpha}$ is the smoothing parameter defined by analyst and which is typically restricted with (0, 1) region (this region is arbitrary, and we will see in Section \@ref(ETSParametersBounds) what is the correct one). This is one of the simplest forecasting methods. The smoothing parameter is typically interpreted as a weight between the actual value and the predicted one-step-ahead. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value $\hat{y}_{t}$ and the new information is neglected. If $\hat{\alpha}=0$, then the method becomes equivalent to the Global Mean method, discussed in Section \@ref(GlobalMean). When it is close to one, then mainly the actual value ${y}_{t}$ is taken into account. If $\hat{\alpha}=1$, then the method transforms into Naïve, discussed in Section \@ref(Naive). By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
+where $\hat{\alpha}$ is the smoothing parameter, which is typically restricted within (0, 1) region (this region is arbitrary, and we will see in Section \@ref(ETSParametersBounds) what is the correct one). This is one of the simplest forecasting methods. The smoothing parameter is typically interpreted as a weight between the latest actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value $\hat{y}_{t}$ and the new information is neglected. If $\hat{\alpha}=0$, then the method becomes equivalent to the Global Mean method, discussed in Section \@ref(GlobalMean). When it is close to one, then most of the weight is assigned to the actual value ${y}_{t}$. If $\hat{\alpha}=1$, then the method transforms into Naïve, discussed in Section \@ref(Naive). By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
 
-Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature. Still, the state of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function [@Hyndman2002]. Typically MSE (see Section \@ref(errorMeasures)) is used as one, minimising the squares of one step ahead forecast errors.
+Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature. Still, the state of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function [@Hyndman2002]. Typically MSE (see Section \@ref(errorMeasures)) is used, minimising the squares of one step ahead forecast errors.
 
 
 ### Examples of application
@@ -36,7 +36,7 @@ With $\hat{\alpha}=0.1$, SES manages to get to the new level, but now the method
 
 ```{r SESExamples, fig.cap="SES with different smoothing parameters applied to the same data.", echo=FALSE}
 par(mfcol=c(3,1), mar=c(2,2,3,1))
-ourModel <- es(y, model="ANN", h=10, persistence=0.2)
+ourModel <- es(y, model="ANN", h=10, persistence=0.1)
 plot(ourModel, 7, main=paste0("SES with alpha=",
                               ourModel$persistence))
 ourModel <- es(y, model="ANN", h=10, persistence=0.3)
@@ -63,7 +63,7 @@ plot(ourModel, 7, main=paste0("SES with alpha=",
                               round(ourModel$persistence,3)))
 ```
 
-This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$. Still, it has been shown in the literature that the optimisation of smoothing parameters on average leads to improvements in terms of forecasting accuracy [see, for example, @Fildes1992].
+This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$. Still, it has been shown in the literature that the optimisation of smoothing parameters on average leads to improvements in terms of forecasting accuracy [see, for example, @Gardner1985].
 
 
 ### Why "exponential"? {#whyExponential}
@@ -101,14 +101,14 @@ Finally, there is an alternative form of SES, known as error correction form, wh
   \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
   (\#eq:SESErrorCorrection)
 \end{equation}
-In this form, the smoothing parameter $\hat{\alpha}$ has a different meaning: it regulates how much the model reacts to the forecast error. In this interpretation, it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero to filter out the noise, not to adapt to it.
+In this form, the smoothing parameter $\hat{\alpha}$ has a different meaning: it regulates how much the model reacts to the previous forecast error. In this interpretation, it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero to filter out the noise, not to adapt to it.
 
 As you see, SES is a straightforward method. It is easy to explain to practitioners, and it is very easy to implement in practice. However, this is just a forecasting method (see Section \@ref(modelsMethods)), so it provides a way of generating point forecasts but does not explain where the error comes from and how to create prediction intervals.
 
 
 ## SES and ETS {#SESandETS}
 ### ETS(A,N,N)
-There have been several tries to develop statistical models underlying SES, and we know now that the model has underlying ARIMA(0,1,1), local level MSOE [Multiple Source of Error, @Muth1960] and SSOE [Single Source of Error, @Snyder1985] models. According to @Hyndman2002, the ETS(A,N,N) model also underlies the SES method. To see the connection and to get to it from SES, we need to recall two things: how in general, the actual value relates to the forecast error and the fitted value, and the error correction form of SES from Subsection \@ref(SESEC):
+There have been several tries to develop statistical models underlying SES, and we know now that the model has underlying ARIMA(0,1,1) [@Muth1960], local level MSOE [Multiple Source of Error, @Muth1960] and SSOE [Single Source of Error, @Snyder1985] models. According to @Hyndman2002, the ETS(A,N,N) model also underlies the SES method. To see the connection and to get to it from SES, we need to recall two things: how in general, the actual value relates to the forecast error and the fitted value, and the error correction form of SES from Subsection \@ref(SESEC):
 \begin{equation}
   \begin{aligned}
     & y_t = \hat{y}_{t} + e_t \\
@@ -368,7 +368,7 @@ esModel <- es(y, h=10, silent=FALSE)
 
 
 ::: remark
-The point forecasts produced from this model do not correspond to the conditional expectations. This was discussed in Section \@ref(ETSTaxonomyMaths).
+The point forecasts produced from this model do not correspond to the conditional expectations. This will be discussed in Section \@ref(ADAMETSMixedModelsGroup3).
 :::
 
 @Hyndman2008b argue that in ETS models, the error term should be aligned with the seasonal component because it is difficult to motivate why the amplitude of seasonality increases with the increase of level, while the variability of the error term stays the same. So, they recommend using ETS(M,A,M) instead of ETS(A,A,M) if you deal with positive high volume data. This is a reasonable recommendation, but keep in mind that both models might break if you deal with low volume data.
@@ -477,7 +477,7 @@ where $\sigma^2$ is the variance of the error term. Formulae \@ref(eq:ETSConvent
 ## Parameters bounds {#ETSParametersBounds}
 While many practitioners and academics accept that the smoothing parameters of ETS models should lie between zero and one, this is not entirely true for the models. There are, in fact, several possible restrictions on smoothing parameters, and it is worth discussing them separately:
 
-1. **Classical or conventional** bounds are $\alpha, \beta, \gamma \in (0,1)$. The idea behind them originates from the simple exponential smoothing method (Section \@ref(SES)), where it is logical to restrict the bounds with this region because then the smoothing parameters regulate what weight the actual value $y_t$ will have and what weight will be assigned to the predicted one $\hat{y}_t$. @Hyndman2008b showed that this condition is sometimes too loose and, in other cases, is too restrictive to some ETS models. @Brenner1968 was one of the first to show that the bounds are wider than this region for many exponential smoothing methods. Still, the conventional restriction is the most often used in practice, just because it is nice to work with.
+1. **Classical or conventional** bounds are $\alpha, \beta, \gamma \in (0,1)$. The idea behind them originates from the simple exponential smoothing method (Section \@ref(SES)), where it is logical to restrict the bounds with this region because then the smoothing parameters regulate what weight the actual value $y_t$ will have and what weight will be assigned to the predicted one $\hat{y}_t$. @Hyndman2008b showed that this condition is sometimes too loose and, in other cases, is too restrictive to some ETS models. @Brenner1968 was one of the first to show that the bounds are wider than this region for many exponential smoothing methods. Still, the conventional restriction is the most often used in practice, just because it is easy to interpret.
 
 2. **Usual or traditional** bounds are those that satisfy the set of the following equations:
 \begin{equation}
@@ -498,4 +498,4 @@ This set of restrictions guarantees that the weights decline over time exponenti
 
 As you see, the admissible bounds are much wider than the conventional and usual ones. In fact, smoothing parameters can become either negative or greater than one in some cases for some models, which is hard to interpret but might indicate that the data is difficult to predict. Furthermore, the admissible bounds correspond to the restrictions of the parameters for ARIMA models, underlying some of pure additive ETS models. In a way, they are more natural for the ETS models than the other two because they follow the formulation and arise naturally. However, their usage in practice has been met with mixed success, with only a handful of papers using them instead of (1) or (2) [e.g. @Gardner2008; mention that they appear in some cases and @Snyder2017 use them in their model].
 
-The admissible bounds are calculated based on the discount matrix in the R code, which will be discussed in the context of pure additive ADAM ETS models in the chapter \@ref(ADAMETSPureAdditive).
+The admissible bounds are calculated based on the discount matrix in the R code, which will be discussed in the context of pure additive ADAM ETS models in Chapter \@ref(ADAMETSPureAdditive).
