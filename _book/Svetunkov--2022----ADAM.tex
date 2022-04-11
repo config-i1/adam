@@ -399,7 +399,7 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well behaved data, point forecast and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell which bound the demand will lie in \(1-\alpha\) per cent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 80.25 and 121.41. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell which bound the demand will lie in \(1-\alpha\) per cent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 80.35 and 118.67. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For a more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 5 of \citet{SvetunkovSBA}.
 
@@ -960,7 +960,11 @@ Using this procedure only once is known as ``fixed origin'' evaluation. However,
 
 In rolling origin evaluation, the forecasting origin is repeatedly moved forward by a fixed number of observations, and forecasts are produced from each origin \citep{Tashman2000}. This technique allows obtaining several forecast errors for time series, which gives a better understanding of how the models perform. This can be considered a time series analogue to cross-validation techniques \citep{WikipediaCrossValidation2020}. Here is a simple graphical representation, courtesy of \href{https://kourentzes.com/forecasting/}{Nikos Kourentzes}.
 
-\includegraphics{./images/03-ROAnimation.jpg}
+\begin{figure}
+\includegraphics[width=0.75\linewidth]{./images/03-ROAnimation} \caption{Rolling origin illustrated, by Nikos Kourentzes}\label{fig:ROProcessAnimation}
+\end{figure}
+
+The plot in Figure \ref{fig:ROProcessAnimation} shows how the origin moves forward and the point and interval forecasts of the model change. As a result, this procedure gives information about the performance of the model over a set of observations, not on a random one.
 
 There are different options of how this can be done.
 
@@ -969,15 +973,21 @@ There are different options of how this can be done.
 
 Figure \ref{fig:ROProcessCO} \citep{Svetunkov2017} illustrates the basic idea behind rolling origin. White cells correspond to the in-sample data, while the light grey cells correspond to the three-steps-ahead forecasts. The time series in the figure has 25 observations, and forecasts are produced for eight origins starting from observation 15. The model is estimated on the first in-sample set, and forecasts are created for the holdout. Next, another observation is added to the end of the in-sample set, the test set is advanced, and the procedure is repeated. The process stops when there is no more data left. This is a rolling origin with a \textbf{constant holdout} sample size. As a result of this procedure, eight one to three steps ahead forecasts are produced. Based on them, we can calculate the preferred error measures and choose the best performing model (see Section \ref{errorMeasuresAggregate}).
 
-\includegraphics{./images/03-ROProcessCO.jpg}
+\begin{figure}
+\includegraphics[width=0.75\linewidth]{./images/03-ROProcessCO} \caption{Rolling origin with constant holdout size}\label{fig:ROProcessCO}
+\end{figure}
 
-Another option for producing forecasts via rolling origin would be to continue with rolling origin even when the test sample is smaller than the forecast horizon, as shown in Figure \ref{fig:ROProcessNoCO}. In this case, the procedure continues until origin 22, when the last complete set of three-steps-ahead forecasts can be produced but continues with a decreasing forecasting horizon. So the two-steps-ahead forecast is produced from origin 23, and only a one-step-ahead forecast is produced from origin 24. As a result, we obtain ten one-step-ahead forecasts, nine two-steps-ahead forecasts and eight three-steps-ahead forecasts. This is a rolling origin with a \textbf{non-constant holdout} sample size, which can be helpful with small samples when we don't have enough observations.
+Another option for producing forecasts via rolling origin would be to continue with rolling origin even when the test sample is smaller than the forecast horizon, as shown in Figure \ref{fig:ROProcessNoCO}. In this case, the procedure continues until origin 22, when the last complete set of three-steps-ahead forecasts can be produced but continues with a decreasing forecasting horizon. So the two-steps-ahead forecast is produced from origin 23, and only a one-step-ahead forecast is produced from origin 24. As a result, we obtain ten one-step-ahead forecasts, nine two-steps-ahead forecasts and eight three-steps-ahead forecasts. This is a rolling origin with a \textbf{non-constant holdout} sample size, which can be helpful with small samples when not enough observations are available.
 
-\includegraphics{./images/03-ROProcessNoCO.jpg}
+\begin{figure}
+\includegraphics[width=0.75\linewidth]{./images/03-ROProcessNoCO} \caption{Rolling origin with non-constant holdout size}\label{fig:ROProcessNoCO}
+\end{figure}
 
 Finally, in both cases above, we had the \textbf{increasing in-sample} size. However, we might need a \textbf{constant in-sample} for some research purposes. Figure \ref{fig:ROProcessCOCI} demonstrates such a setup. In this case, in each iteration, we add an observation to the end of the in-sample series and remove one from the beginning (dark grey cells).
 
-\includegraphics{./images/03-ROProcessCOCI.jpg}
+\begin{figure}
+\includegraphics[width=0.75\linewidth]{./images/03-ROProcessCOCI} \caption{Rolling origin with constant in-sample size}\label{fig:ROProcessCOCI}
+\end{figure}
 
 \hypertarget{rolling-origin-in-r}{%
 \subsection{Rolling origin in R}\label{rolling-origin-in-r}}
@@ -1012,7 +1022,9 @@ In order not to overcomplicate things, we start from collecting the conditional 
 \end{Highlighting}
 \end{Shaded}
 
-\textbf{NOTE}: If you do not specify the value to return, the function will try to return everything, but it might fail, especially if many values are returned. So, to be on the safe side, \textbf{always provide the \texttt{value}, when possible}.
+\begin{remark}
+If you do not specify the value to return, the function will try to return everything, but it might fail, especially if many values are returned. So, to be on the safe side, \textbf{always provide the \texttt{value}, when possible}.
+\end{remark}
 
 Now that we have specified \texttt{ourCall} and \texttt{ourValue}, we can produce forecasts from the model using rolling origin. Let's say that we want three-steps-ahead forecasts and eight origins with the default values of all the other parameters:
 
@@ -1058,15 +1070,15 @@ The function returns a list with all the values that we asked for plus the actua
 \end{Shaded}
 
 \begin{verbatim}
-##        h1        h2        h3 
-## 0.1283121 0.1177717 0.1059684
+##         h1         h2         h3 
+## 0.08134425 0.06432895 0.06230937
 \end{verbatim}
 
-In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with another one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:
+In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with an alternative one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{ourCall }\OtherTok{\textless{}{-}} \StringTok{"predict(arima(x=data,order=c(1,1,2)),n.ahead=h)"}
+\NormalTok{ourCall }\OtherTok{\textless{}{-}} \StringTok{"predict(arima(x=data,order=c(0,2,2)),n.ahead=h)"}
 \NormalTok{returnedValues2 }\OtherTok{\textless{}{-}} \FunctionTok{ro}\NormalTok{(y, }\AttributeTok{h=}\DecValTok{3}\NormalTok{, }\AttributeTok{origins=}\DecValTok{8}\NormalTok{,}
                       \AttributeTok{call=}\NormalTok{ourCall, }\AttributeTok{value=}\NormalTok{ourValue)}
 \FunctionTok{apply}\NormalTok{(}\FunctionTok{abs}\NormalTok{(returnedValues2}\SpecialCharTok{$}\NormalTok{holdout }\SpecialCharTok{{-}}\NormalTok{ returnedValues2}\SpecialCharTok{$}\NormalTok{pred),}
@@ -1076,8 +1088,8 @@ In this example, we use the \texttt{apply()} function to distinguish between the
 \end{Shaded}
 
 \begin{verbatim}
-##        h1        h2        h3 
-## 0.1173522 0.1105932 0.1004630
+##         h1         h2         h3 
+## 0.08228041 0.05818945 0.05358393
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.
@@ -1110,7 +1122,7 @@ Practically speaking, if we have a set of forecasts from different models we can
 \NormalTok{                          returnedValues1}\SpecialCharTok{$}\NormalTok{pred)[}\DecValTok{1}\NormalTok{,],}
                     \FunctionTok{abs}\NormalTok{(returnedValues1}\SpecialCharTok{$}\NormalTok{holdout }\SpecialCharTok{{-}}
 \NormalTok{                          returnedValues2}\SpecialCharTok{$}\NormalTok{pred)[}\DecValTok{1}\NormalTok{,])}
-\FunctionTok{colnames}\NormalTok{(aeValuesh1) }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"ARIMA(0,1,1)"}\NormalTok{,}\StringTok{"ARIMA(1,1,2)"}\NormalTok{)}
+\FunctionTok{colnames}\NormalTok{(aeValuesh1) }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\StringTok{"ARIMA(0,1,1)"}\NormalTok{,}\StringTok{"ARIMA(0,2,2)"}\NormalTok{)}
 \FunctionTok{boxplot}\NormalTok{(aeValuesh1)}
 \FunctionTok{points}\NormalTok{(}\FunctionTok{apply}\NormalTok{(aeValuesh1,}\DecValTok{2}\NormalTok{,mean),}\AttributeTok{pch=}\DecValTok{16}\NormalTok{,}\AttributeTok{col=}\StringTok{"red"}\NormalTok{)}
 \end{Highlighting}
@@ -1127,7 +1139,9 @@ The boxplots in Figure \ref{fig:roExample02} can be interpreted as any other box
 \hypertarget{statisticalTests}{%
 \section{Statistical comparison of forecasts}\label{statisticalTests}}
 
-After applying several competing models to the data and obtaining a distribution of error terms, we might find that some performed very similarly. In this case, there might be a question, whether the difference is significant and which of the forecasting models we should select. Consider the following artificial example, where we have four competing models and measure their performance in terms of RMSSE:
+After applying several competing models to the data and obtaining a distribution of error terms, we might find that some performed very similarly. In this case, there might be a question, whether the difference is significant and which of the forecasting models we should select. If they produce similar forecasts then it might make sense to select the one that is less computationally expensive or easier to work with.
+
+Consider the following artificial example, where we have four competing models and measure their performance in terms of RMSSE:
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -1183,15 +1197,15 @@ This is all the basics of descriptive statistics, which allows concluding that i
 
 We should not make hasty decisions, and we should remember that we are dealing with a sample of data (100 time series), so inevitably, the performance of methods will change if we try them on different data sets. If we had a population of all the time series in the world, we could run our methods and make a more solid conclusion about their performances. But here, we deal with a sample. So it might make sense to see whether the difference in the performance of methods is significant. How should we do that?
 
-First, we can \textbf{compare means} of distributions of errors using a parametric statistical test. We can try F-test \citep{WikipediaFTest}, which will tell us whether the mean performance of methods is similar or not. Unfortunately, this will not tell us how the methods compare. But t-test \citep{WikipediaTTest} could be used to do that instead for pairwise comparison. One could also use a regression model with dummy variables for methods, giving us parameters and their confidence intervals (based on t-statistics), telling us how the means of methods compare. However, F-test, t-test and t-statistics from regression rely on strong assumptions related to the distribution of the means of error measures (normality). If we had a large sample (e.g.~a thousand of series) and well-behaved distribution, we could try it, hoping that the central limit theorem would work and might get something relatively meaningful. However, on 100 observations, this still could be an issue, especially given that the distribution of error measures is typically asymmetric (the estimate of mean might be biased, which leads to many issues).
+First, we can \textbf{compare means} of distributions of errors using a parametric statistical test. We can try F-test \citep{WikipediaFTest}, which will tell us whether the mean performance of methods is similar or not. Unfortunately, this will not tell us how the methods compare. But t-test \citep{WikipediaTTest} could be used to do that instead for pairwise comparison. One could also use a regression model with dummy variables for methods, giving us parameters and their confidence intervals (based on t-statistics), telling us how the means of methods compare. However, F-test, t-test and t-statistics from regression rely on strong assumptions related to the distribution of the means of error measures (normality). If we had a large sample (e.g.~a thousand of series) and well-behaved distribution, we could try it, hoping that the central limit theorem would work and might get something relatively meaningful. However, on 100 observations, this still could be an issue, especially given that the distribution of error measures is typically asymmetric (the estimate of the mean might be biased, which leads to many issues).
 
-Second, we could \textbf{compare medians} of distributions of errors. They are robust to outliers, so their estimates should not be too biased in case of skewed distributions on smaller samples. To have a general understanding of performance (is everything the same or is there at least one method that performs differently), we could try the Friedman test \citep{WikipediaFriedmanTest}, which could be considered a nonparametric alternative of F-test. This should work in our case but won't tell us how specifically the methods compare. We could try the Wilcoxon signed-ranks test \citep{WikipediaWilcoxonTest}, which could be considered a nonparametric counterpart of the t-test. However, it only applies to two variables, while we want to compare four.
+Second, we could \textbf{compare medians} of distributions of errors. They are robust to outliers, so their estimates should not be too biased in case of skewed distributions on smaller samples. To have a general understanding of performance (is everything the same or is there at least one method that performs differently), we could try the Friedman test \citep{WikipediaFriedmanTest}, which could be considered a nonparametric alternative of the F-test. This should work in our case but won't tell us how specifically the methods compare. We could try the Wilcoxon signed-ranks test \citep{WikipediaWilcoxonTest}, which could be considered a nonparametric counterpart of the t-test. However, it only applies to two variables, while we want to compare four.
 
-Luckily, there is the Nemenyi test \citep{Demsar2006}, which is equivalent to the MCB test \citep{Koning2005, KourentzesWeb2012}. What the test does, is it ranks the performance of methods for each time series and then takes the mean of those ranks and produces confidence bounds for those means. The means of ranks correspond to medians, so by using this test, we compare medians of errors of different methods. If the confidence bounds for different methods intersect, we can conclude that the medians are not different from a statistical point of view. Otherwise, we can see which of the methods has a higher rank and which has the lower one. There are different ways to present the test results, and there are several R functions that implement it, including \texttt{nemenyi()} from the \texttt{tsutils} package. However, we will use the function \texttt{rmcb()} from the \texttt{greybox}, which has more flexible plotting capabilities, supporting all the default parameters for the \texttt{plot()} method.
+Luckily, there is the Nemenyi test \citep{Demsar2006} \citep[ shows that it is equivalent to the MCB test of \citet{Koning2005}]{KourentzesWeb2012}. What the test does, is it ranks the performance of methods for each time series and then takes the mean of those ranks and produces confidence bounds for those means. The means of ranks correspond to medians, so by using this test, we compare medians of errors of different methods. If the confidence bounds for different methods intersect, we can conclude that the medians are not different from a statistical point of view. Otherwise, we can see which of the methods has a higher rank and which has the lower one. There are different ways to present the test results, and there are several R functions that implement it, including \texttt{nemenyi()} from the \texttt{tsutils} package. However, we will use the function \texttt{rmcb()} from the \texttt{greybox}, which has more flexible plotting capabilities, supporting all the default parameters for the \texttt{plot()} method.
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{smallCompetitionTest }\OtherTok{\textless{}{-}} \FunctionTok{rmcb}\NormalTok{(smallCompetition, }\AttributeTok{plottype=}\StringTok{"none"}\NormalTok{)}
+\NormalTok{smallCompetitionTest }\OtherTok{\textless{}{-}} \FunctionTok{rmcb}\NormalTok{(smallCompetition, }\AttributeTok{outplot=}\StringTok{"none"}\NormalTok{)}
 \NormalTok{smallCompetitionTest}
 \FunctionTok{plot}\NormalTok{(smallCompetitionTest, }\StringTok{"mcb"}\NormalTok{, }\AttributeTok{main=}\StringTok{""}\NormalTok{)}
 \end{Highlighting}
@@ -1210,7 +1224,7 @@ Luckily, there is the Nemenyi test \citep{Demsar2006}, which is equivalent to th
 \caption{\label{fig:mcbForCompetition}MCB test results for small competition.}
 \end{figure}
 
-Figure \ref{fig:mcbForCompetition} shows that Methods 1, 3 and 4 are not statistically different -- their intervals intersect, so we cannot tell the difference between them, even though the mean rank of Method 4 is lower than for the other methods. Method 2, on the other hand, is significantly worse than the other methods: it has the highest mean rank of all, and its interval does not intersect intervals of other methods.
+Figure \ref{fig:mcbForCompetition} shows that Methods 1, 3 and 4 are not statistically different on 5\% level -- their intervals intersect, so we cannot tell the difference between them, even though the mean rank of Method 4 is lower than for the other methods. Method 2, on the other hand, is significantly worse than the other methods on 5\% level: it has the highest mean rank of all, and its interval does not intersect intervals of other methods.
 
 Note that while this is a good way of presenting the results, all the MCB test does is a comparison of mean ranks. It does not tell much about the distribution of errors and neglects the distances between values (i.e.~0.1 is lower than 0.11, so the first method has a lower rank, which is precisely the same result as with comparing 0.1 and 100). This happens because by doing the test, we move from a numerical scale to the ordinal one \citep[see Section 1.2 of][]{SvetunkovSBA}. Finally, like any other statistical test, it will get its power when the sample increases. We know that the null hypothesis ``variables are equal to each other'' in reality is always wrong \citep[see Section 5.3 of][]{SvetunkovSBA}, so the increase of sample size will lead at some point to the correct conclusion: methods are statistically different. Here is a demonstration of this assertion:
 
@@ -1225,7 +1239,7 @@ Note that while this is a good way of presenting the results, all the MCB test d
 \NormalTok{largeCompetition[,}\DecValTok{3}\NormalTok{] }\OtherTok{\textless{}{-}} \FunctionTok{runif}\NormalTok{(}\DecValTok{100000}\NormalTok{,}\FloatTok{0.5}\NormalTok{,}\FloatTok{1.5}\NormalTok{)}
 \NormalTok{largeCompetition[,}\DecValTok{4}\NormalTok{] }\OtherTok{\textless{}{-}} \FunctionTok{rlnorm}\NormalTok{(}\DecValTok{100000}\NormalTok{,}\DecValTok{0}\NormalTok{,}\FloatTok{0.3}\NormalTok{)}
 \CommentTok{\# Run the test}
-\NormalTok{largeCompetitionTest }\OtherTok{\textless{}{-}} \FunctionTok{rmcb}\NormalTok{(largeCompetition, }\AttributeTok{plottype=}\StringTok{"none"}\NormalTok{)}
+\NormalTok{largeCompetitionTest }\OtherTok{\textless{}{-}} \FunctionTok{rmcb}\NormalTok{(largeCompetition, }\AttributeTok{outplot=}\StringTok{"none"}\NormalTok{)}
 \FunctionTok{plot}\NormalTok{(largeCompetitionTest, }\StringTok{"mcb"}\NormalTok{, }\AttributeTok{main=}\StringTok{""}\NormalTok{)}
 \end{Highlighting}
 \end{Shaded}
@@ -1236,7 +1250,7 @@ Note that while this is a good way of presenting the results, all the MCB test d
 \caption{\label{fig:mcbForCompetitionLarge}MCB test results for large competition.}
 \end{figure}
 
-In the plot in Figure \ref{fig:mcbForCompetitionLarge}, Method 4 has become significantly worse than Methods 1 and 3 in terms of mean ranks (note that it was winning in the small competition). The difference between Methods 1 and 3 is still not significant, but it would become if we continue increasing the sample size. This example tells us that we need to be careful when selecting the best method, as this might change under different circumstances. At least we knew from the start that Method 2 was not suitable.
+In the plot in Figure \ref{fig:mcbForCompetitionLarge}, Method 4 has become significantly worse than Methods 1 and 3 in terms of mean ranks on 5\% level (note that it was winning in the small competition). The difference between Methods 1 and 3 is still not significant, but it would become if we continue increasing the sample size. This example tells us that we need to be careful when selecting the best method, as this might change under different circumstances. At least we knew from the start that Method 2 was not suitable.
 
 \hypertarget{tsDecomposition}{%
 \chapter{From time series components to ETS}\label{tsDecomposition}}
@@ -1248,7 +1262,7 @@ In this chapter, we start with a discussion of time series components, then move
 \hypertarget{tsComponents}{%
 \section{Time series components}\label{tsComponents}}
 
-The main idea behind many forecasting techniques is that any time series can contain several unobservable components, such as:
+The main idea behind many forecasting techniques is that any time series can describe several unobservable components, such as:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -2210,23 +2224,23 @@ Here is an example of a forecast from ETS(A,N,N) with automatic parameter estima
 ## Model estimated: ETS(ANN)
 ## Persistence vector g:
 ##  alpha 
-## 0.2971 
+## 0.2869 
 ## Initial values were optimised.
 ## 
-## Loss function type: likelihood; Loss function value: 517.866
-## Error standard deviation: 29.672
+## Loss function type: likelihood; Loss function value: 526.4671
+## Error standard deviation: 32.1317
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1041.732 1041.963 1049.778 1050.319 
+## 1058.934 1059.165 1066.981 1067.521 
 ## 
 ## 95% parametric prediction interval was constructed
-## 92% of values are in the prediction interval
+## 50% of values are in the prediction interval
 ## Forecast errors:
-## MPE: 2.9%; sCE: 34.7%; Asymmetry: 90%; MAPE: 3.2%
-## MASE: 1.128; sMAE: 3.1%; sMSE: 0.1%; rMAE: 0.537; rRMSE: 0.588
+## MPE: -8.8%; sCE: -92.4%; Asymmetry: -100%; MAPE: 8.8%
+## MASE: 2.354; sMAE: 7.7%; sMSE: 0.6%; rMAE: 1.036; rRMSE: 1.034
 \end{verbatim}
 
 As we see from Figure \ref{fig:ETSANNExample}, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected because we deal with an in-sample estimation. Also, notice that with such a smoothing parameter, the prediction interval widens with the increase of the forecast horizon. If the smoothing parameter were lower, the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with \(\alpha=0.01\) on the same data (Figure \ref{fig:ETSANNExamplealpha01})
@@ -2330,23 +2344,23 @@ And here is an example with the ETS(M,N,N) data (Figure \ref{fig:ETSMNNExample})
 ## Model estimated: ETS(MNN)
 ## Persistence vector g:
 ##  alpha 
-## 0.2696 
+## 0.1938 
 ## Initial values were optimised.
 ## 
-## Loss function type: likelihood; Loss function value: 693.8708
-## Error standard deviation: 0.1018
+## Loss function type: likelihood; Loss function value: 651.8144
+## Error standard deviation: 0.0971
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1393.742 1393.972 1401.788 1402.328 
+## 1309.629 1309.860 1317.675 1318.215 
 ## 
 ## 95% parametric prediction interval was constructed
-## 100% of values are in the prediction interval
+## 83% of values are in the prediction interval
 ## Forecast errors:
-## MPE: -0.6%; sCE: 1.5%; Asymmetry: 6.2%; MAPE: 7.1%
-## MASE: 0.761; sMAE: 8.2%; sMSE: 1%; rMAE: 0.81; rRMSE: 0.797
+## MPE: 12.7%; sCE: 209.5%; Asymmetry: 94.3%; MAPE: 13.3%
+## MASE: 1.765; sMAE: 18.2%; sMSE: 4.2%; rMAE: 1; rRMSE: 1
 \end{verbatim}
 
 Conceptually, the data in Figure \ref{fig:ETSMNNExample} looks very similar to the one from ETS(A,N,N) (Figure \ref{fig:ETSANNExample}), but demonstrating the changing variance of the error term with the change of the level.
@@ -3061,7 +3075,7 @@ Notice that the smoothing parameters of ETS(A,A,N) are very high, with \(\alpha=
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.04 seconds
+## Time elapsed: 0.05 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.5358
@@ -3543,7 +3557,7 @@ We can also compare the performance of ETS(M,M,N) with \(\Gamma\) distribution a
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.02 seconds
+## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 245.3872
@@ -3633,11 +3647,11 @@ If we want to calculate the error measures based on the conditional expectation,
 
 \begin{verbatim}
 ##            ME           MAE           MSE           MPE          MAPE 
-##  -5.599313494  15.567964146 481.736596700  -0.016305542   0.033929193 
+##  -5.119631999  15.591267361 480.264551317  -0.015329180   0.033849840 
 ##           sCE          sMAE          sMSE          MASE         RMSSE 
-##  -0.255976004   0.059308242   0.006991592   0.646403583   0.700510933 
+##  -0.234047075   0.059397018   0.006970228   0.647371165   0.699439837 
 ##          rMAE         rRMSE          rAME     asymmetry          sPIS 
-##   0.204841634   0.213140778   0.078678878  -0.221735377   2.118118707
+##   0.205148255   0.212814882   0.071938623  -0.195025360   2.023173295
 \end{verbatim}
 
 These can be compared with the measures from the ETS(A,A,A) model:
@@ -4676,7 +4690,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     492.7591     492.7591
+##     538.1995     538.1995
 \end{verbatim}
 
 \begin{Shaded}
@@ -4689,7 +4703,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     991.5182     991.5182
+##     1082.399     1082.399
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
@@ -4704,7 +4718,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##   0.08648798   0.08648794
+##    0.1682083    0.1682083
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related (Figure \ref{fig:ETSARIMAConnection}):
@@ -4845,7 +4859,7 @@ Comparing this model with the ETS(A,A,N), we will see a slight difference becaus
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.02 seconds
+## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 243.4073
@@ -6111,7 +6125,7 @@ Figure \ref{fig:SeatbeltsForecastX} shows the forecast from the second model, wh
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.43 seconds
+## Time elapsed: 0.36 seconds
 ## Model estimated using adam() function: ETSX(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.042
@@ -6151,7 +6165,7 @@ In this specific case, the difference between the ETSX and ETSX\{D\} models is i
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.47 seconds
+## Time elapsed: 0.4 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.215
@@ -7557,7 +7571,7 @@ Another model we can try on this data is ARIMA. We have not yet discussed the or
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.19 seconds
+## Time elapsed: 0.3 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.76
@@ -8455,7 +8469,7 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.1 seconds
+## Time elapsed: 0.09 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log-Normal
@@ -9766,7 +9780,7 @@ Here is an example of selection of distribution for a specific model, ETS(M,M,N)
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.22 seconds
+## Time elapsed: 0.21 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 245.3716
@@ -9859,7 +9873,7 @@ Here is an example with automatically selected ETS model using the branch-and-bo
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.96 seconds
+## Time elapsed: 0.97 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 467.2981
@@ -9963,7 +9977,7 @@ Based on the relation between ARIMA and ETS (see Section \ref{ARIMAandETS}), we 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.08 seconds
+## Time elapsed: 1.04 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -10314,16 +10328,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6636           254.9130            260.4811
-## 142 257.7382           253.3760            262.1449
-## 143 257.8081           251.8738            263.7780
-## 144 257.8704           250.3448            265.4537
-## 145 257.9304           248.8789            267.0051
-## 146 257.9742           247.2531            268.6273
-## 147 258.0353           245.6354            270.3660
-## 148 258.0936           244.0651            272.0046
-## 149 258.1455           242.4469            273.9745
-## 150 258.1982           240.8753            275.7900
+## 141 257.6477           254.8502            260.4179
+## 142 257.7156           253.3301            262.1375
+## 143 257.7796           251.8505            263.7406
+## 144 257.8362           250.3414            265.3134
+## 145 257.8907           248.7694            266.9645
+## 146 257.9535           247.2693            268.6598
+## 147 257.9996           245.7475            270.2902
+## 148 258.0463           244.0838            271.9793
+## 149 258.0962           242.4578            273.6883
+## 150 258.1337           240.8468            275.4997
 \end{verbatim}
 
 In order to see how the forecast looks like, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -10423,7 +10437,7 @@ Here is an example of how the function works on the data above -- it is possible
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.45 seconds
+## Time elapsed: 0.47 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamETSBJBoot\$vcov}. The same procedure is used in \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -10436,11 +10450,11 @@ The covariance matrix can then be extracted from the result via \texttt{adamETSB
 
 \begin{verbatim}
 ##        alpha   beta    phi  level  trend
-## alpha  0.042  0.013  0.009  0.043 -0.039
-## beta   0.013  0.009  0.003  0.010 -0.005
-## phi    0.009  0.003  0.015  0.068 -0.070
-## level  0.043  0.010  0.068  0.582 -0.747
-## trend -0.039 -0.005 -0.070 -0.747  1.048
+## alpha  0.013  0.003  0.002  0.009 -0.009
+## beta   0.003  0.005 -0.002 -0.013  0.019
+## phi    0.002 -0.002  0.011  0.050 -0.052
+## level  0.009 -0.013  0.050  0.538 -0.731
+## trend -0.009  0.019 -0.052 -0.731  1.075
 \end{verbatim}
 
 \hypertarget{confidence-intervals-for-parameters}{%
@@ -11830,7 +11844,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, w
 \caption{\label{fig:adamModeliETSCumulative}Cumulative demand, expectation and the upper bound based on iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 28 units, while the upper bound of the interval was approximately 34. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 23 units, while the upper bound of the interval was approximately 30. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section \ref{rollingOrigin}) or to a set of products to collect the distribution of related error measures.
 
