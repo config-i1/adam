@@ -610,14 +610,11 @@ For example, if the confidence level is 0.95 and the expected probability of occ
 <p>Another related thing to consider when producing forecasts in practice is that the point forecast is not needed in some contexts. Instead, the cumulative over the forecast horizon (or over the lead time) might be more suitable. The classic example is the safety stock calculation based on the lead time (time between the order of product and its delivery). In this situation, we need to make sure that while the product is being delivered, we do not run out of stock, thus still satisfying the selected level of demand (e.g. 95%), but now over the whole period of time rather than on every separate observation.</p>
 <p>In the case of <strong>pure additive ADAM</strong>, there are analytical formulae for the conditional expectations and conditional variance for this case that can be used in forecasting. These formulae come directly from the recursive relation <a href="adamETSPureAdditiveRecursive.html#eq:ETSADAMStateSpacePureAdditiveRecursion04">(5.9)</a> <span class="citation"><a href="#ref-Svetunkov2017" role="doc-biblioref">Svetunkov and Petropoulos</a> (<a href="#ref-Svetunkov2017" role="doc-biblioref">2018</a>)</span>:
 <span class="math display" id="eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVarianceCumulative">\[\begin{equation}
-  \resizebox{0.5\textwidth}{!}{$
     \begin{aligned}
         \mu_{Y,t,h} = \text{E}(Y_{c,t,h}|t) = &amp; \sum_{j=1}^h \sum_{i=1}^d \left(\mathbf{w}_{m_i}&#39;     \mathbf{F}_{m_i}^{\lceil\frac{j}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
         \sigma^2_{Y,h} = \text{V}(Y_{c,t,h}|t) = &amp; \left(1 + \sum_{k=1}^{h-1} \left(1+ (h-k) \sum_{i=1}^d \left(\mathbf{w}_{m_i}&#39; \sum_{j=1}^{\lceil\frac{k}{m_i}\rceil-1} \mathbf{F}_{m_i}^{j-1} \mathbf{g}_{m_i} \mathbf{g}&#39;_{m_i} (\mathbf{F}_{m_i}&#39;)^{j-1} \mathbf{w}_{m_i} \right) \right) \right) \sigma^2
     \end{aligned},
-  $}
-    \tag{18.10}
-\end{equation}\]</span>
+\tag{18.10}\end{equation}\]</span>
 where <span class="math inline">\(Y_{c,t,h}=\sum_{j=1}^h y_{t+j}\)</span> is the cumulative actual value and all the other variables have been defined in Section <a href="adamETSPureAdditiveRecursive.html#adamETSPureAdditiveRecursive">5.2</a>. Based on these expectation and variance, we can construct prediction interval as discussed in Section <a href="ADAMForecastingPI.html#ADAMForecastingPI">18.3</a>.</p>
 <p>In cases of <strong>multiplicative and mixed ADAM</strong>, there are no closed forms for the conditional expectation and variance. As a result, simulations similar to the one discussed in Subsection <a href="ADAMForecastingExpectation.html#ADAMForecastingExpectationSimulations">18.1.1</a> are needed to produce all possible paths for the next <span class="math inline">\(h\)</span> steps ahead. The main difference would be that before taking the expectation or quantiles, the paths would need to be aggregated over the forecast horizon <span class="math inline">\(h\)</span>. This approach, together with the idea of a one-sided prediction interval, can be directly used to calculate the safety stock over the lead time.</p>
 </div>
@@ -630,7 +627,7 @@ where <span class="math inline">\(Y_{c,t,h}=\sum_{j=1}^h y_{t+j}\)</span> is the
 <div class="sourceCode" id="cb383"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb383-1"><a href="forecastingADAMOther.html#cb383-1" aria-hidden="true" tabindex="-1"></a>adamiETSy <span class="ot">&lt;-</span> <span class="fu">adam</span>(y, <span class="st">&quot;MMdN&quot;</span>, <span class="at">occurrence=</span><span class="st">&quot;odds-ratio&quot;</span>,</span>
 <span id="cb383-2"><a href="forecastingADAMOther.html#cb383-2" aria-hidden="true" tabindex="-1"></a>                  <span class="at">h=</span><span class="dv">7</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb383-3"><a href="forecastingADAMOther.html#cb383-3" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamiETSy,<span class="dv">7</span>)</span></code></pre></div>
-<p><img src="Svetunkov--2022----ADAM_files/figure-html/unnamed-chunk-153-1.png" width="672" /></p>
+<p><img src="Svetunkov--2022----ADAM_files/figure-html/unnamed-chunk-155-1.png" width="672" /></p>
 <p>To make this setting closer to a possible real-life situation, we assume that the lead time is seven days, and we need to satisfy the 99% of demand for the last seven observations based on our model. Thus we produce the upper bound for the cumulative values for the confidence level of 99%:</p>
 <div class="sourceCode" id="cb384"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb384-1"><a href="forecastingADAMOther.html#cb384-1" aria-hidden="true" tabindex="-1"></a>adamiETSyForecast <span class="ot">&lt;-</span> <span class="fu">forecast</span>(adamiETSy, <span class="at">h=</span><span class="dv">7</span>,</span>
 <span id="cb384-2"><a href="forecastingADAMOther.html#cb384-2" aria-hidden="true" tabindex="-1"></a>                              <span class="at">cumulative=</span><span class="cn">TRUE</span>,</span>
@@ -649,7 +646,7 @@ where <span class="math inline">\(Y_{c,t,h}=\sum_{j=1}^h y_{t+j}\)</span> is the
 Figure 18.7: Cumulative demand, expectation and the upper bound based on iETS model.
 </p>
 </div>
-<p>What Figure <a href="forecastingADAMOther.html#fig:adamModeliETSCumulative">18.7</a> demonstrates is that for the holdout period of 7 days, the cumulative demand was around 25 units, while the upper bound of the interval was approximately 44. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.</p>
+<p>What Figure <a href="forecastingADAMOther.html#fig:adamModeliETSCumulative">18.7</a> demonstrates is that for the holdout period of 7 days, the cumulative demand was around 25 units, while the upper bound of the interval was approximately 29. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.</p>
 <p>To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section <a href="rollingOrigin.html#rollingOrigin">2.4</a>) or to a set of products to collect the distribution of related error measures.</p>
 </div>
 <div id="confidence-interval" class="section level3 hasAnchor" number="18.4.5">
