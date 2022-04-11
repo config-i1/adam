@@ -1,5 +1,5 @@
 # Forecasts evaluation {#forecastsEvaluation}
-As discussed in Section \@ref(forecastingPlanningAnalytics), forecasts should serve a specific purpose. They should not be made "just because" but help make decisions. The decision then dictates the kind of forecast that should be made -- its form and its time horizon(s). It also dictates how the forecast should be evaluated -- a forecast only being as good as the quality of the decisions it enables.
+As discussed in Section \@ref(forecastingPlanningAnalytics), forecasts should serve a specific purpose. They should not be made "just because" but to help make decisions. The decision then dictates the kind of forecast that should be made -- its form and its time horizon(s). It also dictates how the forecast should be evaluated -- a forecast only being as good as the quality of the decisions it enables.
 
 When you understand how your system works and what sort of forecasts you should produce, you can start an evaluation process, measuring the performance of different forecasting models/methods and selecting the most appropriate for your data. There are various ways to measure and compare their performance.
 
@@ -7,7 +7,7 @@ This chapter discusses the most common approaches, focusing on evaluating point 
 
 
 ## Measuring accuracy of point forecasts {#errorMeasures}
-We start with a setting in which we are interested in point forecasts only. In this case, we typically begin by splitting the available data into train and test sets, applying the models under consideration to the former, and producing forecasts on the latter, not showing that part to the models. This is called the "fixed origin" approach: we fix the point in time from which to produce forecasts, produce them, calculate some error measure and compare the models.
+We start with a setting in which we are interested in point forecasts only. In this case, we typically begin by splitting the available data into training and test sets, applying the models under consideration to the former, and producing forecasts on the latter, hiding it from the models. This is called the "fixed origin" approach: we fix the point in time from which to produce forecasts, produce them, calculate some appropriate error measure and compare the models.
 
 Different error measures can be used in this case. Which measure to use depends on the specific need. Here we briefly discuss the most important measures and refer to [@Davydenko2013; @SvetunkovAccuracy2019; @SvetunkovAPEs2017] for the gory details.
 
@@ -23,36 +23,40 @@ and **Mean Absolute Error** (MAE):
     \mathrm{MAE} = \frac{1}{h} \sum_{j=1}^h \left| y_{t+j} -\hat{y}_{t+j} \right| ,
     (\#eq:MAE)
 \end{equation}
-where $y_{t+j}$ is the actual value $j$ steps ahead from the holdout, $\hat{y}_{t+j}$ is the $j$ steps ahead point forecast, and $h$ is the forecast horizon. As you see, these error measures aggregate the performance of competing forecasting methods across the forecasting horizon, averaging out the specific performances on each $j$. If this information needs to be retained, the summation can be dropped to obtain "SE" and "AE" values.
+where $y_{t+j}$ is the actual value $j$ steps ahead (values in the test set), $\hat{y}_{t+j}$ is the $j$ steps ahead point forecast, and $h$ is the forecast horizon. As you see, these error measures aggregate the performance of competing forecasting methods across the forecasting horizon, averaging out the specific performances on each $j$. If this information needs to be retained, the summation can be dropped to obtain "SE" and "AE" values.
 
-It is well-known [see, for example, @Kolassa2016] that the **mean value of distribution minimises RMSE**, and **the median value minimises MAE**. So, when selecting between the two, you should consider this property. It also implies, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand because zero forecast will minimise MAE, when the sample contains more than 50% of zeroes [see, for example, @Wallstrom2010].
+It is well-known [see, for example, @Kolassa2016] that the **mean value of distribution minimises RMSE**, and **the median value minimises MAE**. So, when selecting between the two, you should consider this property. It also implies, for example, that MAE-based error measures should not be used for the evaluation of models on intermittent demand (see Chapter \@ref(ADAMIntermittent) for the discussion of this topic) because zero forecast will minimise MAE, when the sample contains more than 50% of zeroes [see, for example, @Wallstrom2010].
 
 Another error measure that has been used in some cases is Root Mean Squared Logarithmic Error [RMSLE, see discussion in @Tofallis2015]:
 \begin{equation}
     \mathrm{RMSLE} = \exp\left(\sqrt{\frac{1}{h} \sum_{j=1}^h \left( \log y_{t+j} -\log \hat{y}_{t+j} \right)^2} \right).
     (\#eq:RMSLE)
 \end{equation}
-It assumes that the actual values and the forecasts are positive and is **minimised by geometric mean**. I have added the exponentiation in the formula \@ref(eq:RMSLE), which is sometimes omitted, bringing the metric to the original scale to have the same units as the actual values $y_t$.
+It assumes that the actual values and the forecasts are positive and is **minimised by the geometric mean**. I have added the exponentiation in the formula \@ref(eq:RMSLE), which is sometimes omitted, bringing the metric to the original scale to have the same units as the actual values $y_t$.
 
-The main difference in the three measures arises when the data we deal with is not symmetric -- in that case, the arithmetic, geometric means, and median will be different. Thus, the error measures might recommend different approaches depending on what specifically is produced as a point forecast from the model (see discussion in Section \@ref(typesOfForecastsPoint)).
+The main difference in the three measures arises when the data we deal with is not symmetric -- in that case, the arithmetic, geometric means, and median will all be different. Thus, the error measures might recommend different methods depending on what specifically is produced as a point forecast from the model (see discussion in Section \@ref(typesOfForecastsPoint)).
 
 ### An example in R
-In order to see how the error measures work, we consider the following example based on a couple of forecasting functions from `smooth` package for R [@Hyndman2008b and @Svetunkov2015] and measures from `greybox`:
+In order to see how the error measures work, we consider the following example based on a couple of forecasting functions from the `smooth` package for R [@Hyndman2008b and @Svetunkov2015] and measures from `greybox`:
 ```{r eval=FALSE}
+# Generate the data
 y <- rnorm(100,100,10)
+# Apply two models to the data
 model1 <- es(y,h=10,holdout=TRUE)
 model2 <- ces(y,h=10,holdout=TRUE)
-# RMSE
+# Calculate RMSE
 setNames(sqrt(c(MSE(model1$holdout, model1$forecast),
                 MSE(model2$holdout, model2$forecast))),
          c("ETS","CES"))
-# MAE
+# Calculate MAE
 setNames(c(MAE(model1$holdout, model1$forecast),
            MAE(model2$holdout, model2$forecast)),
          c("ETS","CES"))
-# RMSLE
-setNames(exp(sqrt(c(MSE(log(model1$holdout), log(model1$forecast)),
-                    MSE(log(model2$holdout), log(model2$forecast))))),
+# Calculate RMSLE
+setNames(exp(sqrt(c(MSE(log(model1$holdout),
+                        log(model1$forecast)),
+                    MSE(log(model2$holdout),
+                        log(model2$forecast))))),
          c("ETS","CES"))
 ```
 
@@ -75,7 +79,7 @@ setNames(exp(sqrt(c(MSE(log(model1$holdout),
          c("ETS","CES"))
 ```
 
-Given that the distribution of the original data is symmetric, all three error measures should generally recommend the same model. But also, given that the data we generated for the example is stationary, the two models will produce very similar forecasts. The values above demonstrate the latter point -- the accuracy between the two models is roughly the same. Note that we have evaluated the same point forecasts from the models using different error measures, which would be wrong if the distribution of the data was skewed. In our case, the model relies on normal distribution so that the point forecast would coincide with arithmetic mean, geometric mean and median.
+Given that the distribution of the original data is symmetric, all three error measures should generally recommend the same model. But also, given that the data we generated for the example are stationary, the two models will produce very similar forecasts. The values above demonstrate the latter point -- the accuracy between the two models is roughly the same. Note that we have evaluated the same point forecasts from the models using different error measures, which would be wrong if the distribution of the data was skewed. In our case, the model relies on normal distribution so that the point forecast would coincide with arithmetic mean, geometric mean and median.
 
 
 ### Aggregating error measures {#errorMeasuresAggregate}
@@ -111,18 +115,18 @@ where $\bar{y}$ is the mean of the in-sample data.
 There is no "best" error measure. All have advantages and disadvantages, but some are more suitable in some circumstances than others. For example:
 
 1. MAPE is scale sensitive (if the actual values are measured in thousands of units, the resulting error will be much lower than in the case of hundreds of units) and cannot be estimated on data with zeroes. Furthermore, this error measure is biased, preferring when models underforecast the data [see, for example, @Makridakis1993] and is not minimised by either mean or median, but by an unknown quantity. Accidentally, in the case of Log-Normal distribution, it is minimised by the mode [see discussion in @Kolassa2016]. Despite all the limitations, MAPE has a simple interpretation as it shows the percentage error (as the name suggests);
-2. MASE avoids the disadvantages of MAPE but does so at the cost of a simple interpretation. This is because of the division by the first differences of the data (some interpret this as an in-sample one-step-ahead Naïve forecast, which does not simplify the interpretation);
+2. MASE avoids the disadvantages of MAPE but does so at the cost of loosing a simple interpretation. This is because of the division by the first differences of the data (some interpret this as an in-sample one-step-ahead Naïve forecast, which does not simplify the interpretation);
 3. rMAE avoids the disadvantages of MAPE, has a simple interpretation (it shows by how much one model is better than the other), but fails, when either $\mathrm{MAE}_a$ or $\mathrm{MAE}_b$ for a specific time series is equal to zero. In practice, this happens more often than desired and can be considered a severe error measure limitation. Furthermore, the increase of rMAE (for example, with the increase of sample size) might mean that either the method A is performing better than before or that the method B is performing worse than before -- it is not possible to tell the difference unless the denominator in the formula \@ref(eq:rMAE) is fixed;
 4. sMAE avoids the disadvantages of MAPE has an interpretation close to it but breaks down when the data has a trend.
 
 When comparing different forecasting methods, it might make sense to calculate several error measures for comparison. The choice of metric might depend on the specific needs of the forecaster. Here are a few rules of thumb, however:
 
 - If you want a robust measure that works consistently, but you do not care about the interpretation, then go with MASE.
-- If you want an interpretation, go with rMAE or sMAE. Just keep in mind that if you decide to use rMAE or any other relative measure, you might get attacked by its creator, Andrey Davydenko, who might blame you for stealing his creation, even if you put a reference to his work.
+- If you want an interpretation, go with rMAE or sMAE. Just keep in mind that if you decide to use rMAE or any other relative measure for research purposes, you might get in an unnecessary dispute with its creator, who might blame you of stealing his creation (even if you reference his work).
 - If the data does not exhibit trends (stationary), you can use sMAE.
 - You should typically avoid MAPE and other percentage error measures because the actual values highly influence them in the holdout.
 
-Furthermore, similarly to the measures above, there have been proposed RMSE-based scaled and relative error metrics, which would measure the performance of methods in terms of means rather than medians. Here is a brief list of some of them:
+Furthermore, similarly to the measures above, there have been proposed RMSE-based scaled and relative error metrics, which measure the performance of methods in terms of means rather than medians. Here is a brief list of some of them:
 
 1. RMSSE -- Root Mean Squared Scaled Error [@Makridakis2020a]:
 \begin{equation}
@@ -142,7 +146,7 @@ Furthermore, similarly to the measures above, there have been proposed RMSE-base
 
 Similarly, RMSSLE, rRMSLE and sRMSLE can be proposed, using the same principles as in \@ref(eq:RMSSE), \@ref(eq:rRMSE) and \@ref(eq:sRMSE) to assess performance of models in terms of geometric means across time series.
 
-Finally, when aggregating the performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors -- this way, you will know which of the methods fails seriously and which does a consistently good job. If an aggregate measure is needed, then **use mean and median of the chosen metric**. The mean might be non-finite for some error measures, especially when a method performs exceptionally poorly on a time series (an outlier). Still, it will give you information about the average performance of the method and might flag extreme cases. The median at the same time is robust to outliers and is always calculable, no matter what the distribution of the error term is. Furthermore, comparing mean and median might provide additional information about the tail of distribution without reverting to histograms or the calculation of quantiles. @Davydenko2013 argue for the use of geometric mean for relative and scaled measures. Still, as discussed earlier, it might become equal to zero or infinity if the data contains outliers (e.g. two cases, when one of the methods produced a perfect forecast, or the benchmark in rMAE produced a perfect forecast). At the same time, if the distribution of errors in logarithms is symmetric [which is the main argument of @Davydenko2013], then geometric mean will coincide with median, so there is no point in calculating the geometric mean at all.
+Finally, when aggregating the performance of forecasting methods across several time series, sometimes it makes sense to look at the distribution of errors -- this way, you will know which of the methods fails seriously and which does a consistently good job. If an aggregate measure is needed, then **use mean and median of the chosen metric**. The mean might be non-finite for some error measures, especially when a method performs exceptionally poorly on a time series (an outlier). Still, it will give you information about the average performance of the method and might flag extreme cases. The median at the same time is robust to outliers and is always calculable, no matter what the distribution of the error term is. Furthermore, comparing mean and median might provide additional information about the tail of distribution without reverting to histograms or the calculation of quantiles. @Davydenko2013 argue for the use of geometric mean for relative and scaled measures. Still, as discussed earlier, it might become equal to zero or infinity if the data contains outliers (e.g. two cases, when one of the methods produced a perfect forecast, or the benchmark in rMAE produced a perfect forecast). At the same time, if the distribution of errors in logarithms is symmetric [which is the main argument of @Davydenko2013], then the geometric mean will be similar to the median, so there is no point in calculating the geometric mean at all.
 
 
 ### Demonstration in R {#errorMeasuresExampleBig}
@@ -176,7 +180,7 @@ for(i in 1:nsim){
 }
 ```
 
-The default benchmark method for relative measures above is Naïve. To see how the distribution of error measures would look like, we can produce violinplots via the `vioplot()` function from the `vioplot` package. We will focus on rRMSE measure (see Figure \@ref(fig:errorMeasuresrRMSEDistLog)).
+The default benchmark method for the relative measures above is Naïve. To see how the distribution of error measures would look like, we can produce violinplots via the `vioplot()` function from the `vioplot` package. We will focus on rRMSE measure (see Figure \@ref(fig:errorMeasuresrRMSEDistLog)).
 
 ```{r errorMeasuresrRMSEDist, fig.cap="Distribution of rRMSE on the original scale."}
 vioplot::vioplot(errorMeasures[,,"rRMSE"])
@@ -235,7 +239,7 @@ Similar to the pinball function, it is possible to propose the expectile-based s
 
 Range, MIS and PS are unit-dependent. To aggregate them over several time series, they need to be scaled either via division by either the in-sample mean or in-sample mean absolute differences to obtain the scaled counterparts of the measures or via division by the values from the benchmark model to get the relative one. The idea here would be similar to what we discussed for MAE and RMSE in Section \@ref(errorMeasures).
 
-If you are interested in the model's overall performance, then MIS provides this information. However, it does not show what happens specifically inside and is difficult to interpret. Coverage and range are easier to interpret but only give information about the specific prediction interval. They typically must be traded off against each other (i.e. one can either cover more or have a narrower interval). Academics prefer pinball for uncertainty assessment, as it shows more detailed information about the predictive distribution from each model. However, while it is easier to interpret than MIS, it is still not as straightforward as coverage and range. So, the selection of the measure depends on your specific situation and the understanding of statistics by decision-makers.
+If you are interested in the model's overall performance, then MIS provides this information. However, it does not show what happens specifically in it (is the value due to the distance from the bound or the width of the interval?) and it is difficult to interpret. Coverage and range are easier to interpret but only give information about the specific prediction interval. They typically must be traded off against each other (i.e. one can either cover more or have a narrower interval). Academics prefer pinball for uncertainty assessment, as it shows more detailed information about the predictive distribution from each model. However, while it is easier to interpret than MIS, it is still not as straightforward as coverage and range. So, the selection of the measure depends on the specific situation and the understanding of statistics by decision-makers.
 
 
 ### Example in R
@@ -279,7 +283,8 @@ While, in general, the selection of error measures should be dictated by the spe
 
 ```{r errorMeasuresFlowChart, out.width="100%", fig.cap="Error measures selection flowchart.", echo=FALSE}
 if (knitr:::is_latex_output()) {
-    knitr::asis_output('\\includegraphics{./images/errorMeasuresFlowChart.pdf}')
+    knitr::include_graphics("./images/errorMeasuresFlowChart.pdf")
+    # knitr::asis_output('\\includegraphics{./images/errorMeasuresFlowChart.pdf}')
 } else {
     knitr::include_graphics("./images/errorMeasuresFlowChart.gif")
 }
@@ -291,7 +296,7 @@ The flowchart does not provide excessive options and simplifies the possible pro
 2. What specifically you want to measure: point forecasts, quantiles, prediction interval or something else;
 3. Whether the interpretability of the error measure is essential or not. If not, then scaled measures similar to @Hyndman2006 can be used. If yes, then the choice is between relative and scaled using mean measures;
 4. Whether the data is stationary or not. If it is, then it is safe to use scaled measures similar to @Petropoulos2015 because the division by in-sample mean would be meaningful. Otherwise, you should either use @Hyndman2006 scaling or relative measures;
-5. Whether the data is intermittent or not. If it is and you are interested in point forecasts, then you should use RMSE based measures -- other measures might recommend zero forecast as the best one;
+5. Whether the data is intermittent or not. If it is and you are interested in point forecasts, then you should use RMSE based measures -- other measures might recommend zero forecast as best;
 6. Symmetry of distribution of demand. If it is symmetric (which does not happen very often), then the median will coincide with the mean and geometric mean, and it would not be important whether to use RMSE-, MAE- or RMSLE- based measure. In that case, just use a MAE-based one;
 7. What you need (denoted as "What do you like?" in the flowchart). If you are interested in mean performance, then use RMSE based measures. The median minimises MAE, and the geometric mean minimises RMSLE. This relates to the discussion in Section \@ref(typesOfForecasts).
 
@@ -307,7 +312,7 @@ The text in this section is based on the vignette for the [greybox package](http
 
 When there is a need to select the most appropriate forecasting model or method for the data, the forecaster usually splits the sample into two parts: in-sample (aka "training set") and holdout sample (aka out-sample or "test set"). The model is estimated on the in-sample, and its forecasting performance is evaluated [using some error measure](#errorMeasures) on the holdout sample.
 
-Using this procedure only once is known as "fixed origin" evaluation. However, this might give a misleading impression of the accuracy of forecasting methods. If, for example, the time series contains outliers or level shifts, a poor model might perform better in fixed origin evaluation than a more appropriate one. Besides, a good performance might happen by chance. So it makes sense to have a more robust evaluation technique. An alternative procedure known as "rolling origin" evaluation is one such technique.
+Using this procedure only once is known as "fixed origin" evaluation. However, this might give a misleading impression of the accuracy of forecasting methods. If, for example, the time series contains outliers or level shifts, a poor model might perform better in fixed origin evaluation than a more appropriate one just by chance. So it makes sense to have a more robust evaluation technique, where the model's performance is evaluated several times, not just once. An alternative procedure known as "rolling origin" evaluation is one such technique.
 
 In rolling origin evaluation, the forecasting origin is repeatedly moved forward, and forecasts are produced from each origin [@Tashman2000]. This technique allows obtaining several forecast errors for time series, which gives a better understanding of how the models perform. This can be considered a time series analogue to cross-validation techniques [@WikipediaCrossValidation2020]. Here is a simple graphical representation, courtesy of [Nikos Kourentzes](https://kourentzes.com/forecasting/).
 
