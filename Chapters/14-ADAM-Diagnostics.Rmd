@@ -1,25 +1,25 @@
 # Model diagnostics {#diagnostics}
-In this chapter, we investigate how ADAMs can be diagnosed and improved. Most topics will build upon the typical model assumptions discussed in Subsection \@ref(assumptions) and Section 12 of @SvetunkovSBA textbook. Some of the assumptions cannot be diagnosed properly, but there are well-established instruments for the others. We will consider the following assumptions and discuss how to check whether they are violated or not:
+In this chapter, we investigate how ADAMs can be diagnosed and improved. Most topics will build upon the typical model assumptions discussed in Subsection \@ref(assumptions) and in Section 12 of @SvetunkovSBA. Some of the assumptions cannot be diagnosed properly, but there are well-established instruments for others. We will consider the following assumptions and discuss how to check whether they are violated or not:
 
 1. Model is correctly specified:
 a. [No omitted variables](#diagnosticsOmitted);
 b. [No redundant variables](#diagnosticsRedundant);
 c. [The necessary transformations of the variables are applied](#diagnosticsTransformations);
-d. [No outliers in the model](#diagnosticsOutliers).
+d. [No outliers in the residuals of the model](#diagnosticsOutliers).
 2. Residuals are i.i.d.:
 a. [They are not autocorrelated](#diagnosticsResidualsIIDAuto);
 b. [They are homoscedastic](#diagnosticsResidualsIIDHetero);
 c. [The expectation of residuals is zero, no matter what](#diagnosticsResidualsIIDExpectation);
 d. [The residuals follow the specified distribution](#diagnosticsResidualsIIDDistribution);
 e. The distribution of residuals does not change over time.
-3. [The explanatory variables are not correlated with anything but the response variable](#diagnosticsMulticollinearity):
+3. [The explanatory variables are not correlated with anything but the response variable](#diagnosticsMulticollinearity) (technically speaking, this is not an assumption about the model):
 a. [No multicollinearity](#diagnosticsMulticollinearity);
 b. No endogeneity (not discussed in the context of ADAM).
 
-All the model diagnostics is aimed at spotting patterns in residuals. If there are patterns, then something is probably missing in the model. In this chapter, we will discuss which instruments can be used to diagnose different types of assumptions.
+All the model diagnostics are aimed at spotting patterns in residuals. If there are patterns, then something is probably missing in the model. In this chapter, we will discuss which instruments can be used to diagnose different types of violations of assumptions.
 
 ::: remark
-The analysis carried out in this chapter is based mainly on visual inspection of various plots. While there are statistical tests for some assumptions, we do not discuss them here. This is because human judgment is typically more reliable than just p-values, and people tend to misuse the latter.
+The analysis carried out in this chapter is based mainly on visual inspection of various plots. While there are statistical tests for some assumptions, we do not discuss them here. This is because human judgment is typically more reliable than automatic procedures [@Petropoulos2018a], and people tend to misuse the latter [@Wasserstein2016].
 :::
 
 To make this more actionable, we will consider a conventional regression model on `Seatbelts` data, discussed in Section \@ref(ETSXRExample). We start with pure regression, which can be estimated equally well with the `adam()` function from the `smooth` package or the `alm()` from the `greybox` in R. In general, I recommend using `alm()` when no dynamic elements are present in the model. Otherwise, use `adam()` in the following way:
@@ -34,7 +34,9 @@ This model has several issues, and in this chapter, we will discuss how to diagn
 
 
 ## Model specification: Omitted variables {#diagnosticsOmitted}
-We start with one of the most critical assumptions for models: the model has not omitted important variables. This is difficult to diagnose because it is typically challenging to identify what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of the variables are missing, the next step would be to collect the variables themselves or use their proxies. The proxies are variables that are expected to be correlated with the missing variables and can partially substitute them. We would need to add the missing information in the model one way or another.
+We start with one of the most critical assumptions for models: the model has not omitted important variables. If it has then the point forecasts might be not as accurate as we would expect and in some serious cases exhibit substantial bias.
+
+This issue is difficult to diagnose because it is typically challenging to identify what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of the variables are missing, the next step would be to collect the variables themselves or use their proxies. The proxies are variables that are expected to be correlated with the missing variables and can partially substitute them. We would need to add the missing information in the model one way or another.
 
 In some cases, we might be able to diagnose this. For example, with our regression model estimated in the previous section, we have a set of variables not included in the model. A simple thing to do is to see if the residuals of our model are correlated with any of the omitted variables. We can either produce scatterplots or calculate measures of association [see Section 2.2 and Chapter 6 of @SvetunkovSBA] to see if there are relations in the residuals. I will use `assoc()` and `spread()` functions from `greybox` for this:
 
@@ -71,7 +73,7 @@ How can we know that we have not omitted any important variables in our new mode
 plot(adamSeat02, 8, main="")
 ```
 
-Plot in Figure \@ref(fig:adamSeat02Resid) shows that the model has not captured seasonality and that there is still some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model, estimating ETSX instead of just regression:
+Plot in Figure \@ref(fig:adamSeat02Resid) shows that the model has not captured seasonality correctly and that there is still some structure left in the residuals. In order to address this, we will add ETS(A,N,A) element to the model, estimating ETSX instead of just regression:
 ```{r}
 adamSeat03 <- adam(Seatbelts, "ANA",
                    formula=drivers~PetrolPrice+kms+law)
@@ -89,6 +91,8 @@ In Figure \@ref(fig:adamSeat03), we do not see any apparent missing structure in
 
 ## Model specification: Redundant variables {#diagnosticsRedundant}
 While there are some ways of testing for omitted variables, the redundant ones are challenging to diagnose. Yes, we could look at the significance of variables [Section 5.3 of @SvetunkovSBA] or compare models with and without some variables based on information criteria [Section 13.4 of @SvetunkovSBA]. Still, even if our approaches say that a variable is not significant, this does not mean that it is not needed in the model. There can be many reasons why a test would fail to reject H$_0$, and AIC would prefer a model without the variable under consideration. So, it comes to using judgment, trying to figure out whether a variable is needed in the model or not.
+
+If the model contains redundant variables then it will overfit the data, which could lead to narrower prediction intervals and biased point forecasts.
 
 In the example with Seatbelt data, `DriversKilled` would be a redundant variable for the reasons explained in Section \@ref(diagnosticsOmitted). Let us see what happens with the model if we include it:
 
@@ -329,7 +333,7 @@ This automated procedure will form a matrix that will include original variables
 
 
 ## Residuals are i.i.d.: autocorrelation {#diagnosticsResidualsIIDAuto}
-One of the typical characteristics of time series models is the dynamic relation between variables. Even if fundamentally, the sales of ice cream on Monday do not impact sales of the same ice cream on Tuesday, they might impact advertising expenses or sales of a competing product on Tuesday, Wednesday or next week. Missing this structure might lead to the autocorrelation of residuals, influencing the estimates of parameters and final forecasts. Autocorrelations might also arise due to wrong transformations of variables, where the model would systematically underforecast the actuals, producing autocorrelated residuals. In this section, we will see one of the potential ways for the regression diagnostics and try to improve the model stepwise, trying out different orders of the ARIMA model (Section \@ref(ADAMARIMA)).
+One of the typical characteristics of time series models is the dynamic relation between variables. Even if fundamentally, the sales of ice cream on Monday do not impact sales of the same ice cream on Tuesday, they might impact advertising expenses or sales of a competing product on Tuesday, Wednesday or next week. Missing this structure might lead to the autocorrelation of residuals, influencing the estimates of parameters and final forecasts. This can influence the prediction intervals (causing miscalibration) and in serious cases leads to biased forecasts. Autocorrelations might also arise due to wrong transformations of variables, where the model would systematically underforecast the actuals, producing autocorrelated residuals. In this section, we will see one of the potential ways for the regression diagnostics and try to improve the model stepwise, trying out different orders of the ARIMA model (Section \@ref(ADAMARIMA)).
 
 As an example, we continue with the same seatbelts data, dropping the dynamic part to see what would happen in this case:
 
@@ -375,8 +379,8 @@ plot(adamSeat10, 8, main="")
 In order to see whether there are any other dynamic elements left, we will plot ACF and PACF (discussed in Subsections \@ref(ACF) and \@ref(PACF)) of residuals (Figure \@ref(fig:adamSeat10ACFPACF)):
 
 ```{r adamSeat10ACFPACF, fig.cap="ACF and PACF of residuals of the model 10."}
-par(mfcol=c(2,1))
-plot(adamSeat10, 10:11, level=0.99)
+par(mfcol=c(1,2), mar=c(4,4,0,1))
+plot(adamSeat10, 10:11, level=0.99, main="")
 ```
 
 In the case of the `adam()` objects, these plots, by default, will always have the range for the y-axis from -1 to 1 and will start from lag one on the x-axis. The red horizontal lines represent the "non-rejection" region. If a point lies inside the region, it is not statistically different from zero on the selected confidence `level` (the uncertainty around it is so high that it covers zero). The points with numbers are those that are statistically significantly different from zero. So, the ACF / PACF analysis might show the statistically significant lags on the selected level (the default one is 0.95). Given that this is a statistical instrument, we expect that approximately (1-level)% (e.g. 1%) of lags lie outside these bounds just due to randomness, even if the null hypothesis is correct. So it is okay if we do not see all points lying inside them. However, we should not see any patterns there, and we might need to investigate the suspicious lags (low orders of up to 3 -- 5 and the seasonal lags if they appear). In our example in Figure \@ref(fig:adamSeat10ACFPACF), we see that there are spikes in lag 12 for both ACF and PACF, which means that we have missed the seasonal element in the data. There is also a suspicious lag 1 on PACF and lags 1 and 2 on ACF, which could potentially indicate that MA(1) and/or AR(1), AR(2) elements are needed in the model. While it is not clear what specifically is needed here, we can try out several models and see which one is better to determine the appropriate order of ARIMA. We should start with the seasonal part of the model, as it might obscure the non-seasonal one.
@@ -402,8 +406,8 @@ AICc(adamSeat13)
 Based on this analysis, we would be inclined to include in the model seasonal MA(1) only. Next step in our iterative process -- another ACF / PACF plot of the residuals:
 
 ```{r adamSeat13ACFPACF, fig.cap="ACF and PACF of residuals of the model 12.", echo=FALSE}
-par(mfcol=c(2,1))
-plot(adamSeat12, 10:11, level=0.99)
+par(mfcol=c(1,2), mar=c(4,4,0,1))
+plot(adamSeat12, 10:11, level=0.99, main="")
 ```
 
 In this case, there is a spike on PACF for lag 1 and a textbook exponential decrease in ACF starting from lag 1, which might mean that we need to include AR(1) component in the model:
@@ -430,7 +434,7 @@ AICc(adamSeat15)
 This new constructed model is SARIMAX(1,0,0)(0,1,1)$_{12}$, which is the model we achieved manually. Note that it is even better than the `r adamSeat05$model` (model 5) from the previous section in terms of AICc. Its residuals are much better behaved than the ones of model 5 (although we might need to analyse the residuals for the potential outliers, as discussed in Subsection \@ref(diagnosticsOutliers)):
 
 ```{r adamSeat16Resid, fig.cap="Residuals of the model 16."}
-par(mfcol=c(3,1))
+par(mfcol=c(3,1), mar=c(4,4,2,1))
 plot(adamSeat15, c(8,10:11), level=0.99)
 ```
 
@@ -440,7 +444,7 @@ As a final word for this section, we have focused our discussion on the visual a
 
 
 ## Residuals are i.i.d.: heteroscedasticity {#diagnosticsResidualsIIDHetero}
-Another vital assumption for conventional models is that the residuals are homoscedastic, meaning that the variance of the residuals stays the same (no matter what). This section will see how the issue can be resolved in some cases.
+Another important assumption for conventional models is that the residuals are homoscedastic, meaning that the variance of the residuals stays the same (no matter what). If it does not then the prediction intervals from our model might be miscalibrated (either narrower or wider than needed, depending on circumstances). This section will see how the issue can be resolved in some cases.
 
 ### Detecting heteroscedasticity
 Building upon our previous example, we will use the ETSX(A,N,A) model, which has some issues, as we remember from Section \@ref(diagnosticsTransformations). One of those is the wrong type of model -- additive instead of multiplicative. This is also related to the variance of residuals. To see if they are homoscedastic, we can plot them against the fitted values (Figure \@ref(fig:adamSeat03Hetero)):
@@ -492,7 +496,7 @@ There are formal statistical tests for heteroscedasticity, such as White [@Wikip
 
 
 ## Residuals are i.i.d.: zero expectation {#diagnosticsResidualsIIDExpectation}
-This assumption only works for the additive error models (Section \@ref(ADAMETSPureAdditive)). In the case of the multiplicative error models, it is changed to "expectation of the error term is equal to one" (Section \@ref(ADAMETSMultiplicativeDistributions)). It does not make sense to check this assumption unconditionally because it does not mean anything in-sample. Yes, it will hold automatically for the residuals of a model in the case of OLS estimation. The observed mean of the residuals might not be equal to zero in other cases, but this does not give any helpful information. In fact, when we work with exponential smoothing models, the in-sample residuals being equal to zero might imply for some of them that the final values of components are identical to the initial ones. For example, in the case of ETS(A,N,N) (from Section \@ref(SESandETS)), we can use the measurement equation from \@ref(eq:ETSANN) to express the final value of level via the previous values up until $t=0$:
+This assumption only applies for the additive error models (Section \@ref(ADAMETSPureAdditive)). In the case of the multiplicative error models, it is changed to "expectation of the error term is equal to one" (Section \@ref(ADAMETSMultiplicativeDistributions)). It does not make sense to check this assumption unconditionally because it does not mean anything in-sample: it will hold automatically for the residuals of a model in the case of OLS estimation. The observed mean of the residuals might not be equal to zero in other cases, but this does not give any helpful information. In fact, when we work with exponential smoothing models, the in-sample residuals being equal to zero might imply for some of them that the final values of components are identical to the initial ones. For example, in the case of ETS(A,N,N) (from Section \@ref(SESandETS)), we can use the measurement equation from \@ref(eq:ETSANN) to express the final value of level via the previous values up until $t=0$:
 \begin{equation}
     \begin{aligned}
         \hat{l}_t &= \hat{l}_{t-1} + \hat{\alpha} e_t = \hat{l}_{t-2} + \hat{\alpha} e_{t-1} + \hat{\alpha} e_t = \\
@@ -500,23 +504,25 @@ This assumption only works for the additive error models (Section \@ref(ADAMETSP
     \end{aligned}
     (\#eq:ETSANNMeasurementRecursion)
 \end{equation}
-If the mean of the residuals in-sample is indeed equal to zero, then the equation \@ref(eq:ETSANNMeasurementRecursion) reduces to $\hat{l}_t=\hat{l}_0$. So, this assumption cannot be checked in-sample, meaning that it is all about the true model and the asymptotic behaviour rather than the model applied to the data. On the other hand, if for some reason the mean of residuals is not equal to zero in the population, then the model will change. For example, if we have ETS(A,N,N) model with the non-zero mean of residuals $\mu_\epsilon$, then the residuals can be represented in the form $\epsilon_t = \mu_\epsilon + \xi_t$, where $\mathrm{E}(\xi_t)=0$ which leads to a different model than ETS(A,N,N):
+If the mean of the residuals in-sample is indeed equal to zero, then the equation \@ref(eq:ETSANNMeasurementRecursion) reduces to $\hat{l}_t=\hat{l}_0$. So, this assumption cannot be checked in-sample, meaning that it is all about the true model and the asymptotic behaviour rather than the model applied to the data.
+
+On the other hand, if for some reason the mean of residuals is not equal to zero in the population, then the model will change. For example, if we have ETS(A,N,N) model with the non-zero mean of residuals $\mu_\epsilon$, then the residuals can be represented in the form $\epsilon_t = \mu_\epsilon + \xi_t$, where $\mathrm{E}(\xi_t)=0$ which leads to a different model than ETS(A,N,N):
 \begin{equation}
     \begin{aligned}
         & y_t = l_{t-1} + \mu_\epsilon + \xi_t \\
         & l_t = l_{t-1} + \alpha \mu_\epsilon + \alpha \xi_t
-    \end{aligned},
+    \end{aligned}.
     (\#eq:ETSANNNonZeroMean)
 \end{equation}
-which is a different model than ETS(A,N,N). If we apply ETS(A,N,N) model to the data instead of \@ref(eq:ETSANNNonZeroMean), we will omit an important element and thus the estimated smoothing parameter will be higher than needed. The same logic applies to the multiplicative error models: the mean of residuals $1+\epsilon_t$ should be equal to one for them, otherwise the model would change. This phenomenon arises because of the "pull-to-centre" effect of dynamic models (ETS and ARIMA with non-zero MA terms), where due to the presence of residuals in the transition equations, the model updates the states so that they become closer to the conditional mean of data.
+If we apply ETS(A,N,N) model to the data instead of \@ref(eq:ETSANNNonZeroMean), we will omit an important element and thus the estimated smoothing parameter will be higher than needed. The same logic applies to the multiplicative error models: the mean of residuals $1+\epsilon_t$ should be equal to one for them, otherwise the model would change. This phenomenon arises because of the "pull-to-centre" effect of dynamic models (ETS and ARIMA with non-zero MA terms), where due to the presence of residuals in the transition equations, the model updates the states so that they become closer to the conditional mean of data.
 
 Summarising this discussion, the expectation of residuals of the applied ADAMs should be equal to zero asymptotically, which cannot be tested in-sample.
 
-The more valuable part of this assumption that can be checked is whether the expectation of the residuals *conditional on some variables* is equal to zero (or one). In a way, this comes to ensuring that there are no patterns in the residuals and thus no consecutive parts of the data, where residuals have non-zero expectations systematically.
+The more valuable part of this assumption that can be checked is whether the expectation of the residuals *conditional on some variables* is equal to zero (or one). In a way, this comes to ensuring that there are no patterns in the residuals and thus no parts of the data, where residuals have non-zero expectations systematically.
 
 There are different ways to diagnose this. The first is the already discussed plot of standardised (or studentised) residuals vs fitted values from Section \@ref(diagnosticsTransformations). The other one is the plot of residuals over time, which we have already discussed in Section \@ref(diagnosticsResidualsIIDAuto). In addition, you can also plot residuals vs some of the variables to see if they cause the change in mean. But in a way, all these methods might also mean that the residuals are autocorrelated and/or some transformations of variables are needed.
 
-There is also an effect related to this, called "endogeneity" [discussed briefly in Section 12.3 of @SvetunkovSBA]. According to econometrics literature, it implies that the residuals are correlated with some variables. This becomes equivalent to the situation when the expectation of residuals changes with the change of a variable. The most prominent cause of this is the omitted variables (discussed in Section \@ref(diagnosticsOmitted)), which can be sometimes diagnosed by looking at correlations between the residuals and omitted variables if the latter are available. While econometricians propose using other estimation methods (such as Instrumental Variables) to diminish the effect of endogeneity, the forecasters cannot do that because we need to fix the problem to get more reasonable forecasts rather than better estimates of parameters. Unfortunately, there is no universal recipe for the solution of this problem, but in some cases transforming variables, adding the omitted ones or substituting them by [proxies](https://en.wikipedia.org/wiki/Proxy_(statistics)) (if the omitted variables are unavailable) might resolve the issue to some extent.
+There is also an effect related to this, called "endogeneity" [discussed briefly in Section 12.3 of @SvetunkovSBA]. According to the econometrics literature [see for example, @Hanck2020], it implies that the residuals are correlated with some variables. This becomes equivalent to the situation when the expectation of residuals changes with the change of a variable. The most prominent cause of this is the omitted variables (discussed in Section \@ref(diagnosticsOmitted)), which can be sometimes diagnosed by looking at correlations between the residuals and omitted variables if the latter are available. While econometricians propose using other estimation methods (such as Instrumental Variables) to diminish the effect of endogeneity, the forecasters cannot do that because we need to fix the problem to get more reasonable forecasts rather than better estimates of parameters. Unfortunately, there is no universal recipe for the solution of this problem, but in some cases transforming variables, adding the omitted ones or substituting them by [proxies](https://en.wikipedia.org/wiki/Proxy_(statistics)) (if the omitted variables are unavailable) might resolve the issue to some extent.
 
 ### Multistep forecast errors have zero mean {#diagnosticsResidualsIIDExpectationMultiple}
 This follows from the previous assumption if the model is correctly specified and its residuals are i.i.d. In that situation, we would expect the multiple steps ahead forecast errors to have zero mean. In practice, this might be violated if some structural changes or level shifts are not taken into account by the model. The only thing to note is that this approach requires defining the forecast horizon $h$. This should typically come from the task itself and the decisions made.
@@ -590,13 +596,13 @@ lines(seq(-400,400,1),
 
 However, the plot in Figure \@ref(fig:adamSeat3Density) is much more challenging to analyse than the QQ plot -- it is not clear whether the distribution is close to the theoretical one or not. So, in general, I would recommend using QQ plots instead.
 
-There are also formal tests for the distribution of residuals, such as Shapiro-Wilk [@WikipediaShapiroWilk2021] and Kolmogorov-Smirnov [@WikipediaKolmogorovSmirnov2021]. The former tests the hypothesis that residuals follow Normal distribution. The latter is much more flexible and allows comparing the empirical distribution with any other one (theoretical or empirical). However, I prefer to use visual inspection when possible instead of these tests because, as discussed in Section 5.3 of @SvetunkovSBA, the null hypothesis is always wrong. It will inevitably be rejected with the increase of the sample size. Besides, if you fail to reject H$_0$, it does not mean that your variable follows the assumed distribution. It only means that you have not found enough evidence to reject the null hypothesis.
+There are also formal tests for the distribution of residuals, such as Shapiro-Wilk [@WikipediaShapiroWilk2021] and Kolmogorov-Smirnov [@WikipediaKolmogorovSmirnov2021]. The former tests the hypothesis that residuals follow Normal distribution. The latter is much more flexible and allows comparing the empirical distribution with any other one (theoretical or empirical). However, I prefer to use visual inspection when possible instead of these tests because, as discussed in Section 5.3 of @SvetunkovSBA, the null hypothesis is always wrong. It will inevitably be rejected with the increase of the sample size, which does not mean that it is either correct or wrong. Besides, if you fail to reject H$_0$, it does not mean that your variable follows the assumed distribution. It only means that you have not found enough evidence to reject the null hypothesis.
 
 
 ## Multicollinearity {#diagnosticsMulticollinearity}
 For the discussion of multicollinearity and how to diagnose it in the regression model, we refer the reader to Section 12.3 of the @SvetunkovSBA textbook. When it comes to dynamic models, the situation might differ, so we will focus on several aspects that might not be relevant to regression.
 
-First, in the conventional ARIMA model (Chapter \@ref(ARIMA)), multicollinearity is inevitable by construct because of the autocorrelations between actual values. This is why sometimes Heteroskedasticity- and autocorrelation-consistent (HAC) estimators of the covariance matrix [see Section 15.4 of @Hanck2020] of parameters are used instead of the standard ones. They are designed to fix the issue and produce standard errors of parameters that are close to those without the problem.
+First, in the conventional ARIMA model (Chapter \@ref(ARIMA)), multicollinearity is inevitable by construction because of the autocorrelations between actual values. This is why sometimes heteroskedasticity- and autocorrelation-consistent (HAC) estimators of the covariance matrix [see Section 15.4 of @Hanck2020] of parameters are used instead of the standard ones. They are designed to fix the issue and produce standard errors of parameters that are close to those without the problem.
 
 Second, in the case of state space models, and specifically in ETS, multicollinearity might not cause as severe issues as in the case of regression. For example, it is possible to use all the values of a categorical variable (Section \@ref(ETSXDynamicCategories)), avoiding the trap of dummy variables. The values of a categorical variable, in this case, are considered as changes relative to the baseline. The classic example of this is the seasonal model, for example, ETS(A,A,A), where the seasonal components can be considered as a set of parameters for dummy variables, expanded from the seasonal categorical variable (e.g. months of year variable). If we set $\gamma=0$, thus making the seasonality deterministic, the ETS can still be estimated even though all variable values are used. This becomes apparent with the conventional ETS model, for example, from the `forecast` package for R:
 
