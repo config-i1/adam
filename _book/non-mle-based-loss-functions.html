@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-04-11" />
+<meta name="date" content="2022-04-13" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -628,20 +628,16 @@ the minimum of which corresponds to the maximum likelihood of S distribution <sp
   \end{aligned}
   \tag{11.9}
 \end{equation}\]</span>
-where <span class="math inline">\(\theta\)</span> is the vector of all parameters in the model and <span class="math inline">\(\lambda\)</span> is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If <span class="math inline">\(\lambda=0\)</span>, then the losses become equivalent to the MSE, when <span class="math inline">\(\lambda=1\)</span>, the optimiser would minimise the values of parameters, ignoring the MSE part. In ETS, it makes sense to shrink everything but the initial level. For different components to shrink with a similar speed, they need to be normalised, so here are some tricks used in ADAM ETS:</p>
+where <span class="math inline">\(\theta\)</span> is the vector of all parameters in the model except for initial states (thus this includes all smoothing parameters, dampening parameter, AR, MA and the parameters for the explanatory variables) and <span class="math inline">\(\lambda\)</span> is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If <span class="math inline">\(\lambda=0\)</span>, then the losses become equivalent to the MSE, when <span class="math inline">\(\lambda=1\)</span>, the optimiser would minimise the values of parameters, ignoring the MSE part. <span class="citation"><a href="#ref-Pritularga2022" role="doc-biblioref">Pritularga et al.</a> (<a href="#ref-Pritularga2022" role="doc-biblioref">2022</a>)</span> argues that the initial states of the model do not need to be shrunk (they will be handled by the optimiser automatically) and that the dampening parameter should shrink to 1 instead of zero (thus enforcing local trend model). Following the same idea, we introduce the following modifications of parameters in the loss in ADAM:</p>
 <ol style="list-style-type: decimal">
-<li>The smoothing parameters are left intact because they typically lie between 0 and 1, where 0 means that the respective states are not updated over time;</li>
-<li>Damping parameter is modified to shrink towards 1, enforcing no dampening of the trend via <span class="math inline">\(\hat{\phi}^\prime=1-\hat{\phi}\)</span>;</li>
-<li>The initial level is normalised using the formula: <span class="math inline">\(\hat{l}_0&#39; = \frac{\hat{l}_0 -\bar{y}_m}{\hat{\sigma}_{y,m}}\)</span>, where <span class="math inline">\(\bar{y}_m\)</span> is the mean and <span class="math inline">\(\hat{\sigma}_{y,m}\)</span> is the standard deviation of the first <span class="math inline">\(m\)</span> actual observations, where <span class="math inline">\(m\)</span> is the highest frequency of the data (if <span class="math inline">\(m=1\)</span>, then both values are taken based on the first two observations). Shrinking it to zero implies that it becomes equivalent to the mean of the first <span class="math inline">\(m\)</span> observations;</li>
-<li>If the trend is <em>additive</em>, then the initial trend component is scaled using: <span class="math inline">\(\hat{b}_0&#39; = \frac{\hat{b}_0}{\hat{\sigma}_{y,m}}\)</span>, making sure that it shrinks towards zero (no trend). In case of the <em>multiplicative</em> trend, this becomes: <span class="math inline">\(\hat{b}_0&#39; = \log{\hat{b}_0}\)</span> , making it shrink towards 1 in the original scale (again, no trend case). The multiplicative trend can be anything between 0 and <span class="math inline">\(\infty\)</span>, corresponding to no trend. Taking the logarithm of it allows balancing out the cases, when <span class="math inline">\(\hat{b}_0&lt;1\)</span> with <span class="math inline">\(\hat{b}_0&gt;1\)</span>;</li>
-<li>If the seasonal component is <em>additive</em>, then the normalisation similar to the one in trend is done for every seasonal index: <span class="math inline">\(\hat{s}_i&#39; = \frac{\hat{s}_i}{\hat{\sigma}_{y,m}}\)</span>, making sure that they shrink towards zero. If the seasonal component is <em>multiplicative</em>, then the logarithm of components is taken: <span class="math inline">\(\hat{s}_i&#39; = \log{\hat{s}_i}\)</span>, making sure that they shrink towards 1 in the original scale.</li>
-<li>If there are explanatory variables and the error term of the model is <em>additive</em>, then the respective parameters are divided by the standard deviations of the respective variables. In the case of the <em>multiplicative</em> error term, nothing is done because the parameters would typically be close to zero anyway (see a chapter on the ADAM ETSX).</li>
-<li>Finally, in order to make <span class="math inline">\(\lambda\)</span> slightly more meaningful, in case of <em>additive</em> error model, we also divide the MSE part of the loss by <span class="math inline">\(\mathrm{V}\left({\Delta}y_t\right)\)</span>, where <span class="math inline">\({\Delta}y_t=y_t-y_{t-1}\)</span>. This sort of scaling helps in both cases: when there is a trend in the data and when the data does not exhibit one. We do not do anything for the <em>multiplicative</em> error models because, typically, the error is already quite small.</li>
+<li>The smoothing parameters should shrink towards zero, implying that the respective states are not updated over time (the model becomes deterministic);</li>
+<li>Damping parameter is modified to shrink towards one, enforcing no dampening of the trend via <span class="math inline">\(\hat{\phi}^\prime=1-\hat{\phi}\)</span>;</li>
+<li>All AR parameters are forced to shrink to one, giving the ARIMA model similar features to the ETS models with shrinkage: <span class="math inline">\(\hat{\phi}_i^\prime=1-\hat{\phi}_i\)</span> for all <span class="math inline">\(i\)</span>. This means that ARIMA shrinks towards non-stationarity;</li>
+<li>All MA parameters are modified to shrink towards minus one, reflecting the same ETS spirit (see the connection between ETS and ARIMA discussed in Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>): <span class="math inline">\(\hat{\theta}_i^\prime=\hat{\theta}_i+1\)</span> for all <span class="math inline">\(i\)</span>.</li>
+<li>If there are explanatory variables and the error term of the model is <em>additive</em>, then the respective parameters are divided by the standard deviations of the respective variables. In the case of the <em>multiplicative</em> error term, nothing is done because the parameters would typically be close to zero anyway (see a Chapter <a href="ADAMXFormulation.html#ADAMXFormulation">10.1</a>).</li>
+<li>Finally, in order to make <span class="math inline">\(\lambda\)</span> slightly more meaningful, in case of <em>additive</em> error model, we also divide the MSE part of the loss by <span class="math inline">\(\mathrm{V}\left({\Delta}y_t\right)\)</span>, where <span class="math inline">\({\Delta}y_t=y_t-y_{t-1}\)</span>. This sort of scaling helps in both cases: when there is a trend in the data and when the data does not exhibit one. We do not do anything for the <em>multiplicative</em> error models because, typically, the error is already small.</li>
 </ol>
-<p>These tricks ensure that different components shrink towards zero simultaneously, not breaking the model. If we would not do these steps, then, for example, the initial trend could dominate in <span class="math inline">\(\hat{\theta}\)</span> and would shrink faster than the smoothing parameters. As a result, one can potentially use the model with trend and seasonality and use regularisation to shrink the unnecessary parameters towards zero. The <code>adam()</code> function does not select the most appropriate <span class="math inline">\(\lambda\)</span> and will set it equal to zero if the user does not provide it.</p>
-<div class="remark">
-<p><span id="unlabeled-div-19" class="remark"><em>Remark</em>. </span>Both LASSO and RIDGE are experimental options. If you have better ideas of how to implement them, send me a message, I will improve the mechanism in <code>adam()</code>.</p>
-</div>
+<p>Note that the <code>adam()</code> function does not select the most appropriate <span class="math inline">\(\lambda\)</span> and will set it equal to zero if the user does not provide it. It is up to a user to try out different <span class="math inline">\(\lambda\)</span> and select the one that minimises a chosen error measure.</p>
 </div>
 <div id="custom-losses" class="section level3 hasAnchor" number="11.2.4">
 <h3><span class="header-section-number">11.2.4</span> Custom losses<a href="non-mle-based-loss-functions.html#custom-losses" class="anchor-section" aria-label="Anchor link to header"></a></h3>
@@ -688,16 +684,16 @@ where <span class="math inline">\(\theta\)</span> is the vector of all parameter
 <p>Now we can compare the performance of the six models. First, we can compare the smoothing parameters:</p>
 <div class="sourceCode" id="cb166"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb166-1"><a href="non-mle-based-loss-functions.html#cb166-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">sapply</span>(adamETSMAMAir,<span class="st">&quot;[[&quot;</span>,<span class="st">&quot;persistence&quot;</span>),<span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##       likelihood   MSE   MAE   HAM LASSO Huber
-## alpha      0.776 0.775 0.888 0.909 0.030 0.664
-## beta       0.000 0.000 0.019 0.017 0.028 0.001
-## gamma      0.000 0.000 0.000 0.008 0.092 0.001</code></pre>
-<p>What we observe in this case is that LASSO has the lowest smoothing parameters because they are shrunk directly in the model. Likelihood and MSE should probably give similar values. They both rely on squared errors, but not the same because the likelihood of Inverse Gaussian also has additional elements.</p>
+## alpha      0.776 0.775 0.888 0.909 0.018 0.664
+## beta       0.000 0.000 0.019 0.017 0.004 0.001
+## gamma      0.000 0.000 0.000 0.008 0.008 0.001</code></pre>
+<p>What we observe in this case is that LASSO has the lowest smoothing parameter <span class="math inline">\(\alpha\)</span> because it is shrunk directly in the model. The reason why <span class="math inline">\(\beta\)</span> and <span class="math inline">\(\gamma\)</span> in LASSO is higher than in other cases is because of the default parameters restriction in ETS (see Section <a href="ETSParametersBounds.html#ETSParametersBounds">4.6</a>). Likelihood and MSE give similar values. They both rely on squared errors, but not the same because the likelihood of Inverse Gaussian distribution also has additional elements.</p>
 <p>Unfortunately, we do not have information criteria for models 2 – 6 in this case because the likelihood function is not maximised with these losses, so it’s not possible to compare them via the in-sample statistics. But we can compare their holdout sample performance:</p>
 <div class="sourceCode" id="cb168"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb168-1"><a href="non-mle-based-loss-functions.html#cb168-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">sapply</span>(adamETSMAMAir,<span class="st">&quot;[[&quot;</span>,<span class="st">&quot;accuracy&quot;</span>),<span class="dv">3</span>)[<span class="fu">c</span>(<span class="st">&quot;ME&quot;</span>,<span class="st">&quot;MAE&quot;</span>,<span class="st">&quot;MSE&quot;</span>),]</span></code></pre></div>
 <pre><code>##     likelihood     MSE     MAE     HAM   LASSO    Huber
-## ME      12.021   9.347   5.048   5.356 -20.043   47.426
-## MAE     22.792  20.698  17.059  17.389  24.741   51.732
-## MSE    752.472 680.667 524.190 551.972 951.980 3552.266</code></pre>
+## ME      12.021   9.347   5.048   5.356   8.976   47.426
+## MAE     22.792  20.698  17.059  17.389  19.947   51.732
+## MSE    752.472 680.667 524.190 551.972 645.646 3552.266</code></pre>
 <p>And we can also produce forecasts and plot them for the visual inspection (Figure <a href="non-mle-based-loss-functions.html#fig:adamModelsForecasts">11.1</a>):</p>
 <div class="sourceCode" id="cb170"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb170-1"><a href="non-mle-based-loss-functions.html#cb170-1" aria-hidden="true" tabindex="-1"></a>adamETSMAMAirForecasts <span class="ot">&lt;-</span> <span class="fu">lapply</span>(adamETSMAMAir,forecast,</span>
 <span id="cb170-2"><a href="non-mle-based-loss-functions.html#cb170-2" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">h=</span><span class="dv">12</span>, <span class="at">interval=</span><span class="st">&quot;empirical&quot;</span>)</span>
@@ -734,6 +730,9 @@ Figure 11.1: Forecasts from ETS(M,A,M) model estimated using different loss func
 </div>
 <div id="ref-Kolassa2016" class="csl-entry">
 • Kolassa, S., 2016. <span class="nocase">Evaluating predictive count data distributions in retail sales forecasting</span>. International Journal of Forecasting. 32, 788–803. <a href="https://doi.org/10.1016/j.ijforecast.2015.12.004">https://doi.org/10.1016/j.ijforecast.2015.12.004</a>
+</div>
+<div id="ref-Pritularga2022" class="csl-entry">
+• Pritularga, K., Svetunkov, I., Kourentzes, N., 2022. <span class="nocase">Shrinkage Estimator for Exponential Smoothing Models</span>. Submitted to International Journal of Forecasting. NA, NA.
 </div>
 <div id="ref-Schwertman1990" class="csl-entry">
 • Schwertman, N.C., Gilks, A.J., Cameron, J., 1990. <span class="nocase">A Simple Noncalculus Proof That the Median Minimizes the Sum of the Absolute Deviations</span>. The American Statistician. 44, 38–39. <a href="https://doi.org/10.1080/00031305.1990.10475690">https://doi.org/10.1080/00031305.1990.10475690</a>
