@@ -299,21 +299,16 @@ While this is not a well studied approach yet, it is possible to use LASSO [@Tib
   \end{aligned}
   (\#eq:Regularisation)
 \end{equation}
-where $\theta$ is the vector of all parameters in the model and $\lambda$ is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If $\lambda=0$, then the losses become equivalent to the MSE, when $\lambda=1$, the optimiser would minimise the values of parameters, ignoring the MSE part. In ETS, it makes sense to shrink everything but the initial level. For different components to shrink with a similar speed, they need to be normalised, so here are some tricks used in ADAM ETS:
+where $\theta$ is the vector of all parameters in the model except for initial states (thus this includes all smoothing parameters, dampening parameter, AR, MA and the parameters for the explanatory variables) and $\lambda$ is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If $\lambda=0$, then the losses become equivalent to the MSE, when $\lambda=1$, the optimiser would minimise the values of parameters, ignoring the MSE part. @Pritularga2022 argues that the initial states of the model do not need to be shrunk (they will be handled by the optimiser automatically) and that the dampening parameter should shrink to 1 instead of zero (thus enforcing local trend model). Following the same idea, we introduce the following modifications of parameters in the loss in ADAM:
 
-1. The smoothing parameters are left intact because they typically lie between 0 and 1, where 0 means that the respective states are not updated over time;
-2. Damping parameter is modified to shrink towards 1, enforcing no dampening of the trend via $\hat{\phi}^\prime=1-\hat{\phi}$;
-3. The initial level is normalised using the formula: $\hat{l}_0' = \frac{\hat{l}_0 -\bar{y}_m}{\hat{\sigma}_{y,m}}$, where $\bar{y}_m$ is the mean and $\hat{\sigma}_{y,m}$ is the standard deviation of the first $m$ actual observations, where $m$ is the highest frequency of the data (if $m=1$, then both values are taken based on the first two observations). Shrinking it to zero implies that it becomes equivalent to the mean of the first $m$ observations;
-4. If the trend is *additive*, then the initial trend component is scaled using: $\hat{b}_0' = \frac{\hat{b}_0}{\hat{\sigma}_{y,m}}$, making sure that it shrinks towards zero (no trend). In case of the *multiplicative* trend, this becomes: $\hat{b}_0' = \log{\hat{b}_0}$ , making it shrink towards 1 in the original scale (again, no trend case). The multiplicative trend can be anything between 0 and $\infty$, corresponding to no trend. Taking the logarithm of it allows balancing out the cases, when $\hat{b}_0<1$ with $\hat{b}_0>1$;
-5. If the seasonal component is *additive*, then the normalisation similar to the one in trend is done for every seasonal index: $\hat{s}_i' = \frac{\hat{s}_i}{\hat{\sigma}_{y,m}}$, making sure that they shrink towards zero. If the seasonal component is *multiplicative*, then the logarithm of components is taken: $\hat{s}_i' = \log{\hat{s}_i}$, making sure that they shrink towards 1 in the original scale.
-6. If there are explanatory variables and the error term of the model is *additive*, then the respective parameters are divided by the standard deviations of the respective variables. In the case of the *multiplicative* error term, nothing is done because the parameters would typically be close to zero anyway (see a chapter on the ADAM ETSX).
-7. Finally, in order to make $\lambda$ slightly more meaningful, in case of *additive* error model, we also divide the MSE part of the loss by $\mathrm{V}\left({\Delta}y_t\right)$, where ${\Delta}y_t=y_t-y_{t-1}$. This sort of scaling helps in both cases: when there is a trend in the data and when the data does not exhibit one. We do not do anything for the *multiplicative* error models because, typically, the error is already quite small.
+1. The smoothing parameters should shrink towards zero, implying that the respective states are not updated over time (the model becomes deterministic);
+2. Damping parameter is modified to shrink towards one, enforcing no dampening of the trend via $\hat{\phi}^\prime=1-\hat{\phi}$;
+3. All AR parameters are forced to shrink to one, giving the ARIMA model similar features to the ETS models with shrinkage: $\hat{\phi}_i^\prime=1-\hat{\phi}_i$ for all $i$. This means that ARIMA shrinks towards non-stationarity;
+4. All MA parameters are modified to shrink towards minus one, reflecting the same ETS spirit (see the connection between ETS and ARIMA discussed in Section \@ref(ARIMAandETS)): $\hat{\theta}_i^\prime=\hat{\theta}_i+1$ for all $i$.
+5. If there are explanatory variables and the error term of the model is *additive*, then the respective parameters are divided by the standard deviations of the respective variables. In the case of the *multiplicative* error term, nothing is done because the parameters would typically be close to zero anyway (see a Chapter \@ref(ADAMXFormulation)).
+6. Finally, in order to make $\lambda$ slightly more meaningful, in case of *additive* error model, we also divide the MSE part of the loss by $\mathrm{V}\left({\Delta}y_t\right)$, where ${\Delta}y_t=y_t-y_{t-1}$. This sort of scaling helps in both cases: when there is a trend in the data and when the data does not exhibit one. We do not do anything for the *multiplicative* error models because, typically, the error is already small.
 
-These tricks ensure that different components shrink towards zero simultaneously, not breaking the model. If we would not do these steps, then, for example, the initial trend could dominate in $\hat{\theta}$ and would shrink faster than the smoothing parameters. As a result, one can potentially use the model with trend and seasonality and use regularisation to shrink the unnecessary parameters towards zero. The `adam()` function does not select the most appropriate $\lambda$ and will set it equal to zero if the user does not provide it.
-
-::: remark
-Both LASSO and RIDGE are experimental options. If you have better ideas of how to implement them, send me a message, I will improve the mechanism in `adam()`.
-:::
+Note that the `adam()` function does not select the most appropriate $\lambda$ and will set it equal to zero if the user does not provide it. It is up to a user to try out different $\lambda$ and select the one that minimises a chosen error measure.
 
 
 ### Custom losses
@@ -378,7 +373,7 @@ Now we can compare the performance of the six models. First, we can compare the 
 round(sapply(adamETSMAMAir,"[[","persistence"),3)
 ```
 
-What we observe in this case is that LASSO has the lowest smoothing parameters because they are shrunk directly in the model. Likelihood and MSE should probably give similar values. They both rely on squared errors, but not the same because the likelihood of Inverse Gaussian also has additional elements.
+What we observe in this case is that LASSO has the lowest smoothing parameter $\alpha$ because it is shrunk directly in the model. The reason why $\beta$ and $\gamma$ in LASSO is higher than in other cases is because of the default parameters restriction in ETS (see Section \@ref(ETSParametersBounds)). Likelihood and MSE give similar values. They both rely on squared errors, but not the same because the likelihood of Inverse Gaussian distribution also has additional elements.
 
 Unfortunately, we do not have information criteria for models 2 -- 6 in this case because the likelihood function is not maximised with these losses, so it's not possible to compare them via the in-sample statistics. But we can compare their holdout sample performance:
 
