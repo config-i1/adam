@@ -667,10 +667,10 @@ where <span class="math inline">\(\theta\)</span> is the vector of all parameter
 <span id="cb163-14"><a href="non-mle-based-loss-functions.html#cb163-14" aria-hidden="true" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dinvgauss&quot;</span>,</span>
 <span id="cb163-15"><a href="non-mle-based-loss-functions.html#cb163-15" aria-hidden="true" tabindex="-1"></a>                           <span class="at">loss=</span><span class="st">&quot;HAM&quot;</span>)</span></code></pre></div>
 <p>In these three cases, the models assuming the same distribution for the error term are estimated using MSE, MAE and HAM. Their smoothing parameters should differ, with MSE producing fitted values closer to the mean, MAE – closer to the median and HAM – closer to the mode (but not exactly the mode) of the distribution.</p>
-<p>In addition, we introduce ADAM ETS(M,A,M) estimated using LASSO with arbitrarily selected <span class="math inline">\(\lambda=0.1\)</span>:</p>
+<p>In addition, we introduce ADAM ETS(M,A,M) estimated using LASSO with arbitrarily selected <span class="math inline">\(\lambda=0.9\)</span>:</p>
 <div class="sourceCode" id="cb164"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb164-1"><a href="non-mle-based-loss-functions.html#cb164-1" aria-hidden="true" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">5</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb164-2"><a href="non-mle-based-loss-functions.html#cb164-2" aria-hidden="true" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dinvgauss&quot;</span>,</span>
-<span id="cb164-3"><a href="non-mle-based-loss-functions.html#cb164-3" aria-hidden="true" tabindex="-1"></a>                           <span class="at">loss=</span><span class="st">&quot;LASSO&quot;</span>, <span class="at">lambda=</span><span class="fl">0.1</span>)</span></code></pre></div>
+<span id="cb164-3"><a href="non-mle-based-loss-functions.html#cb164-3" aria-hidden="true" tabindex="-1"></a>                           <span class="at">loss=</span><span class="st">&quot;LASSO&quot;</span>, <span class="at">lambda=</span><span class="fl">0.9</span>)</span></code></pre></div>
 <p>And, finally, we estimate the same model using a custom loss, which in this case is Huber loss <span class="citation">(<a href="#ref-Huber1992" role="doc-biblioref">Huber, 1992</a>)</span> with the threshold of 1.345:</p>
 <div class="sourceCode" id="cb165"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb165-1"><a href="non-mle-based-loss-functions.html#cb165-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Huber loss with a threshold of 1.345</span></span>
 <span id="cb165-2"><a href="non-mle-based-loss-functions.html#cb165-2" aria-hidden="true" tabindex="-1"></a>lossFunction <span class="ot">&lt;-</span> <span class="cf">function</span>(actual, fitted, B){</span>
@@ -684,16 +684,16 @@ where <span class="math inline">\(\theta\)</span> is the vector of all parameter
 <p>Now we can compare the performance of the six models. First, we can compare the smoothing parameters:</p>
 <div class="sourceCode" id="cb166"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb166-1"><a href="non-mle-based-loss-functions.html#cb166-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">sapply</span>(adamETSMAMAir,<span class="st">&quot;[[&quot;</span>,<span class="st">&quot;persistence&quot;</span>),<span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##       likelihood   MSE   MAE   HAM LASSO Huber
-## alpha      0.776 0.775 0.888 0.909 0.018 0.664
-## beta       0.000 0.000 0.019 0.017 0.004 0.001
-## gamma      0.000 0.000 0.000 0.008 0.008 0.001</code></pre>
+## alpha      0.776 0.775 0.888 0.909 0.002 0.664
+## beta       0.000 0.000 0.019 0.017 0.002 0.001
+## gamma      0.000 0.000 0.000 0.008 0.000 0.001</code></pre>
 <p>What we observe in this case is that LASSO has the lowest smoothing parameter <span class="math inline">\(\alpha\)</span> because it is shrunk directly in the model estimation. Also note that Likelihood and MSE give similar values. They both rely on squared errors, but not the same because the likelihood of Inverse Gaussian distribution also has additional elements (see Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>).</p>
 <p>Unfortunately, we do not have information criteria for models 2 – 6 in this case because the likelihood function is not maximised with these losses, so it’s not possible to compare them via the in-sample statistics. But we can compare their holdout sample performance:</p>
 <div class="sourceCode" id="cb168"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb168-1"><a href="non-mle-based-loss-functions.html#cb168-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">sapply</span>(adamETSMAMAir,<span class="st">&quot;[[&quot;</span>,<span class="st">&quot;accuracy&quot;</span>),<span class="dv">3</span>)[<span class="fu">c</span>(<span class="st">&quot;ME&quot;</span>,<span class="st">&quot;MAE&quot;</span>,<span class="st">&quot;MSE&quot;</span>),]</span></code></pre></div>
 <pre><code>##     likelihood     MSE     MAE     HAM   LASSO    Huber
-## ME      12.021   9.347   5.048   5.356   8.976   47.426
-## MAE     22.792  20.698  17.059  17.389  19.947   51.732
-## MSE    752.472 680.667 524.190 551.972 645.646 3552.266</code></pre>
+## ME      12.021   9.347   5.048   5.356   6.791   47.426
+## MAE     22.792  20.698  17.059  17.389  18.116   51.732
+## MSE    752.472 680.667 524.190 551.972 542.632 3552.266</code></pre>
 <p>And we can also produce forecasts and plot them for the visual inspection (Figure <a href="non-mle-based-loss-functions.html#fig:adamModelsForecasts">11.1</a>):</p>
 <div class="sourceCode" id="cb170"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb170-1"><a href="non-mle-based-loss-functions.html#cb170-1" aria-hidden="true" tabindex="-1"></a>adamETSMAMAirForecasts <span class="ot">&lt;-</span> <span class="fu">lapply</span>(adamETSMAMAir,forecast,</span>
 <span id="cb170-2"><a href="non-mle-based-loss-functions.html#cb170-2" aria-hidden="true" tabindex="-1"></a>                                 <span class="at">h=</span><span class="dv">12</span>, <span class="at">interval=</span><span class="st">&quot;empirical&quot;</span>)</span>
