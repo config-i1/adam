@@ -1,4 +1,4 @@
-# From time series components to ETS {#tsDecomposition}
+# Time series components and simple forecasting methods {#tsDecomposition}
 Before we turn to the state space framework, ETS, ARIMA and other models, we need to discuss time series decomposition and the ETS taxonomy. These topics lie at the heart of ETS models and are essential for understanding further material.
 
 In this chapter, we start with a discussion of time series components, then move to the idea of decomposing time series into distinct components and applying simple forecasting methods, including Naïve, Global Average, Simple Moving Average and Simple Exponential Smoothing.
@@ -151,7 +151,11 @@ There are many functions in R that implement seasonal decomposition. Here is a s
 
 
 ## Simple forecasting methods {#simpleForecastingMethods}
-Now that we understand that time series might contain different components and that there are approaches for their decomposition, we can introduce several simple forecasting methods that can be used in practice, at least as benchmarks. Their usage aligns with the idea of forecasting principles discussed in Section \@ref(forecastingPrinciples).
+Now that we understand that time series might contain different components and that there are approaches for their decomposition, we can introduce several simple forecasting methods that can be used in practice, at least as benchmarks. Their usage aligns with the idea of forecasting principles discussed in Section \@ref(forecastingPrinciples). We discuss the most popular methods for the following specific types of time series:
+
+1. Level time series: Naïve (Subsection \@ref(Naive)), Global Average (Subsection \@ref(GlobalMean)), Simple Moving Average (Subsection \@ref(SMA)), Simple Exponential Smoothing (Section \@ref(SES));
+2. Trend time series: Random walk with drift (Subsection \@ref(RWWithDrift)), Global trend (Subsection \@ref(GlobalTrend));
+3. Seasonal time series: Seasonal Naïve (Subsection \@ref(NaiveSeasonal)).
 
 ### Naïve {#Naive}
 Naïve is one of the simplest forecasting methods. According to it, the one-step-ahead forecast is equal to the most recent actual value:
@@ -248,7 +252,7 @@ where $a_0$ is a constant term, the introduction of which leads to increasing or
     \hat{y}_{t+h} = y_{t} + a_0 h,
     (\#eq:RandomWalkWithDriftForecast)
 \end{equation}
-implying that the forecast from the model is a straight line with the slope parameter $a_0$. Figure \@ref(fig:RWDriftExample) shows how the data generated from Random Walk with drift and $a_0=10$ looks like. This model is discussed in Section \@ref(ARIMA).
+implying that the forecast from the model is a straight line with the slope parameter $a_0$. Figure \@ref(fig:RWDriftExample) shows how the data generated from Random Walk with drift and $a_0=10$ looks like. This model is discussed in Subsection \@ref(Differences).
 
 ```{r RWDriftExample, fig.cap="Random Walk with drift data and the model applied to that data."}
 y <- sim.ssarima(orders=list(i=1), lags=1, obs=120,
@@ -259,6 +263,30 @@ plot(testModel, 7, main="")
 ```
 
 The data in Figure \@ref(fig:RWDriftExample) demonstrates a positive trend (because $a_0>0$) and randomness from one observation to another. The model is helpful as a benchmark and a special case for several other models because it is simple and requires the estimation of only one parameter.
+
+
+### Global Trend {#GlobalTrend}
+Continuing the discussion of the trend time series, there is another simple model that is sometimes used in forecasting. Global trend model is formulated as:
+\begin{equation}
+    y_t = a_0 + a_1 t + \epsilon_t,
+    (\#eq:GlobalTrend)
+\end{equation}
+where $a_0$ is the intercept and $a_1$ is the slope of the trend. The positive value of $a_1$ implies that the data exhibits growth, while the negative means decline. The size of $a_1$ characterises the steepness of the slope. The point forecast from this model is:
+\begin{equation}
+    \hat{y}_{t+h} = a_0 + a_1 (t+h),
+    (\#eq:GlobalTrendForecast)
+\end{equation}
+implying that the forecast from the model is a straight line with the slope parameter $a_1$. Figure \@ref(fig:GlobalTrendExample) shows how the data generated from Global Trend with $a_0=10$ and $a_1=5$ looks like.
+
+```{r GlobalTrendExample, fig.cap="Global trend data and the model applied to it."}
+xreg <- data.frame(y=rnorm(120, 10+5*c(1:120), 10))
+testModel <- alm(y~trend, xreg, subset=c(1:100))
+testModel |>
+  forecast(tail(xreg, 20), h=20) |>
+  plot(main="")
+```
+
+The data in Figure \@ref(fig:GlobalTrendExample) demonstrates a linear trend with some randomness around it. In this situation the slope of the trend is fixed and does not change over time in contrast to what we observed in Figure \@ref(fig:RWDriftExample) for Random Walk with drift model. In some cases, the Global Trend model is the most suitable one for the data. Some of the models disucssed later in this monograph have the Global Trend as a special case, when some restrictions on parameters are imposed (see, for example, Subsection \@ref(ETSAAN)).
 
 
 ### Seasonal Naïve {#NaiveSeasonal}
