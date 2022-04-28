@@ -141,7 +141,7 @@
 
 \title{Forecasting and Analytics with ADAM}
 \author{Ivan Svetunkov}
-\date{2022-04-18}
+\date{2022-04-28}
 
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}[chapter]
@@ -299,7 +299,7 @@ This monograph is licensed under \href{https://creativecommons.org/licenses/by-n
 \subsection*{Acknowledgments}\label{acknowledgments}}
 \addcontentsline{toc}{subsection}{Acknowledgments}
 
-I would like to thank Robert Fildes for his comments about this book and helping in shaping it into a monograph. I also would like to thank Tobias Schmidt for his help in refining earlier parts of the monograph and correcting grammatical mistakes.
+I would like to thank Robert Fildes for his comments about this book and helping in shaping it into a monograph and J. Keith Ord for his invaluable suggestions for improvement of the monograph. I also would like to thank Tobias Schmidt for his help in refining earlier parts of the monograph and correcting grammatical mistakes.
 
 \hypertarget{intro}{%
 \chapter{Introduction}\label{intro}}
@@ -400,7 +400,7 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well behaved data, point forecast and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell which bound the demand will lie in \(1-\alpha\) per cent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 80.24 and 120.66. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell which bound the demand will lie in \(1-\alpha\) per cent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 79.61 and 122.86. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For a more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 5 of \citet{SvetunkovSBA}.
 
@@ -1072,7 +1072,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.03315010 0.03610540 0.02941255
+## 0.08782067 0.08836911 0.08629209
 \end{verbatim}
 
 In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with an alternative one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:
@@ -1090,7 +1090,7 @@ In this example, we use the \texttt{apply()} function to distinguish between the
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.03241463 0.03674434 0.02710532
+## 0.08797683 0.07437289 0.08895607
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.
@@ -1688,6 +1688,145 @@ Similar to Naïve, the higher variability of the error term \(\epsilon_t\) in \e
 
 Similarly to the previous methods, if other approaches cannot outperform seasonal Naïve, it is not worth spending time on those approaches.
 
+\hypertarget{SES}{%
+\section{Simple Exponential Smoothing}\label{SES}}
+
+One of the most powerful and efficient forecasting methods for level time series \citep[which is very popular in practice according to][]{LCFweller2012} is Simple Exponential Smoothing (sometimes also called ``Single Exponential Smoothing''). It was first formulated by \citet{Brown1956} and can be written as:
+\begin{equation}
+  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \hat{y}_{t},
+  \label{eq:BrownMethod}
+\end{equation}
+where \(\hat{\alpha}\) is the smoothing parameter, which is typically restricted within (0, 1) region (this region is arbitrary, and we will see in Section \ref{ETSParametersBounds} what is the correct one). This is one of the simplest forecasting methods. The smoothing parameter is typically interpreted as a weight between the latest actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value \(\hat{y}_{t}\) and the new information is neglected. If \(\hat{\alpha}=0\), then the method becomes equivalent to the Global Mean method, discussed in Subsection \ref{GlobalMean}. When it is close to one, then most of the weight is assigned to the actual value \({y}_{t}\). If \(\hat{\alpha}=1\), then the method transforms into Naïve, discussed in Subsection \ref{Naive}. By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
+
+Also, notice that this is a recursive method, meaning that there needs to be some starting point \(\hat{y}_1\) to apply \eqref{eq:BrownMethod} to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature. Still, the state of the art one is to estimate \(\hat{\alpha}\) and \(\hat{y}_{1}\) together by minimising some loss function \citep{Hyndman2002}. Typically MSE (see Section \ref{errorMeasures}) is used, minimising the squares of one step ahead forecast errors.
+
+\hypertarget{examples-of-application}{%
+\subsection{Examples of application}\label{examples-of-application}}
+
+Here is an example of how this method works on different time series. We start with generating a stationary series and using \texttt{es()} function from \texttt{smooth} package. Although it implements the ETS model, we will see later the connection between SES and ETS(A,N,N). We start with the stationary time series and \(\hat{\alpha}=0\):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{y }\OtherTok{\textless{}{-}} \FunctionTok{rnorm}\NormalTok{(}\DecValTok{100}\NormalTok{,}\DecValTok{100}\NormalTok{,}\DecValTok{10}\NormalTok{)}
+\NormalTok{ourModel }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y, }\AttributeTok{model=}\StringTok{"ANN"}\NormalTok{, }\AttributeTok{h=}\DecValTok{10}\NormalTok{, }\AttributeTok{persistence=}\DecValTok{0}\NormalTok{)}
+\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\StringTok{""}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExample1-1.pdf}
+\caption{\label{fig:SESExample1}An example with a time series and SES forecast. \(\hat{\alpha}=0\)}
+\end{figure}
+
+As we see from Figure \ref{fig:SESExample1}, the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure \ref{fig:SESExample2} shows an example with a level shift in the data.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{y }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{50}\NormalTok{,}\DecValTok{100}\NormalTok{,}\DecValTok{10}\NormalTok{),}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{50}\NormalTok{,}\DecValTok{130}\NormalTok{,}\DecValTok{10}\NormalTok{))}
+\NormalTok{ourModel }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y, }\AttributeTok{model=}\StringTok{"ANN"}\NormalTok{, }\AttributeTok{h=}\DecValTok{10}\NormalTok{, }\AttributeTok{persistence=}\FloatTok{0.1}\NormalTok{)}
+\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\StringTok{""}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExample2-1.pdf}
+\caption{\label{fig:SESExample2}An example with a time series and SES forecast. \(\hat{\alpha}=0.1\)}
+\end{figure}
+
+With \(\hat{\alpha}=0.1\), SES manages to get to the new level, but now the method starts adapting to noise a little bit -- it follows the peaks and troughs and repeats them with a lag, but with a much smaller magnitude (see Figure \ref{fig:SESExample2}). Increasing the smoothing parameter, the model will react to the changes much faster, at the cost of responding more to noise. This is shown in Figure \ref{fig:SESExamples} with different smoothing parameters values.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExamples-1.pdf}
+\caption{\label{fig:SESExamples}SES with different smoothing parameters applied to the same data.}
+\end{figure}
+
+If we set \(\hat{\alpha}=1\), we will end up with Naive forecasting method (see Section \ref{Naive}), which is not appropriate for our example (see Figure \ref{fig:SESExampleNaive}).
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExampleNaive-1.pdf}
+\caption{\label{fig:SESExampleNaive}SES with \(\hat{\alpha}=1\).}
+\end{figure}
+
+So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE (see Figure \ref{fig:SESExample3}):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{ourModel }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y, }\AttributeTok{model=}\StringTok{"ANN"}\NormalTok{, }\AttributeTok{h=}\DecValTok{10}\NormalTok{, }\AttributeTok{loss=}\StringTok{"MSE"}\NormalTok{)}
+\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\FunctionTok{paste0}\NormalTok{(}\StringTok{"SES with alpha="}\NormalTok{,}
+                              \FunctionTok{round}\NormalTok{(ourModel}\SpecialCharTok{$}\NormalTok{persistence,}\DecValTok{3}\NormalTok{)))}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExample3-1.pdf}
+\caption{\label{fig:SESExample3}SES with optimal smoothing parameter.}
+\end{figure}
+
+This approach won't guarantee that we will get the most appropriate \(\hat{\alpha}\). Still, it has been shown in the literature that the optimisation of smoothing parameters on average leads to improvements in terms of forecasting accuracy \citep[see, for example,][]{Gardner1985}.
+
+\hypertarget{whyExponential}{%
+\subsection{Why ``exponential''?}\label{whyExponential}}
+
+Now, \textbf{why is it called ``exponential''}? Because the same method can be represented in a different form, if we substitute \(\hat{y}_{t}\) in right hand side of \eqref{eq:BrownMethod} by the formula for the previous step:
+\begin{equation}
+  \begin{aligned}
+  \hat{y}_{t} = &\hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1}, \\
+  \hat{y}_{t+1} = &\hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \hat{y}_{t} = \\
+  & \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
+  \end{aligned}
+  \label{eq:BrownMethodExponential1}
+\end{equation}
+By repeating this procedure for each \(\hat{y}_{t-1}\), \(\hat{y}_{t-2}\) etc, we will obtain a different form of the method:
+\begin{equation}
+  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots  + \hat{\alpha} (1 -\hat{\alpha})^{t-1} {y}_{1} + (1 -\hat{\alpha})^t \hat{y}_1 
+  \label{eq:BrownMethodExponential2}
+\end{equation}
+or equivalently:
+\begin{equation}
+  \hat{y}_{t+1} = \hat{\alpha} \sum_{j=0}^{t-1} (1 -\hat{\alpha})^j {y}_{t-j} + (1 -\hat{\alpha})^t \hat{y}_1 .
+  \label{eq:BrownMethodExponential3}
+\end{equation}
+In the form \eqref{eq:BrownMethodExponential3}, each actual observation has a weight infront of it. For the most recent observation it is equal to \(\hat{\alpha}\), for the previous one it is \(\hat{\alpha} (1 -\hat{\alpha})\), then \(\hat{\alpha} (1 -\hat{\alpha})^2\) etc. These form the geometric series or an exponential curve. Figure \ref{fig:BrownExponentialExample} shows an example with \(\hat{\alpha} =0.25\) for a sample of 30 observations:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{plot}\NormalTok{(}\FloatTok{0.25}\SpecialCharTok{*}\NormalTok{(}\DecValTok{1}\FloatTok{{-}0.25}\NormalTok{)}\SpecialCharTok{\^{}}\FunctionTok{c}\NormalTok{(}\DecValTok{0}\SpecialCharTok{:}\DecValTok{30}\NormalTok{), }\AttributeTok{type=}\StringTok{"b"}\NormalTok{, }
+     \AttributeTok{xlab=}\StringTok{"Time lags"}\NormalTok{, }\AttributeTok{ylab=}\StringTok{"Weights"}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/BrownExponentialExample-1.pdf}
+\caption{\label{fig:BrownExponentialExample}Example of weights distribution for \(\hat{\alpha}=0.25\)}
+\end{figure}
+
+This explains the name ``exponential''. The term ``smoothing'' comes from the idea that the parameter \(\hat{\alpha}\) should be selected so that the method smooths the original time series and does not react to noise.
+
+\hypertarget{SESEC}{%
+\subsection{Error correction form of SES}\label{SESEC}}
+
+Finally, there is an alternative form of SES, known as error correction form, which can be obtained after some simple permutations. Taking that \(e_t=y_t-\hat{y}_t\) is the one step ahead forecast error, formula \eqref{eq:BrownMethod} can be written as:
+\begin{equation}
+  \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
+  \label{eq:SESErrorCorrection}
+\end{equation}
+In this form, the smoothing parameter \(\hat{\alpha}\) has a different meaning: it regulates how much the model reacts to the previous forecast error. In this interpretation, it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero to filter out the noise, not to adapt to it.
+
+As you see, SES is a straightforward method. It is easy to explain to practitioners, and it is very easy to implement in practice. However, this is just a forecasting method (see Section \ref{modelsMethods}), so it provides a way of generating point forecasts but does not explain where the error comes from and how to create prediction intervals.
+
+\hypertarget{ETSConventional}{%
+\chapter{Introduction to ETS}\label{ETSConventional}}
+
+Now that we know how time series can be decomposed into components, we can discuss the ETS model, their connection with exponential smoothing methods and focusing on the most popular of those. We do not discuss in detail how the methods were originally derived and how to work with them. Instead, we focus on the main ideas behind the conventional ETS and the connection between Exponential Smoothing and ETS.
+
+The reader interested in the history of exponential smoothing, how it was developed, and what papers contributed to the field can refer to the reviews of \citet{Gardner1985} and \citet{Gardner2006}. They summarise all the progress in exponential smoothing up until 1985 and until 2006 respectively.
+
 \hypertarget{ETSTaxonomy}{%
 \section{ETS taxonomy}\label{ETSTaxonomy}}
 
@@ -2012,147 +2151,8 @@ The multiplicative error models have the same one step ahead expectations and po
 
 Although there are 30 potential ETS models, not all of them are stable. So, Rob Hyndman has reduced the pool of models under consideration in the \texttt{ets()} function of \texttt{forecast} package to the following 19: ANN, AAN, AAdN, ANA, AAA, AAdA, MNN, MAN, MAdN, MNA, MAA, MAdA, MNM, MAM, MAdM, MMN, MMdN, MMM, MMdM. In addition, the multiplicative trend models are unstable in data with outliers, so they are switched off in the \texttt{ets()} function by default, which reduces the pool of models further to the first 15.
 
-\hypertarget{ETSConventional}{%
-\chapter{Conventional Exponential Smoothing}\label{ETSConventional}}
-
-Now that we know how time series can be decomposed into components, we can discuss the exponential smoothing methods, focusing on the most popular ones. We do not detail how the methods were originally derived and how to work with them. Instead, we focus on their connection with ETS and the main ideas behind the conventional ETS.
-
-The reader interested in the history of exponential smoothing, how it was developed, and what papers contributed to the field can refer to the reviews of \citet{Gardner1985} and \citet{Gardner2006}. They summarise all the progress in exponential smoothing up until 1985 and until 2006 respectively.
-
-\hypertarget{SES}{%
-\section{Simple Exponential Smoothing}\label{SES}}
-
-We start our discussion of exponential smoothing with the original Simple Exponential Smoothing (SES) forecasting method, which was formulated by \citep{Brown1956}:
-\begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \hat{y}_{t},
-  \label{eq:BrownMethod}
-\end{equation}
-where \(\hat{\alpha}\) is the smoothing parameter, which is typically restricted within (0, 1) region (this region is arbitrary, and we will see in Section \ref{ETSParametersBounds} what is the correct one). This is one of the simplest forecasting methods. The smoothing parameter is typically interpreted as a weight between the latest actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value \(\hat{y}_{t}\) and the new information is neglected. If \(\hat{\alpha}=0\), then the method becomes equivalent to the Global Mean method, discussed in Section \ref{GlobalMean}. When it is close to one, then most of the weight is assigned to the actual value \({y}_{t}\). If \(\hat{\alpha}=1\), then the method transforms into Naïve, discussed in Section \ref{Naive}. By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
-
-Also, notice that this is a recursive method, meaning that there needs to be some starting point \(\hat{y}_1\) to apply \eqref{eq:BrownMethod} to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature. Still, the state of the art one is to estimate \(\hat{\alpha}\) and \(\hat{y}_{1}\) together by minimising some loss function \citep{Hyndman2002}. Typically MSE (see Section \ref{errorMeasures}) is used, minimising the squares of one step ahead forecast errors.
-
-\hypertarget{examples-of-application}{%
-\subsection{Examples of application}\label{examples-of-application}}
-
-Here is an example of how this method works on different time series. We start with generating a stationary series and using \texttt{es()} function from \texttt{smooth} package. Although it implements the ETS model, we will see later the connection between SES and ETS(A,N,N). We start with the stationary time series and \(\hat{\alpha}=0\):
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{y }\OtherTok{\textless{}{-}} \FunctionTok{rnorm}\NormalTok{(}\DecValTok{100}\NormalTok{,}\DecValTok{100}\NormalTok{,}\DecValTok{10}\NormalTok{)}
-\NormalTok{ourModel }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y, }\AttributeTok{model=}\StringTok{"ANN"}\NormalTok{, }\AttributeTok{h=}\DecValTok{10}\NormalTok{, }\AttributeTok{persistence=}\DecValTok{0}\NormalTok{)}
-\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\StringTok{""}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{figure}
-\centering
-\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExample1-1.pdf}
-\caption{\label{fig:SESExample1}An example with a time series and SES forecast. \(\hat{\alpha}=0\)}
-\end{figure}
-
-As we see from Figure \ref{fig:SESExample1}, the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure \ref{fig:SESExample2} shows an example with a level shift in the data.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{y }\OtherTok{\textless{}{-}} \FunctionTok{c}\NormalTok{(}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{50}\NormalTok{,}\DecValTok{100}\NormalTok{,}\DecValTok{10}\NormalTok{),}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{50}\NormalTok{,}\DecValTok{130}\NormalTok{,}\DecValTok{10}\NormalTok{))}
-\NormalTok{ourModel }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y, }\AttributeTok{model=}\StringTok{"ANN"}\NormalTok{, }\AttributeTok{h=}\DecValTok{10}\NormalTok{, }\AttributeTok{persistence=}\FloatTok{0.1}\NormalTok{)}
-\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\StringTok{""}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{figure}
-\centering
-\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExample2-1.pdf}
-\caption{\label{fig:SESExample2}An example with a time series and SES forecast. \(\hat{\alpha}=0.1\)}
-\end{figure}
-
-With \(\hat{\alpha}=0.1\), SES manages to get to the new level, but now the method starts adapting to noise a little bit -- it follows the peaks and troughs and repeats them with a lag, but with a much smaller magnitude (see Figure \ref{fig:SESExample2}). Increasing the smoothing parameter, the model will react to the changes much faster, at the cost of responding more to noise. This is shown in Figure \ref{fig:SESExamples} with different smoothing parameters values.
-
-\begin{figure}
-\centering
-\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExamples-1.pdf}
-\caption{\label{fig:SESExamples}SES with different smoothing parameters applied to the same data.}
-\end{figure}
-
-If we set \(\hat{\alpha}=1\), we will end up with Naive forecasting method (see Section \ref{Naive}), which is not appropriate for our example (see Figure \ref{fig:SESExampleNaive}).
-
-\begin{figure}
-\centering
-\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExampleNaive-1.pdf}
-\caption{\label{fig:SESExampleNaive}SES with \(\hat{\alpha}=1\).}
-\end{figure}
-
-So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE (see Figure \ref{fig:SESExample3}):
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{ourModel }\OtherTok{\textless{}{-}} \FunctionTok{es}\NormalTok{(y, }\AttributeTok{model=}\StringTok{"ANN"}\NormalTok{, }\AttributeTok{h=}\DecValTok{10}\NormalTok{, }\AttributeTok{loss=}\StringTok{"MSE"}\NormalTok{)}
-\FunctionTok{plot}\NormalTok{(ourModel, }\DecValTok{7}\NormalTok{, }\AttributeTok{main=}\FunctionTok{paste0}\NormalTok{(}\StringTok{"SES with alpha="}\NormalTok{,}
-                              \FunctionTok{round}\NormalTok{(ourModel}\SpecialCharTok{$}\NormalTok{persistence,}\DecValTok{3}\NormalTok{)))}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{figure}
-\centering
-\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/SESExample3-1.pdf}
-\caption{\label{fig:SESExample3}SES with optimal smoothing parameter.}
-\end{figure}
-
-This approach won't guarantee that we will get the most appropriate \(\hat{\alpha}\). Still, it has been shown in the literature that the optimisation of smoothing parameters on average leads to improvements in terms of forecasting accuracy \citep[see, for example,][]{Gardner1985}.
-
-\hypertarget{whyExponential}{%
-\subsection{Why ``exponential''?}\label{whyExponential}}
-
-Now, \textbf{why is it called ``exponential''}? Because the same method can be represented in a different form, if we substitute \(\hat{y}_{t}\) in right hand side of \eqref{eq:BrownMethod} by the formula for the previous step:
-\begin{equation}
-  \begin{aligned}
-  \hat{y}_{t} = &\hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1}, \\
-  \hat{y}_{t+1} = &\hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \hat{y}_{t} = \\
-  & \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
-  \end{aligned}
-  \label{eq:BrownMethodExponential1}
-\end{equation}
-By repeating this procedure for each \(\hat{y}_{t-1}\), \(\hat{y}_{t-2}\) etc, we will obtain a different form of the method:
-\begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots  + \hat{\alpha} (1 -\hat{\alpha})^{t-1} {y}_{1} + (1 -\hat{\alpha})^t \hat{y}_1 
-  \label{eq:BrownMethodExponential2}
-\end{equation}
-or equivalently:
-\begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} \sum_{j=0}^{t-1} (1 -\hat{\alpha})^j {y}_{t-j} + (1 -\hat{\alpha})^t \hat{y}_1 .
-  \label{eq:BrownMethodExponential3}
-\end{equation}
-In the form \eqref{eq:BrownMethodExponential3}, each actual observation has a weight infront of it. For the most recent observation it is equal to \(\hat{\alpha}\), for the previous one it is \(\hat{\alpha} (1 -\hat{\alpha})\), then \(\hat{\alpha} (1 -\hat{\alpha})^2\) etc. These form the geometric series or an exponential curve. Figure \ref{fig:BrownExponentialExample} shows an example with \(\hat{\alpha} =0.25\) for a sample of 30 observations:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{plot}\NormalTok{(}\FloatTok{0.25}\SpecialCharTok{*}\NormalTok{(}\DecValTok{1}\FloatTok{{-}0.25}\NormalTok{)}\SpecialCharTok{\^{}}\FunctionTok{c}\NormalTok{(}\DecValTok{0}\SpecialCharTok{:}\DecValTok{30}\NormalTok{), }\AttributeTok{type=}\StringTok{"b"}\NormalTok{, }
-     \AttributeTok{xlab=}\StringTok{"Time lags"}\NormalTok{, }\AttributeTok{ylab=}\StringTok{"Weights"}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{figure}
-\centering
-\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/BrownExponentialExample-1.pdf}
-\caption{\label{fig:BrownExponentialExample}Example of weights distribution for \(\hat{\alpha}=0.25\)}
-\end{figure}
-
-This explains the name ``exponential''. The term ``smoothing'' comes from the idea that the parameter \(\hat{\alpha}\) should be selected so that the method smooths the original time series and does not react to noise.
-
-\hypertarget{SESEC}{%
-\subsection{Error correction form of SES}\label{SESEC}}
-
-Finally, there is an alternative form of SES, known as error correction form, which can be obtained after some simple permutations. Taking that \(e_t=y_t-\hat{y}_t\) is the one step ahead forecast error, formula \eqref{eq:BrownMethod} can be written as:
-\begin{equation}
-  \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
-  \label{eq:SESErrorCorrection}
-\end{equation}
-In this form, the smoothing parameter \(\hat{\alpha}\) has a different meaning: it regulates how much the model reacts to the previous forecast error. In this interpretation, it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero to filter out the noise, not to adapt to it.
-
-As you see, SES is a straightforward method. It is easy to explain to practitioners, and it is very easy to implement in practice. However, this is just a forecasting method (see Section \ref{modelsMethods}), so it provides a way of generating point forecasts but does not explain where the error comes from and how to create prediction intervals.
-
 \hypertarget{SESandETS}{%
-\section{SES and ETS}\label{SESandETS}}
+\section{ETS and SES}\label{SESandETS}}
 
 \hypertarget{etsann}{%
 \subsection{ETS(A,N,N)}\label{etsann}}
@@ -2255,23 +2255,23 @@ Here is an example of a forecast from ETS(A,N,N) with automatic parameter estima
 ## Model estimated: ETS(ANN)
 ## Persistence vector g:
 ##  alpha 
-## 0.2449 
+## 0.4105 
 ## Initial values were optimised.
 ## 
-## Loss function type: likelihood; Loss function value: 526.4005
-## Error standard deviation: 32.1119
+## Loss function type: likelihood; Loss function value: 531.8528
+## Error standard deviation: 33.7746
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1058.801 1059.032 1066.848 1067.388 
+## 1069.706 1069.936 1077.752 1078.292 
 ## 
 ## 95% parametric prediction interval was constructed
-## 92% of values are in the prediction interval
+## 100% of values are in the prediction interval
 ## Forecast errors:
-## MPE: 3.1%; sCE: 36.5%; Asymmetry: 92.1%; MAPE: 3.2%
-## MASE: 0.987; sMAE: 3.1%; sMSE: 0.2%; rMAE: 0.829; rRMSE: 0.87
+## MPE: 2.2%; sCE: 26.4%; Asymmetry: 85.2%; MAPE: 2.5%
+## MASE: 0.834; sMAE: 2.4%; sMSE: 0.1%; rMAE: 0.892; rRMSE: 0.92
 \end{verbatim}
 
 As we see from Figure \ref{fig:ETSANNExample}, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected because we deal with an in-sample estimation. Also, notice that with such a smoothing parameter, the prediction interval widens with the increase of the forecast horizon. If the smoothing parameter were lower, the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with \(\alpha=0.01\) on the same data (Figure \ref{fig:ETSANNExamplealpha01})
@@ -2374,24 +2374,24 @@ And here is an example with the ETS(M,N,N) data (Figure \ref{fig:ETSMNNExample})
 ## Time elapsed: 0.02 seconds
 ## Model estimated: ETS(MNN)
 ## Persistence vector g:
-##  alpha 
-## 0.2152 
+## alpha 
+## 0.388 
 ## Initial values were optimised.
 ## 
-## Loss function type: likelihood; Loss function value: 640.7187
-## Error standard deviation: 0.0987
+## Loss function type: likelihood; Loss function value: 669.9058
+## Error standard deviation: 0.1014
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1287.437 1287.668 1295.484 1296.024 
+## 1345.812 1346.042 1353.858 1354.398 
 ## 
 ## 95% parametric prediction interval was constructed
 ## 100% of values are in the prediction interval
 ## Forecast errors:
-## MPE: 8.9%; sCE: 120.3%; Asymmetry: 97.2%; MAPE: 9%
-## MASE: 1.005; sMAE: 10.1%; sMSE: 1.6%; rMAE: 1.528; rRMSE: 1.549
+## MPE: 4.4%; sCE: 92.7%; Asymmetry: 69.6%; MAPE: 8.8%
+## MASE: 1.514; sMAE: 13%; sMSE: 2.4%; rMAE: 0.837; rRMSE: 0.874
 \end{verbatim}
 
 Conceptually, the data in Figure \ref{fig:ETSMNNExample} looks very similar to the one from ETS(A,N,N) (Figure \ref{fig:ETSANNExample}), but demonstrating the changing variance of the error term with the change of the level.
@@ -3106,7 +3106,7 @@ Notice that the smoothing parameters of ETS(A,A,N) are very high, with \(\alpha=
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.05 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.5358
@@ -3588,7 +3588,7 @@ We can also compare the performance of ETS(M,M,N) with \(\Gamma\) distribution a
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.02 seconds
+## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 245.3872
@@ -3625,7 +3625,7 @@ The \texttt{AirPassengers} data used in Section \ref{ADAMETSPureAdditiveExamples
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.1 seconds
+## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.5176
@@ -3678,11 +3678,11 @@ If we want to calculate the error measures based on the conditional expectation,
 
 \begin{verbatim}
 ##            ME           MAE           MSE           MPE          MAPE 
-##  -6.011784098  15.506329413 486.220497076  -0.017164233   0.033870933 
+##  -5.821814183  15.456275713 481.333449592  -0.016771419   0.033717707 
 ##           sCE          sMAE          sMSE          MASE         RMSSE 
-##  -0.274832348   0.059073436   0.007056668   0.643844423   0.703763485 
+##  -0.266147758   0.058882750   0.006985741   0.641766123   0.700217757 
 ##          rMAE         rRMSE          rAME     asymmetry          sPIS 
-##   0.204030650   0.214130415   0.084474718  -0.258260672   2.268828595
+##   0.203372049   0.213051575   0.081805352  -0.247460468   2.208259836
 \end{verbatim}
 
 These can be compared with the measures from the ETS(A,A,A) model:
@@ -4721,7 +4721,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##      449.926      449.926
+##     521.4125     521.4125
 \end{verbatim}
 
 \begin{Shaded}
@@ -4734,7 +4734,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     905.8519     905.8519
+##     1048.825     1048.825
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
@@ -4749,7 +4749,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##    0.1534819    0.1534819
+##    0.2669912    0.2669912
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related (Figure \ref{fig:ETSARIMAConnection}):
@@ -4890,7 +4890,7 @@ Comparing this model with the ETS(A,A,N), we will see a slight difference becaus
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.02 seconds
+## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 243.4073
@@ -5597,7 +5597,7 @@ The ETS model closest to the logSARIMA(0,1,1)(0,1,1)\(_{12}\) would probably be 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.1 seconds
+## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.5176
@@ -5627,7 +5627,7 @@ Comparing information criteria, ETS(M,M,M) should be preferred to logARIMA, but 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.24 seconds
+## Time elapsed: 0.2 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[12]
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 472.923
@@ -6151,7 +6151,7 @@ Figure \ref{fig:SeatbeltsForecastX} shows the forecast from the second model, wh
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.38 seconds
+## Time elapsed: 0.37 seconds
 ## Model estimated using adam() function: ETSX(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.042
@@ -6191,7 +6191,7 @@ In this specific case, the difference between the ETSX and ETSX\{D\} models is i
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.47 seconds
+## Time elapsed: 0.49 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.215
@@ -7297,7 +7297,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.46 seconds
+## Time elapsed: 0.47 seconds
 ## Model estimated using adam() function: ETS(MNM)[48, 336]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 25682.88
@@ -7348,7 +7348,7 @@ Next, we can plot the fitted values and forecasts to see how the model performs 
 \caption{\label{fig:adamModelETSMNM}The fit and the forecast of the ETS(M,N,M){[}48,336{]} model on half-hourly electricity demand data.}
 \end{figure}
 
-As we might notice from Figure \ref{fig:adamModelETSMNM} the model was constructed in 0.46 seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \ref{multistepLossesGTMSE}):
+As we might notice from Figure \ref{fig:adamModelETSMNM} the model was constructed in 0.47 seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \ref{multistepLossesGTMSE}):
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -8496,7 +8496,7 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.09 seconds
+## Time elapsed: 0.07 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log-Normal
@@ -9813,7 +9813,7 @@ Here is an example of selection of distribution for a specific model, ETS(M,M,N)
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.22 seconds
+## Time elapsed: 0.24 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 245.3716
@@ -10014,7 +10014,7 @@ Based on the relation between ARIMA and ETS (see Section \ref{ARIMAandETS}), we 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.07 seconds
+## Time elapsed: 1.09 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -10365,16 +10365,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6629           254.8941            260.4457
-## 142 257.7213           253.3536            262.1039
-## 143 257.7753           251.8473            263.6751
-## 144 257.8335           250.3146            265.2924
-## 145 257.8909           248.8299            266.9464
-## 146 257.9490           247.3196            268.7005
-## 147 258.0056           245.7376            270.3508
-## 148 258.0577           244.1287            272.0504
-## 149 258.1043           242.5314            273.8509
-## 150 258.1518           240.8868            275.5177
+## 141 257.6702           254.8939            260.4878
+## 142 257.7339           253.3917            262.1741
+## 143 257.7844           251.9358            263.7441
+## 144 257.8516           250.4093            265.3653
+## 145 257.9017           248.9415            267.0211
+## 146 257.9666           247.4321            268.7533
+## 147 258.0059           245.9158            270.4343
+## 148 258.0622           244.2382            272.2473
+## 149 258.1109           242.6339            273.9319
+## 150 258.1649           240.9942            275.8210
 \end{verbatim}
 
 In order to see how the forecast looks like, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -10474,7 +10474,7 @@ Here is an example of how the function works on the data above -- it is possible
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.45 seconds
+## Time elapsed: 0.49 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamETSBJBoot\$vcov}. The same procedure is used in \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -10487,11 +10487,11 @@ The covariance matrix can then be extracted from the result via \texttt{adamETSB
 
 \begin{verbatim}
 ##        alpha   beta    phi  level  trend
-## alpha  0.010 -0.002  0.000  0.004 -0.011
-## beta  -0.002  0.005 -0.001 -0.009  0.020
-## phi    0.000 -0.001  0.011  0.049 -0.053
-## level  0.004 -0.009  0.049  0.482 -0.663
-## trend -0.011  0.020 -0.053 -0.663  1.004
+## alpha  0.010 -0.002  0.001  0.005 -0.010
+## beta  -0.002  0.005  0.000 -0.009  0.019
+## phi    0.001  0.000  0.010  0.042 -0.046
+## level  0.005 -0.009  0.042  0.476 -0.669
+## trend -0.010  0.019 -0.046 -0.669  1.014
 \end{verbatim}
 
 \hypertarget{confidence-intervals-for-parameters}{%
@@ -11265,7 +11265,7 @@ The \texttt{sm} function accepts roughly the same set of parameters as \texttt{a
 
 \begin{verbatim}
 ## **Scale Model**
-## Time elapsed: 0.14 seconds
+## Time elapsed: 0.15 seconds
 ## Model estimated using sm.adam() function: ETS(MNN)
 ## Distribution assumed in the model: Inverse Gaussian
 ## Loss function type: likelihood; Loss function value: 474.332
@@ -11880,7 +11880,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, w
 \caption{\label{fig:adamModeliETSCumulative}Cumulative demand, expectation and the upper bound based on iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 22 units, while the upper bound of the interval was approximately 29. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 21 units, while the upper bound of the interval was approximately 39. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section \ref{rollingOrigin}) or to a set of products to collect the distribution of related error measures.
 
