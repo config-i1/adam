@@ -1,112 +1,401 @@
-# Conventional Exponential Smoothing {#ETSConventional}
-Now that we know how time series can be decomposed into components, we can discuss the exponential smoothing methods, focusing on the most popular ones. We do not detail how the methods were originally derived and how to work with them. Instead, we focus on their connection with ETS and the main ideas behind the conventional ETS.
+# Introduction to ETS {#ETSConventional}
+Now that we know how time series can be decomposed into components, we can discuss the ETS model, their connection with exponential smoothing methods and focusing on the most popular of those. We do not discuss in detail how the methods were originally derived and how to work with them. Instead, we focus on the main ideas behind the conventional ETS and the connection between Exponential Smoothing and ETS.
 
 The reader interested in the history of exponential smoothing, how it was developed, and what papers contributed to the field can refer to the reviews of @Gardner1985 and @Gardner2006. They summarise all the progress in exponential smoothing up until 1985 and until 2006 respectively.
 
 
-## Simple Exponential Smoothing {#SES}
-We start our discussion of exponential smoothing with the original Simple Exponential Smoothing (SES) forecasting method, which was formulated by [@Brown1956]:
-\begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \hat{y}_{t},
-  (\#eq:BrownMethod)
-\end{equation}
-where $\hat{\alpha}$ is the smoothing parameter, which is typically restricted within (0, 1) region (this region is arbitrary, and we will see in Section \@ref(ETSParametersBounds) what is the correct one). This is one of the simplest forecasting methods. The smoothing parameter is typically interpreted as a weight between the latest actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value $\hat{y}_{t}$ and the new information is neglected. If $\hat{\alpha}=0$, then the method becomes equivalent to the Global Mean method, discussed in Section \@ref(GlobalMean). When it is close to one, then most of the weight is assigned to the actual value ${y}_{t}$. If $\hat{\alpha}=1$, then the method transforms into Naïve, discussed in Section \@ref(Naive). By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.
+## ETS taxonomy {#ETSTaxonomy}
+Building on the idea of time series components (from Section \@ref(tsComponents)), we can move to the ETS taxonomy. ETS stands for "Error-Trend-Seasonality" and defines how specifically the components interact with each other. Based on the type of error, trend and seasonality, @Pegels1969 proposed a taxonomy, which was then developed further by @Hyndman2002 and refined by @Hyndman2008b. According to this taxonomy, error, trend and seasonality can be:
 
-Also, notice that this is a recursive method, meaning that there needs to be some starting point $\hat{y}_1$ to apply \@ref(eq:BrownMethod) to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature. Still, the state of the art one is to estimate $\hat{\alpha}$ and $\hat{y}_{1}$ together by minimising some loss function [@Hyndman2002]. Typically MSE (see Section \@ref(errorMeasures)) is used, minimising the squares of one step ahead forecast errors.
+1. Error: "Additive" (A), or "Multiplicative" (M);
+2. Trend: "None" (N), or "Additive" (A), or "Additive damped" (Ad), or "Multiplicative" (M), or "Multiplicative damped" (Md);
+3. Seasonality: "None" (N), or "Additive" (A), or "Multiplicative" (M).
 
+According to this taxonomy, the model \@ref(eq:PureAdditive) is denoted as ETS(A,A,A) while the model \@ref(eq:PureMultiplicative) is denoted as ETS(M,M,M), and \@ref(eq:MixedAdditiveTrend) is ETS(M,A,M).
 
-### Examples of application
-Here is an example of how this method works on different time series. We start with generating a stationary series and using `es()` function from `smooth` package. Although it implements the ETS model, we will see later the connection between SES and ETS(A,N,N). We start with the stationary time series and $\hat{\alpha}=0$:
+The components in the ETS taxonomy have clear interpretations. Furthermore, ETS supports 30 models with different types of error, trend and seasonality. Figure \@ref(fig:ETSTaxonomyAdditive) shows examples of different time series with deterministic (they do not change over time) level, trend, seasonality and with the additive error term.
 
-```{r SESExample1, fig.cap="An example with a time series and SES forecast. $\\hat{\\alpha}=0$"}
-y <- rnorm(100,100,10)
-ourModel <- es(y, model="ANN", h=10, persistence=0)
-plot(ourModel, 7, main="")
+```{r ETSTaxonomyAdditive, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Time series corresponding to the additive error ETS models"}
+modelsList <- c("ANN","AAN","AAdN","AMN","AMdN","ANA","AAA","AAdA","AMA","AMdA","ANM","AAM","AAdM","AMM","AMdM",
+                "MNN","MAN","MAdN","MMN","MMdN","MNA","MAA","MAdA","MMA","MMdA","MNM","MAM","MAdM","MMM","MMdM")
+level <- 500
+trend <- c(100,1.05)
+seasonality <- list((c(1.3,1.1,0.9,0.75)-1)*2*level,c(1.3,1.1,0.9,0.75))
+generatedData <- vector("list", length(modelsList))
+scale <- 0.05
+for(i in 1:length(modelsList)){
+  initial <- switch(substr(modelsList[i],2,2),
+                    "A"=c(level,trend[1]),
+                    "M"=c(level,trend[2]),
+                    level*2);
+  initialSeason <- switch(substr(modelsList[i],nchar(modelsList[i]),nchar(modelsList[i])),
+                    "A"=seasonality[[1]],
+                    "M"=seasonality[[2]],
+                    NULL);
+  if(nchar(modelsList[i])==4){
+    phi <- 0.95;
+  }
+  else{
+    phi <- 1;
+  }
+  sdValue <- switch(substr(modelsList[i],1,1),
+                    "A"=sqrt(level^2*(exp(scale^2)-1)*exp(scale)),
+                    "M"=scale)
+  meanValue <- switch(substr(modelsList[i],1,1),
+                      "A"=0,
+                      "M"=1)
+  generatedData[[i]] <- smooth::sim.es(modelsList[i], obs=36, frequency=4, persistence=0, phi=phi,
+                                       initial=initial, initialSeason=initialSeason, mean=meanValue, sd=sdValue)$data
+}
+
+# Prepare the canvas
+par(mfcol=c(5,3),mar=c(2,3,2,1))
+# The matrix that corresponds to the i
+ylimValues <- matrix(c(1:15),5,3)
+for(i in 1:15){
+  if(i>15){
+    ylimRow <- which(ylimValues == i-15,arr.ind=T)[1]
+    ylim <- range(unlist(generatedData[ylimValues[ylimRow,]+15]))
+  }
+  else{
+    ylimRow <- which(ylimValues == i,arr.ind=T)[1]
+    ylim <- range(unlist(generatedData[ylimValues[ylimRow,]]))
+  }
+  plot(generatedData[[i]], main=paste0("ETS(",modelsList[i],")"),ylim=ylim,ylab="")
+}
 ```
 
-As we see from Figure \@ref(fig:SESExample1), the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure \@ref(fig:SESExample2) shows an example with a level shift in the data.
+Things to note from the plots in Figure \@ref(fig:ETSTaxonomyAdditive):
 
-```{r SESExample2, fig.cap="An example with a time series and SES forecast. $\\hat{\\alpha}=0.1$"}
-y <- c(rnorm(50,100,10),rnorm(50,130,10))
-ourModel <- es(y, model="ANN", h=10, persistence=0.1)
-plot(ourModel, 7, main="")
+1. When seasonality is multiplicative, its amplitude increases with the increase of the level of the data, while with additive seasonality, the amplitude is constant. Compare, for example, ETS(A,A,A) with ETS(A,A,M): for the former, the distance between the highest and the lowest points in the first year is roughly the same as in the last year. In the case of ETS(A,A,M) the distance increases with the increase in the level of series;
+2. When the trend is multiplicative, data exhibits exponential growth/decay;
+3. The damped trend models slow down both additive and multiplicative trends;
+4. It is practically impossible to distinguish additive and multiplicative seasonality if the level of series does not change because the amplitude of seasonality will be constant in both cases (compare ETS(A,N,A) and ETS(A,N,M)).
+
+Figure \@ref(fig:ETSTaxonomyMultiplicative) demonstrates a similar plot for the multiplicative error models.
+
+```{r ETSTaxonomyMultiplicative, echo=FALSE, warning=FALSE, fig.cap="Time series corresponding to the multiplicative error ETS models"}
+# Prepare the canvas
+par(mfcol=c(5,3),mar=c(2,3,2,1))
+# The matrix that corresponds to the i
+ylimValues <- matrix(c(1:15),5,3)
+for(i in 16:30){
+  if(i>15){
+    ylimRow <- which(ylimValues == i-15,arr.ind=T)[1]
+    ylim <- range(unlist(generatedData[ylimValues[ylimRow,]+15]))
+  }
+  else{
+    ylimRow <- which(ylimValues == i,arr.ind=T)[1]
+    ylim <- range(unlist(generatedData[ylimValues[ylimRow,]]))
+  }
+  plot(generatedData[[i]], main=paste0("ETS(",modelsList[i],")"),ylim=ylim,ylab="")
+}
 ```
 
-With $\hat{\alpha}=0.1$, SES manages to get to the new level, but now the method starts adapting to noise a little bit -- it follows the peaks and troughs and repeats them with a lag, but with a much smaller magnitude (see Figure \@ref(fig:SESExample2)). Increasing the smoothing parameter, the model will react to the changes much faster, at the cost of responding more to noise. This is shown in Figure \@ref(fig:SESExamples) with different smoothing parameters values.
+The plots in Figure \@ref(fig:ETSTaxonomyMultiplicative) show roughly the same idea as the additive case, the main difference being that the variance of the error increases with the increase of the level of the data -- this becomes clearer on ETS(M,A,N) and ETS(M,M,N) data. This property is called heteroscedasticity in statistics, and @Hyndman2008b argue that the main benefit of the multiplicative error models is in capturing this feature.
 
-```{r SESExamples, fig.cap="SES with different smoothing parameters applied to the same data.", echo=FALSE}
-par(mfcol=c(3,1), mar=c(2,2,3,1))
-ourModel <- es(y, model="ANN", h=10, persistence=0.1)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
-ourModel <- es(y, model="ANN", h=10, persistence=0.3)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
-ourModel <- es(y, model="ANN", h=10, persistence=0.5)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
+We will discuss the most important ETS family members in the following chapters. Note that not all the models in this taxonomy are sensible, and some are typically ignored entirely (this applies mainly to models with a mixture of additive and multiplicative components). ADAM implements the entire taxonomy, but we need to be aware of the potential issues with some of models, and we will discuss what to expect from them in different situations.
+
+
+## Mathematical models in the ETS taxonomy {#ETSTaxonomyMaths}
+I hope that it becomes more apparent to the reader how the ETS framework is built upon the idea of time series decomposition (from Section \@ref(tsComponents)). By introducing different components, defining their types, and adding the equations for their update, we can construct models that would work better in capturing the key features of the time series. The equations discussed in Section \@ref(tsComponents) represent so-called "measurement" or "observation" equations of the ETS models. But we should also consider the potential change in components over time. The "transition" or "state" equations are supposed to reflect this change: they explain how the level, trend or seasonal components evolve.
+
+As discussed in Section \@ref(ETSTaxonomy), given different types of components and their interactions, we end up with 30 models in the taxonomy. Tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) summarise mathematically all 30 ETS models shown graphically on Figures \@ref(fig:ETSTaxonomyAdditive) and \@ref(fig:ETSTaxonomyMultiplicative), presenting formulae for measurement and transition equations.
+
+```{r ETSAdditiveError, echo=FALSE}
+if (knitr:::is_latex_output()) {
+    knitr::asis_output('\\begin{landscape}')
+}
+# T="N"
+etsAdditiveTable <- c("$\\begin{aligned} &y_{t} = l_{t-1} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + \\alpha \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} + s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + \\alpha \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
+      &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1}}
+    \\end{aligned}$",
+# T="A"
+    "$\\begin{aligned} &y_{t} = l_{t-1} + b_{t-1} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + b_{t-1} + \\alpha \\epsilon_t \\\\
+      &b_t = b_{t-1} + \\beta \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &y_{t} = l_{t-1} + b_{t-1} + s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + b_{t-1} + \\alpha \\epsilon_t \\\\
+      &b_t = b_{t-1} + \\beta \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + b_{t-1}) s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + b_{t-1} + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
+      &b_t = b_{t-1} + \\beta \\frac{\\epsilon_t}{s_{t-m}} \\\\
+      &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1} + b_{t-1}}
+    \\end{aligned}$",
+# T="Ad"
+    "$\\begin{aligned} &y_{t} = l_{t-1} + \\phi b_{t-1} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha \\epsilon_t \\\\
+      &b_t = \\phi b_{t-1} + \\beta \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} + \\phi b_{t-1} + s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha \\epsilon_t \\\\
+      &b_t = \\phi b_{t-1} + \\beta \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
+      &b_t = \\phi b_{t-1} + \\beta \\frac{\\epsilon_t}{s_{t-m}} \\\\
+      &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1} + \\phi b_{t-1}}
+    \\end{aligned}$",
+# T="M"
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} + \\epsilon_t \\\\
+      &l_t = l_{t-1} b_{t-1} + \\alpha \\epsilon_t \\\\
+      &b_t = b_{t-1} + \\beta \\frac{\\epsilon_t}{l_{t-1}}
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} + s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} b_{t-1} + \\alpha \\epsilon_t \\\\
+      &b_t = b_{t-1} + \\beta \\frac{\\epsilon_t}{l_{t-1}} \\\\
+      &s_t = s_{t-m} + \\gamma \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} b_{t-1} + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
+      &b_t = b_{t-1} + \\beta \\frac{\\epsilon_t}{l_{t-1}s_{t-m}} \\\\
+      &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1} b_{t-1}}
+    \\end{aligned}$",
+# T="Md"
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi + \\epsilon_t \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha \\epsilon_t \\\\
+      &b_t = b_{t-1}^\\phi + \\beta \\frac{\\epsilon_t}{l_{t-1}}
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi + s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha \\epsilon_t \\\\
+      &b_t = b_{t-1}^\\phi + \\beta \\frac{\\epsilon_t}{l_{t-1}} \\\\
+      &s_t = s_{t-m} + \\gamma \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi s_{t-m} + \\epsilon_t \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha \\frac{\\epsilon_t}{s_{t-m}} \\\\
+      &b_t = b_{t-1}^\\phi + \\beta \\frac{\\epsilon_t}{l_{t-1}s_{t-m}} \\\\
+      &s_t = s_{t-m} + \\gamma \\frac{\\epsilon_t}{l_{t-1} b_{t-1}}
+    \\end{aligned}$")
+etsAdditiveTable <- matrix(etsAdditiveTable, 5, 3, byrow=TRUE,
+                           dimnames=list(c("No trend","Additive","Additive damped",
+                                           "Multiplicative","Multiplicative damped"),
+                                         c("Nonseasonal","Additive","Multiplicative")))
+kableTable <- kableExtra::kable(etsAdditiveTable, escape=FALSE, caption="Additive error ETS models",
+                                col.names=c("Nonseasonal","Additive","Multiplicative"))
+kable_styling(kableTable, font_size=12, protect_latex=TRUE, latex_options="scale_down")
+if (knitr:::is_latex_output()) {
+    knitr::asis_output('\\end{landscape}')
+}
 ```
 
-If we set $\hat{\alpha}=1$, we will end up with Naive forecasting method (see Section \@ref(Naive)), which is not appropriate for our example (see Figure \@ref(fig:SESExampleNaive)).
 
-```{r SESExampleNaive, fig.cap="SES with $\\hat{\\alpha}=1$.", echo=FALSE}
-par(mfcol=c(1,1))
-ourModel <- es(y, model="ANN", h=10, persistence=1)
-plot(ourModel, 7, main="")
+```{r ETSMultiplicativeError, echo=FALSE}
+if (knitr:::is_latex_output()) {
+    knitr::asis_output('\\begin{landscape}')
+}
+# T="N"
+etsMultiplicativeTable <- c("$\\begin{aligned} &y_{t} = l_{t-1}(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1}(1 + \\alpha \\epsilon_t)
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} + \\alpha \\mu_{y,t} \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} s_{t-m}(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1}(1 + \\alpha \\epsilon_t) \\\\
+      &s_t = s_{t-m}(1 + \\gamma \\epsilon_t)
+    \\end{aligned}$",
+# T="A"
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + b_{t-1})(1 + \\epsilon_t) \\\\
+      &l_t = (l_{t-1} + b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1} + \\beta \\mu_{y,t} \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} + b_{t-1} + \\alpha \\mu_{y,t} \\epsilon_t \\\\
+      &b_t = b_{t-1} + \\beta \\mu_{y,t} \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + b_{t-1}) s_{t-m}(1 + \\epsilon_t) \\\\
+      &l_t = (l_{t-1} + b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1} + \\beta (l_{t-1} + b_{t-1}) \\epsilon_t \\\\
+      &s_t = s_{t-m} (1 + \\gamma \\epsilon_t)
+    \\end{aligned}$",
+# T="Ad"
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + \\phi b_{t-1})(1 + \\epsilon_t) \\\\
+      &l_t = (l_{t-1} + \\phi b_{t-1})(1 + \\alpha \\epsilon_t) \\\\
+      &b_t = \\phi b_{t-1} + \\beta \\mu_{y,t} \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + \\phi b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} + \\phi b_{t-1} + \\alpha \\mu_{y,t} \\epsilon_t \\\\
+      &b_t = \\phi b_{t-1} + \\beta \\mu_{y,t} \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m}(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} + \\phi b_{t-1} (1 + \\alpha \\epsilon_t) \\\\
+      &b_t = \\phi b_{t-1} + \\beta (l_{t-1} + \\phi b_{t-1}) \\epsilon_t \\\\
+      &s_t = s_{t-m}(1 + \\gamma \\epsilon_t)
+    \\end{aligned}$",
+# T="M"
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} (1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1} (1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1} (1 + \\beta \\epsilon_t)
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} b_{t-1} + s_{t-m})(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1} + \\alpha \\mu_{y,t} \\epsilon_t \\\\
+      &b_t = b_{t-1} + \\beta \\frac{\\mu_{y,t}}{l_{t-1}} \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1} s_{t-m} (1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1} (1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1} (1 + \\beta \\epsilon_t) \\\\
+      &s_t = s_{t-m} (1 + \\gamma \\epsilon_t)
+    \\end{aligned}$",
+# T="Md"
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi (1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi (1 + \\alpha \\epsilon_t) \\\\
+      &b_t = b_{t-1}^\\phi (1 + \\beta \\epsilon_t)
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = (l_{t-1} b_{t-1}^\\phi + s_{t-m})(1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi + \\alpha \\mu_{y,t} \\epsilon_t \\\\
+      &b_t = b_{t-1}^\\phi + \\beta \\frac{\\mu_{y,t}}{l_{t-1}} \\epsilon_t \\\\
+      &s_t = s_{t-m} + \\gamma \\mu_{y,t} \\epsilon_t
+    \\end{aligned}$",
+    "$\\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\\phi s_{t-m} (1 + \\epsilon_t) \\\\
+      &l_t = l_{t-1} b_{t-1}^\\phi \\left(1 + \\alpha \\epsilon_t\\right) \\\\
+      &b_t = b_{t-1}^\\phi \\left(1 + \\beta \\epsilon_t\\right) \\\\
+      &s_t = s_{t-m} \\left(1 + \\gamma \\epsilon_t\\right)
+    \\end{aligned}$")
+etsMultiplicativeTable <- matrix(etsMultiplicativeTable, 5, 3, byrow=TRUE,
+                           dimnames=list(c("No trend","Additive","Additive damped",
+                                           "Multiplicative","Multiplicative damped"),
+                                         c("Nonseasonal","Additive","Multiplicative")))
+kableTable <- kableExtra::kable(etsMultiplicativeTable, escape=FALSE, caption="Multiplicative error ETS models",
+                                col.names=c("Nonseasonal","Additive","Multiplicative"))
+kable_styling(kableTable, font_size=12, protect_latex=TRUE, latex_options="scale_down")
+if (knitr:::is_latex_output()) {
+    knitr::asis_output('\\end{landscape}')
+}
 ```
 
-So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE (see Figure \@ref(fig:SESExample3)):
+From a statistical point of view, formulae in Tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) correspond to the "true models" [see Section 1.2 of @SvetunkovSBA], they explain the models underlying potential data, but when it comes to their construction and estimation, the $\epsilon_t$ is substituted by the estimated $e_t$ (which is calculated differently depending on the error type), and time series components and smoothing parameters are also replaced by their estimated analogues (e.g. $\hat{\alpha}$ instead of $\alpha$). However, if the values of these models' parameters were known, it would be possible to produce point forecasts and conditional h steps ahead expectations from these models.
 
-```{r SESExample3, fig.cap="SES with optimal smoothing parameter."}
-ourModel <- es(y, model="ANN", h=10, loss="MSE")
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              round(ourModel$persistence,3)))
+Table \@ref(tab:ETSModelsForecasts) summarises:
+
+- Conditional one step ahead expectation $\mu_{y,t} \equiv \mu_{y,t|t-1}$;
+- Multiple steps ahead point forecast $\hat{y}_{t+h}$;
+- Conditional multiple steps ahead expectation $\mu_{y,t+h|t}$;
+
+In the case of the additive error models, the point forecasts correspond to the expectations only when the expectation of the error term is zero, i.e. $\text{E}(\epsilon_t)=0$. In contrast, in the case of the multiplicative models, the condition is changed to $\text{E}(1+\epsilon_t)=1$.
+
+::: remark
+**Not all the point forecasts of ETS models correspond to conditional expectations**. This issue applies to the models with multiplicative trend and/or multiplicative seasonality. This is because the ETS model assumes that different states are correlated (they have the same source of error), and as a result, multiple steps ahead values (when h>1) of states introduce products of error terms. So, the conditional expectations in these cases might not have analytical forms ("n.c.f." in Table \@ref(tab:ETSModelsForecasts) stands for "no closed-form"), and when working with these models, simulations might be required. This does not apply to the one-step-ahead forecasts, for which all the classical formulae work. This issue is discussed in Section \@ref(pureMultiplicativeExpectationAndVariance).
+:::
+
+```{r ETSModelsForecasts, echo=FALSE}
+if (knitr:::is_latex_output()) {
+    knitr::asis_output('\\begin{landscape}')
+}
+# T="N"
+etsAdditiveTable <- c("$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} \\\\
+      &\\hat{y}_{t+h} = l_{t} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} + s_{t-m} \\\\
+      &\\hat{y}_{t+h} = l_{t} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} s_{t-m} \\\\
+      &\\hat{y}_{t+h} = l_{t} s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
+    \\end{aligned}$",
+# T="A"
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} + b_{t-1} \\\\
+      &\\hat{y}_{t+h} = l_{t} + h b_t \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} + b_{t-1} + s_{t-m} \\\\
+      &\\hat{y}_{t+h} = l_{t} + h b_{t-1} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = (l_{t-1} + b_{t-1}) s_{t-m} \\\\
+      &\\hat{y}_{t+h} = \\left(l_{t} + h b_{t-1}\\right) s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
+    \\end{aligned}$",
+# T="Ad"
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} + \\phi b_{t-1} \\\\
+      &\\hat{y}_{t+h} = l_{t} + \\sum_{j=1}^h \\phi^j b_t \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} + \\phi b_{t-1} + s_{t-m} \\\\
+      &\\hat{y}_{t+h} = l_{t} + \\sum_{j=1}^h \\phi^j b_{t-1} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h}
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = (l_{t-1} + \\phi b_{t-1}) s_{t-m} \\\\
+      &\\hat{y}_{t+h} = \\left(l_{t} + \\sum_{j=1}^h \\phi^j b_t \\right) s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} = \\hat{y}_{t+h} \\text{ only for } h \\leq m
+    \\end{aligned}$",
+# T="M"
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} b_{t-1} \\\\
+      &\\hat{y}_{t+h} = l_{t} b_t^h \\\\
+      &\\mu_{y,t+h|t} \\text{ -- n.c.f. for } h>1
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} b_{t-1} + s_{t-m} \\\\
+      &\\hat{y}_{t+h} = l_{t} b_{t-1}^h + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} \\text{ -- n.c.f. for } h>1
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} b_{t-1} s_{t-m} \\\\
+      &\\hat{y}_{t+h} = l_{t} b_{t-1}^h s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} \\text{ -- n.c.f. for } h>1
+    \\end{aligned}$",
+# T="Md"
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi \\\\
+      &\\hat{y}_{t+h} = l_{t} b_t^{\\sum_{j=1}^h \\phi^j} \\\\
+      &\\mu_{y,t+h|t} \\text{ -- n.c.f. for } h>1
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi + s_{t-m} \\\\
+      &\\hat{y}_{t+h} = l_{t} b_{t-1}^{\\sum_{j=1}^h \\phi^j} + s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} \\text{ -- n.c.f. for } h>1
+    \\end{aligned}$",
+    "$\\begin{aligned}
+      &\\mu_{y,t} = l_{t-1} b_{t-1}^\\phi s_{t-m} \\\\
+      &\\hat{y}_{t+h} = l_{t} b_{t-1}^{\\sum_{j=1}^h \\phi^j} s_{t+h-m\\lceil\\frac{h}{m}\\rceil} \\\\
+      &\\mu_{y,t+h|t} \\text{ -- n.c.f. for } h>1
+    \\end{aligned}$")
+etsAdditiveTable <- matrix(etsAdditiveTable, 5, 3, byrow=TRUE,
+                           dimnames=list(c("No trend","Additive","Additive damped",
+                                           "Multiplicative","Multiplicative damped"),
+                                         c("Nonseasonal","Additive","Multiplicative")))
+kableTable <- kableExtra::kable(etsAdditiveTable, escape=FALSE, caption="Point forecasts and expectations of ETS models. n.c.f. stands for \"No Closed Form\".",
+                                col.names=c("Nonseasonal","Additive","Multiplicative"))
+kable_styling(kableTable, font_size=12, protect_latex=TRUE, latex_options="scale_down")
+if (knitr:::is_latex_output()) {
+    knitr::asis_output('\\end{landscape}')
+}
 ```
 
-This approach won't guarantee that we will get the most appropriate $\hat{\alpha}$. Still, it has been shown in the literature that the optimisation of smoothing parameters on average leads to improvements in terms of forecasting accuracy [see, for example, @Gardner1985].
+The multiplicative error models have the same one step ahead expectations and point forecasts as the additive error ones. However, due to the multiplication by the error term, the multiple steps ahead conditional expectations between the two types of models might differ, specifically for the multiplicative trend and multiplicative seasonal models. These values do not have closed forms and can only be obtained via simulations.
+
+Although there are 30 potential ETS models, not all of them are stable. So, Rob Hyndman has reduced the pool of models under consideration in the `ets()` function of `forecast` package to the following 19: ANN, AAN, AAdN, ANA, AAA, AAdA, MNN, MAN, MAdN, MNA, MAA, MAdA, MNM, MAM, MAdM, MMN, MMdN, MMM, MMdM. In addition, the multiplicative trend models are unstable in data with outliers, so they are switched off in the `ets()` function by default, which reduces the pool of models further to the first 15.
 
 
-### Why "exponential"? {#whyExponential}
-Now, **why is it called "exponential"**? Because the same method can be represented in a different form, if we substitute $\hat{y}_{t}$ in right hand side of \@ref(eq:BrownMethod) by the formula for the previous step:
-\begin{equation}
-  \begin{aligned}
-  \hat{y}_{t} = &\hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1}, \\
-  \hat{y}_{t+1} = &\hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \hat{y}_{t} = \\
-  & \hat{\alpha} {y}_{t} + (1 -\hat{\alpha}) \left( \hat{\alpha} {y}_{t-1} + (1 -\hat{\alpha}) \hat{y}_{t-1} \right).
-  \end{aligned}
-  (\#eq:BrownMethodExponential1)
-\end{equation}
-By repeating this procedure for each $\hat{y}_{t-1}$, $\hat{y}_{t-2}$ etc, we will obtain a different form of the method:
-\begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} {y}_{t} + \hat{\alpha} (1 -\hat{\alpha}) {y}_{t-1} + \hat{\alpha} (1 -\hat{\alpha})^2 {y}_{t-2} + \dots  + \hat{\alpha} (1 -\hat{\alpha})^{t-1} {y}_{1} + (1 -\hat{\alpha})^t \hat{y}_1 
-  (\#eq:BrownMethodExponential2)
-\end{equation}
-or equivalently:
-\begin{equation}
-  \hat{y}_{t+1} = \hat{\alpha} \sum_{j=0}^{t-1} (1 -\hat{\alpha})^j {y}_{t-j} + (1 -\hat{\alpha})^t \hat{y}_1 .
-  (\#eq:BrownMethodExponential3)
-\end{equation}
-In the form \@ref(eq:BrownMethodExponential3), each actual observation has a weight infront of it. For the most recent observation it is equal to $\hat{\alpha}$, for the previous one it is $\hat{\alpha} (1 -\hat{\alpha})$, then $\hat{\alpha} (1 -\hat{\alpha})^2$ etc. These form the geometric series or an exponential curve. Figure \@ref(fig:BrownExponentialExample) shows an example with $\hat{\alpha} =0.25$ for a sample of 30 observations:
-
-```{r BrownExponentialExample, fig.cap="Example of weights distribution for $\\hat{\\alpha}=0.25$"}
-plot(0.25*(1-0.25)^c(0:30), type="b", 
-     xlab="Time lags", ylab="Weights")
-```
-
-This explains the name "exponential". The term "smoothing" comes from the idea that the parameter $\hat{\alpha}$ should be selected so that the method smooths the original time series and does not react to noise.
-
-### Error correction form of SES {#SESEC}
-Finally, there is an alternative form of SES, known as error correction form, which can be obtained after some simple permutations. Taking that $e_t=y_t-\hat{y}_t$ is the one step ahead forecast error, formula \@ref(eq:BrownMethod) can be written as:
-\begin{equation}
-  \hat{y}_{t+1} = \hat{y}_{t} + \hat{\alpha} e_{t}.
-  (\#eq:SESErrorCorrection)
-\end{equation}
-In this form, the smoothing parameter $\hat{\alpha}$ has a different meaning: it regulates how much the model reacts to the previous forecast error. In this interpretation, it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero to filter out the noise, not to adapt to it.
-
-As you see, SES is a straightforward method. It is easy to explain to practitioners, and it is very easy to implement in practice. However, this is just a forecasting method (see Section \@ref(modelsMethods)), so it provides a way of generating point forecasts but does not explain where the error comes from and how to create prediction intervals.
-
-
-## SES and ETS {#SESandETS}
+## ETS and SES {#SESandETS}
 ### ETS(A,N,N)
 There have been several tries to develop statistical models underlying SES, and we know now that the model has underlying ARIMA(0,1,1) [@Muth1960], local level MSOE [Multiple Source of Error, @Muth1960] and SSOE [Single Source of Error, @Snyder1985] models. According to @Hyndman2002, the ETS(A,N,N) model also underlies the SES method. To see the connection and to get to it from SES, we need to recall two things: how in general, the actual value relates to the forecast error and the fitted value, and the error correction form of SES from Subsection \@ref(SESEC):
 \begin{equation}
