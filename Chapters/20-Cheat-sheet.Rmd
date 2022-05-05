@@ -1,31 +1,171 @@
-# adam() in R Cheat Sheet {#conclusions}
-In this Chapter I summarise the main ways of using `adam()` in R.
+# adam() in R Cheat Sheet {#cheatSheet}
+This Chapter summarises the main ways of using `adam()` in R with the references to the chapters and sections, where specific elements are discussed.
 
 Estimate the best ETS model for the provided data (Section \@ref(ETSSelection)):
 ```{r eval=FALSE}
-adam(y)
+ourModel <- adam(y)
 ```
 
 The best ETS with a holdout of 10 observations to test the performance of model:
 ```{r eval=FALSE}
-adam(y, h=10, holdout=TRUE)
+ourModel <- adam(y, h=10, holdout=TRUE)
 ```
 
 Build a pure multiplicative ETS with seasonality and an arbitrary seasonal lag of 7 (can be applied to an object of any class, Section \@ref(ETSSelection)):
 ```{r eval=FALSE}
-adam(y, model="YYM", lags=7)
+ourModel <- adam(y, model="YYM", lags=7)
 ```
 
 Estimate the best ARIMA model for the provided data (assuming seasonal lag of 7, Section \@ref(ARIMASelection)):
 ```{r eval=FALSE}
-adam(y, model="NNN", lags=7,
-     orders=list(ar=c(3,2),i=c(2,1),ma=c(3,2),select=TRUE))
+ourModel <- adam(y, model="NNN", lags=7,
+                 orders=list(ar=c(3,2),i=c(2,1),ma=c(3,2),select=TRUE))
 ```
 
-Build ARIMA(0,1,1) with drift (Section \@ref(ARMAConstant)):
+Build ARIMA(0,1,1) with drift (Chapter \@ref(ARIMA) for the general ARIMA and Section \@ref(ARMAConstant) for the one with constant):
 ```{r eval=FALSE}
-adam(y, model="NNN", lags=7,
-     orders=c(0,1,1), constant=TRUE)
+ourModel <- adam(y, model="NNN", lags=7,
+                 orders=c(0,1,1), constant=TRUE)
 ```
 
+Estimate ETS(A,N,N)+ARIMA(1,0,0) model:
+```{r eval=FALSE}
+ourModel <- adam(y, model="ANN", orders=c(1,0,0))
+```
 
+Use Generalised Normal distribution for the residuals of ADAM ETS(A,A,N) (Sections \@ref(ADAMETSAdditiveDistributions), \@ref(ADAMETSMultiplicativeDistributions) and \@ref(#ADAMETSEstimationLikelihood)):
+```{r eval=FALSE}
+ourModel <- auto.adam(y, model="AAN", distribution="dgnorm")
+```
+
+Select the best distribution for the specific ADAM ETS(A,A,N) (Chapter \@ref(ADAMSelection)):
+```{r eval=FALSE}
+ourModel <- auto.adam(y, model="AAN")
+```
+
+Select the most appropriate ETSX model for the provided data (which can be any 2-dimensional object, Chapter \@ref(ADAMX)):
+```{r eval=FALSE}
+ourModel <- adam(data)
+```
+
+Specify, which explanatory variables to include and in what form (Section \@ref(ADAMXFormulation)):
+```{r eval=FALSE}
+ourModel <- adam(data, formula=y~x1+x2+I(x2^2))
+```
+
+Select the set of explanatory variables for ETSX(M,N,N) based on AIC (Section \@ref(ETSXSelection)):
+```{r eval=FALSE}
+ourModel <- adam(data, model="MNN",
+                 regressors="select", ic="AIC")
+```
+
+Estimate ETS(A,Ad,N) model using a multistep loss function, GTMSE (Section \@ref(multistepLosses)):
+```{r eval=FALSE}
+ourModel <- adam(y, model="AAdN",
+                 h=10, loss="GTMSE")
+```
+
+Estimate ARIMA(1,1,2) using a multistep loss function (Section \@ref(multistepLosses)) with backcasting of initials:
+```{r eval=FALSE}
+ourModel <- adam(y, model="NNN", orders=c(1,1,2),
+                 h=10, loss="GTMSE", initial="backcasting")
+```
+
+Select and estimate the most appropriate ETS model on the data with multiple frequencies (Chapter \@ref(ADAMMultipleFrequencies)):
+```{r eval=FALSE}
+ourModel <- adam(y, model="ZXZ", lags=c(24,24*7,24*365))
+```
+
+Select and estimate the triple seasonal ARIMA on the data with multiple frequencies (Chapter \@ref(ADAMMultipleFrequencies)):
+```{r eval=FALSE}
+ourModel <- adam(y, model="NNN", lags=c(24,24*7,24*365),
+                 orders=list(ar=c(3,2,2,2),i=c(2,1,1,1),ma=c(3,2,2,2),select=TRUE),
+                 initial="backcasting")
+```
+
+Apply an automatically selected the occurrence part of the model to intermittent data (Section \@ref(ADAMOccurrence)):
+```{r eval=FALSE}
+oesModel <- oes(y, model="YYY", occurrence="auto")
+```
+
+Use the estimated occurrence model in `adam()` to model intermittent data (Section \@ref(ADAMDemandSizes)):
+```{r eval=FALSE}
+ourModel <- adam(y, model="YYY", occurrence=oesModel)
+```
+
+Or alternatively just use the same model for occurrence and demand sizes part (Chapter \@ref(ADAMIntermittent)):
+```{r eval=FALSE}
+ourModel <- adam(y, model="YYY", occurrence="auto")
+```
+
+Estimate the scale model for previously estimated ADAM (Chapter \@ref(ADAMscaleModel)):
+```{r eval=FALSE}
+scaleModel <- sm(ourModel, model="YYY")
+```
+
+Implant the scale model into the ADAM for future use (e.g. for forecasting):
+```{r eval=FALSE}
+finalModel <- implant(ourModel, scaleModel)
+```
+
+Produce diagnostics plots to see if the ADAM can be improved any further (Chapter \@ref(diagnostics)):
+```{r eval=FALSE}
+par(mfcol=c(2,2))
+plot(ourModel, which=c(1,2,4,6))
+```
+
+Extract conventional, standardised and studentised residuals (Chapter \@ref(diagnostics)):
+```{r eval=FALSE}
+residuals(ourModel)
+rstandard(ourModel)
+rstudent(ourModel)
+```
+
+Plot time series decomposition according to ADAM ETS (Section \@ref(ETSTaxonomy)):
+```{r eval=FALSE}
+plot(ourModel, which=12)
+```
+
+Produce point forecast and prediction interval from ADAM for 10 steps ahead (Chapter \@ref(ADAMForecasting)):
+```{r eval=FALSE}
+forecast(ourModel, h=10, interval="prediction")
+```
+
+Produce point forecast and prediction interval for ADAM, cumulative over the lead time of 10 (Subsection \@ref(forecastingADAMOtherCumulative)):
+```{r eval=FALSE}
+forecast(ourModel, h=10, interval="prediction",
+         cumulative=TRUE)
+```
+
+Produce point forecast and empirical prediction interval for upper bound (upper quantile of distribution, Sections \@ref(ADAMForecastingPIEmpirical) and \@ref(forecastingADAMOtherOneSided)):
+```{r eval=FALSE}
+forecast(ourModel, h=10, interval="empirical",
+         side="upper")
+```
+
+Produce summary of ADAM (Chapter \@ref(ADAMUncertainty)):
+```{r eval=FALSE}
+summary(ourModel)
+```
+
+Reapply ADAM with randomly selected initials and parameters and produce forecasts from each of these models (Section \@ref(adamRefitted)):
+```{r eval=FALSE}
+reapply(ourModel)
+reforecast(ourModel)
+```
+
+Extract multistep forecast errors from ADAM (Subsection \@ref(diagnosticsResidualsIIDExpectationMultiple)):
+```{r eval=FALSE}
+rmultistep(ourModel, h=10)
+```
+
+Extract covariance matrix of multistep forecast errors from ADAM (Section \@ref(multistepLosses)):
+```{r eval=FALSE}
+multicov(ourModel, h=10)
+```
+
+Extract actual values and fitted from ADAM:
+```{r eval=FALSE}
+actuals(ourModel)
+fitted(ourModel)
+```
