@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-06-12" />
+<meta name="date" content="2022-06-13" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -49,7 +49,6 @@
 
 
 
-<script src="libs/accessible-code-block-0.0.1/empty-anchor.js"></script>
 <link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
 <link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
 <script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
@@ -72,6 +71,7 @@
 pre > code.sourceCode { white-space: pre; position: relative; }
 pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
 pre.sourceCode { margin: 0; }
 @media screen {
@@ -132,6 +132,28 @@ code span.vs { color: #4070a0; } /* VerbatimString */
 code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
 </style>
 
+<style type="text/css">
+/* Used with Pandoc 2.11+ new --citeproc when CSL is used */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
+</style>
 
 <link rel="stylesheet" href="style.css" type="text/css" />
 </head>
@@ -582,22 +604,22 @@ If we apply ETS(A,N,N) model to the data instead of <a href="diagnosticsResidual
 <p>Summarising this discussion, the expectation of residuals of the applied ADAMs should be equal to zero asymptotically, which cannot be tested in-sample.</p>
 <p>The more valuable part of this assumption that can be checked is whether the expectation of the residuals <em>conditional on some variables</em> is equal to zero (or one). In a way, this comes to ensuring that there are no patterns in the residuals and thus no parts of the data, where residuals have non-zero expectations systematically.</p>
 <p>There are different ways to diagnose this. The first is the already discussed plot of standardised (or studentised) residuals vs fitted values from Section <a href="diagnosticsTransformations.html#diagnosticsTransformations">14.3</a>. The other one is the plot of residuals over time, which we have already discussed in Section <a href="diagnosticsResidualsIIDAuto.html#diagnosticsResidualsIIDAuto">14.5</a>. In addition, you can also plot residuals vs some of the variables to see if they cause the change in mean. But in a way, all these methods might also mean that the residuals are autocorrelated and/or some transformations of variables are needed.</p>
-<p>There is also an effect related to this, called “endogeneity” <span class="citation">(discussed briefly in Section 12.3 of I. Svetunkov, <a href="#ref-SvetunkovSBA" role="doc-biblioref">2022</a><a href="#ref-SvetunkovSBA" role="doc-biblioref">a</a>)</span>. According to the econometrics literature <span class="citation">(see for example, Hanck et al., <a href="#ref-Hanck2020" role="doc-biblioref">2020</a>)</span>, it implies that the residuals are correlated with some variables. This becomes equivalent to the situation when the expectation of residuals changes with the change of a variable. The most prominent cause of this is the omitted variables (discussed in Section <a href="diagnosticsOmitted.html#diagnosticsOmitted">14.1</a>), which can be sometimes diagnosed by looking at correlations between the residuals and omitted variables if the latter are available. While econometricians propose using other estimation methods (such as Instrumental Variables) to diminish the effect of endogeneity, the forecasters cannot do that because we need to fix the problem to get more reasonable forecasts rather than better estimates of parameters. Unfortunately, there is no universal recipe for the solution of this problem, but in some cases transforming variables, adding the omitted ones or substituting them by <a href="https://en.wikipedia.org/wiki/Proxy_(statistics)">proxies</a> (if the omitted variables are unavailable) might resolve the issue to some extent.</p>
+<p>There is also an effect related to this, called “endogeneity” <span class="citation">(discussed briefly in Section 12.3 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022a</a>)</span>. According to the econometrics literature <span class="citation">(see for example, <a href="#ref-Hanck2020" role="doc-biblioref">Hanck et al., 2020</a>)</span>, it implies that the residuals are correlated with some variables. This becomes equivalent to the situation when the expectation of residuals changes with the change of a variable. The most prominent cause of this is the omitted variables (discussed in Section <a href="diagnosticsOmitted.html#diagnosticsOmitted">14.1</a>), which can be sometimes diagnosed by looking at correlations between the residuals and omitted variables if the latter are available. While econometricians propose using other estimation methods (such as Instrumental Variables) to diminish the effect of endogeneity, the forecasters cannot do that because we need to fix the problem to get more reasonable forecasts rather than better estimates of parameters. Unfortunately, there is no universal recipe for the solution of this problem, but in some cases transforming variables, adding the omitted ones or substituting them by <a href="https://en.wikipedia.org/wiki/Proxy_(statistics)">proxies</a> (if the omitted variables are unavailable) might resolve the issue to some extent.</p>
 <div id="diagnosticsResidualsIIDExpectationMultiple" class="section level3 hasAnchor" number="14.7.1">
 <h3><span class="header-section-number">14.7.1</span> Multistep forecast errors have zero mean<a href="diagnosticsResidualsIIDExpectation.html#diagnosticsResidualsIIDExpectationMultiple" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>This follows from the previous assumption if the model is correctly specified and its residuals are i.i.d. In that situation, we would expect the multiple steps ahead forecast errors to have zero mean. In practice, this might be violated if some structural changes or level shifts are not taken into account by the model. The only thing to note is that this approach requires defining the forecast horizon <span class="math inline">\(h\)</span>. This should typically come from the task itself and the decisions made.</p>
 <p>The diagnostics of this assumption can be done using the <code>rmultistep()</code> method for <code>adam()</code>. This method would apply the estimated model and produce multiple steps ahead forecasts from each in-sample observation to the horizon <span class="math inline">\(h\)</span>, stacking the forecast errors by rows. Whether we use an additive or multiplicative error model, the method will report the residual <span class="math inline">\(e_t\)</span>.</p>
 <p>Here is an example of the code for extraction and plotting of multistep forecast errros for the multiplicative model 5 from the previous sections:</p>
-<div class="sourceCode" id="cb292"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb292-1"><a href="diagnosticsResidualsIIDExpectation.html#cb292-1" aria-hidden="true"></a><span class="co"># Extract multistep errors</span></span>
-<span id="cb292-2"><a href="diagnosticsResidualsIIDExpectation.html#cb292-2" aria-hidden="true"></a>adamSeat05ResidMulti &lt;-<span class="st"> </span><span class="kw">rmultistep</span>(adamSeat05, <span class="dt">h=</span><span class="dv">12</span>)</span>
-<span id="cb292-3"><a href="diagnosticsResidualsIIDExpectation.html#cb292-3" aria-hidden="true"></a><span class="co"># Give adequate names to the columns</span></span>
-<span id="cb292-4"><a href="diagnosticsResidualsIIDExpectation.html#cb292-4" aria-hidden="true"></a><span class="kw">colnames</span>(adamSeat05ResidMulti) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dv">1</span><span class="op">:</span><span class="dv">12</span>)</span>
-<span id="cb292-5"><a href="diagnosticsResidualsIIDExpectation.html#cb292-5" aria-hidden="true"></a><span class="co"># Produce boxplots</span></span>
-<span id="cb292-6"><a href="diagnosticsResidualsIIDExpectation.html#cb292-6" aria-hidden="true"></a><span class="kw">boxplot</span>(adamSeat05ResidMulti, <span class="dt">xlab=</span><span class="st">&quot;horizon&quot;</span>)</span>
-<span id="cb292-7"><a href="diagnosticsResidualsIIDExpectation.html#cb292-7" aria-hidden="true"></a><span class="co"># Add the zero line</span></span>
-<span id="cb292-8"><a href="diagnosticsResidualsIIDExpectation.html#cb292-8" aria-hidden="true"></a><span class="kw">abline</span>(<span class="dt">h=</span><span class="dv">0</span>, <span class="dt">col=</span><span class="st">&quot;red&quot;</span>)</span>
-<span id="cb292-9"><a href="diagnosticsResidualsIIDExpectation.html#cb292-9" aria-hidden="true"></a><span class="co"># Add mean values</span></span>
-<span id="cb292-10"><a href="diagnosticsResidualsIIDExpectation.html#cb292-10" aria-hidden="true"></a><span class="kw">points</span>(<span class="kw">apply</span>(adamSeat05ResidMulti,<span class="dv">2</span>,mean), <span class="dt">col=</span><span class="st">&quot;red&quot;</span>, <span class="dt">pch=</span><span class="dv">16</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb292"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb292-1"><a href="diagnosticsResidualsIIDExpectation.html#cb292-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Extract multistep errors</span></span>
+<span id="cb292-2"><a href="diagnosticsResidualsIIDExpectation.html#cb292-2" aria-hidden="true" tabindex="-1"></a>adamSeat05ResidMulti <span class="ot">&lt;-</span> <span class="fu">rmultistep</span>(adamSeat05, <span class="at">h=</span><span class="dv">12</span>)</span>
+<span id="cb292-3"><a href="diagnosticsResidualsIIDExpectation.html#cb292-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Give adequate names to the columns</span></span>
+<span id="cb292-4"><a href="diagnosticsResidualsIIDExpectation.html#cb292-4" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(adamSeat05ResidMulti) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">12</span>)</span>
+<span id="cb292-5"><a href="diagnosticsResidualsIIDExpectation.html#cb292-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Produce boxplots</span></span>
+<span id="cb292-6"><a href="diagnosticsResidualsIIDExpectation.html#cb292-6" aria-hidden="true" tabindex="-1"></a><span class="fu">boxplot</span>(adamSeat05ResidMulti, <span class="at">xlab=</span><span class="st">&quot;horizon&quot;</span>)</span>
+<span id="cb292-7"><a href="diagnosticsResidualsIIDExpectation.html#cb292-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Add the zero line</span></span>
+<span id="cb292-8"><a href="diagnosticsResidualsIIDExpectation.html#cb292-8" aria-hidden="true" tabindex="-1"></a><span class="fu">abline</span>(<span class="at">h=</span><span class="dv">0</span>, <span class="at">col=</span><span class="st">&quot;red&quot;</span>)</span>
+<span id="cb292-9"><a href="diagnosticsResidualsIIDExpectation.html#cb292-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Add mean values</span></span>
+<span id="cb292-10"><a href="diagnosticsResidualsIIDExpectation.html#cb292-10" aria-hidden="true" tabindex="-1"></a><span class="fu">points</span>(<span class="fu">apply</span>(adamSeat05ResidMulti,<span class="dv">2</span>,mean), <span class="at">col=</span><span class="st">&quot;red&quot;</span>, <span class="at">pch=</span><span class="dv">16</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamSeat05Multistep"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/adamSeat05Multistep-1.png" alt="Boxplot of multistep forecast errors extracted from model 5." width="672" />
 <p class="caption">
@@ -608,12 +630,12 @@ Figure 14.26: Boxplot of multistep forecast errors extracted from model 5.
 </div>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<div id="refs" class="references hanging-indent">
-<div id="ref-Hanck2020">
-<p>• Hanck, C., Arnold, M., Gerber, A., Schmelzer, M., 2020. Introduction to Econometrics with R. <a href="https://www.econometrics-with-r.org/index.html">https://www.econometrics-with-r.org/index.html</a> (version: 2020-08-12)</p>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-Hanck2020" class="csl-entry">
+• Hanck, C., Arnold, M., Gerber, A., Schmelzer, M., 2020. <span class="nocase">Introduction to Econometrics with R</span>. <a href="https://www.econometrics-with-r.org/index.html">https://www.econometrics-with-r.org/index.html</a> (version: 2020-08-12)
 </div>
-<div id="ref-SvetunkovSBA">
-<p>• Svetunkov, I., 2022a. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 31.03.2022)</p>
+<div id="ref-SvetunkovSBA" class="csl-entry">
+• Svetunkov, I., 2022a. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 31.03.2022)
 </div>
 </div>
 
