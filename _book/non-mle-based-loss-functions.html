@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-06-14" />
+<meta name="date" content="2022-06-17" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -601,12 +601,12 @@ div.csl-indent {
 <p>MSE and MAE have been discussed in Section <a href="errorMeasures.html#errorMeasures">2.1</a>, but in the context of forecasts evaluation. If they are used for the estimation of a model, then the formulae <a href="errorMeasures.html#eq:RMSE">(2.1)</a> and <a href="errorMeasures.html#eq:MAE">(2.2)</a> would need to be amended to:
 <span class="math display" id="eq:MSEInSample">\[\begin{equation}
     \mathrm{MSE} = \sqrt{\frac{1}{T} \sum_{j=1}^T \left( e_t \right)^2 }
-    \tag{11.6}
+    \tag{11.7}
 \end{equation}\]</span>
 and
 <span class="math display" id="eq:MAEInSample">\[\begin{equation}
     \mathrm{MAE} = \frac{1}{T} \sum_{j=1}^T \left| e_t \right| ,
-    \tag{11.7}
+    \tag{11.8}
 \end{equation}\]</span>
 where the specific formula for <span class="math inline">\(e_t\)</span> would depend on the error type. The main difference between the two estimators is what they are minimised with: MSE is minimised by mean, while MAE is minimised by the median. This means that models estimated using MAE will typically be more conservative (i.e. in the case of ETS, have lower smoothing parameters). <span class="citation">Gardner (<a href="#ref-Gardner2006" role="doc-biblioref">2006</a>)</span> recommended using MAE in cases of outliers in the data, as the model becomes not as reactive as MSE in this situation. Note that in case of intermittent demand, MAE should be in general avoided due to the issues discussed in Section <a href="errorMeasures.html#errorMeasures">2.1</a>.</p>
 </div>
@@ -615,9 +615,9 @@ where the specific formula for <span class="math inline">\(e_t\)</span> would de
 <p>Along with the discussed MSE and MAE, there is also HAM – “Half Absolute Moment”:
 <span class="math display" id="eq:HAM">\[\begin{equation}
   \mathrm{HAM} = \frac{1}{T} \sum_{j=1}^T \sqrt{\left|e_t\right|},
-  \tag{11.8}
+  \tag{11.9}
 \end{equation}\]</span>
-the minimum of which corresponds to the maximum likelihood of S distribution <span class="citation">(see Chapter 3 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022a</a>)</span>. The idea of this estimator is to minimise the errors that happen very often, close to the location of the distribution. It will typically ignore the outliers and focus on the most frequently appearing values. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution if it is unimodal. I do not have proof of this property, but it becomes apparent, given that the square root in <a href="non-mle-based-loss-functions.html#eq:HAM">(11.8)</a> would reduce the influence of all values lying above one and increase the values of everything that lies between (0, 1) (e.g. <span class="math inline">\(\sqrt{0.16}=0.4\)</span>, but <span class="math inline">\(\sqrt{16}=4\)</span>).</p>
+the minimum of which corresponds to the maximum likelihood of S distribution <span class="citation">(see Chapter 3 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022a</a>)</span>. The idea of this estimator is to minimise the errors that happen very often, close to the location of the distribution. It will typically ignore the outliers and focus on the most frequently appearing values. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution if it is unimodal. I do not have proof of this property, but it becomes apparent, given that the square root in <a href="non-mle-based-loss-functions.html#eq:HAM">(11.9)</a> would reduce the influence of all values lying above one and increase the values of everything that lies between (0, 1) (e.g. <span class="math inline">\(\sqrt{0.16}=0.4\)</span>, but <span class="math inline">\(\sqrt{16}=4\)</span>).</p>
 <p>Similar to HAM, one can calculate other fractional losses, which would be even less sensitive to outliers and more focused on the frequently appearing values, e.g. by using the <span class="math inline">\(\sqrt[^\alpha]{\left|e_t\right|}\)</span> with <span class="math inline">\(\alpha&gt;1\)</span>. This would then correspond to the maximum of Generalised Normal distribution with shape parameter <span class="math inline">\(\beta=\frac{1}{\alpha}\)</span>.</p>
 </div>
 <div id="lasso-and-ridge" class="section level3 hasAnchor" number="11.2.3">
@@ -628,7 +628,7 @@ the minimum of which corresponds to the maximum likelihood of S distribution <sp
     \mathrm{LASSO} = &amp;(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum |\hat{\theta}| \\
     \mathrm{RIDGE} = &amp;(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sqrt{\sum \hat{\theta}^2},
   \end{aligned}
-  \tag{11.9}
+  \tag{11.10}
 \end{equation}\]</span>
 where <span class="math inline">\(\theta\)</span> is the vector of all parameters in the model except for initial states (thus this includes all smoothing parameters, dampening parameter, AR, MA and the parameters for the explanatory variables) and <span class="math inline">\(\lambda\)</span> is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If <span class="math inline">\(\lambda=0\)</span>, then the losses become equivalent to the MSE, when <span class="math inline">\(\lambda=1\)</span>, the optimiser would minimise the values of parameters, ignoring the MSE part. <span class="citation">Pritularga et al. (<a href="#ref-Pritularga2022" role="doc-biblioref">2022</a>)</span> argues that the initial states of the model do not need to be shrunk (they will be handled by the optimiser automatically) and that the dampening parameter should shrink to 1 instead of zero (thus enforcing local trend model). Following the same idea, we introduce the following modifications of parameters in the loss in ADAM:</p>
 <ol style="list-style-type: decimal">
