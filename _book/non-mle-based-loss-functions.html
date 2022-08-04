@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-08-01" />
+<meta name="date" content="2022-08-04" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -624,7 +624,7 @@ the minimum of which corresponds to the maximum likelihood of S distribution <sp
 </div>
 <div id="lasso-and-ridge" class="section level3 hasAnchor" number="11.2.3">
 <h3><span class="header-section-number">11.2.3</span> LASSO and RIDGE<a href="non-mle-based-loss-functions.html#lasso-and-ridge" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>While this is not a well studied approach yet, it is possible to use LASSO <span class="citation">(<a href="#ref-Tibshirani1996" role="doc-biblioref">Tibshirani, 1996</a>)</span> and RIDGE for the estimation of ETS models <span class="citation">(<a href="#ref-James2017" role="doc-biblioref">James et al., 2017</a> give a good overview of these losses with examples in R)</span>, which is formulated in ADAM ETS as:
+<p>It is also possible to use LASSO <span class="citation">(<a href="#ref-Tibshirani1996" role="doc-biblioref">Tibshirani, 1996</a>)</span> and RIDGE for the estimation of ETS models <span class="citation">(<a href="#ref-James2017" role="doc-biblioref">James et al., 2017</a> give a good overview of these losses with examples in R)</span>. This was studied in detail be <span class="citation">Pritularga et al. (<a href="#ref-Pritularga2022" role="doc-biblioref">2022</a>)</span>. The losses can be formulated in ADAM ETS as:
 <span class="math display" id="eq:Regularisation">\[\begin{equation}
   \begin{aligned}
     \mathrm{LASSO} = &amp;(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum |\hat{\theta}| \\
@@ -634,14 +634,14 @@ the minimum of which corresponds to the maximum likelihood of S distribution <sp
 \end{equation}\]</span>
 where <span class="math inline">\(\theta\)</span> is the vector of all parameters in the model except for initial states (thus this includes all smoothing parameters, dampening parameter, AR, MA and the parameters for the explanatory variables) and <span class="math inline">\(\lambda\)</span> is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If <span class="math inline">\(\lambda=0\)</span>, then the losses become equivalent to the MSE, when <span class="math inline">\(\lambda=1\)</span>, the optimiser would minimise the values of parameters, ignoring the MSE part. <span class="citation">Pritularga et al. (<a href="#ref-Pritularga2022" role="doc-biblioref">2022</a>)</span> argues that the initial states of the model do not need to be shrunk (they will be handled by the optimiser automatically) and that the dampening parameter should shrink to 1 instead of zero (thus enforcing local trend model). Following the same idea, we introduce the following modifications of parameters in the loss in ADAM:</p>
 <ol style="list-style-type: decimal">
-<li>The smoothing parameters should shrink towards zero, implying that the respective states are not updated over time (the model becomes deterministic);</li>
+<li>The smoothing parameters should shrink towards zero, implying that the respective states will be updated less over time (the model becomes deterministic);</li>
 <li>Damping parameter is modified to shrink towards one, enforcing no dampening of the trend via <span class="math inline">\(\hat{\phi}^\prime=1-\hat{\phi}\)</span>;</li>
-<li>All AR parameters are forced to shrink to one, giving the ARIMA model similar features to the ETS models with shrinkage: <span class="math inline">\(\hat{\phi}_i^\prime=1-\hat{\phi}_i\)</span> for all <span class="math inline">\(i\)</span>. This means that ARIMA shrinks towards non-stationarity;</li>
-<li>All MA parameters are modified to shrink towards minus one, reflecting the same ETS spirit (see the connection between ETS and ARIMA discussed in Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>): <span class="math inline">\(\hat{\theta}_i^\prime=\hat{\theta}_i+1\)</span> for all <span class="math inline">\(i\)</span>.</li>
+<li>All AR parameters are forced to shrink to one, giving the ARIMA model similar features to the ETS models with shrinkage: <span class="math inline">\(\hat{\phi}_i^\prime=1-\hat{\phi}_i\)</span> for all <span class="math inline">\(i\)</span>. This means that ARIMA shrinks towards non-stationarity (this idea comes from the connection of ETS and ARIMA, discussed in Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>);</li>
+<li>All MA parameters are modified to shrink towards minus one, reflecting the same ETS spirit (see the connection between ETS and ARIMA discussed in Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>): <span class="math inline">\(\hat{\theta}_i^\prime=\hat{\theta}_i+1\)</span> for all <span class="math inline">\(i\)</span>;</li>
 <li>If there are explanatory variables and the error term of the model is <em>additive</em>, then the respective parameters are divided by the standard deviations of the respective variables. In the case of the <em>multiplicative</em> error term, nothing is done because the parameters would typically be close to zero anyway (see a Chapter <a href="ADAMXFormulation.html#ADAMXFormulation">10.1</a>).</li>
-<li>Finally, in order to make <span class="math inline">\(\lambda\)</span> slightly more meaningful, in case of <em>additive</em> error model, we also divide the MSE part of the loss by <span class="math inline">\(\mathrm{V}\left({\Delta}y_t\right)\)</span>, where <span class="math inline">\({\Delta}y_t=y_t-y_{t-1}\)</span>. This sort of scaling helps in both cases: when there is a trend in the data and when the data does not exhibit one. We do not do anything for the <em>multiplicative</em> error models because, typically, the error is already small.</li>
+<li>Finally, in order to make <span class="math inline">\(\lambda\)</span> slightly more meaningful, in case of <em>additive</em> error model, we also divide the MSE part of the loss by <span class="math inline">\(\mathrm{V}\left({\Delta}y_t\right)\)</span>, where <span class="math inline">\({\Delta}y_t=y_t-y_{t-1}\)</span>. This sort of scaling helps in cases when there is a trend in the data and when the data does not exhibit one. We do not do anything for the <em>multiplicative</em> error models because, typically, the error is already small.</li>
 </ol>
-<p>Note that the <code>adam()</code> function does not select the most appropriate <span class="math inline">\(\lambda\)</span> and will set it equal to zero if the user does not provide it. It is up to a user to try out different <span class="math inline">\(\lambda\)</span> and select the one that minimises a chosen error measure.</p>
+<p>Note that the <code>adam()</code> function does not select the most appropriate <code>lambda</code> and will set it equal to zero if the user does not provide it. It is up to a user to try out different <code>lambda</code> and select the one that minimises a chosen error measure. This can be done, for example, using rolling origin procedure (discussed in Section <a href="rollingOrigin.html#rollingOrigin">2.4</a>).</p>
 </div>
 <div id="custom-losses" class="section level3 hasAnchor" number="11.2.4">
 <h3><span class="header-section-number">11.2.4</span> Custom losses<a href="non-mle-based-loss-functions.html#custom-losses" class="anchor-section" aria-label="Anchor link to header"></a></h3>
@@ -736,7 +736,7 @@ Figure 11.1: Forecasts from ETS(M,A,M) model estimated using different loss func
 • Kolassa, S., 2016. <span class="nocase">Evaluating predictive count data distributions in retail sales forecasting</span>. International Journal of Forecasting. 32, 788–803. <a href="https://doi.org/10.1016/j.ijforecast.2015.12.004">https://doi.org/10.1016/j.ijforecast.2015.12.004</a>
 </div>
 <div id="ref-Pritularga2022" class="csl-entry">
-• Pritularga, K., Svetunkov, I., Kourentzes, N., 2022. <span class="nocase">Shrinkage Estimator for Exponential Smoothing Models</span>. Submitted to International Journal of Forecasting. NA, NA.
+• Pritularga, K., Svetunkov, I., Kourentzes, N., 2022. <span class="nocase">Shrinkage Estimator for Exponential Smoothing Models</span>. International Journal of Forecasting. In Print, NA.
 </div>
 <div id="ref-Schwertman1990" class="csl-entry">
 • Schwertman, N.C., Gilks, A.J., Cameron, J., 1990. <span class="nocase">A Simple Noncalculus Proof That the Median Minimizes the Sum of the Absolute Deviations</span>. The American Statistician. 44, 38–39. <a href="https://doi.org/10.1080/00031305.1990.10475690">https://doi.org/10.1080/00031305.1990.10475690</a>
