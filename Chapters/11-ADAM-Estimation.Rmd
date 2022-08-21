@@ -134,7 +134,7 @@ As a result, the log-likelihoods would have the $\mu_{y,t}$ part in the formulae
 The part $\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}$ does not contain $\mu_{y,t}$ because when inserted in the formula of Normal distribution, the numerator is: $y_t - \mu_{y,t}$, which is based on \@ref(eq:ETSADAMNormalDistributionExample03) is $\mu_{y,t} \epsilon_t$. After inserting in the formula for the Normal distribution that part becomes: $\frac{1}{2} \sum_{t=1}^T \frac{(\mu_{y,t} \epsilon_t)^2}{\mu_{y,t}^2\sigma^2}$ which after cancellations leads to \@ref(eq:ETSADAMNormalDistributionExample04).
 :::
 
-Similar logic is applicable to $\mathcal{Laplace}$, $\mathcal{S}$, $\mathcal{GN}$ and $\mathcal{ALaplace}$ distributions. From the practical point of view, these assumptions imply that the scale (and variance) of the distribution of $y_t$ changes together with the level of the series. When it comes to the $\mathcal{IG}$, $\Gamma$ and log$\mathcal{N}$, the assumptions are imposed on the $1+\epsilon_t$ part of the model, the respective likelihoods do not involve the expectation $\mu_{y,t}$, but the formulation still implies that the variance of the data increases together with the increase of the level of data.
+Similar logic is applicable to $\mathcal{Laplace}$, $\mathcal{S}$ and $\mathcal{GN}$ distributions. From the practical point of view, these assumptions imply that the scale (and variance) of the distribution of $y_t$ changes together with the level of the series. When it comes to the $\mathcal{IG}$, $\Gamma$ and log$\mathcal{N}$, the assumptions are imposed on the $1+\epsilon_t$ part of the model, the respective likelihoods do not involve the expectation $\mu_{y,t}$, but the formulation still implies that the variance of the data increases together with the increase of the level of data.
 
 All the likelihoods for the multiplicative error models are summarised in Table \@ref(tab:multiplicativeErrorLikelihoods).
 
@@ -259,9 +259,9 @@ This command should return the ADAM ETS(M,A,M) model with the most appropriate d
 ## Non MLE-based loss functions
 An alternative approach for estimating ADAM ETS is using the conventional loss functions, such as MSE, MAE etc. In this case, the model selection using information criteria would not work, but this might not matter when you have already decided what model to use and want to improve it. In some special cases [as discussed in Chapter 3 of @SvetunkovSBA], the minimisation of these losses would give the same results as the maximisation of some likelihood functions:
 
-1. Minimum of MSE corresponds to the maximum likelihood of Normal distribution [see discussion in @Kolassa2016];
-2. Minimum of MAE corresponds to the maximum likelihood of Laplace distribution [@Schwertman1990];
-3. Minimum of pinball function [@Koenker1978, quantile regression] corresponds to the maximum of the likelihood of Asymmetric Laplace distribution [@Yu2005];
+- Minimum of MSE corresponds to the maximum likelihood of Normal distribution [see discussion in @Kolassa2016];
+- Minimum of MAE corresponds to the maximum likelihood of Laplace distribution [@Schwertman1990];
+<!-- 3. Minimum of pinball function [@Koenker1978, quantile regression] corresponds to the maximum of the likelihood of Asymmetric Laplace distribution [@Yu2005]; -->
 
 The main difference between using these losses and maximising respective likelihoods is in the number of estimated parameters [see discussion in Section 13.3 of @SvetunkovSBA]: the latter implies that the scale is estimated together with the other parameters, while the former does not consider it and in a way provides it for free.
 
@@ -607,7 +607,8 @@ If a dampening parameter is needed in the model, then its pre-initialised value 
 
 In the case of ARIMA, the parameters are pre-initialised based on ACF and PACF (Sections \@ref(ACF) and \@ref(PACF)). First, the in-sample actual values are differenced, according to the selected order $D_j$ for all $j=0,\dots,n$, after which the ACF and PACF are calculated. Then the initials for AR parameters are taken from the PACF, while the initials for MA parameters are taken from ACF, making sure that the sum of parameters is not greater than one in both cases. If it is, then the parameters are renormalised to satisfy the condition. This mechanism aims to get a potentially correct direction towards the optimal parameters of the model and make sure that the initial values meet the basic stationarity and invertibility conditions. In cases when it is not possible to calculate ACF and PACF for the specified lags and orders, AR parameters are set to -0.1, while the MA parameters are set to 0.1, making sure that the conditions mentioned above hold.
 
-In the case of Generalised Normal distribution, the shape parameter is set to 2 (if it is estimated), making the optimiser start from the conventional Normal distribution. If the skewness parameter of Asymmetric Laplace distribution is not provided, then its pre-initial value is set to 0.5, corresponding to the median of the data.
+In the case of Generalised Normal distribution, the shape parameter is set to 2 (if it is estimated), making the optimiser start from the conventional Normal distribution.
+<!-- If the skewness parameter of Asymmetric Laplace distribution is not provided, then its pre-initial value is set to 0.5, corresponding to the median of the data. -->
 
 The pre-initialisations described above guarantee that the model is estimable for a wide variety of time series and that the optimiser will reach the optimum in a limited time. If it does not work for a specific case, a user can provide their vector of pre-initialised parameters via the parameter `B` in the ellipsis of the model. Furthermore, the typical bounds for the parameters can be tuned as well. For example, the bounds for smoothing parameters in ADAM ETS are (-5, 5), and they are needed only to simplify the optimisation procedure. The function will check the violation of either `usual` or `admissible` bounds inside the optimiser, but having some ideas of where to search for optimal parameters, helps. A user can provide their vector for the lower bound via `lb` and the upper one via `ub`.
 
@@ -663,7 +664,7 @@ Having said all that, we need to point out that it is advised to use backcasting
 ### Pre-initialisation of ADAM states, Regressors and constant
 When it comes to the initials for the regressors, they are obtained from the parameters of the `alm()` model based on the rules below:
 
-- The model with the logarithm of the response variable is constructed, if the **error term is multiplicative** and one of the following distributions has been selected: Normal, Laplace, S, Generalised Normal or Asymmetric Laplace;
+- The model with the logarithm of the response variable is constructed, if the **error term is multiplicative** and one of the following distributions has been selected: Normal, Laplace, S or Generalised Normal;
 - Otherwise, the model is constructed based on the provided formula and selected distribution;
 - In any case, the global trend is added to the formula to make sure that its effect on the values of parameters is reduced;
 - If the data contains categorical variables (aka "factors" in R), then the factors are expanded to dummy variables, adding the baseline value. While the classical multiple regression would not be estimable in this situation, dynamic models like ETSX and ARIMAX can work with the complete set of levels of categorical variables. To get the missing level, the intercept is added to the parameters of dummy variables, after which the obtained vector is normalised. This way, we can get, for example, all seasonal components if we want to model seasonality via X part of the model, not merging one of the components with level (see discussion in Section \@ref(ETSXDynamicCategories)).
