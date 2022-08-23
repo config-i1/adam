@@ -23,7 +23,23 @@ The general idea of this approach is to use the estimated parameters, last obtai
 4. Repeat (1) - (3) $n$ times;
 5. Take expectations for each horizon from 1 to $h$.
 
-A thing to note is that in the case of multiplicative trend or multiplicative seasonality, it makes sense to take trimmed mean instead of the basic arithmetic one on the step (5). This is because the models with these components might exhibit explosive behaviour, and thus the expectation might become unrealistic. I suggest using 1% trimming, although this does not have any scientific merit and is only based on my personal expertise.
+Graphically, the result of this approach is shown in Figure \@ref(fig:adamScenarios), where each separate path is shown in grey colour and the expectation is in black.
+
+```{r adamScenarios, fig.cap="Sample paths (scenarios) generated from ADAM for the holdout sample.", echo=FALSE}
+adam(BJsales, "YYN", h=10, holdout=TRUE) |>
+    forecast(h=10, interval="simulated", scenarios=TRUE, nsim=100) ->
+    adamForecast
+plot(as.vector(adamForecast$mean), ylim=range(adamForecast$scenarios), type="l",
+     xlab="Horizon", ylab="Sample paths")
+for(i in 1:ncol(adamForecast$scenarios)){
+    lines(adamForecast$scenarios[,i], col="grey")
+}
+lines(as.vector(adamForecast$mean), lwd=2)
+```
+
+::: remark
+In the case of multiplicative trend or multiplicative seasonality, it makes sense to take trimmed mean instead of the basic arithmetic one on the step (5). This is because the models with these components might exhibit explosive behaviour, and thus the expectation might become unrealistic. I suggest using 1% trimming, although this does not have any scientific merit and is only based on my personal expertise.
+:::
 
 The simulation-based approach is universal, no matter what model is used, and can be applied to any ETS, ARIMA, regression model or combination (including dynamic ETSX, intermittent demand and multiple frequency models). Furthermore, instead of taking expectations on step 3, one can take geometric means, medians or any desired quantile. This is discussed later in Subsection \@ref(ADAMForecastingPISimulations).
 
