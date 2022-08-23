@@ -23,16 +23,16 @@ The general idea of this approach is to use the estimated parameters, last obtai
 4. Repeat (1) - (3) $n$ times;
 5. Take expectations for each horizon from 1 to $h$.
 
-Graphically, the result of this approach is shown in Figure \@ref(fig:adamScenarios), where each separate path is shown in grey colour and the expectation is in black.
+Graphically, the result of this approach is shown in Figure \@ref(fig:adamScenarios), where each separate path is shown in grey colour and the expectation is in black. See the R code for this in Subsection \@ref(scenariosExample).
 
 ```{r adamScenarios, fig.cap="Sample paths (scenarios) generated from ADAM for the holdout sample.", echo=FALSE}
 adam(BJsales, "YYN", h=10, holdout=TRUE) |>
-    forecast(h=10, interval="simulated", scenarios=TRUE, nsim=100) ->
+    forecast(h=10, interval="simulated", scenarios=TRUE, nsim=500) ->
     adamForecast
 plot(as.vector(adamForecast$mean), ylim=range(adamForecast$scenarios), type="l",
      xlab="Horizon", ylab="Sample paths")
 for(i in 1:ncol(adamForecast$scenarios)){
-    lines(adamForecast$scenarios[,i], col="grey")
+    lines(adamForecast$scenarios[,i], col=rgb(0.8,0.8,0.8,0.4))
 }
 lines(as.vector(adamForecast$mean), lwd=2)
 ```
@@ -50,8 +50,8 @@ The main issue with this approach is that the conditional expectation and any ot
 If the model contains explanatory variables, then the h steps ahead conditional expectations should use them in the calculation. The main challenge in this situation is that the future values might not be known in some cases. This has been discussed in Section \@ref(ADAMXConventionalConditionalMoments). Practically speaking, if the user provides the holdout sample values of explanatory variables, the `forecast.adam()` method will use them in forecasting. If they are not provided, the function will produce forecasts for each of the explanatory variables via the `adam()` function and use the conditional h steps ahead expectations in forecasting.
 
 
-### Demonstration in R
-In order to demonstrate how the approach works, we consider an artificial case of ETS(M,M,N) model with $l_t=1000$, $b_t=0.95$, $\alpha=0.1$, $\beta=0.01$, and Gamma distribution for error term with scale $s=0.05$. We generate 1000 scenarios from this model for the horizon of $h=10$ using `sim.es()` function from `smooth` package:
+### Demonstration in R {#scenariosExample}
+In order to demonstrate the simulation approach, we consider an artificial case of ETS(M,M,N) model with $l_t=1000$, $b_t=0.95$, $\alpha=0.1$, $\beta=0.01$, and Gamma distribution for error term with scale $s=0.05$. We generate 1000 scenarios from this model for the horizon of $h=10$ using `sim.es()` function from `smooth` package:
 ```{r}
 nsim <- 1000
 h <- 10
@@ -80,6 +80,8 @@ lines(apply(y$data,1,quantile,0.975),
 ```
 
 Based on the plot in Figure \@ref(fig:adamForecastSimulated), we can see what the conditional h steps ahead expectation (black line) and what the 95% prediction interval will be for the data based on the ETS(M,M,N) model with the parameters mentioned above.
+
+Similar paths are produced by `forecast()` function for `adam` class in `smooth`. If you need to extract them for further analysis, they are returned in the object `scenarios` if the parameters `interval="simulated"` and `scenarios=TRUE` are set.
 
 
 ## Conditional variance and scale {#ADAMForecastingVariance}
