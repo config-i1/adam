@@ -445,7 +445,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li class="chapter" data-level="18.1" data-path="ADAMForecastingExpectation.html"><a href="ADAMForecastingExpectation.html"><i class="fa fa-check"></i><b>18.1</b> Conditional expectation</a><ul>
 <li class="chapter" data-level="18.1.1" data-path="ADAMForecastingExpectation.html"><a href="ADAMForecastingExpectation.html#ADAMForecastingExpectationSimulations"><i class="fa fa-check"></i><b>18.1.1</b> Simulating demand trajectories</a></li>
 <li class="chapter" data-level="18.1.2" data-path="ADAMForecastingExpectation.html"><a href="ADAMForecastingExpectation.html#explanatory-variables"><i class="fa fa-check"></i><b>18.1.2</b> Explanatory variables</a></li>
-<li class="chapter" data-level="18.1.3" data-path="ADAMForecastingExpectation.html"><a href="ADAMForecastingExpectation.html#demonstration-in-r"><i class="fa fa-check"></i><b>18.1.3</b> Demonstration in R</a></li>
+<li class="chapter" data-level="18.1.3" data-path="ADAMForecastingExpectation.html"><a href="ADAMForecastingExpectation.html#scenariosExample"><i class="fa fa-check"></i><b>18.1.3</b> Demonstration in R</a></li>
 </ul></li>
 <li class="chapter" data-level="18.2" data-path="ADAMForecastingVariance.html"><a href="ADAMForecastingVariance.html"><i class="fa fa-check"></i><b>18.2</b> Conditional variance and scale</a><ul>
 <li class="chapter" data-level="18.2.1" data-path="ADAMForecastingVariance.html"><a href="ADAMForecastingVariance.html#scale-model"><i class="fa fa-check"></i><b>18.2.1</b> Scale model</a></li>
@@ -511,7 +511,16 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <li>Repeat (1) - (3) <span class="math inline">\(n\)</span> times;</li>
 <li>Take expectations for each horizon from 1 to <span class="math inline">\(h\)</span>.</li>
 </ol>
-<p>A thing to note is that in the case of multiplicative trend or multiplicative seasonality, it makes sense to take trimmed mean instead of the basic arithmetic one on the step (5). This is because the models with these components might exhibit explosive behaviour, and thus the expectation might become unrealistic. I suggest using 1% trimming, although this does not have any scientific merit and is only based on my personal expertise.</p>
+<p>Graphically, the result of this approach is shown in Figure <a href="ADAMForecastingExpectation.html#fig:adamScenarios">18.1</a>, where each separate path is shown in grey colour and the expectation is in black. See the R code for this in Subsection <a href="ADAMForecastingExpectation.html#scenariosExample">18.1.3</a>.</p>
+<div class="figure"><span style="display:block;" id="fig:adamScenarios"></span>
+<img src="Svetunkov--2022----ADAM_files/figure-html/adamScenarios-1.png" alt="Sample paths (scenarios) generated from ADAM for the holdout sample." width="672" />
+<p class="caption">
+Figure 18.1: Sample paths (scenarios) generated from ADAM for the holdout sample.
+</p>
+</div>
+<div class="remark">
+<p><span id="unlabeled-div-32" class="remark"><em>Remark</em>. </span>In the case of multiplicative trend or multiplicative seasonality, it makes sense to take trimmed mean instead of the basic arithmetic one on the step (5). This is because the models with these components might exhibit explosive behaviour, and thus the expectation might become unrealistic. I suggest using 1% trimming, although this does not have any scientific merit and is only based on my personal expertise.</p>
+</div>
 <p>The simulation-based approach is universal, no matter what model is used, and can be applied to any ETS, ARIMA, regression model or combination (including dynamic ETSX, intermittent demand and multiple frequency models). Furthermore, instead of taking expectations on step 3, one can take geometric means, medians or any desired quantile. This is discussed later in Subsection <a href="ADAMForecastingPI.html#ADAMForecastingPISimulations">18.3.2</a>.</p>
 <p>The main issue with this approach is that the conditional expectation and any other statistics calculated based on this will differ with every new simulation run. If <span class="math inline">\(n\)</span> is small, these values will be less stable (vary more with the new runs). But they will reach some asymptotic values with the increase of <span class="math inline">\(n\)</span>, staying random nonetheless. However, this is a good thing because this randomness reflects the uncertain nature of these statistics in the sample: the true values are never known, and the estimates will inevitably change with the sample size change. Another limitation is the computational time and memory usage: the more iterations we want to produce, the more calculations will need to be done, and more memory will be used. Luckily, time complexity in this situation should be linear: <span class="math inline">\(O(h \times n)\)</span>.</p>
 </div>
@@ -519,9 +528,9 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <h3><span class="header-section-number">18.1.2</span> Explanatory variables<a href="ADAMForecastingExpectation.html#explanatory-variables" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>If the model contains explanatory variables, then the h steps ahead conditional expectations should use them in the calculation. The main challenge in this situation is that the future values might not be known in some cases. This has been discussed in Section <a href="ADAMXConventionalConditionalMoments.html#ADAMXConventionalConditionalMoments">10.2</a>. Practically speaking, if the user provides the holdout sample values of explanatory variables, the <code>forecast.adam()</code> method will use them in forecasting. If they are not provided, the function will produce forecasts for each of the explanatory variables via the <code>adam()</code> function and use the conditional h steps ahead expectations in forecasting.</p>
 </div>
-<div id="demonstration-in-r" class="section level3 hasAnchor">
-<h3><span class="header-section-number">18.1.3</span> Demonstration in R<a href="ADAMForecastingExpectation.html#demonstration-in-r" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>In order to demonstrate how the approach works, we consider an artificial case of ETS(M,M,N) model with <span class="math inline">\(l_t=1000\)</span>, <span class="math inline">\(b_t=0.95\)</span>, <span class="math inline">\(\alpha=0.1\)</span>, <span class="math inline">\(\beta=0.01\)</span>, and Gamma distribution for error term with scale <span class="math inline">\(s=0.05\)</span>. We generate 1000 scenarios from this model for the horizon of <span class="math inline">\(h=10\)</span> using <code>sim.es()</code> function from <code>smooth</code> package:</p>
+<div id="scenariosExample" class="section level3 hasAnchor">
+<h3><span class="header-section-number">18.1.3</span> Demonstration in R<a href="ADAMForecastingExpectation.html#scenariosExample" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>In order to demonstrate the simulation approach, we consider an artificial case of ETS(M,M,N) model with <span class="math inline">\(l_t=1000\)</span>, <span class="math inline">\(b_t=0.95\)</span>, <span class="math inline">\(\alpha=0.1\)</span>, <span class="math inline">\(\beta=0.01\)</span>, and Gamma distribution for error term with scale <span class="math inline">\(s=0.05\)</span>. We generate 1000 scenarios from this model for the horizon of <span class="math inline">\(h=10\)</span> using <code>sim.es()</code> function from <code>smooth</code> package:</p>
 <div class="sourceCode" id="cb372"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb372-1" title="1">nsim &lt;-<span class="st"> </span><span class="dv">1000</span></a>
 <a class="sourceLine" id="cb372-2" title="2">h &lt;-<span class="st"> </span><span class="dv">10</span></a>
 <a class="sourceLine" id="cb372-3" title="3">s &lt;-<span class="st"> </span><span class="fl">0.1</span></a>
@@ -530,7 +539,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <a class="sourceLine" id="cb372-6" title="6">y &lt;-<span class="st"> </span><span class="kw">sim.es</span>(<span class="st">&quot;MMN&quot;</span>, <span class="dt">obs=</span>h, <span class="dt">nsim=</span>nsim, <span class="dt">persistence=</span>persistence,</a>
 <a class="sourceLine" id="cb372-7" title="7">            <span class="dt">initial=</span>initial, <span class="dt">randomizer=</span><span class="st">&quot;rgamma&quot;</span>,</a>
 <a class="sourceLine" id="cb372-8" title="8">            <span class="dt">shape=</span><span class="dv">1</span><span class="op">/</span>s, <span class="dt">scale=</span>s)</a></code></pre></div>
-<p>After running the code above, we will obtain an object <code>y</code> that will contain several variables, including <code>y$data</code> with all the 1000 possible future trajectories. We can plot them to get an impression of what we are dealing with (see Figure <a href="ADAMForecastingExpectation.html#fig:adamForecastSimulated">18.1</a>):</p>
+<p>After running the code above, we will obtain an object <code>y</code> that will contain several variables, including <code>y$data</code> with all the 1000 possible future trajectories. We can plot them to get an impression of what we are dealing with (see Figure <a href="ADAMForecastingExpectation.html#fig:adamForecastSimulated">18.2</a>):</p>
 <div class="sourceCode" id="cb373"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb373-1" title="1"><span class="kw">plot</span>(y<span class="op">$</span>data[,<span class="dv">1</span>], <span class="dt">ylab=</span><span class="st">&quot;Sales&quot;</span>, <span class="dt">ylim=</span><span class="kw">range</span>(y<span class="op">$</span>data),</a>
 <a class="sourceLine" id="cb373-2" title="2">     <span class="dt">col=</span><span class="kw">rgb</span>(<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.4</span>), <span class="dt">xlab=</span><span class="st">&quot;Horizon&quot;</span>)</a>
 <a class="sourceLine" id="cb373-3" title="3"><span class="co"># Plot all the generated lines</span></a>
@@ -546,10 +555,11 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <div class="figure"><span style="display:block;" id="fig:adamForecastSimulated"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/adamForecastSimulated-1.png" alt="Data generated from 1000 ETS(M,M,N) models." width="672" />
 <p class="caption">
-Figure 18.1: Data generated from 1000 ETS(M,M,N) models.
+Figure 18.2: Data generated from 1000 ETS(M,M,N) models.
 </p>
 </div>
-<p>Based on the plot in Figure <a href="ADAMForecastingExpectation.html#fig:adamForecastSimulated">18.1</a>, we can see what the conditional h steps ahead expectation (black line) and what the 95% prediction interval will be for the data based on the ETS(M,M,N) model with the parameters mentioned above.</p>
+<p>Based on the plot in Figure <a href="ADAMForecastingExpectation.html#fig:adamForecastSimulated">18.2</a>, we can see what the conditional h steps ahead expectation (black line) and what the 95% prediction interval will be for the data based on the ETS(M,M,N) model with the parameters mentioned above.</p>
+<p>Similar paths are produced by <code>forecast()</code> function for <code>adam</code> class in <code>smooth</code>. If you need to extract them for further analysis, they are returned in the object <code>scenarios</code> if the parameters <code>interval="simulated"</code> and <code>scenarios=TRUE</code> are set.</p>
 </div>
 </div>
             </section>
