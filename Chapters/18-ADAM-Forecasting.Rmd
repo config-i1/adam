@@ -1,14 +1,13 @@
 # Forecasting with ADAM {#ADAMForecasting}
 Finally, we come to the technicalities of producing forecasts using ADAM. We have already discussed how conditional expectations can be generated from some of the models (e.g. Sections \@ref(pureAdditiveExpectationAndVariance), \@ref(pureMultiplicativeExpectationAndVariance), \@ref(ADAMARIMARecursiveMoments), \@ref(ADAMXConventionalConditionalMoments) and \@ref(ADAMXDynamicMoments)), but we have not discussed this in necessary detail. Furthermore, as discussed in Section \@ref(forecastingPlanningAnalytics), forecasts should align with specific decisions, but we have not discussed how to do that.
 
-In this chapter, we start the discussion with the principles behind calculating the conditional expectations from ADAM (including ETS, ARIMA, regression and their combinations). We then discuss various methods for prediction intervals construction, starting from the basic parametric ones and ending with empirical and those that take the uncertainty of parameters into account (building upon Chapter \@ref(ADAMUncertainty)). Finally, we discuss prediction intervals for the intermittent state space model (Chapter \@ref(ADAMIntermittent)), one-sided intervals and cumulative forecasts over the forecast horizon, which is useful in practice, especially when inventory decisions need to be made. We also discuss the confidence interval for the conditional mean, which is not as important as the other topics mentioned above but is still worth discussing.
+In this chapter, we start with an explanation of how the simulation paths can be generated to obtain moments and quantiles in the cases when they are not available analytically (Section \@ref(ADAMForecastingSimulations)). We then discuss the principles behind calculating the conditional moments from ADAM (including ETS, ARIMA, regression and their combinations, Section \@ref(ADAMForecastingMoments)). We then discuss various methods for prediction intervals construction, starting from the basic parametric ones and ending with empirical and those that take the uncertainty of parameters into account (building upon Chapter \@ref(ADAMUncertainty)). Finally, we discuss prediction intervals for the intermittent state space model (Chapter \@ref(ADAMIntermittent)), one-sided intervals and cumulative forecasts over the forecast horizon, which is useful in practice, especially when inventory decisions need to be made. We also discuss the confidence interval for the conditional mean, which is not as important as the other topics mentioned above but is still worth discussing.
 
 
-## Conditional expectation {#ADAMForecastingExpectation}
-As discussed in Sections \@ref(pureAdditiveExpectationAndVariance) and \@ref(pureMultiplicativeExpectationAndVariance), the conditional h steps ahead expectation is in general available only for the pure additive models. In the cases of pure multiplicative ones, the point forecasts would correspond to conditional expectations only for $h \leq m$ for seasonal models and $h=1$ for models with the trend. The one exception is the ETS(M,N,N) model, where the point forecast corresponds to the conditional expectation for any horizon as long as the expectation of the error term $1+\epsilon_t$ is equal to one. When it comes to the mixed models (Section \@ref(ADAMETSMixedModels)), the situation would depend on the specific model, but in general, the same logic as for the pure multiplicative ones applies. In this case, the conditional expectations need to be obtained via other means. This is when the simulations come into play.
+## Creating simulation paths {#ADAMForecastingSimulations}
+As mentioned earlier in previous chapters, for some of the types of models, the conditional h steps ahead moments do not have analytical expressions. For example, as discussed in Section \@ref(pureMultiplicativeExpectationAndVariance), pure multiplicative models typically do not have formulae for the conditional expectations and variance for longer horizons. The one exception is the ETS(M,N,N) model, where the point forecast corresponds to the conditional expectation for any horizon as long as the expectation of the error term $1+\epsilon_t$ is equal to one. This problem is not only important for the moments, it also arises when quantiles of distributions are needed, especially for models with multiplicative error. In all these cases when the moments and/or quantiles are not available analytically, they need to be obtained via other means. One of those is simulating trajectories and then calculating moments numerically.
 
-
-### Simulating demand trajectories {#ADAMForecastingExpectationSimulations}
+### Simulating trajectories {#ADAMForecastingExpectationSimulations}
 The general idea of this approach is to use the estimated parameters, last obtained state vector (level, trend, seasonal, ARIMA components etc.) and the estimate of the scale of distribution to generate the possible paths of the data. The simulation itself is done in several steps after obtaining parameters, states and scale:
 
 1. Generate $h$ random variables for the error term, $\epsilon_t$ or $1+\epsilon_t$ -- depending on the type of error, assumed distribution in the model (the latter was discussed in Sections \@ref(ADAMETSAdditiveDistributions) and \@ref(ADAMETSMultiplicativeDistributions)) and estimated parameters of distribution (typically, scale);
@@ -21,7 +20,7 @@ The general idea of this approach is to use the estimated parameters, last obtai
 \end{equation*}
 3. Record actual values for $j=\{1, \dots, h\}$;
 4. Repeat (1) - (3) $n$ times;
-5. Take expectations for each horizon from 1 to $h$.
+5. Take desired moments or quantiles for each horizon from 1 to $h$.
 
 Graphically, the result of this approach is shown in Figure \@ref(fig:adamScenarios), where each separate path is shown in grey colour and the expectation is in black. See the R code for this in Subsection \@ref(scenariosExample).
 
@@ -41,14 +40,9 @@ lines(as.vector(adamForecast$mean), lwd=2)
 In the case of multiplicative trend or multiplicative seasonality, it makes sense to take trimmed mean instead of the basic arithmetic one on the step (5). This is because the models with these components might exhibit explosive behaviour, and thus the expectation might become unrealistic. I suggest using 1% trimming, although this does not have any scientific merit and is only based on my personal expertise.
 :::
 
-The simulation-based approach is universal, no matter what model is used, and can be applied to any ETS, ARIMA, regression model or combination (including dynamic ETSX, intermittent demand and multiple frequency models). Furthermore, instead of taking expectations on step 3, one can take geometric means, medians or any desired quantile. This is discussed later in Subsection \@ref(ADAMForecastingPISimulations).
+The simulation-based approach is universal, no matter what model is used, and can be applied to any ETS, ARIMA, regression model or combination (including dynamic ETSX, intermittent demand and multiple frequency models). Furthermore, instead of extracting moments on step 5, one can take geometric mean, median or any desired statistics.
 
-The main issue with this approach is that the conditional expectation and any other statistics calculated based on this will differ with every new simulation run. If $n$ is small, these values will be less stable (vary more with the new runs). But they will reach some asymptotic values with the increase of $n$, staying random nonetheless. However, this is a good thing because this randomness reflects the uncertain nature of these statistics in the sample: the true values are never known, and the estimates will inevitably change with the sample size change. Another limitation is the computational time and memory usage: the more iterations we want to produce, the more calculations will need to be done, and more memory will be used. Luckily, time complexity in this situation should be linear: $O(h \times n)$.
-
-
-### Explanatory variables
-If the model contains explanatory variables, then the h steps ahead conditional expectations should use them in the calculation. The main challenge in this situation is that the future values might not be known in some cases. This has been discussed in Section \@ref(ADAMXConventionalConditionalMoments). Practically speaking, if the user provides the holdout sample values of explanatory variables, the `forecast.adam()` method will use them in forecasting. If they are not provided, the function will produce forecasts for each of the explanatory variables via the `adam()` function and use the conditional h steps ahead expectations in forecasting.
-
+The main issue with this approach is that the conditional expectation or any other statistics calculated based on this will differ with every new simulation run. If $n$ is small, these values will be less stable (vary more with the new runs). But they will reach some asymptotic values with the increase of $n$, staying random nonetheless. However, this is a good thing because this randomness reflects the uncertain nature of these statistics in the sample: the true values are never known, and the estimates will inevitably change with the sample size change. Another limitation is the computational time and memory usage: the more iterations we want to produce, the more calculations will need to be done, and more memory will be used. Luckily, time complexity in this situation should be linear: $O(h \times n)$.
 
 ### Demonstration in R {#scenariosExample}
 In order to demonstrate the simulation approach, we consider an artificial case of ETS(M,M,N) model with $l_t=1000$, $b_t=0.95$, $\alpha=0.1$, $\beta=0.01$, and Gamma distribution for error term with scale $s=0.05$. We generate 1000 scenarios from this model for the horizon of $h=10$ using `sim.es()` function from `smooth` package:
@@ -84,7 +78,16 @@ Based on the plot in Figure \@ref(fig:adamForecastSimulated), we can see what th
 Similar paths are produced by `forecast()` function for `adam` class in `smooth`. If you need to extract them for further analysis, they are returned in the object `scenarios` if the parameters `interval="simulated"` and `scenarios=TRUE` are set.
 
 
-## Conditional variance and scale {#ADAMForecastingVariance}
+## Conditional moments and scale {#ADAMForecastingMoments}
+We have already discussed how to obtain conditional expectation and variance in Sections \@ref(pureAdditiveExpectationAndVariance) and \@ref(pureMultiplicativeExpectationAndVariance). However, the topic is worth discussing in more detail, especially for non-normal distributions.
+
+### Conditional expectation {#ADAMForecastingExpectation}
+The general rule that applies to ADAM in terms of generating conditional expectation is that if you deal with pure additive model, then you can produce forecasts analytically. This not only applies to ETS, but also to ARIMA (Subsection \@ref(ADAMARIMARecursiveMoments)) and regression (Section \@ref(ADAMXConventionalConditionalMoments)). If the model has multiplicative components (such as multiplicative error or trend or seasonality) or is formulated in logarithms (as, for example, ARIMA in logarithms) then simulations (Section \@ref(ADAMForecastingSimulations)) should be preferred - the point forecasts from these models would not necessarily correspond to the conditional expectations.
+
+### Explanatory variables
+If the model contains explanatory variables, then the h steps ahead conditional expectations should use them in the calculation. The main challenge in this situation is that the future values might not be known in some cases. This has been discussed in Section \@ref(ADAMXConventionalConditionalMoments). Practically speaking, if the user provides the holdout sample values of explanatory variables, the `forecast.adam()` method will use them in forecasting. If they are not provided, the function will produce forecasts for each of the explanatory variables via the `adam()` function and use the conditional h steps ahead expectations in forecasting.
+
+### Conditional variance and scale {#ADAMForecastingVariance}
 Similar to conditional expectations, as we have discussed in Sections \@ref(pureAdditiveExpectationAndVariance) and \@ref(pureMultiplicativeExpectationAndVariance), the conditional h steps ahead variance is in general available only for the pure additive models. While the conditional expectation might be required on its own to use as a point forecast, the conditional variance is typically needed to produce prediction intervals. However, it becomes useful only in cases of distributions that support convolution (addition of random variables), which limits its usefulness to pure additive model and to additive models applied to the data in logarithms. For example, if we deal with Inverse Gaussian distribution, then the h-steps-ahead values will not follow Inverse Gaussian distribution, and we would need to revert to simulations in order to obtain the proper statistics for it. Another situation would be a multiplicative error model that relies on Normal distribution - the product of Normal distributions is not a Normal distribution, so the statistics would need to be obtained using simulations again.
 
 If we deal with pure additive model with either Normal, Laplace, S or Generalised Normal distributions, then the formulae derived in Section \@ref(pureAdditiveExpectationAndVariance) can be used to produce h-steps-ahead conditional variance. Having obtained those values, we can then produce conditional h-steps-ahead scales for the distributions (which would be needed, for example, to generate quantiles from these distributions), using the relations between the variance and scale in those distributions (discussed in Section \@ref(ADAMETSAdditiveDistributions)):
@@ -94,7 +97,7 @@ If we deal with pure additive model with either Normal, Laplace, S or Generalise
 3. S: $s_h = \sqrt{\sigma_h}\sqrt[4]{\frac{1}{120}}$;
 4. Generalised Normal: $s_h = \sigma_h \sqrt{\frac{\Gamma(1/\beta)}{\Gamma(3/\beta)}}$.
 
-If the variance is needed for the other combinations of model/distributions, simulations would need to be done to produce multiple trajectories, similar to how it was done in Subsection \@ref(ADAMForecastingExpectationSimulations). An alternative to this would be the calculation of in-sample multistep forecast errors (similar to how it was discussed in Sections \@ref(multistepLosses) and \@ref(diagnosticsResidualsIIDExpectationMultiple)). Having the matrix of forecast errors, we can then calculate variance for each horizon $h$.
+If the variance is needed for the other combinations of model/distributions, simulations would need to be done to produce multiple trajectories, similar to how it was done in Section \@ref(ADAMForecastingSimulations). An alternative to this would be the calculation of in-sample multistep forecast errors (similar to how it was discussed in Sections \@ref(multistepLosses) and \@ref(diagnosticsResidualsIIDExpectationMultiple)). Having the matrix of forecast errors, we can then calculate variance for each horizon $h$.
 
 
 ### Scale model
@@ -111,7 +114,7 @@ Making that substitution leads to the following analytical formula for the h-ste
 \end{equation}
 This variance can then be used, for example, to produce quantiles from the assumed distribution.
 
-As mentioned above, in case of the not purely additive model or model with other distributions than Normal, Laplace, S or Generalised Normal, the conditional variance can be obtained using simulations. In case of the scale model, the principles will be the same, just assuming that each error term $\epsilon_{t+h}$ has its own scale, obtained from the estimated scale model. The rest of the logic will be exactly the same as discussed in Subsection \@ref(ADAMForecastingExpectationSimulations).
+As mentioned above, in case of the not purely additive model or model with other distributions than Normal, Laplace, S or Generalised Normal, the conditional variance can be obtained using simulations. In case of the scale model, the principles will be the same, just assuming that each error term $\epsilon_{t+h}$ has its own scale, obtained from the estimated scale model. The rest of the logic will be exactly the same as discussed in Section \@ref(ADAMForecastingSimulations).
 
 
 ## Prediction intervals {#ADAMForecastingPI}
@@ -120,7 +123,7 @@ As discussed in Section 5.2 of @SvetunkovSBA, a prediction interval is needed to
     y_{t+j} \in (\hat{y}_{t+j} + z_{\alpha/2} \hat{\sigma}_j, \hat{y}_{t+j} + z_{1-\alpha/2} \hat{\sigma}_j),
     (\#eq:predictionInterval)
 \end{equation}
-where $\hat{y}_{t+j}$ is the estimate of $\mu_{y,t+j}$, $j$ steps ahead conditional expectation, $\hat{\sigma}_j^2$ is the estimate of ${\sigma}_j^2$, $j$ steps ahead variance of the error term obtained using principles discussed in Section \@ref(ADAMForecastingVariance) (for example, calculated via the formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVariance)) and $z$ is z-statistics (quantile of standard normal distribution) for the selected significance level $\alpha$.
+where $\hat{y}_{t+j}$ is the estimate of $\mu_{y,t+j}$, $j$ steps ahead conditional expectation, $\hat{\sigma}_j^2$ is the estimate of ${\sigma}_j^2$, $j$ steps ahead variance of the error term obtained using principles discussed in Subsection \@ref(ADAMForecastingVariance) (for example, calculated via the formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVariance)) and $z$ is z-statistics (quantile of standard normal distribution) for the selected significance level $\alpha$.
 
 ::: remark
 Note that $\alpha$ has nothing to do with the smoothing parameters for the level of ETS models.
@@ -158,7 +161,7 @@ With the conditions discussed above (low $\alpha$, low variance) the term $\alph
 
 
 ### Simulated intervals {#ADAMForecastingPISimulations}
-This approach relies on the idea discussed in Subsection \@ref(ADAMForecastingExpectationSimulations). It is universal and supports any distribution because it only assumes that the error term follows the selected distribution (no need for the actual value to do that as well).
+This approach relies on the idea discussed in Section \@ref(ADAMForecastingSimulations). It is universal and supports any distribution because it only assumes that the error term follows the selected distribution (no need for the actual value to do that as well).
 
 The simulated paths are then produced based on the generated values and the assumed model. After generating $n$ paths, one can take the desired quantiles to get the bounds of the interval. The main issue of the approach is that it is time-consuming (slower than the approximate intervals) and might be highly inaccurate if the number of iterations $n$ is low. This approach is used as a default in `adam()` for the non-additive models.
 
@@ -339,7 +342,7 @@ if(knitr:::is_latex_output()){
 ```
 where $Y_{c,t,h}=\sum_{j=1}^h y_{t+j}$ is the cumulative actual value and all the other variables have been defined in Section \@ref(adamETSPureAdditiveRecursive). Based on these expectation and variance, we can construct prediction interval as discussed in Section \@ref(ADAMForecastingPI).
 
-In cases of **multiplicative and mixed ADAM**, there are no closed forms for the conditional expectation and variance. As a result, simulations similar to the one discussed in Subsection \@ref(ADAMForecastingExpectationSimulations) are needed to produce all possible paths for the next $h$ steps ahead. The main difference would be that before taking the expectation or quantiles, the paths would need to be aggregated over the forecast horizon $h$. This approach, together with the idea of a one-sided prediction interval, can be directly used to calculate the safety stock over the lead time.
+In cases of **multiplicative and mixed ADAM**, there are no closed forms for the conditional expectation and variance. As a result, simulations similar to the one discussed in Section \@ref(ADAMForecastingSimulations) are needed to produce all possible paths for the next $h$ steps ahead. The main difference would be that before taking the expectation or quantiles, the paths would need to be aggregated over the forecast horizon $h$. This approach, together with the idea of a one-sided prediction interval, can be directly used to calculate the safety stock over the lead time.
 
 
 ### Example in R {#forecastingADAMOtherExample}
