@@ -141,7 +141,7 @@
 
 \title{Forecasting and Analytics with ADAM}
 \author{Ivan Svetunkov}
-\date{2022-08-04}
+\date{2022-09-05}
 
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}[chapter]
@@ -402,7 +402,7 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well behaved data, point forecast and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell which bound the demand will lie in \(1-\alpha\) per cent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 79.59 and 123.3. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell which bound the demand will lie in \(1-\alpha\) per cent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 80.77 and 117.25. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For a more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 5 of \citet{SvetunkovSBA}.
 
@@ -1000,10 +1000,86 @@ Finally, in both cases above, we had the \textbf{increasing in-sample} size. How
 \includegraphics[width=0.75\linewidth]{./images/03-ROProcessCOCI} \caption{Rolling origin with constant in-sample size}\label{fig:ROProcessCOCI}
 \end{figure}
 
-\hypertarget{rolling-origin-in-r}{%
-\subsection{Rolling origin in R}\label{rolling-origin-in-r}}
+\hypertarget{implementing-rolling-origin-in-r}{%
+\subsection{Implementing rolling origin in R}\label{implementing-rolling-origin-in-r}}
 
-The function \texttt{ro()} from the \texttt{greybox} package (written by Yves Sagaert and Ivan Svetunkov in 2016 on the way to the International Symposium on Forecasting) implements the rolling origin evaluation for any function you like with a predefined \texttt{call} and returns the desired \texttt{value}. It heavily relies on the two variables: \texttt{call} and \texttt{value} -- so it is pretty important to understand how to formulate them to get the desired results. \texttt{ro()} is a very flexible function, but as a result, it is not very simple. In this subsection, we will see how it works on a couple of examples.
+Now that we discussed the main idea of rolling origin, we can see how it can be implemented in R. In this section, we will implement rolling origin with a fixed holdout sample size and a changing in-sample. This aligns with what is typically done in practice when new data arrives, the model is re-estimated, and forecasts are produced for the next \(h\) steps ahead. For this example, we will use artificially created data and apply a Simple Moving Average (see Subsection \ref{SMA}) implemented in the \texttt{smooth} package.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Set sample to 100 observations}
+\NormalTok{obs }\OtherTok{\textless{}{-}} \DecValTok{100}
+\CommentTok{\# Generate the data}
+\NormalTok{y }\OtherTok{\textless{}{-}} \FunctionTok{rnorm}\NormalTok{(obs,}\DecValTok{100}\NormalTok{,}\DecValTok{10}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+We will produce forecasts for the horizon of 10 steps ahead, \(h=10\) from 5 origins.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{h }\OtherTok{\textless{}{-}} \DecValTok{10}
+\NormalTok{origins }\OtherTok{\textless{}{-}} \DecValTok{5}
+\end{Highlighting}
+\end{Shaded}
+
+We will create a list containing several objects of interest:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{actuals} will contain all the actual values,
+\item
+  \texttt{holdout} will be a matrix containing the actual values for the holdout. It will have \texttt{h} rows and \texttt{origins} columns,
+\item
+  \texttt{mean} will contain point forecasts from our model. This will also be a matrix with the same dimensions as the \texttt{holdout} one.
+\end{itemize}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{returnedValues1 }\OtherTok{\textless{}{-}} \FunctionTok{setNames}\NormalTok{(}\FunctionTok{vector}\NormalTok{(}\StringTok{"list"}\NormalTok{,}\DecValTok{3}\NormalTok{),}
+                            \FunctionTok{c}\NormalTok{(}\StringTok{"actuals"}\NormalTok{,}\StringTok{"holdout"}\NormalTok{,}\StringTok{"mean"}\NormalTok{))}
+\NormalTok{returnedValues1}\SpecialCharTok{$}\NormalTok{actuals }\OtherTok{\textless{}{-}}\NormalTok{ y}
+\NormalTok{returnedValues1}\SpecialCharTok{$}\NormalTok{holdout }\OtherTok{\textless{}{-}}
+\NormalTok{  returnedValues1}\SpecialCharTok{$}\NormalTok{mean }\OtherTok{\textless{}{-}}
+  \FunctionTok{matrix}\NormalTok{(}\ConstantTok{NA}\NormalTok{,h,origins,}
+         \AttributeTok{dimnames=}\FunctionTok{list}\NormalTok{(}\FunctionTok{paste0}\NormalTok{(}\StringTok{"h"}\NormalTok{,}\DecValTok{1}\SpecialCharTok{:}\NormalTok{h),}
+                       \FunctionTok{paste0}\NormalTok{(}\StringTok{"origin"}\NormalTok{,}\DecValTok{1}\SpecialCharTok{:}\NormalTok{origins)))}
+\end{Highlighting}
+\end{Shaded}
+
+Finally, we write a simple loop that repeats the model fit and forecasting for the horizon \texttt{h} several times. The trickiest part is understanding how to define the train and test samples. In our example, the former should have \texttt{obs-origins+1-h} observations in the first step and \texttt{obs-h} in the last one so that we can have \texttt{h} observations in the test set throughout all origins, and we can repeat this \texttt{origins} times. One way of doing this is via the following loop:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{library}\NormalTok{(smooth)}
+\ControlFlowTok{for}\NormalTok{(i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{origins)\{}
+    \CommentTok{\# Fit the model}
+\NormalTok{    testModel }\OtherTok{\textless{}{-}} \FunctionTok{sma}\NormalTok{(y[}\DecValTok{1}\SpecialCharTok{:}\NormalTok{(obs}\SpecialCharTok{{-}}\NormalTok{origins}\SpecialCharTok{+}\NormalTok{i}\SpecialCharTok{{-}}\NormalTok{h)])}
+    \CommentTok{\# Drop the in{-}sample observations and extract the first h observations from the rest}
+\NormalTok{    returnedValues1}\SpecialCharTok{$}\NormalTok{holdout[,i] }\OtherTok{\textless{}{-}} \FunctionTok{head}\NormalTok{(y[}\SpecialCharTok{{-}}\FunctionTok{c}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\NormalTok{(obs}\SpecialCharTok{{-}}\NormalTok{origins}\SpecialCharTok{+}\NormalTok{i}\SpecialCharTok{{-}}\NormalTok{h))], h)}
+    \CommentTok{\# Produce forecasts and write down the mean values}
+\NormalTok{    returnedValues1}\SpecialCharTok{$}\NormalTok{mean[,i] }\OtherTok{\textless{}{-}} \FunctionTok{forecast}\NormalTok{(testModel, }\AttributeTok{h=}\NormalTok{h)}\SpecialCharTok{$}\NormalTok{mean}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+This basic loop can be amended to include anything else we want from the function or by changing the parameters of the rolling origin. After filling in the object \texttt{returnedValues1}, we can analyse the residuals of the model over the horizon and several origins in various ways. For example, Figure \ref{fig:roOrigins} shows boxplots across the horizon of 10 for different origins.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\FunctionTok{boxplot}\NormalTok{(returnedValues1}\SpecialCharTok{$}\NormalTok{holdout}\SpecialCharTok{{-}}\NormalTok{returnedValues1}\SpecialCharTok{$}\NormalTok{mean)}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/roOrigins-1.pdf}
+
+In the ideal situation, the boxplots in Figure \ref{fig:roOrigins} should be similar, meaning that the model performs consistently over different origins. However, more useful information would be obtained if the performance of one model is compared to the others in the rolling origin experiment.
+
+\hypertarget{rolling-origin-function-in-r}{%
+\subsection{Rolling origin function in R}\label{rolling-origin-function-in-r}}
+
+In R, there are several packages and functions that implement rolling origin. One of those is the function \texttt{ro()} from the \texttt{greybox} package (written by Yves Sagaert and Ivan Svetunkov in 2016 on the way to the International Symposium on Forecasting). It implements the rolling origin evaluation for any function you like with a predefined \texttt{call} and returns the desired \texttt{value}. It heavily relies on the two variables: \texttt{call} and \texttt{value} -- so it is pretty important to understand how to formulate them to get the desired results. \texttt{ro()} is a very flexible function, but as a result, it is not very simple. In this subsection, we will see how it works on a couple of examples.
 
 We start with a simple example, generating a series from normal distribution:
 
@@ -1046,30 +1122,6 @@ Now that we have specified \texttt{ourCall} and \texttt{ourValue}, we can produc
 \end{Highlighting}
 \end{Shaded}
 
-The same can be achieved using the following loop:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{obs }\OtherTok{\textless{}{-}} \DecValTok{100}
-\NormalTok{roh }\OtherTok{\textless{}{-}} \DecValTok{8}
-\NormalTok{h }\OtherTok{\textless{}{-}} \DecValTok{3}
-\NormalTok{data }\OtherTok{\textless{}{-}}\NormalTok{ y}
-\NormalTok{returnedValues1 }\OtherTok{\textless{}{-}} \FunctionTok{setNames}\NormalTok{(}\FunctionTok{vector}\NormalTok{(}\StringTok{"list"}\NormalTok{,}\DecValTok{3}\NormalTok{),}
-                            \FunctionTok{c}\NormalTok{(}\StringTok{"actuals"}\NormalTok{,}\StringTok{"holdout"}\NormalTok{,}\StringTok{"pred"}\NormalTok{))}
-\NormalTok{returnedValues1}\SpecialCharTok{$}\NormalTok{actuals }\OtherTok{\textless{}{-}}\NormalTok{ y}
-\NormalTok{returnedValues1}\SpecialCharTok{$}\NormalTok{holdout }\OtherTok{\textless{}{-}}
-\NormalTok{  returnedValues1}\SpecialCharTok{$}\NormalTok{pred }\OtherTok{\textless{}{-}}
-  \FunctionTok{matrix}\NormalTok{(}\ConstantTok{NA}\NormalTok{,h,roh,}
-         \AttributeTok{dimnames=}\FunctionTok{list}\NormalTok{(}\FunctionTok{paste0}\NormalTok{(}\StringTok{"h"}\NormalTok{,}\DecValTok{1}\SpecialCharTok{:}\NormalTok{h),}
-                       \FunctionTok{paste0}\NormalTok{(}\StringTok{"origin"}\NormalTok{,}\DecValTok{1}\SpecialCharTok{:}\NormalTok{roh)))}
-\ControlFlowTok{for}\NormalTok{(i }\ControlFlowTok{in} \DecValTok{1}\SpecialCharTok{:}\NormalTok{roh)\{}
-\NormalTok{  testModel }\OtherTok{\textless{}{-}} \FunctionTok{arima}\NormalTok{(}\AttributeTok{x=}\NormalTok{data[}\DecValTok{1}\SpecialCharTok{:}\NormalTok{(obs}\SpecialCharTok{{-}}\NormalTok{roh}\SpecialCharTok{+}\NormalTok{i}\SpecialCharTok{{-}}\NormalTok{h)],}\AttributeTok{order=}\FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{1}\NormalTok{,}\DecValTok{1}\NormalTok{))}
-\NormalTok{  returnedValues1}\SpecialCharTok{$}\NormalTok{holdout[,i] }\OtherTok{\textless{}{-}}\NormalTok{ data[}\SpecialCharTok{{-}}\FunctionTok{c}\NormalTok{(}\DecValTok{1}\SpecialCharTok{:}\NormalTok{(obs}\SpecialCharTok{{-}}\NormalTok{roh}\SpecialCharTok{+}\NormalTok{i}\SpecialCharTok{{-}}\NormalTok{h))]}
-\NormalTok{  returnedValues1}\SpecialCharTok{$}\NormalTok{pred[,i] }\OtherTok{\textless{}{-}} \FunctionTok{predict}\NormalTok{(testModel, }\AttributeTok{n.ahead=}\NormalTok{h)}\SpecialCharTok{$}\NormalTok{pred}
-\NormalTok{\}}
-\end{Highlighting}
-\end{Shaded}
-
 The function returns a list with all the values that we asked for plus the actual values from the holdout sample. We can calculate some basic error measure based on those values, for example, scaled Absolute Error \citep{Petropoulos2015}:
 
 \begin{Shaded}
@@ -1082,7 +1134,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.08437982 0.07867793 0.06422330
+## 0.05325100 0.05772459 0.06080515
 \end{verbatim}
 
 In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with an alternative one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:
@@ -1100,7 +1152,7 @@ In this example, we use the \texttt{apply()} function to distinguish between the
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.08571234 0.07704360 0.05879573
+## 0.05660107 0.05683337 0.05699114
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.
@@ -1146,6 +1198,28 @@ Practically speaking, if we have a set of forecasts from different models we can
 \end{figure}
 
 The boxplots in Figure \ref{fig:roExample02} can be interpreted as any other boxplots applied to random variables \citep[see, for example, discussion in Section 2.2 of][]{SvetunkovSBA}.
+
+\begin{remark}
+
+When it comes to applying \texttt{ro()} for regression-like models, one can use the internal parameters \texttt{counti}, \texttt{counto} and \texttt{countf}, which define the size of the in-sample, the holdout and the full sample, respectively. An example of the code in this situation is shown below with a function \texttt{alm()} from \texttt{greybox} package being used for fitting a simple linear regression model.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Generate the data}
+\NormalTok{x }\OtherTok{\textless{}{-}} \FunctionTok{rnorm}\NormalTok{(}\DecValTok{100}\NormalTok{, }\DecValTok{100}\NormalTok{, }\DecValTok{10}\NormalTok{)}
+\NormalTok{xreg }\OtherTok{\textless{}{-}} \FunctionTok{cbind}\NormalTok{(}\AttributeTok{y=}\DecValTok{100}\FloatTok{+1.5}\SpecialCharTok{*}\NormalTok{x}\SpecialCharTok{+}\FunctionTok{rnorm}\NormalTok{(}\DecValTok{100}\NormalTok{, }\DecValTok{0}\NormalTok{, }\DecValTok{10}\NormalTok{), }\AttributeTok{x=}\NormalTok{x)}
+\CommentTok{\# Predict values from the model. counti and counto determine sizes for the in{-}sample and the holdout}
+\NormalTok{ourCall }\OtherTok{\textless{}{-}} \StringTok{"predict(alm(y\textasciitilde{}x, data=xreg[counti,,drop=FALSE]), newdata=xreg[counto,,drop=FALSE])"}
+\CommentTok{\# Extract the mean only}
+\NormalTok{ourValue }\OtherTok{\textless{}{-}} \StringTok{"mean"}
+\CommentTok{\# Run rolling origin}
+\NormalTok{testRO }\OtherTok{\textless{}{-}} \FunctionTok{ro}\NormalTok{(xreg[,}\DecValTok{1}\NormalTok{],}\AttributeTok{h=}\DecValTok{5}\NormalTok{,}\AttributeTok{origins=}\DecValTok{5}\NormalTok{,ourCall,ourValue)}
+\CommentTok{\# plot the result}
+\FunctionTok{plot}\NormalTok{(testRO)}
+\end{Highlighting}
+\end{Shaded}
+
+\end{remark}
 
 \hypertarget{statisticalTests}{%
 \section{Statistical comparison of forecasts}\label{statisticalTests}}
@@ -2308,22 +2382,22 @@ Here is an example of a forecast from ETS(A,N,N) with automatic parameter estima
 ## Time elapsed: 0.01 seconds
 ## Model estimated using es() function: ETS(ANN)
 ## Distribution assumed in the model: Normal
-## Loss function type: likelihood; Loss function value: 523.8357
+## Loss function type: likelihood; Loss function value: 529.4126
 ## Persistence vector g:
-## alpha 
-## 0.202 
+##  alpha 
+## 0.2321 
 ## 
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1053.671 1053.902 1061.718 1062.258 
+## 1064.825 1065.056 1072.872 1073.412 
 ## 
 ## Forecast errors:
-## ME: 11.735; MAE: 25.91; RMSE: 35.712
-## sCE: 13.876%; Asymmetry: 37%; sMAE: 2.553%; sMSE: 0.124%
-## MASE: 0.827; RMSSE: 0.931; rMAE: 1.004; rRMSE: 1.01
+## ME: -43.069; MAE: 51.832; RMSE: 60.542
+## sCE: -54.092%; Asymmetry: -80.5%; sMAE: 5.425%; sMSE: 0.401%
+## MASE: 1.508; RMSSE: 1.412; rMAE: 1.179; rRMSE: 1.197
 \end{verbatim}
 
 As we see from Figure \ref{fig:ETSANNExample}, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected because we deal with an in-sample estimation. Also, notice that with such a smoothing parameter, the prediction interval widens with the increase of the forecast horizon. If the smoothing parameter were lower, the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with \(\alpha=0.01\) on the same data (Figure \ref{fig:ETSANNExamplealpha01})
@@ -2426,22 +2500,22 @@ And here is an example with the ETS(M,N,N) data (Figure \ref{fig:ETSMNNExample})
 ## Time elapsed: 0.01 seconds
 ## Model estimated using es() function: ETS(MNN)
 ## Distribution assumed in the model: Normal
-## Loss function type: likelihood; Loss function value: 678.1483
+## Loss function type: likelihood; Loss function value: 667.2599
 ## Persistence vector g:
 ##  alpha 
-## 0.3242 
+## 0.2715 
 ## 
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1362.297 1362.527 1370.343 1370.883 
+## 1340.520 1340.751 1348.566 1349.107 
 ## 
 ## Forecast errors:
-## ME: 100.233; MAE: 114.942; RMSE: 158.875
-## sCE: 101.054%; Asymmetry: 79.8%; sMAE: 9.657%; sMSE: 1.782%
-## MASE: 0.893; RMSSE: 0.999; rMAE: 1.299; rRMSE: 1.262
+## ME: 127.2; MAE: 133.366; RMSE: 147.558
+## sCE: 145.596%; Asymmetry: 94%; sMAE: 12.721%; sMSE: 1.981%
+## MASE: 1.022; RMSSE: 0.957; rMAE: 1.331; rRMSE: 1.283
 \end{verbatim}
 
 Conceptually, the data in Figure \ref{fig:ETSMNNExample} looks very similar to the one from ETS(A,N,N) (Figure \ref{fig:ETSANNExample}), but demonstrating the changing variance of the error term with the change of the level.
@@ -3602,7 +3676,7 @@ We continue our examples with the same Box-Jenkins sales data by fitting the ETS
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.03 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 245.3759
@@ -3780,11 +3854,11 @@ If we want to calculate the error measures based on the conditional expectation,
 
 \begin{verbatim}
 ##            ME           MAE           MSE           MPE          MAPE 
-##  -6.086678279  15.498974911 485.996902665  -0.017313802   0.033875122 
+##  -5.681105658  15.555257693 484.438516581  -0.016496805   0.033896906 
 ##           sCE          sMAE          sMSE          MASE         RMSSE 
-##  -0.278256180   0.059045418   0.007053423   0.643539053   0.703601649 
+##  -0.259715183   0.059259835   0.007030806   0.645875993   0.702472667 
 ##          rMAE         rRMSE          rAME     asymmetry          sPIS 
-##   0.203933880   0.214081174   0.085527095  -0.259570075   2.262687730
+##   0.204674443   0.213737665   0.079828183  -0.236675465   2.167905112
 \end{verbatim}
 
 These can be compared with the measures from the ETS(A,A,A) model:
@@ -4776,7 +4850,7 @@ These rules are tempting to use when determining the appropriate order of the AR
 However, these rules are not necessarily bi-directional: e.g.~\emph{if we deal with MA(q), ACF drops abruptly right after the lag q, but if ACF drops abruptly after the lag q, then this does not necessarily mean that we deal with MA(q)}. The former follows directly from the assumed ``true'' model, while the latter refers to the identification of the model on the data, and there can be different reasons for the ACF to behave in a way it does. The logic here is similar to the following:
 
 \begin{example}
-\protect\hypertarget{exm:unnamed-chunk-38}{}\label{exm:unnamed-chunk-38}All birds have wings. Sarah has wings. Thus Sarah is a bird.
+\protect\hypertarget{exm:unnamed-chunk-42}{}\label{exm:unnamed-chunk-42}All birds have wings. Sarah has wings. Thus Sarah is a bird.
 
 Here is Sarah:
 \end{example}
@@ -4844,7 +4918,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     585.3101     585.3041
+##     479.9620     479.9619
 \end{verbatim}
 
 \begin{Shaded}
@@ -4857,7 +4931,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     1176.620     1176.608
+##     965.9239     965.9239
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
@@ -4872,7 +4946,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##    0.2333591    0.2397799
+##    0.1604017    0.1600032
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related (Figure \ref{fig:ETSARIMAConnection}):
@@ -5742,7 +5816,7 @@ Building upon the example with \texttt{AirPassengers} data from Section \ref{ARI
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/unnamed-chunk-49-1.pdf}
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/unnamed-chunk-53-1.pdf}
 
 We still have the trend in the data, and the seasonality now corresponds to the additive rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking the first differences for the seasonal should suffice because the logarithmic transform will take care of the expanding seasonal pattern in the data. So we can test several models with different options for ARIMA orders:
 
@@ -6312,7 +6386,7 @@ This simple model already does a fine job fitting the data and producing forecas
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.1 seconds
+## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1125.509
@@ -6379,7 +6453,7 @@ Figure \ref{fig:SeatbeltsForecastX} shows the forecast from the second model, wh
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.45 seconds
+## Time elapsed: 0.44 seconds
 ## Model estimated using adam() function: ETSX(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.042
@@ -6419,7 +6493,7 @@ In this specific case, the difference between the ETSX and ETSX\{D\} models is i
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.4 seconds
+## Time elapsed: 0.41 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.215
@@ -6799,7 +6873,7 @@ It is also possible to use LASSO \citep{Tibshirani1996} and RIDGE for the estima
   \end{aligned}
   \label{eq:Regularisation}
 \end{equation}
-where \(\theta\) is the vector of all parameters in the model except for initial states (thus this includes all smoothing parameters, dampening parameter, AR, MA and the parameters for the explanatory variables) and \(\lambda\) is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If \(\lambda=0\), then the losses become equivalent to the MSE, when \(\lambda=1\), the optimiser would minimise the values of parameters, ignoring the MSE part. \citet{Pritularga2022} argues that the initial states of the model do not need to be shrunk (they will be handled by the optimiser automatically) and that the dampening parameter should shrink to 1 instead of zero (thus enforcing local trend model). Following the same idea, we introduce the following modifications of parameters in the loss in ADAM:
+where \(\theta\) is the vector of all parameters in the model except for initial states of ETS and ARIMA components (thus this includes all smoothing parameters, dampening parameter, AR, MA and the initial parameters for the explanatory variables) and \(\lambda\) is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If \(\lambda=0\), then the losses become equivalent to the MSE, when \(\lambda=1\), the optimiser would minimise the values of parameters, ignoring the MSE part. \citet{Pritularga2022} argues that the initial states of the model do not need to be shrunk (they will be handled by the optimiser automatically) and that the dampening parameter should shrink to 1 instead of zero (thus enforcing local trend model). Following the same idea, we introduce the following modifications of parameters in the loss in ADAM:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -7537,7 +7611,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.61 seconds
+## Time elapsed: 0.6 seconds
 ## Model estimated using adam() function: ETS(MNM)[48, 336]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 25682.88
@@ -7588,7 +7662,7 @@ Next, we can plot the fitted values and forecasts to see how the model performs 
 \caption{\label{fig:adamModelETSMNM}The fit and the forecast of the ETS(M,N,M){[}48,336{]} model on half-hourly electricity demand data.}
 \end{figure}
 
-As we might notice from Figure \ref{fig:adamModelETSMNM} the model was constructed in 0.61 seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \ref{multistepLossesGTMSE}):
+As we might notice from Figure \ref{fig:adamModelETSMNM} the model was constructed in 0.6 seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \ref{multistepLossesGTMSE}):
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -8736,7 +8810,7 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.07 seconds
+## Time elapsed: 0.06 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log-Normal
@@ -8771,7 +8845,7 @@ Comparing the iARIMA model with the previous iETS based on AIC would not be fair
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.03 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: iETS(MMdN)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Gamma
@@ -10061,7 +10135,7 @@ Here is an example of selection of distribution for a specific model, ETS(M,M,N)
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.23 seconds
+## Time elapsed: 0.24 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 245.3716
@@ -10158,7 +10232,7 @@ Here is an example with automatically selected ETS model using the branch-and-bo
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.03 seconds
+## Time elapsed: 1.07 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 467.2981
@@ -10262,7 +10336,7 @@ Based on the relation between ARIMA and ETS (see Section \ref{ARIMAandETS}), we 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.24 seconds
+## Time elapsed: 1.32 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -10498,6 +10572,38 @@ The fitted values are combined from all models, the residuals are equal to \(e_t
 \end{Highlighting}
 \end{Shaded}
 
+\begin{verbatim}
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+
+## Warning in adamForecasts[] <- forecast.adam(object$models[[i]], h = h, newdata =
+## newdata, : number of items to replace is not a multiple of replacement length
+\end{verbatim}
+
 \begin{figure}
 \centering
 \includegraphics{Svetunkov--2022----ADAM_files/figure-latex/adamETSCCN-1.pdf}
@@ -10613,16 +10719,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6479           254.8618            260.4072
-## 142 257.6983           253.2948            262.0294
-## 143 257.7471           251.9210            263.6616
-## 144 257.7793           250.3734            265.2718
-## 145 257.8209           248.8268            266.9350
-## 146 257.8703           247.3196            268.5007
-## 147 257.9253           245.7688            270.2056
-## 148 257.9674           244.0983            272.0501
-## 149 258.0146           242.4942            273.7529
-## 150 258.0607           240.8051            275.4246
+## 141 257.6585           254.8645            260.4657
+## 142 257.7173           253.2508            262.1510
+## 143 257.7758           251.7821            263.7300
+## 144 257.8351           250.3373            265.3609
+## 145 257.8984           248.7833            267.0073
+## 146 257.9537           247.2293            268.6486
+## 147 258.0070           245.7987            270.4180
+## 148 258.0477           244.2271            272.0269
+## 149 258.0898           242.6625            273.7553
+## 150 258.1497           241.0559            275.5633
 \end{verbatim}
 
 In order to see how the forecast looks like, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -10722,7 +10828,7 @@ Here is an example of how the function works on the data above -- it is possible
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.7 seconds
+## Time elapsed: 0.78 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamETSBJBoot\$vcov}. The same procedure is used in \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -10735,11 +10841,11 @@ The covariance matrix can then be extracted from the result via \texttt{adamETSB
 
 \begin{verbatim}
 ##        alpha   beta    phi  level  trend
-## alpha  0.016  0.003  0.001  0.010 -0.012
-## beta   0.003  0.007 -0.001 -0.014  0.022
-## phi    0.001 -0.001  0.013  0.062 -0.066
-## level  0.010 -0.014  0.062  0.512 -0.673
-## trend -0.012  0.022 -0.066 -0.673  0.971
+## alpha  0.007 -0.001  0.000  0.000 -0.005
+## beta  -0.001  0.008 -0.001 -0.012  0.024
+## phi    0.000 -0.001  0.013  0.058 -0.059
+## level  0.000 -0.012  0.058  0.508 -0.682
+## trend -0.005  0.024 -0.059 -0.682  1.016
 \end{verbatim}
 
 \hypertarget{confidence-intervals-for-parameters}{%
@@ -11519,7 +11625,7 @@ The \texttt{sm} function accepts roughly the same set of parameters as \texttt{a
 
 \begin{verbatim}
 ## **Scale Model**
-## Time elapsed: 0.13 seconds
+## Time elapsed: 0.14 seconds
 ## Model estimated using sm.adam() function: ETS(MNN)
 ## Distribution assumed in the model: Inverse Gaussian
 ## Loss function type: likelihood; Loss function value: 474.332
@@ -12102,7 +12208,7 @@ For simplicity, we apply iETS(M,Md,N) model with odds ratio occurrence:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/unnamed-chunk-155-1.pdf}
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/unnamed-chunk-159-1.pdf}
 
 To make this setting closer to a possible real-life situation, we assume that the lead time is seven days, and we need to satisfy the 99\% of demand for the last seven observations based on our model. Thus we produce the upper bound for the cumulative values for the confidence level of 99\%:
 
@@ -12136,7 +12242,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, w
 \caption{\label{fig:adamModeliETSCumulative}The actual cumulative demand (black dot), the expectation (the solid blue line) and the 95\% quantile of the distribution of the cumulative demand (the dashed grey line) based on iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 20 units, while the upper bound of the interval was approximately 23. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 19 units, while the upper bound of the interval was approximately 38. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section \ref{rollingOrigin}) or to a set of products to collect the distribution of related error measures.
 
