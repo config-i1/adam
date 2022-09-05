@@ -372,8 +372,65 @@ if (knitr:::is_latex_output()) {
 }
 ```
 
-### Rolling origin in R
-The function `ro()` from the `greybox` package (written by Yves Sagaert and Ivan Svetunkov in 2016 on the way to the International Symposium on Forecasting) implements the rolling origin evaluation for any function you like with a predefined `call` and returns the desired `value`. It heavily relies on the two variables: `call` and `value` -- so it is pretty important to understand how to formulate them to get the desired results. `ro()` is a very flexible function, but as a result, it is not very simple. In this subsection, we will see how it works on a couple of examples.
+
+### Implementing rolling origin in R
+Now that we discussed the main idea of rolling origin, we can see how it can be implemented in R. In this section, we will implement rolling origin with a fixed holdout sample size and a changing in-sample. This aligns with what is typically done in practice when new data arrives, the model is re-estimated, and forecasts are produced for the next $h$ steps ahead. For this example, we will use artificially created data and apply a Simple Moving Average (see Subsection \@ref(SMA)) implemented in the `smooth` package.
+
+```{r}
+# Set sample to 100 observations
+obs <- 100
+# Generate the data
+y <- rnorm(obs,100,10)
+```
+
+We will produce forecasts for the horizon of 10 steps ahead, $h=10$ from 5 origins.
+
+```{r}
+h <- 10
+origins <- 5
+```
+
+We will create a list containing several objects of interest:
+
+- `actuals` will contain all the actual values,
+- `holdout` will be a matrix containing the actual values for the holdout. It will have `h` rows and `origins` columns,
+- `mean` will contain point forecasts from our model. This will also be a matrix with the same dimensions as the `holdout` one.
+
+```{r}
+returnedValues1 <- setNames(vector("list",3),
+                            c("actuals","holdout","mean"))
+returnedValues1$actuals <- y
+returnedValues1$holdout <-
+  returnedValues1$mean <-
+  matrix(NA,h,origins,
+         dimnames=list(paste0("h",1:h),
+                       paste0("origin",1:origins)))
+```
+
+Finally, we write a simple loop that repeats the model fit and forecasting for the horizon `h` several times. The trickiest part is understanding how to define the train and test samples. In our example, the former should have `obs-origins+1-h` observations in the first step and `obs-h` in the last one so that we can have `h` observations in the test set throughout all origins, and we can repeat this `origins` times. One way of doing this is via the following loop:
+```{r}
+library(smooth)
+for(i in 1:origins){
+    # Fit the model
+    testModel <- sma(y[1:(obs-origins+i-h)])
+    # Drop the in-sample observations and extract the first h observations from the rest
+    returnedValues1$holdout[,i] <- head(y[-c(1:(obs-origins+i-h))], h)
+    # Produce forecasts and write down the mean values
+    returnedValues1$mean[,i] <- forecast(testModel, h=h)$mean
+}
+```
+
+This basic loop can be amended to include anything else we want from the function or by changing the parameters of the rolling origin. After filling in the object `returnedValues1`, we can analyse the residuals of the model over the horizon and several origins in various ways. For example, Figure \@ref(fig:roOrigins) shows boxplots across the horizon of 10 for different origins.
+
+```{r roOrigins}
+boxplot(returnedValues1$holdout-returnedValues1$mean)
+```
+
+In the ideal situation, the boxplots in Figure \@ref(fig:roOrigins) should be similar, meaning that the model performs consistently over different origins. However, more useful information would be obtained if the performance of one model is compared to the others in the rolling origin experiment.
+
+
+### Rolling origin function in R
+In R, there are several packages and functions that implement rolling origin. One of those is the function `ro()` from the `greybox` package (written by Yves Sagaert and Ivan Svetunkov in 2016 on the way to the International Symposium on Forecasting). It implements the rolling origin evaluation for any function you like with a predefined `call` and returns the desired `value`. It heavily relies on the two variables: `call` and `value` -- so it is pretty important to understand how to formulate them to get the desired results. `ro()` is a very flexible function, but as a result, it is not very simple. In this subsection, we will see how it works on a couple of examples.
 
 We start with a simple example, generating a series from normal distribution:
 ```{r}
@@ -402,27 +459,6 @@ Now that we have specified `ourCall` and `ourValue`, we can produce forecasts fr
 ```{r}
 returnedValues1 <- ro(y, h=3, origins=8,
                       call=ourCall, value=ourValue)
-```
-
-The same can be achieved using the following loop:
-```{r eval=FALSE}
-obs <- 100
-roh <- 8
-h <- 3
-data <- y
-returnedValues1 <- setNames(vector("list",3),
-                            c("actuals","holdout","pred"))
-returnedValues1$actuals <- y
-returnedValues1$holdout <-
-  returnedValues1$pred <-
-  matrix(NA,h,roh,
-         dimnames=list(paste0("h",1:h),
-                       paste0("origin",1:roh)))
-for(i in 1:roh){
-  testModel <- arima(x=data[1:(obs-roh+i-h)],order=c(0,1,1))
-  returnedValues1$holdout[,i] <- data[-c(1:(obs-roh+i-h))]
-  returnedValues1$pred[,i] <- predict(testModel, n.ahead=h)$pred
-}
 ```
 
 The function returns a list with all the values that we asked for plus the actual values from the holdout sample. We can calculate some basic error measure based on those values, for example, scaled Absolute Error [@Petropoulos2015]:
@@ -467,6 +503,24 @@ points(apply(aeValuesh1,2,mean),pch=16,col="red")
 ```
 
 The boxplots in Figure \@ref(fig:roExample02) can be interpreted as any other boxplots applied to random variables [see, for example, discussion in Section 2.2 of @SvetunkovSBA].
+
+::: remark
+When it comes to applying `ro()` for regression-like models, one can use the internal parameters `counti`, `counto` and `countf`, which define the size of the in-sample, the holdout and the full sample, respectively. An example of the code in this situation is shown below with a function `alm()` from `greybox` package being used for fitting a simple linear regression model.
+
+```{r eval=FALSE}
+# Generate the data
+x <- rnorm(100, 100, 10)
+xreg <- cbind(y=100+1.5*x+rnorm(100, 0, 10), x=x)
+# Predict values from the model. counti and counto determine sizes for the in-sample and the holdout
+ourCall <- "predict(alm(y~x, data=xreg[counti,,drop=FALSE]), newdata=xreg[counto,,drop=FALSE])"
+# Extract the mean only
+ourValue <- "mean"
+# Run rolling origin
+testRO <- ro(xreg[,1],h=5,origins=5,ourCall,ourValue)
+# plot the result
+plot(testRO)
+```
+:::
 
 
 ## Statistical comparison of forecasts {#statisticalTests}
