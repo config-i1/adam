@@ -141,7 +141,7 @@
 
 \title{Forecasting and Analytics with ADAM}
 \author{Ivan Svetunkov}
-\date{2022-11-18}
+\date{2022-12-01}
 
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}[chapter]
@@ -301,7 +301,7 @@ This monograph is licensed under \href{https://creativecommons.org/licenses/by-n
 \subsection*{Acknowledgments}\label{acknowledgments}}
 \addcontentsline{toc}{subsection}{Acknowledgments}
 
-I would like to thank Robert Fildes for his comments about this book and helping in shaping it into a monograph and J. Keith Ord for his invaluable suggestions for improvement of the monograph. I also would like to thank Tobias Schmidt for his help in refining earlier parts of the monograph and correcting grammatical mistakes.
+I would like to thank Robert Fildes for his comments about this book and helping in shaping it into a monograph and J. Keith Ord for his invaluable suggestions for improvement of the monograph. I also would like to thank Tobias Schmidt and Benedikt Sonnleitner for correcting grammatical mistakes.
 
 \hypertarget{intro}{%
 \chapter{Introduction}\label{intro}}
@@ -329,13 +329,13 @@ Retailers typically need to order some amount of milk that they will sell over t
 
 Related to this is the question of forecasts accuracy. In reality, accurate forecasts do not always translate to good decisions. This is because many different aspects of reality need to be taken into account, and forecasting focuses only on one of them. Capturing the variability of demand correctly is sometimes more useful than producing very accurate point forecasts -- this is because many decisions are based on distributions of possible values rather than on point forecasts. The classical example of this situation is inventory management, where the ordering decisions are made based on quantiles of distribution to form safety stock. Furthermore, the orders are typically done in pallets, so it is not important whether the expected demand is 99 or 95 units if a pallet includes 100 units of a product. This means that whenever we produce forecasts, we need to consider how they will be used.
 
-In some cases, accurate forecasts might be wasted if people make decisions differently and/or do not trust what they see. For example, a demand planner might decide that a straight line is not an appropriate forecast for their data and would start changing the values, introducing noise. This might happen due to a lack of experience, expertise or trust in models, and this means that it is crucial to understand who will use the forecasts and how.
+In some cases, accurate forecasts might be wasted if people make decisions differently and/or do not trust what they see. For example, a demand planner might decide that a straight line is not an appropriate forecast for their data and would start changing the values, introducing noise. This might happen due to a lack of experience, expertise or trust in models \citep{Spavound2022}, and this means that it is crucial to understand who will use the forecasts and how.
 
 Finally, in practice, not all issues can be resolved with forecasting. In some cases, companies can make decisions based on other reasons. For example, promotional decisions can be dictated by the existing stocks of the product that need to be moved out. In another case, if the holding costs for a product are low, then there is no need to spend time forecasting the demand for it -- a company can implement a simple replenishment policy, ordering, when the stock reaches some threshold. And in times of crisis, some decisions are dictated by the company's financial situation, not by forecasts: arguably, you do not need to predict demand for products that are sold out of prestige if they are not profitable, and a company needs to cut costs.
 
 Summarising all the above, it makes sense to determine what decisions will be made based on forecasts, by whom and how. There is no need to waste time and effort on improving the forecasting accuracy if the process in the company is flawed and forecasts are then ignored, not needed or amended inappropriately.
 
-As for analytics, this is a relatively new term, which implies a set of activities based on analysis, forecasting and optimisation to support informed managerial decisions. The term is broad and relies on many research areas, including forecasting, simulations, optimisation etc. In this monograph, we will focus on the forecasting aspect, occasionally discussing how to analyse the existing processes (thus touching the analytics part) and how various models could help make good practical decisions.
+As for \textbf{analytics}, this is a relatively new term, which implies a set of activities based on analysis, forecasting and optimisation to support informed managerial decisions. The term is broad and relies on many research areas, including forecasting, simulations, optimisation etc. In this monograph, we will focus on the forecasting aspect, occasionally discussing how to analyse the existing processes (thus touching the analytics part) and how various models could help make good practical decisions.
 
 \hypertarget{forecastingPrinciples}{%
 \section{Forecasting principles}\label{forecastingPrinciples}}
@@ -344,15 +344,15 @@ If you have decided that you need to forecast something, it makes sense to keep 
 
 First, as discussed earlier, you need to understand why the forecast is required, how it will be used and by whom. Answers to these questions will guide you in deciding what technique to use, how specifically to forecast and what should be reported. For example, if a client does not know machine learning, it might be unwise to use Neural Networks for forecasting -- the client will potentially not trust the technique and thus will not trust the forecasts, switching to simpler methods. If the final decision is to order a number of units, it would be more reasonable to produce cumulative forecasts over the lead time (time between the order and product delivery) and form safety stock based on the model and assumed distribution.
 
-When you understand what to forecast and how the second principle comes into play: select the relevant error measure. You need to decide how to measure the accuracy of forecasting methods, keeping in mind that accuracy needs to be as close to the final decision as possible. For example, if you need to decide the number of nurses for a specific day in the A\&E department based on the patients' attendance, then it would be more reasonable to compare models in terms of their quantile performance (see Section \ref{uncertainty}) rather than expectation or median. Thus, it would be more appropriate to calculate pinball loss instead of MAE or RMSE (see details in Section \ref{forecastsEvaluation}).
+When you understand what to forecast and how, the second principle comes into play: select the relevant error measure. You need to decide how to measure the accuracy of forecasting methods, keeping in mind that accuracy needs to be as close to the final decision as possible. For example, if you need to decide the number of nurses for a specific day in the A\&E department based on the patients' attendance, then it would be more reasonable to compare models in terms of their quantile performance (see Section \ref{uncertainty}) rather than expectation or median. Thus, it would be more appropriate to calculate pinball loss instead of MAE or RMSE (see details in Chapter \ref{forecastsEvaluation}).
 
-Third, you should always test your models on a sample of data not seen by them. Train your model on one part of a sample (\emph{train set} or \emph{in-sample}) and test it on another one (\emph{test set} or \emph{holdout sample}). This way, you can have some guarantees that the model will not overfit the data and that it will be reasonable when you need to produce a final forecast. Yes, there are cases when you do not have enough data to do that. All you can do in these situations is use simpler, robust models \citetext{\citealp[for example, damped trend exponential smoothing by][]{Roberts1982}; \citealp[and][]{Gardner1985a}; \citealp[or Theta by][]{Assimakopoulos2000}} and to use judgment in deciding whether the final forecasts are reasonable or not. But in all the other cases, you should test the model on the data it is unaware of. The recommended approach, in this case, is rolling origin, discussed in more detail in Section \ref{rollingOrigin}.
+Third, you should always test your models on a sample of data not seen by them. Train your model on one part of a sample (called \emph{train set} or \emph{in-sample}) and test it on another one (called \emph{test set} or \emph{holdout sample}). This way, you can have some guarantees that the model will not overfit the data and that it will be reasonable when you need to produce a final forecast. Yes, there are cases when you do not have enough data to do that. All you can do in these situations is use simpler, robust models \citetext{\citealp[for example, damped trend exponential smoothing by][]{Roberts1982}; \citealp[and][]{Gardner1985a}; \citealp[or Theta by][]{Assimakopoulos2000}} and to use judgment in deciding whether the final forecasts are reasonable or not. But in all the other cases, you should test the model on the data it is unaware of. The recommended approach, in this case, is rolling origin, discussed in more detail in Section \ref{rollingOrigin}.
 
-Fourth, the forecast horizon should be aligned with specific decisions in practice. If you need predictions for a week ahead, there is no need to produce forecasts for the next 52 weeks. On the one hand, this is costly and excessive; on the other hand, the accuracy measurement will not align with the company's needs. The related issue is the test set (or holdout) size selection. There is no unique guideline for this, but it should not be shorter than the forecasting horizon.
+Fourth, the forecast horizon should be aligned with specific decisions in practice. If you need predictions for a week ahead, there is no need to produce forecasts for the next 52 weeks. If you do that then on the one hand, this will be costly and excessive, and on the other hand, the accuracy measurement will not align with the company's needs. The related issue is the test set (or holdout) size selection. There is no unique guideline for this, but it should not be shorter than the forecasting horizon and preferrably it should align with the specific horizon coming from managerial decisions.
 
-Fifth, the time series aggregation level should be as close to the specific decisions as possible. There is no need to produce forecasts on an hourly level for the next week (168 hours ahead) if the decision is based on the order of a product for the whole week. We would not need such a granularity of data for the decision; aggregating the actual values to the weekly level will do the trick. Still, we would waste a lot of time making complicated models work on an hourly level.
+Fifth, the time series aggregation level should be as close to the specific decisions as possible. There is no need to produce forecasts on an hourly level for the next week (168 hours ahead) if the decision is based on the order of a product for the whole week. We would not need such a granularity of data for the decision; aggregating the actual values to the weekly level and then applying models will do the trick. Otherwise, we would be wasting a lot of time making complicated models work on an hourly level.
 
-Sixth, you need to have benchmark models. Always compare forecasts from your favourite approach with those from Naïve, global average and/or regression -- depending on what you deal with specifically. If your fancy Neural Network performs worse than Naïve, it does not bring value and should not be used in practice. Comparing one Neural Network with another is also not a good idea because Simple Exponential Smoothing (see Section \ref{SES}), being a much simpler model, might beat both networks, and you would never find out about that. If possible, also compare forecasts from the proposed approach with forecasts of other well-established benchmarks, such as ETS \citep{Hyndman2008b}, ARIMA \citep{Box1976} and Theta \citep{Assimakopoulos2000}.
+Sixth, you need to have benchmark models. Always compare forecasts from your favourite approach with those from Naïve, global average and/or regression (they are discussed in Section \ref{simpleForecastingMethods}) -- depending on what you deal with specifically. If your fancy Neural Network performs worse than Naïve, it does not bring value and should not be used in practice. Comparing one Neural Network with another is also not a good idea because Simple Exponential Smoothing (see Section \ref{SES}), being a much simpler model, might beat both networks, and you would never find out about that. If possible, also compare forecasts from the proposed approach with forecasts of other well-established benchmarks, such as ETS \citep{Hyndman2008b}, ARIMA \citep{Box1976} and Theta \citep{Assimakopoulos2000}.
 
 Finally, when comparing forecasts from different models, you might end up with several very similar performing approaches. If the difference between them is not significant, then the general recommendation is to select the faster and simpler one. This is because simpler models are more difficult to break, and those that work faster are more attractive in practice due to reduced energy consumption \citep[save the planet and stop global warming!][]{Dhar2020}.
 
@@ -366,14 +366,14 @@ Depending on circumstances, we might require different types of forecasts with d
 \hypertarget{typesOfForecastsPoint}{%
 \subsection{Point forecasts}\label{typesOfForecastsPoint}}
 
-The classical and most often produced is the point forecast, which corresponds to a trajectory from a model. This, however, might align with different types of statistics depending on the model and its assumptions. In the case of a pure additive model (such as linear regression), the point forecasts correspond to the conditional expectation (\textbf{mean}) from the model. The conventional interpretation of this value is that it shows what to expect on average if the situation would repeat itself many times (e.g.~if we have the day with similar conditions, then the average temperature will be 10 degrees Celsius). In the case of time series, this interpretation is difficult to digest, given that time does not repeat itself, but this is the best we can have. I will discuss the technicalities of producing conditional expectations from ADAM in Section \ref{ADAMForecastingExpectation}.
+Point forecast is the most often produced type of forecast. It corresponds to a trajectory from a model. This, however, might align with different types of statistics depending on the model and its assumptions. In the case of a pure additive model (such as linear regression), the point forecasts correspond to the conditional expectation (\textbf{mean}) from the model. The conventional interpretation of this value is that it shows what to expect on average if the situation would repeat itself many times (e.g.~if we have the day with similar conditions, then the average temperature will be 10 degrees Celsius). In the case of time series, this interpretation is difficult to digest, given that time does not repeat itself, but this is the best we have. We will come back to the technicalities of producing conditional expectations from ADAM in Section \ref{ADAMForecastingMoments}.
 
 Another type of point forecast is the (conditional) geometric expectation (\textbf{geometric mean}). It typically arises, when the model is applied to the data in logarithms and the final forecast is then exponentiated. This becomes apparent from the following definition of geometric mean:
 \begin{equation}
     \check{\mu} = \sqrt[T]{\prod_{t=1}^T y_t} = \exp \left(\frac{1}{T} \sum_{t=1}^T \log(y_t) \right) ,
     \label{eq:GeoMean}
 \end{equation}
-where \(y_t\) is the actual value on observation \(t\), and \(T\) is the sample size. To use the geometric mean, we need to assume that the actual values can only be positive. Otherwise, the root in c might produce imaginary units (for example, taking a square root out of a negative number) or be equal to zero (if one of the values is zero). In general, the arithmetic and geometric means are related via the following inequality:
+where \(y_t\) is the actual value on observation \(t\), and \(T\) is the sample size. To use the geometric mean, we need to assume that the actual values can only be positive. Otherwise, the root in \eqref{eq:GeoMean} might produce imaginary units (because of taking a square root of a negative number) or be equal to zero (if one of the values is zero). In general, the arithmetic and geometric means are related via the following inequality:
 \begin{equation}
     \check{\mu} \leq \mu ,
     \label{eq:GeoAndArithMeans}
@@ -383,7 +383,7 @@ where \(\check{\mu}\) is the geometric mean and \(\mu\) is the arithmetic one. A
 Finally, sometimes \textbf{medians} are used as point forecasts. In this case, the point forecast splits the sample into two halves and shows the level below which 50\% of observations will lie in the future.
 
 \begin{remark}
-The specific type of point forecast will differ from the model used in construction. For example, in the case of the pure additive model, assuming some symmetric distribution (e.g.~Normal one), the arithmetic mean, geometric mean and median will coincide. On the other hand, a model constructed in logarithms will assume an asymmetric distribution for the original data, leading to the following relation between the means and the median (in case of positively skewed distribution):
+The specific type of point forecast will differ depending on the model used in construction. For example, in the case of the pure additive model, assuming some symmetric distribution (e.g.~Normal one), the arithmetic mean, geometric mean and median will coincide. On the other hand, a model constructed in logarithms will assume an asymmetric distribution for the original data, leading to the following relation between the means and the median (in case of positively skewed distribution):
 \begin{equation}
     \check{\mu} \leq \tilde{\mu} \leq \mu ,
     \label{eq:GeoAndArithMeansAndMedian}
@@ -394,7 +394,7 @@ where \(\tilde{\mu}\) is the median of distribution.
 \hypertarget{typesOfForecastsInterval}{%
 \subsection{Quantiles and prediction intervals}\label{typesOfForecastsInterval}}
 
-As some forecasters say, all point forecasts are wrong. They will never correspond to the actual values because they only capture the model's mean (or median) performance, as discussed in the previous subsection. Everything that is not included in the point forecast can be considered as the uncertainty of demand. For example, we never will be able to say precisely how many cups of coffee we will sell on the forthcoming Monday, but we can at least capture the main tendencies and the uncertainty around our point forecast.
+As some forecasters say, all point forecasts are wrong. They will never correspond to the actual values because they only capture the model's mean (or median) performance, as discussed in the previous subsection. Everything that is not included in the point forecast can be considered as the uncertainty of demand. For example, we never will be able to say precisely how many cups of coffee a cafe will sell on the forthcoming Monday, but we can at least capture the main tendencies and the uncertainty around our point forecast.
 
 \begin{figure}
 \centering
@@ -402,11 +402,11 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well behaved data, point forecast and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell which bound the demand will lie in \(1-\alpha\) per cent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 79.9 and 120.67. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 79.18 and 120.08. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For a more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 6 of \citet{SvetunkovSBA}.
 
-Another way to capture the uncertainty (related to the prediction interval) is via specific quantiles of distribution. The prediction interval typically has two sides, leaving \(\frac{\alpha}{2}\) values on the left and the same on the right, outside the bounds of the interval. Instead of producing the interval, in some cases, we might need just a specific quantile, essentially creating the one-sided prediction interval (see Section \ref{forecastingADAMOtherOneSided} for technicalities). The bound in this case will show the particular value below which the pre-selected percentage of cases would lie. This becomes especially useful in such contexts as the safety stock calculation (because we are not interested in knowing the lower bound, we want products in inventory to satisfy some proportion of demand).
+Another way to capture the uncertainty (related to the prediction interval) is via specific quantiles of distribution. The prediction interval typically has two sides, leaving \(\frac{\alpha}{2}\) values outside of each side of distribution. Instead of producing the interval, in some cases, we might need just a specific quantile, essentially creating the one-sided prediction interval (see Section \ref{forecastingADAMOtherOneSided} for technicalities). The bound in this case will show the particular value below which the pre-selected percentage of cases would lie. This becomes especially useful in such contexts as the safety stock calculation (because we are not interested in knowing the lower bound, we want products in inventory to satisfy some proportion of demand).
 
 \hypertarget{forecast-horizon}{%
 \subsection{Forecast horizon}\label{forecast-horizon}}
@@ -431,13 +431,13 @@ It is essential to understand how decisions are made in practice and align them 
 
 While we do not aim to fully cover the topic of models, methods, and typical assumptions of statistical models, we need to make several important definitions to clarify what we will discuss later in this monograph. For a more detailed discussion, see Chapters 1 and 15 of \citet{SvetunkovSBA}.
 
-The Cambridge dictionary \citep{CambridgeMethod} defines \textbf{method} as a particular way of doing something. So, the method does not necessarily explain the structure or how any error term interacts with it; it only describes how a value (for example, point forecast) is produced. In our context, the forecasting method would be a formula that generates point forecasts based on some parameters and available data. It would not explain how what underlies the data.
+\citet{Chatfield2001} was the first to discuss the distinction between forecasting model and method, although the two are not thoroughly defined in their paper: ``method, meaning a computational procedure for producing forecasts'', and ``a model, meaning a mathematical representation of reality''. I think it is important to make a proper distinction between the two.
 
-\textbf{Statistical model} on the other hand, is a `mathematical representation of a real phenomenon with a complete specification of distribution and parameters' \citep{Svetunkov2019a}. It explains what happens inside the data, reveals the structure and shows how the error term interacts with the structure.
+The Cambridge dictionary \citep{CambridgeMethod} defines \textbf{method} as a particular way of doing something. So, the method does not necessarily explain the structure or how some components or variables interact with each other; it only describes how a value (for example, point forecast) is produced. In our context, the forecasting method would be a formula that generates point forecasts based on some parameters and available data. It would not explain what structure underlies the data.
 
-\citet{Chatfield2001} was the first to discuss the distinction between forecasting model and method, although the two are not thoroughly defined in their paper: ``method, meaning a computational procedure for producing forecasts'', and ``a model, meaning a mathematical representation of reality''.
+\textbf{Statistical model} on the other hand, is a `mathematical representation of a real phenomenon with a complete specification of distribution and parameters' \citep{Svetunkov2019a}. It explains what happens inside the data, reveals the structure and shows how the random variables interact with the structure.
 
-While discussing statistical models, we should also define \textbf{true model}. It is ``the idealistic statistical model that is correctly specified (has all the necessary components in the correct form), and applied to the data in population'' \citep{SvetunkovSBA}. Some statisticians also use the term \textbf{Data Generating Process} (DGP) when discussing the true model. Still, we need to distinguish between the two terms, as DGP implies that the data is somehow generated using a mathematical formula. In real life, the data is not generated from any function; it comes from a measurement of a complex process, influenced by many factors (e.g.~behaviour of a group of customers based on their individual preferences and mental states). The DGP is useful when we want to conduct experiments on simulated data in a controlled environment, but it is not helpful when applying models to the data. Finally, the true model is an abstract notion because it is never known or reachable (e.g.~we do not always have all the necessary variables). But it is still a useful one, as it allows us to see what would happen if we knew the model and, more importantly, what would happen if the model we used was wrong (which is always the case in real life).
+While discussing statistical models, we should also define \textbf{true model}. It is ``the idealistic statistical model that is correctly specified (has all the necessary components in the correct form), and applied to the data in population'' \citep{SvetunkovSBA}. Some statisticians also use the term \textbf{Data Generating Process} (DGP) when discussing the true model as a synonym. However, we need to distinguish between the two terms, as DGP implies that the data is somehow generated using a mathematical formula. In real life, the data is never generated from any function; it comes from a measurement of a complex process, influenced by many factors (e.g.~behaviour of a group of customers based on their individual preferences and mental states). The DGP is useful when we want to conduct experiments on simulated data in a controlled environment, but it is not helpful when applying models to the data. Finally, the true model is an abstract notion because it is never known or reachable (e.g.~we do not always have all the necessary variables). But it is still a useful one, as it allows us to see what would happen in therory if we knew the model and, more importantly, what would happen if the model we used was wrong (which is always the case in real life).
 
 Related to this definition is the \textbf{estimated} or \textbf{applied model}, which is the statistical model that is applied to the available sample of data. This model will almost always be wrong because even if we know the specification of the true model for some mysterious reason, we would still need to estimate it on our data. In this case, the estimates of parameters would differ from those in the population, and thus the model will still be wrong.
 
@@ -451,7 +451,7 @@ where \(y_t\) is the actual observed value, \(\mu_{y,t}\) is the structure and \
     y_t = \hat{\mu}_{y,t} + e_t,
     \label{eq:AppliedModel}
 \end{equation}
-where \(\hat{\mu}_{y,t}\) is the estimate of the structure \(\mu_{y,t}\) and \(e_t\) is the estimate of the noise \(\epsilon_t\) (also known as ``\textbf{residuals}''). If the structure is captured correctly, there would still be a difference between \eqref{eq:TrueModel} and \eqref{eq:AppliedModel} because the latter is estimated on the data. However, if the sample size increases and we use an adequate estimation procedure, then due to Central Limit Theorem \citep[see Chapter 6 of][]{SvetunkovSBA}, the distance between the two models will decrease and asymptotically (with the increase of sample size) \(e_t\) would converge to \(\epsilon_t\). This does not happen automatically, and some assumptions must hold for this to happen.
+where \(\hat{\mu}_{y,t}\) is the estimate of the structure \(\mu_{y,t}\) and \(e_t\) is the estimate of the noise \(\epsilon_t\) (also known as ``\textbf{residuals}''). If the structure is captured correctly, there would still be a difference between \eqref{eq:TrueModel} and \eqref{eq:AppliedModel} because the latter is estimated on a sample of data. However, if the sample size increases and we use an adequate estimation procedure, then due to Central Limit Theorem \citep[see Chapter 6 of][]{SvetunkovSBA}, the distance between the two models will decrease and asymptotically (with the increase of sample size) \(e_t\) would converge to \(\epsilon_t\). This does not happen automatically, and some assumptions must hold for this to happen.
 
 \hypertarget{assumptions}{%
 \subsection{Assumptions of statistical models}\label{assumptions}}
@@ -518,16 +518,20 @@ Very roughly, the typical assumptions of statistical models can be split into th
   No endogeneity.
 \end{enumerate}
 
+\begin{remark}
+The third group above relates more to the assumptions of model estimation rather than the model itself, but it is useful to have it in mind during the model building process.
+\end{remark}
+
 Many of these assumptions come from the idea that we have correctly captured the structure, meaning that we have not omitted any essential variables, we have not included redundant ones, and we transformed all the variables correctly (e.g.~took logarithms, where needed). If all these assumptions hold, then we would expect the applied model to converge to the true one with the increase of the sample size. If some of them do not hold, then the point forecasts from our model might be biased, or we might end up producing wider (or narrower) prediction intervals than expected.
 
-These assumptions with their implications on an example of multiple regression are discussed in detail in Chapter 15 of \citet{SvetunkovSBA}. The diagnostics of dynamic models based on these assumptions is discussed in Chapter \ref{diagnostics}.
+These assumptions with their implications on an example of multiple regression are discussed in detail in Chapter 15 of \citet{SvetunkovSBA}. The diagnostics of dynamic models based on these assumptions is discussed in Chapter \ref{diagnostics} of this monograph.
 
 \hypertarget{forecastsEvaluation}{%
 \chapter{Forecasts evaluation}\label{forecastsEvaluation}}
 
 As discussed in Section \ref{forecastingPlanningAnalytics}, forecasts should serve a specific purpose. They should not be made ``just because'' but to help make decisions. The decision then dictates the kind of forecast that should be made -- its form and its time horizon(s). It also dictates how the forecast should be evaluated -- a forecast only being as good as the quality of the decisions it enables.
 
-When you understand how your system works and what sort of forecasts you should produce, you can start an evaluation process, measuring the performance of different forecasting models/methods and selecting the most appropriate for your data. There are various ways to measure and compare their performance.
+When you understand how your system works and what sort of forecasts you should produce, you can start an evaluation process, measuring the performance of different forecasting models/methods and selecting the most appropriate for your data.
 
 This chapter discusses the most common approaches, focusing on evaluating point forecasts, then moving towards prediction intervals and quantile forecasts. After that, we discuss how to choose the appropriate error measure and, finally, ensure that the model performs consistently on the available data via rolling origin evaluation and statistical tests.
 
@@ -536,7 +540,7 @@ This chapter discusses the most common approaches, focusing on evaluating point 
 
 We start with a setting in which we are interested in point forecasts only. In this case, we typically begin by splitting the available data into training and test sets, applying the models under consideration to the former, and producing forecasts on the latter, hiding it from the models. This is called the ``fixed origin'' approach: we fix the point in time from which to produce forecasts, produce them, calculate some appropriate error measure and compare the models.
 
-Different error measures can be used in this case. Which measure to use depends on the specific need. Here we briefly discuss the most important measures and refer to \citep{Davydenko2013, SvetunkovAccuracy2019, SvetunkovAPEs2017} for the gory details.
+Different error measures can be used in this case. Which one to use depends on the specific need. Here we briefly discuss the most important measures and refer reader to \citep{Davydenko2013, SvetunkovAccuracy2019, SvetunkovAPEs2017} for the gory details.
 
 The majority of point forecast measures relies on the following two popular metrics:
 
@@ -1138,7 +1142,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.07396655 0.08495538 0.06617974
+## 0.09824384 0.08674242 0.08012859
 \end{verbatim}
 
 In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with an alternative one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(1,1,2) to the same data, we will get:
@@ -1156,7 +1160,7 @@ In this example, we use the \texttt{apply()} function to distinguish between the
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.07466533 0.08895377 0.07092190
+## 0.11340171 0.09329402 0.07603807
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.
@@ -2394,22 +2398,22 @@ Here is an example of a forecast from ETS(A,N,N) with automatic parameter estima
 ## Time elapsed: 0.01 seconds
 ## Model estimated using es() function: ETS(ANN)
 ## Distribution assumed in the model: Normal
-## Loss function type: likelihood; Loss function value: 534.7064
+## Loss function type: likelihood; Loss function value: 525.849
 ## Persistence vector g:
 ##  alpha 
-## 0.3473 
+## 0.2152 
 ## 
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1075.413 1075.644 1083.459 1083.999 
+## 1057.698 1057.929 1065.745 1066.285 
 ## 
 ## Forecast errors:
-## ME: 38.65; MAE: 39.724; RMSE: 48.341
-## sCE: 52.602%; Asymmetry: 93.7%; sMAE: 4.505%; sMSE: 0.301%
-## MASE: 1.246; RMSSE: 1.233; rMAE: 1.636; rRMSE: 1.665
+## ME: -7.682; MAE: 29.378; RMSE: 33.242
+## sCE: -8.719%; Asymmetry: -29.5%; sMAE: 2.779%; sMSE: 0.099%
+## MASE: 0.972; RMSSE: 0.89; rMAE: 0.889; rRMSE: 0.888
 \end{verbatim}
 
 As we see from Figure \ref{fig:ETSANNExample}, the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected because we deal with an in-sample estimation. Also, notice that with such a smoothing parameter, the prediction interval widens with the increase of the forecast horizon. If the smoothing parameter were lower, the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with \(\alpha=0.01\) on the same data (Figure \ref{fig:ETSANNExamplealpha01})
@@ -2512,22 +2516,22 @@ And here is an example with the ETS(M,N,N) data (Figure \ref{fig:ETSMNNExample})
 ## Time elapsed: 0.01 seconds
 ## Model estimated using es() function: ETS(MNN)
 ## Distribution assumed in the model: Normal
-## Loss function type: likelihood; Loss function value: 670.2025
+## Loss function type: likelihood; Loss function value: 613.5908
 ## Persistence vector g:
 ## alpha 
-## 0.142 
+## 0.205 
 ## 
 ## Sample size: 108
 ## Number of estimated parameters: 3
 ## Number of degrees of freedom: 105
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 1346.405 1346.636 1354.451 1354.992 
+## 1233.182 1233.412 1241.228 1241.768 
 ## 
 ## Forecast errors:
-## ME: 63.479; MAE: 126.172; RMSE: 167.333
-## sCE: 67.467%; Asymmetry: 48.7%; sMAE: 11.175%; sMSE: 2.196%
-## MASE: 0.999; RMSSE: 1.029; rMAE: 0.643; rRMSE: 0.7
+## ME: 11.589; MAE: 58.717; RMSE: 77.91
+## sCE: 18.685%; Asymmetry: 12%; sMAE: 7.889%; sMSE: 1.096%
+## MASE: 0.799; RMSSE: 0.876; rMAE: 0.588; rRMSE: 0.628
 \end{verbatim}
 
 Conceptually, the data in Figure \ref{fig:ETSMNNExample} looks very similar to the one from ETS(A,N,N) (Figure \ref{fig:ETSANNExample}), but demonstrating the changing variance of the error term with the change of the level.
@@ -3433,7 +3437,7 @@ In some cases, the optimiser might converge to the local minimum, so if you find
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.21 seconds
+## Time elapsed: 0.2 seconds
 ## Model estimated using adam() function: ETS(AAA)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 513.0026
@@ -3836,7 +3840,7 @@ The \texttt{AirPassengers} data used in Section \ref{ADAMETSPureAdditiveExamples
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.12 seconds
+## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.5176
@@ -3889,11 +3893,11 @@ If we want to calculate the error measures based on the conditional expectation,
 
 \begin{verbatim}
 ##            ME           MAE           MSE           MPE          MAPE 
-##  -5.463509296  15.621620104 484.750473784  -0.016048235   0.033991500 
+##  -5.924332552  15.497405233 483.679626456  -0.016978673   0.033831862 
 ##           sCE          sMAE          sMSE          MASE         RMSSE 
-##  -0.249767633   0.059512651   0.007035334   0.648631453   0.702698812 
+##  -0.270834447   0.059039438   0.007019792   0.643473878   0.701922227 
 ##          rMAE         rRMSE          rAME     asymmetry          sPIS 
-##   0.205547633   0.213806473   0.076770622  -0.217217785   2.094856380
+##   0.203913227   0.213570185   0.083245891  -0.248677355   2.222526150
 \end{verbatim}
 
 These can be compared with the measures from the ETS(A,A,A) model:
@@ -4955,7 +4959,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     501.7990     501.5934
+##     537.5005     537.5005
 \end{verbatim}
 
 \begin{Shaded}
@@ -4968,7 +4972,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     1009.598     1009.187
+##     1081.001     1081.001
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
@@ -4983,7 +4987,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##    0.2335016    0.2708482
+##    0.1974625    0.1975296
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related (Figure \ref{fig:ETSARIMAConnection}):
@@ -5934,7 +5938,7 @@ The ETS model closest to the logSARIMA(0,1,1)(0,1,1)\(_{12}\) would probably be 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.12 seconds
+## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.5176
@@ -5964,7 +5968,7 @@ Comparing information criteria, ETS(M,M,M) should be preferred to logARIMA, but 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.2 seconds
+## Time elapsed: 0.19 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[12]
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 472.923
@@ -6421,7 +6425,7 @@ This simple model already does a fine job fitting the data and producing forecas
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.12 seconds
+## Time elapsed: 0.09 seconds
 ## Model estimated using adam() function: ETS(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1125.509
@@ -6488,7 +6492,7 @@ Figure \ref{fig:SeatbeltsForecastX} shows the forecast from the second model, wh
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.38 seconds
+## Time elapsed: 0.35 seconds
 ## Model estimated using adam() function: ETSX(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.042
@@ -6528,7 +6532,7 @@ In this specific case, the difference between the ETSX and ETSX\{D\} models is i
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.45 seconds
+## Time elapsed: 0.4 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.215
@@ -7649,7 +7653,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.5 seconds
+## Time elapsed: 0.49 seconds
 ## Model estimated using adam() function: ETS(MNM)[48, 336]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 25682.88
@@ -7700,7 +7704,7 @@ Next, we can plot the fitted values and forecasts to see how the model performs 
 \caption{\label{fig:adamModelETSMNM}The fit and the forecast of the ETS(M,N,M){[}48,336{]} model on half-hourly electricity demand data.}
 \end{figure}
 
-As we might notice from Figure \ref{fig:adamModelETSMNM} the model was constructed in 0.5 seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \ref{multistepLossesGTMSE}):
+As we might notice from Figure \ref{fig:adamModelETSMNM} the model was constructed in 0.49 seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \ref{multistepLossesGTMSE}):
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -7949,7 +7953,7 @@ Another model we can try on this data is ARIMA. We have not yet discussed the or
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.19 seconds
+## Time elapsed: 0.18 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.76
@@ -8846,7 +8850,7 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.07 seconds
+## Time elapsed: 0.06 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log-Normal
@@ -10171,7 +10175,7 @@ Here is an example of selection of distribution for a specific model, ETS(M,M,N)
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.38 seconds
+## Time elapsed: 0.24 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 245.3716
@@ -10268,7 +10272,7 @@ Here is an example with automatically selected ETS model using the branch-and-bo
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.03 seconds
+## Time elapsed: 0.99 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 467.2981
@@ -10372,7 +10376,7 @@ Based on the relation between ARIMA and ETS (see Section \ref{ARIMAandETS}), we 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.24 seconds
+## Time elapsed: 1.21 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -10755,16 +10759,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6585           254.8830            260.4458
-## 142 257.7299           253.3562            262.1317
-## 143 257.7849           251.8624            263.7406
-## 144 257.8476           250.4552            265.3136
-## 145 257.9043           248.9329            267.0195
-## 146 257.9603           247.3741            268.6139
-## 147 258.0012           245.7857            270.2790
-## 148 258.0541           244.0958            272.0074
-## 149 258.0992           242.5182            273.7581
-## 150 258.1418           240.8361            275.4562
+## 141 257.6613           254.8881            260.4172
+## 142 257.7298           253.3272            262.1273
+## 143 257.7670           251.8671            263.7762
+## 144 257.8141           250.3659            265.3496
+## 145 257.8404           248.8318            267.0030
+## 146 257.8866           247.3620            268.5982
+## 147 257.9395           245.7640            270.3308
+## 148 257.9861           244.1569            272.0281
+## 149 258.0282           242.5438            273.7161
+## 150 258.0821           240.9228            275.5646
 \end{verbatim}
 
 In order to see how the forecast looks like, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -10862,7 +10866,7 @@ Here is an example of how the function works on the data above -- it is possible
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.46 seconds
+## Time elapsed: 0.76 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamETSBJBoot\$vcov}. The same procedure is used in \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -10875,11 +10879,11 @@ The covariance matrix can then be extracted from the result via \texttt{adamETSB
 
 \begin{verbatim}
 ##        alpha  beta    phi  level  trend
-## alpha  0.057 0.011  0.011  0.061 -0.067
-## beta   0.011 0.012  0.002  0.002  0.010
-## phi    0.011 0.002  0.014  0.062 -0.064
-## level  0.061 0.002  0.062  0.544 -0.716
-## trend -0.067 0.010 -0.064 -0.716  1.034
+## alpha  0.026 0.009  0.007  0.032 -0.030
+## beta   0.009 0.009  0.003  0.005  0.000
+## phi    0.007 0.003  0.015  0.065 -0.065
+## level  0.032 0.005  0.065  0.575 -0.766
+## trend -0.030 0.000 -0.065 -0.766  1.112
 \end{verbatim}
 
 \hypertarget{confidence-intervals-for-parameters}{%
@@ -11659,7 +11663,7 @@ The \texttt{sm} function accepts roughly the same set of parameters as \texttt{a
 
 \begin{verbatim}
 ## **Scale Model**
-## Time elapsed: 0.13 seconds
+## Time elapsed: 0.14 seconds
 ## Model estimated using sm.adam() function: ETS(MNN)
 ## Distribution assumed in the model: Inverse Gaussian
 ## Loss function type: likelihood; Loss function value: 474.332
@@ -12308,7 +12312,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, w
 \caption{\label{fig:adamModeliETSCumulative}The actual cumulative demand (black dot), the expectation (the solid blue line) and the 95\% quantile of the distribution of the cumulative demand (the dashed grey line) based on iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 18 units, while the upper bound of the interval was approximately 41. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 13 units, while the upper bound of the interval was approximately 38. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section \ref{rollingOrigin}) or to a set of products to collect the distribution of related error measures.
 
