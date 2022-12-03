@@ -607,7 +607,7 @@ but now the matrices and vectors of the model contain ETS and ARIMA components, 
     &amp;v_{1,t} = \phi_1 v_{1,t-1} + \phi_1 v_{2,t-2} + \phi_1 \epsilon_t \\
     &amp;v_{2,t} = \phi_1 v_{1,t-1} + \phi_2 v_{2,t-2} + \phi_2 \epsilon_t
   \end{aligned},
-  \tag{9.29}
+  \tag{9.30}
 \end{equation}\]</span>
 where <span class="math inline">\(\phi_1\)</span> is the parameter of the AR(1) part of the model. This model represented in the conventional additive SSOE state space model leads to the following matrices and vectors:
 <span class="math display" id="eq:ADAMETSARIMAANN100Matrices">\[\begin{equation}
@@ -615,7 +615,7 @@ where <span class="math inline">\(\phi_1\)</span> is the parameter of the AR(1) 
     \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \\ 1 \end{pmatrix}, &amp; \mathbf{F} = \begin{pmatrix} 1 &amp; 0 &amp; 0 &amp; 0 \\ 0 &amp; 1 &amp; 0 &amp; 0 \\ 0 &amp; 0 &amp; \phi_1 &amp; \phi_1 \\ 0 &amp; 0 &amp; \phi_2 &amp; \phi_2 \end{pmatrix}, &amp; \mathbf{g} = \begin{pmatrix} \alpha \\ \gamma \\ \phi_1 \\ \phi_2 \end{pmatrix}, \\
     \mathbf{v}_{t} = \begin{pmatrix} l_t \\ s_t \\ v_{1,t} \\ v_{2,t} \end{pmatrix}, &amp; \mathbf{v}_{t-\mathbf{l}} = \begin{pmatrix} l_{t-1} \\ s_{t-m} \\ v_{1,t-1} \\ v_{2,t-2} \end{pmatrix} &amp; \mathbf{l} = \begin{pmatrix} 1 \\ m \\ 1 \\ 2\end{pmatrix}
   \end{aligned}.
-  \tag{9.30}
+  \tag{9.31}
 \end{equation}\]</span>
 So, in this formulation the states of ETS and ARIMA are independent and form a combination of models only in the measurement equation. In a way, this model becomes similar to fitting first ETS to the data and then ARIMA to the residuals, but estimating both elements at the same time.</p>
 <p>ADAM introduces the flexibility necessary for fitting any ETS+ARIMA combination, but not all combinations make sense. For example, here how ETS(A,N,N)+ARIMA(0,1,1) would look like:
@@ -625,17 +625,17 @@ So, in this formulation the states of ETS and ARIMA are independent and form a c
     &amp;l_t = l_{t-1} + \alpha \epsilon_t \\
     &amp;v_{1,t} = v_{1,t-1} + (1+\theta_1) \epsilon_t
   \end{aligned}.
-  \tag{9.31}
+  \tag{9.32}
 \end{equation}\]</span>
-In the transition part of the model <a href="ETSAndARIMA.html#eq:ADAMETSARIMAANN011">(9.31)</a>, the two equations duplicate each other because they have exactly the same mechanism of update of states. In fact, as we know from Section <a href="ARIMAandETS.html#ARIMAETS011">8.4.1</a>, ETS(A,N,N) and ARIMA(0,1,1) are equivalent, when <span class="math inline">\(\alpha=1+\theta_1\)</span>. If we estimate this model, then we are duplicating the state, splitting it into two parts with some arbitrary weights. This becomes apparent if we insert the transition equations in the measurement one, obtaining:
+In the transition part of the model <a href="ETSAndARIMA.html#eq:ADAMETSARIMAANN011">(9.32)</a>, the two equations duplicate each other because they have exactly the same mechanism of update of states. In fact, as we know from Section <a href="ARIMAandETS.html#ARIMAETS011">8.4.1</a>, ETS(A,N,N) and ARIMA(0,1,1) are equivalent, when <span class="math inline">\(\alpha=1+\theta_1\)</span>. If we estimate this model, then we are duplicating the state, splitting it into two parts with some arbitrary weights. This becomes apparent if we insert the transition equations in the measurement one, obtaining:
 <span class="math display" id="eq:ADAMETSARIMAANN011Measurement">\[\begin{equation}
   \begin{aligned}
     {y}_{t} = &amp; l_{t-2} + \alpha \epsilon_{t-1} + v_{1,t-2} + (1+\theta_1) \epsilon_{t-1} + \epsilon_t =\\
     &amp; l_{t-2} + v_{1,t-2} + (1+\theta_1+\alpha) \epsilon_{t-1} + \epsilon_t
   \end{aligned},
-  \tag{9.32}
+  \tag{9.33}
 \end{equation}\]</span>
-which leads to an infinite combination of values of parameters <span class="math inline">\(\theta\)</span> and <span class="math inline">\(\alpha\)</span> that would produce exactly the same model fit. So, the model <a href="ETSAndARIMA.html#eq:ADAMETSARIMAANN011">(9.31)</a> does not have unique parameters and thus is <strong>unidentifiable</strong>. This means that we cannot reach the “true model” based on ETS(A,N,N)+ARIMA(0,1,1) and thus the model selection via information criteria becomes inappropriate. Furthermore, the estimates of parameters of such a model might become biased, inefficient and inconsistent due to the “infinite combination” issue mentioned above.</p>
+which leads to an infinite combination of values of parameters <span class="math inline">\(\theta\)</span> and <span class="math inline">\(\alpha\)</span> that would produce exactly the same model fit. So, the model <a href="ETSAndARIMA.html#eq:ADAMETSARIMAANN011">(9.32)</a> does not have unique parameters and thus is <strong>unidentifiable</strong>. This means that we cannot reach the “true model” based on ETS(A,N,N)+ARIMA(0,1,1) and thus the model selection via information criteria becomes inappropriate. Furthermore, the estimates of parameters of such a model might become biased, inefficient and inconsistent due to the “infinite combination” issue mentioned above.</p>
 <p>In some other cases, some parts of the model might be duplicated, making the whole model unidentifiable, so it makes sense to switch to either ETS or ARIMA, depending on the circumstances. For example, if we have ETS(A,A,N)+ARIMA(0,2,3), then some parts of the models will be duplicated (because ETS(A,A,N) is equivalent to ARIMA(0,2,2)), so it would be more reasonable to switch to pure ARIMA(0,2,3) instead. On the other hand, if we deal with ETS(A,Ad,N)+ARIMA(0,1,2), then dropping the ARIMA part would be more appropriate.</p>
 <p>These examples show that, when using ETS+ARIMA, model building needs to be done with care, not to get an unreasonable model that cannot be identified. As a general recommendation, keep the ETS and ARIMA connection (see Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>) in mind, when deciding, what to construct. And here is a short list of guidelines of what to do in some special cases:</p>
 <ol style="list-style-type: decimal">
@@ -670,9 +670,9 @@ which leads to an infinite combination of values of parameters <span class="math
     &amp;l_t = l_{t-1}(1 + \alpha \epsilon_t) \\
     &amp;\log v_{1,t} = \log v_{1,t-1} + (1+\theta_1) \log (1 + \epsilon_t)
   \end{aligned}.
-  \tag{9.33}
+  \tag{9.34}
 \end{equation}\]</span>
-The last equation in <a href="ETSAndARIMA.html#eq:ADAMETSARIMAMNN011">(9.33)</a> can be rewritten as <span class="math inline">\(v_{1,t} = v_{1,t-1} (1 + \epsilon_t)^{(1+\theta_1)}\)</span>, demonstrating the difference between the transition equation of ETS(M,N,N) and multiplicative ARIMA(0,1,1). Still, the two models will be similar in cases, when <span class="math inline">\(\alpha\)</span> is close to zero and (respectively) <span class="math inline">\(\theta\)</span> is close to -1. So this combination of models should be treated with care, along with other potentially similar combinations. The following combinations of the two models can be considered as potentially unidentifiable under some conditions:</p>
+The last equation in <a href="ETSAndARIMA.html#eq:ADAMETSARIMAMNN011">(9.34)</a> can be rewritten as <span class="math inline">\(v_{1,t} = v_{1,t-1} (1 + \epsilon_t)^{(1+\theta_1)}\)</span>, demonstrating the difference between the transition equation of ETS(M,N,N) and multiplicative ARIMA(0,1,1). Still, the two models will be similar in cases, when <span class="math inline">\(\alpha\)</span> is close to zero and (respectively) <span class="math inline">\(\theta\)</span> is close to -1. So this combination of models should be treated with care, along with other potentially similar combinations. The following combinations of the two models can be considered as potentially unidentifiable under some conditions:</p>
 <ol style="list-style-type: decimal">
 <li>ETS(M,N,N)+logARIMA(0,1,1);</li>
 <li>ETS(M,M,N)+logARIMA(0,2,2);</li>
@@ -687,7 +687,7 @@ The last equation in <a href="ETSAndARIMA.html#eq:ADAMETSARIMAMNN011">(9.33)</a>
         &amp;\log \mathbf{v}_{E,t} = \mathbf{F}_{E} \log \mathbf{v}_{E,t-\mathbf{l}_E} + \log(\mathbf{1}_k + \mathbf{g}_E \epsilon_t) \\
     &amp;\log \mathbf{v}_{A,t} = \mathbf{F}_{A} \log \mathbf{v}_{A,t-\mathbf{l}_A} + \mathbf{g}_A \log(1+\epsilon_t)
   \end{aligned} ,
-  \tag{9.34}
+  \tag{9.35}
 \end{equation}\]</span>
 where the subscript reflects, which part corresponds to which model: “E” - ETS, “A” - ARIMA.</p>
 </div>
