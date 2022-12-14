@@ -185,12 +185,14 @@ Naïve is one of the simplest forecasting methods. According to it, the one-step
     \hat{y}_t = y_{t-1} .
     (\#eq:Naive)
 \end{equation}
-Using this approach might sound naïve indeed, but there are cases where it is very hard to outperform the method. Consider an example with temperature forecasting. If we want to know what the temperature outside will be in 5 minutes, then Naïve would be typically very accurate: the temperature in 5 minutes will be the same as it is right now. The statistical model underlying Naïve is called the "Random Walk" and is written as:
+Using this approach might sound naïve indeed, but there are cases where it is very hard to outperform. Consider an example with temperature forecasting. If we want to know what the temperature outside will be in 5 minutes, then Naïve would be typically very accurate: the temperature in 5 minutes will be the same as it is right now. 
+
+The statistical model underlying Naïve is called the "Random Walk" and is written as:
 \begin{equation}
     y_t = y_{t-1} + \epsilon_t.
     (\#eq:RandomWalk)
 \end{equation}
-The variability of $\epsilon_t$ will impact the speed of change of the data: the higher it is, the more rapid the values will change. Random Walk and Naïve can be represented in Figure \@ref(fig:naiveExample). In the example below, we use a simple moving average (discussed later in Section \@ref(SMA)) of order 1 to generate the data from Random Walk and then produce forecasts using Naïve.
+The variability of $\epsilon_t$ will impact the speed of change of the data: the higher it is, the more rapid the values will change. Random Walk and Naïve can be represented in Figure \@ref(fig:naiveExample). In the example of R code below, we use a simple moving average (discussed later in Section \@ref(SMA)) of order 1 to generate the data from Random Walk and then produce forecasts using Naïve.
 
 ```{r naiveExample, fig.cap="A Random Walk example."}
 y <- sim.sma(1, 120)
@@ -205,7 +207,7 @@ Note that if the time series exhibits level shifts or other types of unexpected 
 
 
 ### Global Mean {#GlobalMean}
-While Naïve considered only one observation (the most recent one), the global mean (aka "global average") relies on all the observations in the data:
+While Naïve considers only one observation (the most recent one), the global mean (aka "global average") relies on all the observations in the data:
 \begin{equation}
     \hat{y}_t = \bar{y} = \frac{1}{T} \sum_{t=1}^T y_{t} ,
     (\#eq:GlobalMean)
@@ -224,7 +226,7 @@ testModel <- es(y, "ANN", persistence=0,
 plot(testModel, 7, main="")
 ```
 
-The series shown in Figure \@ref(fig:globalMeanExample) is generated from the global level model, and the point forecast corresponds to the forecast from the global mean method. Note that the method assumes that the weights between the in-sample observation are equal, i.e. the first observation has precisely the exact weight of $\frac{1}{T}$ as the last one. Suppose the series exhibits some changes in level over time. In that case, the global mean will not be suitable because it will produce the averaged out forecast, considering values for parts before and after the change.
+The series shown in Figure \@ref(fig:globalMeanExample) is generated from the global level model, and the point forecast corresponds to the forecast from the global mean method. Note that the method assumes that the weights of the in-sample observations are equal, i.e. the first observation has precisely the exact weight of $\frac{1}{T}$ as the last one (being as important as the last one). Suppose the series exhibits some changes in level over time. In that case, the global mean will not be suitable because it will produce the averaged out forecast, considering values for parts before and after the change. However, Global Mean works well in many demand forecasting tasks and is a decent benchmark on intermittent data (discussed in Chapter \@ref(ADAMIntermittent)).
 
 
 ### Simple Moving Average {#SMA}
@@ -235,7 +237,7 @@ Naïve and Global Mean can be considered as opposite points in the spectrum of p
 \end{equation}
 which implies going through time series with something like a "window" of $m$ observations and using their average for forecasting. The order $m$ determines the length of the memory of the method: if it is equal to 1, then \@ref(eq:SMA) turns into Naïve, while in the case of $m=T$ it transforms into Global Mean. The order $m$ is typically decided by a forecaster, keeping in mind that the lower $m$ corresponds to the shorter memory method, while the higher one corresponds to the longer one.
 
-@Svetunkov2017 have shown that SMA has an underlying non-stationary AR(m) model with $\phi_j=\frac{1}{m}$ for all $j=1, \dots, m$. While the conventional approach to forecasting from SMA is to produce the straight line, equal to the last fitted value, @Svetunkov2017 demonstrate that, in general, the point forecast does not correspond to the straight line.
+@Svetunkov2017 have shown that SMA has an underlying non-stationary AR(m) model with $\phi_j=\frac{1}{m}$ for all $j=1, \dots, m$. While the conventional approach to forecasting from SMA is to produce the straight line, equal to the last fitted value, @Svetunkov2017 demonstrate that, in general, the point forecast of SMA does not correspond to the straight line. This is because to calculate several steps ahead point forecasts, the actual values in \@ref(eq:SMA) are substituted iteratively by the predicted ones on the observations for the holdout.
 
 ```{r SMAExample, fig.cap="Examples of SMA time series and several SMA models of different orders applied to it."}
 y <- sim.sma(10,120)
@@ -266,15 +268,15 @@ Finally, an attentive reader has already spotted that the formula for SMA corres
 ### Random Walk with drift {#RWWithDrift}
 So far, we have discussed the methods used for level time series. But as mentioned in Section \@ref(tsComponents), there are other components in the time series. In the case of the series with a trend, Naïve, Global Mean and SMA will be inappropriate because they would be missing the essential component. The simplest model that can be used in this case is called "Random Walk with drift", which is formulated as:
 \begin{equation}
-    y_t = y_{t-1} + a_0 + \epsilon_t,
+    y_t = y_{t-1} + a_1 + \epsilon_t,
     (\#eq:RandomWalkWithDrift)
 \end{equation}
-where $a_0$ is a constant term, the introduction of which leads to increasing or decreasing trajectories, depending on the value of $a_0$. The point forecast from this model is calculated as:
+where $a_1$ is a constant term, the introduction of which leads to increasing or decreasing trajectories, depending on the value of $a_1$. The point forecast from this model is calculated as:
 \begin{equation}
-    \hat{y}_{t+h} = y_{t} + a_0 h,
+    \hat{y}_{t+h} = y_{t} + a_1 h,
     (\#eq:RandomWalkWithDriftForecast)
 \end{equation}
-implying that the forecast from the model is a straight line with the slope parameter $a_0$. Figure \@ref(fig:RWDriftExample) shows how the data generated from Random Walk with drift and $a_0=10$ looks like. This model is discussed in Subsection \@ref(Differences).
+implying that the forecast from the model is a straight line with the slope parameter $a_1$. Figure \@ref(fig:RWDriftExample) shows how the data generated from Random Walk with drift and $a_1=10$ looks like. This model is discussed in Subsection \@ref(Differences).
 
 ```{r RWDriftExample, fig.cap="Random Walk with drift data and the model applied to that data."}
 y <- sim.ssarima(orders=list(i=1), lags=1, obs=120,
@@ -284,7 +286,7 @@ testModel <- msarima(y, orders=list(i=1), constant=TRUE,
 plot(testModel, 7, main="")
 ```
 
-The data in Figure \@ref(fig:RWDriftExample) demonstrates a positive trend (because $a_0>0$) and randomness from one observation to another. The model is helpful as a benchmark and a special case for several other models because it is simple and requires the estimation of only one parameter.
+The data in Figure \@ref(fig:RWDriftExample) demonstrates a positive trend (because $a_1>0$) and randomness from one observation to another. The model is helpful as a benchmark and a special case for several other models because it is simple and requires the estimation of only one parameter.
 
 
 ### Global Trend {#GlobalTrend}
@@ -322,7 +324,7 @@ where $m$ is the seasonal frequency. This method has an underlying model, Season
     y_t = y_{t-m} + \epsilon_t.
     (\#eq:RWSeasonal)
 \end{equation}
-Similar to Naïve, the higher variability of the error term $\epsilon_t$ in \@ref(eq:RWSeasonal) is, the faster the data exhibit changes. Seasonal Naïve does not require estimation of any parameters and thus is considered one of the popular benchmarks to use with seasonal data. Figure \@ref(fig:NaiveSeasonalExample) demonstrates how the data generated from seasonal Random Walk looks and how the point forecast from the seasonal Naïve applied to this data performs.
+Similar to Naïve, the higher variability of the error term $\epsilon_t$ in \@ref(eq:RWSeasonal) is, the faster the data exhibits changes. Seasonal Naïve does not require estimation of any parameters and thus is considered one of the popular benchmarks to use with seasonal data. Figure \@ref(fig:NaiveSeasonalExample) demonstrates how the data generated from seasonal Random Walk looks and how the point forecast from the seasonal Naïve applied to this data performs.
 
 ```{r NaiveSeasonalExample, fig.cap="Seasonal Random Walk and Seasonal Naïve."}
 y <- sim.ssarima(orders=list(i=1), lags=4,
