@@ -5,14 +5,18 @@ In this chapter, we start with a discussion of time series components, then move
 
 
 ## Time series components {#tsComponents}
-The main idea behind many forecasting techniques is that any time series can describe several unobservable components, such as:
+The main idea behind many forecasting techniques is that any time series can include several unobservable components, such as:
 
 1. **Level** of the series -- the average value for a specific time period,
 2. **Growth** of the series -- the average increase or decrease of the value over a period of time,
 3. **Seasonality** -- a pattern that repeats itself with a fixed periodicity.
 4. **Error** -- unexplainable white noise.
 
-Sometimes, the researchers also include **Cycle** component, referring to aperiodic long term changes of time series. We do not discuss it here because it is not useful for what follows. Note that the level is the fundamental component that is present in any time series. In the simplest form (without variability), when plotted on its own without other components, it will look like a straight line, shown, for example, in Figure \@ref(fig:levelExample).
+::: remark
+Sometimes, the researchers also include **Cycle** component, referring to aperiodic long term changes of time series. We do not discuss it here because it is not useful for what follows.
+:::
+
+The level is the fundamental component that is present in any time series. In the simplest form (without variability), when plotted on its own without other components, it will look like a straight line, shown, for example, in Figure \@ref(fig:levelExample).
 
 ```{r levelExample, fig.cap="Level of time series without any variability."}
 level <- rep(100,40)
@@ -36,6 +40,10 @@ plot(ts(level+growth+seasonal, frequency=4),
      type="l", xlab="Time", ylab="Sales", ylim=c(80,160))
 ```
 
+::: remark
+When it comes to giving names to different types of seasonality, you can meet terms like "monthly", "weekly" or "intra-monthly", "intra-weekly". In some cases these names are self explanatory (e.g. when we have monthly data and use the term "monthly" seasonality), but in general this might be misleading. This is why I prefer "frequency 1 of frequency 2" naming, e.g. "month of year" or "week of year", which is more precise and less ambiguous than the names mentioned above.
+:::
+
 Finally, we can introduce the random error to the plots above to have a more realistic time series as shown in Figure \@ref(fig:allExample).
 
 ```{r allExample, fig.cap="Time series with random errors.", echo=FALSE}
@@ -55,7 +63,7 @@ Figure \@ref(fig:allExample) shows artificial time series with the above compone
 Each textbook and paper might use slightly different names to refer to the aforementioned components. For example, in classical decomposition [@Persons1919], it is assumed that (1) and (2) jointly represent a "trend" component so that a model will contain error, trend and seasonality.
 :::
 
-When it comes to ETS, the growth component (2) is called "trend", so the model consists of the four components: level, trend, seasonal and the error term. We will use the ETS formulation in this monograph. According to this formulation, the components can interact in one of two ways: additively or multiplicatively. The pure additive model, in this case, can be summarised as:
+When it comes to ETS, the growth component (2) is called "trend", so the model consists of the four components: level, trend, seasonal and the error term. We will use the ETS formulation in this monograph. According to it, the components can interact in one of two ways: additively or multiplicatively. The pure additive model, in this case, can be written as:
 \begin{equation}
     y_t = l_{t-1} + b_{t-1} + s_{t-m} + \epsilon_t ,
     (\#eq:PureAdditive)
@@ -65,21 +73,21 @@ where $l_{t-1}$ is the level, $b_{t-1}$ is the trend, $s_{t-m}$ is the seasonal 
     y_t = l_{t-1} b_{t-1} s_{t-m} \varepsilon_t ,
     (\#eq:PureMultiplicative)
 \end{equation}
-where $\varepsilon_t$ is the error term with a mean of one. The interpretation of the model \@ref(eq:PureAdditive) is that the different components add up to each other, so, for example, the sales increase over time by the value $b_{t-1}$, each January they typically change by the amount $s_{t-m}$, and that in addition there is some randomness in the model. The pure additive models can be applied to data with positive, negative and zero values. In the case of the multiplicative model \@ref(eq:PureMultiplicative), the interpretation is different, showing by how many times the sales change over time and from one season to another. The sales, in this case, will change every January by $(s_{t-m}-1)$% from the baseline. The model \@ref(eq:PureMultiplicative) only works on strictly positive data (data with purely negative values are also possible but rare in practice).
+where $\varepsilon_t$ is the error term with a mean of one. The interpretation of the model \@ref(eq:PureAdditive) is that the different components add up to each other, so, for example, the sales increase over time by the value $b_{t-1}$, and each January they typically change by the amount $s_{t-m}$, and in addition there is some randomness in the model. The pure additive models can be applied to data with positive, negative and zero values. In the case of the multiplicative model \@ref(eq:PureMultiplicative), the interpretation is different, showing by how many times the sales change over time and from one season to another. The sales, in this case, will change every January by $(s_{t-m}-1)$% from the baseline. The model \@ref(eq:PureMultiplicative) only works on strictly positive data (data with purely negative values are also possible but rare in practice).
 
 It is also possible to define mixed models in which, for example, the trend is additive but the other components are multiplicative:
 \begin{equation}
     y_t = (l_{t-1} + b_{t-1}) s_{t-m} \varepsilon_t
     (\#eq:MixedAdditiveTrend)
 \end{equation}
-These models work well in practice when the data has large values far from zero. In other cases, however, they might break and produce strange results (e.g. negative values on positive data), so the conventional decomposition techniques only consider the pure models.
+These models work well in practice when the data has large values, far from zero. In other cases, however, they might break and produce strange results (e.g. negative values on positive data), so the conventional decomposition techniques only consider the pure models.
 
 ::: remark
 Sometimes the model with time series components is compared with the regression model. Just to remind a reader, the latter can be formulated as:
 \begin{equation*}
   {y}_{t} = a_{0} + a_{1} x_{1,t} + a_{2} x_{2,t} + \dots + a_{n} x_{n,t} + \epsilon_t ,
 \end{equation*}
-where $a_j$ is a $j$-th parameter for an explanatory variable $x_{j,t}$. One of the mistakes that is made in the forecasting context, in this case, is to assume that the components resemble explanatory variables in the regression context. This is incorrect. The components correspond to the parameters of a regression model if we allow them to vary over time. We will show in Section \@ref(ETSXDynamicCategories) an example of how seasonal component $s_t$ can be also modelled via parameters of a regression model.
+where $a_j$ is a $j$-th parameter for an explanatory variable $x_{j,t}$. One of the mistakes that is made in the forecasting context in this case, is to assume that the components resemble explanatory variables in the regression context. This is incorrect. The components correspond to the parameters of a regression model if we allow them to vary over time. We will show in Section \@ref(ETSXDynamicCategories) an example of how seasonal component $s_t$ can be also modelled via parameters of a regression model.
 :::
 
 
