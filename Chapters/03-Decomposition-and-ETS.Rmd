@@ -101,25 +101,31 @@ One of the classical textbook methods for decomposing the time series into unobs
     d_t = \frac{1}{m}\sum_{i=-(m-1)/2}^{(m-1)/2} y_{t+i},
     (\#eq:CMAOdd)
 \end{equation}
-which means that, for example, the value on Thursday is the average of values from Monday to Sunday. If $m$ is an even number then a different weighting scheme is typically used, involving the inclusion of additional an value:
+which means that, for example, the value of $d_t$ on Thursday is the average of all the actual values from Monday to Sunday. If $m$ is an even number then a different weighting scheme is typically used, involving the inclusion of an additional value:
 \begin{equation}
     d_t = \frac{1}{m}\left(\frac{1}{2}\left(y_{t+(m-1)/2}+y_{t-(m-1)/2}\right) + \sum_{i=-(m-2)/2}^{(m-2)/2} y_{t+i}\right),
     (\#eq:CMAEven)
 \end{equation}
-which means that we use half of the December of the previous year and half of the December of the current year to calculate the centred moving average in June. The values $d_t$ are placed in the middle of the window going through the series (e.g. on Thursday, the average will contain values from Monday to Sunday).
+which means that we use half of December of the previous year and half of December of the current year to calculate the centred moving average in June. The values $d_t$ are placed in the middle of the window going through the series (e.g. as above, on Thursday, the average will contain values from Monday to Sunday).
 
-The resulting series is deseasonalised. When we average, e.g. sales in a year, we automatically remove the potential seasonality, which can be observed each month individually. A drawback of using CMA is that we inevitably lose $\frac{m}{2}$ observations at the beginning and the end of the series.
+The resulting series is deseasonalised. This is because when we average (e.g. sales in a year) we automatically remove the potential seasonality, which can be observed each period individually. A drawback of using CMA is that we inevitably lose $\frac{m}{2}$ observations at the beginning and the end of the series.
 
 In R, the `ma()` function from the `forecast` package implements CMA.
 
 3. De-trend the data:
 - For the additive decomposition this is done using: ${y^\prime}_t = y_t -d_t$;
 - For the multiplicative decomposition, it is: ${y^\prime}_t = \frac{y_t}{d_t}$;
-4. If the data is seasonal, the average value for each period is calculated based on the de-trended series. e.g. we produce average seasonal indices for each January, February, etc. This will give us the set of seasonal indices $s_t$;
+
+After that the series will only contain the residuals together with the seasonal component (if the data is seasonal).
+
+4. If the data is seasonal, the average value for each period is calculated based on the de-trended series. e.g. we produce average seasonal indices for each January, February, etc. This will give us the set of seasonal indices $s_t$. If the data is non-seasonal, we skip this step;
+
 5. Calculate the residuals based on what you assume in the model:
 - additive seasonality: $e_t = y_t -d_t -s_t$;
 - multiplicative seasonality: $e_t = \frac{y_t}{d_t s_t}$;
 - no seasonality: $e_t = {y^\prime}_t$.
+
+After doing steps (1) - (5), we will obtain several variables, containng the components of time series: $s_t$, $d_t$ and $e_t$.
 
 ::: remark
 The functions in R typically allow selecting between additive and multiplicative seasonality. There is no option for "none", and so even if the data is not seasonal, you will nonetheless get values for $s_t$ in the output. Also, notice that the classical decomposition assumes that there is a deseasonalised series $d_t$ but does not make any further split of this variable into level $l_t$ and trend $b_t$.
@@ -163,7 +169,7 @@ There are many functions in R that implement seasonal decomposition. Here is a s
 - `msdecompose()` from the `smooth` package does a classical decomposition for multiple seasonal series.
 
 ### "Why bother?"
-"Why to decompose?" you may wonder at this point. Understanding the idea behind decompositions and how to perform them helps understand ETS, which relies on it. From a practical point of view, it can be helpful if you want to see if there is a trend in the data and whether the residuals contain outliers or not. It will _not_ show you if the data is seasonal as the seasonality is _assumed_ in the decomposition (I stress this because many students think otherwise). Additionally, when seasonality cannot be added to a particular model under consideration, decomposing the series, predicting the trend and then reseasonalising can be a viable solution. Finally, the values from the decomposition can be used as starting points for the estimation of components in ETS or other dynamic models relying on the error-trend-seasonality.
+"Why to decompose?" you may wonder at this point. Understanding the idea behind decomposition and how to perform it, helps understanding ETS, which relies on it. From a practical point of view, it can be helpful if you want to see if there is a trend in the data and whether the residuals contain outliers or not. It will _not_ show you whether the data is seasonal or not as the seasonality is _assumed_ in the decomposition (I stress this because many students think otherwise). Additionally, when seasonality cannot be added to a particular model under consideration, decomposing the series, predicting the trend and then reseasonalising can be a viable solution. Finally, the values from the decomposition can be used as starting points for the estimation of components in ETS or other dynamic models relying on the error-trend-seasonality.
 
 
 ## Simple forecasting methods {#simpleForecastingMethods}
