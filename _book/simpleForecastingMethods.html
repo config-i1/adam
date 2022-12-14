@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-12-12" />
+<meta name="date" content="2022-12-14" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -601,12 +601,13 @@ div.csl-indent {
     \hat{y}_t = y_{t-1} .
     \tag{3.6}
 \end{equation}\]</span>
-Using this approach might sound naïve indeed, but there are cases where it is very hard to outperform the method. Consider an example with temperature forecasting. If we want to know what the temperature outside will be in 5 minutes, then Naïve would be typically very accurate: the temperature in 5 minutes will be the same as it is right now. The statistical model underlying Naïve is called the “Random Walk” and is written as:
+Using this approach might sound naïve indeed, but there are cases where it is very hard to outperform. Consider an example with temperature forecasting. If we want to know what the temperature outside will be in 5 minutes, then Naïve would be typically very accurate: the temperature in 5 minutes will be the same as it is right now.</p>
+<p>The statistical model underlying Naïve is called the “Random Walk” and is written as:
 <span class="math display" id="eq:RandomWalk">\[\begin{equation}
     y_t = y_{t-1} + \epsilon_t.
     \tag{3.7}
 \end{equation}\]</span>
-The variability of <span class="math inline">\(\epsilon_t\)</span> will impact the speed of change of the data: the higher it is, the more rapid the values will change. Random Walk and Naïve can be represented in Figure <a href="simpleForecastingMethods.html#fig:naiveExample">3.7</a>. In the example below, we use a simple moving average (discussed later in Section <a href="simpleForecastingMethods.html#SMA">3.3.3</a>) of order 1 to generate the data from Random Walk and then produce forecasts using Naïve.</p>
+The variability of <span class="math inline">\(\epsilon_t\)</span> will impact the speed of change of the data: the higher it is, the more rapid the values will change. Random Walk and Naïve can be represented in Figure <a href="simpleForecastingMethods.html#fig:naiveExample">3.7</a>. In the example of R code below, we use a simple moving average (discussed later in Section <a href="simpleForecastingMethods.html#SMA">3.3.3</a>) of order 1 to generate the data from Random Walk and then produce forecasts using Naïve.</p>
 <div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="simpleForecastingMethods.html#cb50-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">sim.sma</span>(<span class="dv">1</span>, <span class="dv">120</span>)</span>
 <span id="cb50-2"><a href="simpleForecastingMethods.html#cb50-2" aria-hidden="true" tabindex="-1"></a>testModel <span class="ot">&lt;-</span> <span class="fu">sma</span>(y, <span class="at">order=</span><span class="dv">1</span>,</span>
 <span id="cb50-3"><a href="simpleForecastingMethods.html#cb50-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
@@ -622,7 +623,7 @@ Figure 3.7: A Random Walk example.
 </div>
 <div id="GlobalMean" class="section level3 hasAnchor" number="3.3.2">
 <h3><span class="header-section-number">3.3.2</span> Global Mean<a href="simpleForecastingMethods.html#GlobalMean" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>While Naïve considered only one observation (the most recent one), the global mean (aka “global average”) relies on all the observations in the data:
+<p>While Naïve considers only one observation (the most recent one), the global mean (aka “global average”) relies on all the observations in the data:
 <span class="math display" id="eq:GlobalMean">\[\begin{equation}
     \hat{y}_t = \bar{y} = \frac{1}{T} \sum_{t=1}^T y_{t} ,
     \tag{3.8}
@@ -643,7 +644,7 @@ so that the <span class="math inline">\(\bar{y}\)</span> is an estimate of the f
 Figure 3.8: A global level example.
 </p>
 </div>
-<p>The series shown in Figure <a href="simpleForecastingMethods.html#fig:globalMeanExample">3.8</a> is generated from the global level model, and the point forecast corresponds to the forecast from the global mean method. Note that the method assumes that the weights between the in-sample observation are equal, i.e. the first observation has precisely the exact weight of <span class="math inline">\(\frac{1}{T}\)</span> as the last one. Suppose the series exhibits some changes in level over time. In that case, the global mean will not be suitable because it will produce the averaged out forecast, considering values for parts before and after the change.</p>
+<p>The series shown in Figure <a href="simpleForecastingMethods.html#fig:globalMeanExample">3.8</a> is generated from the global level model, and the point forecast corresponds to the forecast from the global mean method. Note that the method assumes that the weights of the in-sample observations are equal, i.e. the first observation has precisely the exact weight of <span class="math inline">\(\frac{1}{T}\)</span> as the last one (being as important as the last one). Suppose the series exhibits some changes in level over time. In that case, the global mean will not be suitable because it will produce the averaged out forecast, considering values for parts before and after the change. However, Global Mean works well in many demand forecasting tasks and is a decent benchmark on intermittent data (discussed in Chapter <a href="ADAMIntermittent.html#ADAMIntermittent">13</a>).</p>
 </div>
 <div id="SMA" class="section level3 hasAnchor" number="3.3.3">
 <h3><span class="header-section-number">3.3.3</span> Simple Moving Average<a href="simpleForecastingMethods.html#SMA" class="anchor-section" aria-label="Anchor link to header"></a></h3>
@@ -653,7 +654,7 @@ Figure 3.8: A global level example.
     \tag{3.10}
 \end{equation}\]</span>
 which implies going through time series with something like a “window” of <span class="math inline">\(m\)</span> observations and using their average for forecasting. The order <span class="math inline">\(m\)</span> determines the length of the memory of the method: if it is equal to 1, then <a href="simpleForecastingMethods.html#eq:SMA">(3.10)</a> turns into Naïve, while in the case of <span class="math inline">\(m=T\)</span> it transforms into Global Mean. The order <span class="math inline">\(m\)</span> is typically decided by a forecaster, keeping in mind that the lower <span class="math inline">\(m\)</span> corresponds to the shorter memory method, while the higher one corresponds to the longer one.</p>
-<p><span class="citation">Svetunkov and Petropoulos (<a href="#ref-Svetunkov2017" role="doc-biblioref">2018</a>)</span> have shown that SMA has an underlying non-stationary AR(m) model with <span class="math inline">\(\phi_j=\frac{1}{m}\)</span> for all <span class="math inline">\(j=1, \dots, m\)</span>. While the conventional approach to forecasting from SMA is to produce the straight line, equal to the last fitted value, <span class="citation">Svetunkov and Petropoulos (<a href="#ref-Svetunkov2017" role="doc-biblioref">2018</a>)</span> demonstrate that, in general, the point forecast does not correspond to the straight line.</p>
+<p><span class="citation">Svetunkov and Petropoulos (<a href="#ref-Svetunkov2017" role="doc-biblioref">2018</a>)</span> have shown that SMA has an underlying non-stationary AR(m) model with <span class="math inline">\(\phi_j=\frac{1}{m}\)</span> for all <span class="math inline">\(j=1, \dots, m\)</span>. While the conventional approach to forecasting from SMA is to produce the straight line, equal to the last fitted value, <span class="citation">Svetunkov and Petropoulos (<a href="#ref-Svetunkov2017" role="doc-biblioref">2018</a>)</span> demonstrate that, in general, the point forecast of SMA does not correspond to the straight line. This is because to calculate several steps ahead point forecasts, the actual values in <a href="simpleForecastingMethods.html#eq:SMA">(3.10)</a> are substituted iteratively by the predicted ones on the observations for the holdout.</p>
 <div class="sourceCode" id="cb52"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb52-1"><a href="simpleForecastingMethods.html#cb52-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">sim.sma</span>(<span class="dv">10</span>,<span class="dv">120</span>)</span>
 <span id="cb52-2"><a href="simpleForecastingMethods.html#cb52-2" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">1</span>))</span>
 <span id="cb52-3"><a href="simpleForecastingMethods.html#cb52-3" aria-hidden="true" tabindex="-1"></a><span class="co"># SMA(1)</span></span>
@@ -685,15 +686,15 @@ Figure 3.9: Examples of SMA time series and several SMA models of different orde
 <h3><span class="header-section-number">3.3.4</span> Random Walk with drift<a href="simpleForecastingMethods.html#RWWithDrift" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>So far, we have discussed the methods used for level time series. But as mentioned in Section <a href="tsComponents.html#tsComponents">3.1</a>, there are other components in the time series. In the case of the series with a trend, Naïve, Global Mean and SMA will be inappropriate because they would be missing the essential component. The simplest model that can be used in this case is called “Random Walk with drift”, which is formulated as:
 <span class="math display" id="eq:RandomWalkWithDrift">\[\begin{equation}
-    y_t = y_{t-1} + a_0 + \epsilon_t,
+    y_t = y_{t-1} + a_1 + \epsilon_t,
     \tag{3.11}
 \end{equation}\]</span>
-where <span class="math inline">\(a_0\)</span> is a constant term, the introduction of which leads to increasing or decreasing trajectories, depending on the value of <span class="math inline">\(a_0\)</span>. The point forecast from this model is calculated as:
+where <span class="math inline">\(a_1\)</span> is a constant term, the introduction of which leads to increasing or decreasing trajectories, depending on the value of <span class="math inline">\(a_1\)</span>. The point forecast from this model is calculated as:
 <span class="math display" id="eq:RandomWalkWithDriftForecast">\[\begin{equation}
-    \hat{y}_{t+h} = y_{t} + a_0 h,
+    \hat{y}_{t+h} = y_{t} + a_1 h,
     \tag{3.12}
 \end{equation}\]</span>
-implying that the forecast from the model is a straight line with the slope parameter <span class="math inline">\(a_0\)</span>. Figure <a href="simpleForecastingMethods.html#fig:RWDriftExample">3.10</a> shows how the data generated from Random Walk with drift and <span class="math inline">\(a_0=10\)</span> looks like. This model is discussed in Subsection <a href="ARIMAIntro.html#Differences">8.1.5</a>.</p>
+implying that the forecast from the model is a straight line with the slope parameter <span class="math inline">\(a_1\)</span>. Figure <a href="simpleForecastingMethods.html#fig:RWDriftExample">3.10</a> shows how the data generated from Random Walk with drift and <span class="math inline">\(a_1=10\)</span> looks like. This model is discussed in Subsection <a href="ARIMAIntro.html#Differences">8.1.5</a>.</p>
 <div class="sourceCode" id="cb53"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb53-1"><a href="simpleForecastingMethods.html#cb53-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">sim.ssarima</span>(<span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="dv">1</span>), <span class="at">lags=</span><span class="dv">1</span>, <span class="at">obs=</span><span class="dv">120</span>,</span>
 <span id="cb53-2"><a href="simpleForecastingMethods.html#cb53-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">constant=</span><span class="dv">10</span>)</span>
 <span id="cb53-3"><a href="simpleForecastingMethods.html#cb53-3" aria-hidden="true" tabindex="-1"></a>testModel <span class="ot">&lt;-</span> <span class="fu">msarima</span>(y, <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="dv">1</span>), <span class="at">constant=</span><span class="cn">TRUE</span>,</span>
@@ -705,7 +706,7 @@ implying that the forecast from the model is a straight line with the slope para
 Figure 3.10: Random Walk with drift data and the model applied to that data.
 </p>
 </div>
-<p>The data in Figure <a href="simpleForecastingMethods.html#fig:RWDriftExample">3.10</a> demonstrates a positive trend (because <span class="math inline">\(a_0&gt;0\)</span>) and randomness from one observation to another. The model is helpful as a benchmark and a special case for several other models because it is simple and requires the estimation of only one parameter.</p>
+<p>The data in Figure <a href="simpleForecastingMethods.html#fig:RWDriftExample">3.10</a> demonstrates a positive trend (because <span class="math inline">\(a_1&gt;0\)</span>) and randomness from one observation to another. The model is helpful as a benchmark and a special case for several other models because it is simple and requires the estimation of only one parameter.</p>
 </div>
 <div id="GlobalTrend" class="section level3 hasAnchor" number="3.3.5">
 <h3><span class="header-section-number">3.3.5</span> Global Trend<a href="simpleForecastingMethods.html#GlobalTrend" class="anchor-section" aria-label="Anchor link to header"></a></h3>
@@ -745,7 +746,7 @@ where <span class="math inline">\(m\)</span> is the seasonal frequency. This met
     y_t = y_{t-m} + \epsilon_t.
     \tag{3.16}
 \end{equation}\]</span>
-Similar to Naïve, the higher variability of the error term <span class="math inline">\(\epsilon_t\)</span> in <a href="simpleForecastingMethods.html#eq:RWSeasonal">(3.16)</a> is, the faster the data exhibit changes. Seasonal Naïve does not require estimation of any parameters and thus is considered one of the popular benchmarks to use with seasonal data. Figure <a href="simpleForecastingMethods.html#fig:NaiveSeasonalExample">3.12</a> demonstrates how the data generated from seasonal Random Walk looks and how the point forecast from the seasonal Naïve applied to this data performs.</p>
+Similar to Naïve, the higher variability of the error term <span class="math inline">\(\epsilon_t\)</span> in <a href="simpleForecastingMethods.html#eq:RWSeasonal">(3.16)</a> is, the faster the data exhibits changes. Seasonal Naïve does not require estimation of any parameters and thus is considered one of the popular benchmarks to use with seasonal data. Figure <a href="simpleForecastingMethods.html#fig:NaiveSeasonalExample">3.12</a> demonstrates how the data generated from seasonal Random Walk looks and how the point forecast from the seasonal Naïve applied to this data performs.</p>
 <div class="sourceCode" id="cb55"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb55-1"><a href="simpleForecastingMethods.html#cb55-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">sim.ssarima</span>(<span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="dv">1</span>), <span class="at">lags=</span><span class="dv">4</span>,</span>
 <span id="cb55-2"><a href="simpleForecastingMethods.html#cb55-2" aria-hidden="true" tabindex="-1"></a>                 <span class="at">obs=</span><span class="dv">120</span>, <span class="at">sd=</span><span class="dv">50</span>)</span>
 <span id="cb55-3"><a href="simpleForecastingMethods.html#cb55-3" aria-hidden="true" tabindex="-1"></a>testModel <span class="ot">&lt;-</span> <span class="fu">msarima</span>(y<span class="sc">$</span>data, <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="dv">1</span>), <span class="at">lags=</span><span class="dv">4</span>,</span>

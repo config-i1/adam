@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2022-12-12" />
+<meta name="date" content="2022-12-14" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -594,7 +594,7 @@ div.csl-indent {
   \tag{3.17}
 \end{equation}\]</span>
 where <span class="math inline">\(\hat{\alpha}\)</span> is the smoothing parameter, which is typically restricted within (0, 1) region (this region is arbitrary, and we will see in Section <a href="ETSParametersBounds.html#ETSParametersBounds">4.7</a> what is the correct one). This is one of the simplest forecasting methods. The smoothing parameter is typically interpreted as a weight between the latest actual value and the one-step-ahead predicted one. If the smoothing parameter is close to zero, then more weight is given to the previous fitted value <span class="math inline">\(\hat{y}_{t}\)</span> and the new information is neglected. If <span class="math inline">\(\hat{\alpha}=0\)</span>, then the method becomes equivalent to the Global Mean method, discussed in Subsection <a href="simpleForecastingMethods.html#GlobalMean">3.3.2</a>. When it is close to one, then most of the weight is assigned to the actual value <span class="math inline">\({y}_{t}\)</span>. If <span class="math inline">\(\hat{\alpha}=1\)</span>, then the method transforms into Naïve, discussed in Subsection <a href="simpleForecastingMethods.html#Naive">3.3.1</a>. By changing the smoothing parameter value, the forecaster can decide how to approximate the data and filter out the noise.</p>
-<p>Also, notice that this is a recursive method, meaning that there needs to be some starting point <span class="math inline">\(\hat{y}_1\)</span> to apply <a href="SES.html#eq:BrownMethod">(3.17)</a> to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature. Still, the state of the art one is to estimate <span class="math inline">\(\hat{\alpha}\)</span> and <span class="math inline">\(\hat{y}_{1}\)</span> together by minimising some loss function <span class="citation">(<a href="#ref-Hyndman2002" role="doc-biblioref">Hyndman et al., 2002</a>)</span>. Typically MSE (see Section <a href="errorMeasures.html#errorMeasures">2.1</a>) is used, minimising the squares of one step ahead forecast errors.</p>
+<p>Also, notice that this is a recursive method, meaning that there needs to be some starting point <span class="math inline">\(\hat{y}_1\)</span> to apply <a href="SES.html#eq:BrownMethod">(3.17)</a> to the existing data. Different initialisation and estimation methods for SES have been discussed in the literature. Still, the state of the art one is to estimate <span class="math inline">\(\hat{\alpha}\)</span> and <span class="math inline">\(\hat{y}_{1}\)</span> together by minimising some loss function <span class="citation">(<a href="#ref-Hyndman2002" role="doc-biblioref">Hyndman et al., 2002</a>)</span>. Typically MSE (see Section <a href="errorMeasures.html#errorMeasures">2.1</a>) is used, minimising the squares of one step ahead in-sample forecast error.</p>
 <div id="examples-of-application" class="section level3 hasAnchor" number="3.4.1">
 <h3><span class="header-section-number">3.4.1</span> Examples of application<a href="SES.html#examples-of-application" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>Here is an example of how this method works on different time series. We start with generating a stationary series and using <code>es()</code> function from <code>smooth</code> package. Although it implements the ETS model, we will see in Section <a href="SESandETS.html#SESandETS">4.3</a> the connection between SES and ETS(A,N,N). We start with the stationary time series and <span class="math inline">\(\hat{\alpha}=0\)</span>:</p>
@@ -631,7 +631,7 @@ Figure 3.15: SES with different smoothing parameters applied to the same data.
 Figure 3.16: SES with <span class="math inline">\(\hat{\alpha}=1\)</span>.
 </p>
 </div>
-<p>So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the MSE (see Figure <a href="SES.html#fig:SESExample3">3.17</a>):</p>
+<p>So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the in-sample MSE (see Figure <a href="SES.html#fig:SESExample3">3.17</a>):</p>
 <div class="sourceCode" id="cb58"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb58-1"><a href="SES.html#cb58-1" aria-hidden="true" tabindex="-1"></a>ourModel <span class="ot">&lt;-</span> <span class="fu">es</span>(y, <span class="at">model=</span><span class="st">&quot;ANN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">loss=</span><span class="st">&quot;MSE&quot;</span>)</span>
 <span id="cb58-2"><a href="SES.html#cb58-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(ourModel, <span class="dv">7</span>, <span class="at">main=</span><span class="fu">paste0</span>(<span class="st">&quot;SES with alpha=&quot;</span>,</span>
 <span id="cb58-3"><a href="SES.html#cb58-3" aria-hidden="true" tabindex="-1"></a>                              <span class="fu">round</span>(ourModel<span class="sc">$</span>persistence,<span class="dv">3</span>)))</span></code></pre></div>
@@ -683,7 +683,7 @@ Figure 3.18: Example of weights distribution for <span class="math inline">\(\ha
   \tag{3.21}
 \end{equation}\]</span>
 In this form, the smoothing parameter <span class="math inline">\(\hat{\alpha}\)</span> has a different meaning: it regulates how much the model reacts to the previous forecast error. In this interpretation, it no longer needs to be restricted with (0, 1) region, but we would still typically want it to be closer to zero to filter out the noise, not to adapt to it.</p>
-<p>As you see, SES is a straightforward method. It is easy to explain to practitioners, and it is very easy to implement in practice. However, this is just a forecasting method (see Section <a href="modelsMethods.html#modelsMethods">1.4</a>), so it provides a way of generating point forecasts but does not explain where the error comes from and how to create prediction intervals.</p>
+<p>As you see, SES is a straightforward method. It is easy to explain to practitioners, and it is very easy to implement in practice. However, this is just a forecasting method (see Section <a href="modelsMethods.html#modelsMethods">1.4</a>), so it provides a way of generating point forecasts but does not explain where the error comes from and how to create prediction intervals. Over the years, this was a serious limitation of the method until the introduction of state space models and ETS.</p>
 
 </div>
 </div>
