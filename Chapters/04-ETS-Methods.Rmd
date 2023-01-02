@@ -11,9 +11,9 @@ Building on the idea of time series components (from Section \@ref(tsComponents)
 2. Trend: "None" (N), or "Additive" (A), or "Additive damped" (Ad), or "Multiplicative" (M), or "Multiplicative damped" (Md);
 3. Seasonality: "None" (N), or "Additive" (A), or "Multiplicative" (M).
 
-According to this taxonomy, the model \@ref(eq:PureAdditive) is denoted as ETS(A,A,A) while the model \@ref(eq:PureMultiplicative) is denoted as ETS(M,M,M), and \@ref(eq:MixedAdditiveTrend) is ETS(M,A,M).
+In this taxonomy, the model \@ref(eq:PureAdditive) is denoted as ETS(A,A,A) while the model \@ref(eq:PureMultiplicative) is denoted as ETS(M,M,M), and \@ref(eq:MixedAdditiveTrend) is ETS(M,A,M).
 
-The components in the ETS taxonomy have clear interpretations. Furthermore, ETS supports 30 models with different types of error, trend and seasonality. Figure \@ref(fig:ETSTaxonomyAdditive) shows examples of different time series with deterministic (they do not change over time) level, trend, seasonality and with the additive error term.
+The components in the ETS taxonomy have clear interpretations: level shows average value per time period, trend reflects the change in the value, while seasonality corresponds to periodic fluctuations (e.g. increase in sales each January). Based on the the types of the components above, it is theoretically possible to devise 30 ETS models with different types of error, trend and seasonality. Figure \@ref(fig:ETSTaxonomyAdditive) shows examples of different time series with deterministic (they do not change over time) level, trend, seasonality and with the additive error term.
 
 ```{r ETSTaxonomyAdditive, echo=FALSE, warning=FALSE, message=FALSE, fig.cap="Time series corresponding to the additive error ETS models"}
 modelsList <- c("ANN","AAN","AAdN","AMN","AMdN","ANA","AAA","AAdA","AMA","AMdA","ANM","AAM","AAdM","AMM","AMdM",
@@ -69,7 +69,7 @@ Things to note from the plots in Figure \@ref(fig:ETSTaxonomyAdditive):
 
 1. When seasonality is multiplicative, its amplitude increases with the increase of the level of the data, while with additive seasonality, the amplitude is constant. Compare, for example, ETS(A,A,A) with ETS(A,A,M): for the former, the distance between the highest and the lowest points in the first year is roughly the same as in the last year. In the case of ETS(A,A,M) the distance increases with the increase in the level of series;
 2. When the trend is multiplicative, data exhibits exponential growth/decay;
-3. The damped trend models slow down both additive and multiplicative trends;
+3. The damped trend slows down both additive and multiplicative trends;
 4. It is practically impossible to distinguish additive and multiplicative seasonality if the level of series does not change because the amplitude of seasonality will be constant in both cases (compare ETS(A,N,A) and ETS(A,N,M)).
 
 Figure \@ref(fig:ETSTaxonomyMultiplicative) demonstrates a similar plot for the multiplicative error models.
@@ -94,7 +94,7 @@ for(i in 16:30){
 
 The plots in Figure \@ref(fig:ETSTaxonomyMultiplicative) show roughly the same idea as the additive case, the main difference being that the variance of the error increases with the increase of the level of the data -- this becomes clearer on ETS(M,A,N) and ETS(M,M,N) data. This property is called heteroscedasticity in statistics, and @Hyndman2008b argue that the main benefit of the multiplicative error models is in capturing this feature.
 
-We will discuss the most important ETS family members in the following chapters. Note that not all the models in this taxonomy are sensible, and some are typically ignored entirely (this applies mainly to models with a mixture of additive and multiplicative components). ADAM implements the entire taxonomy, but we need to be aware of the potential issues with some of models, and we will discuss what to expect from them in different situations.
+We will discuss the most important ETS family members in the following chapters. Note that not all the models in this taxonomy are sensible, and some are typically ignored entirely (this applies mainly to models with a mixture of additive and multiplicative components). ADAM implements the entire taxonomy, but we need to be aware of the potential issues with some of models, and we will discuss what to expect from them in different situations in the next Chapters.
 
 
 ## Mathematical models in the ETS taxonomy {#ETSTaxonomyMaths}
@@ -280,9 +280,7 @@ if (knitr:::is_latex_output()) {
 }
 ```
 
-From a statistical point of view, formulae in Tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) correspond to the "true models" [see Section 1.1 of @SvetunkovSBA], they explain the models underlying potential data, but when it comes to their construction and estimation, the $\epsilon_t$ is substituted by the estimated $e_t$ (which is calculated differently depending on the error type), and time series components and smoothing parameters are also replaced by their estimated analogues (e.g. $\hat{\alpha}$ instead of $\alpha$). However, if the values of these models' parameters were known, it would be possible to produce point forecasts and conditional h steps ahead expectations from these models.
-
-Table \@ref(tab:ETSModelsForecasts) summarises:
+From a statistical point of view, formulae in Tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) correspond to the "true models" (see Section \@ref(modelsMethods)), they explain the models underlying potential data, but when it comes to their construction and estimation, the $\epsilon_t$ is substituted by the estimated $e_t$ (which is calculated differently depending on the error type), and time series components and smoothing parameters are also replaced by their estimates (e.g. $\hat{\alpha}$ instead of $\alpha$). However, if the values of these models' parameters were known, it would be possible to produce point forecasts and conditional h steps ahead expectations from these models, which are summarised in Table \@ref(tab:ETSModelsForecasts) with the following elements:
 
 - Conditional one step ahead expectation $\mu_{y,t} \equiv \mu_{y,t|t-1}$;
 - Multiple steps ahead point forecast $\hat{y}_{t+h}$;
@@ -291,7 +289,7 @@ Table \@ref(tab:ETSModelsForecasts) summarises:
 In the case of the additive error models, the point forecasts correspond to the expectations only when the expectation of the error term is zero, i.e. $\text{E}(\epsilon_t)=0$. In contrast, in the case of the multiplicative models, the condition is changed to $\text{E}(1+\epsilon_t)=1$.
 
 ::: remark
-**Not all the point forecasts of ETS models correspond to conditional expectations**. This issue applies to the models with multiplicative trend and/or multiplicative seasonality. This is because the ETS model assumes that different states are correlated (they have the same source of error), and as a result, multiple steps ahead values (when h>1) of states introduce products of error terms. So, the conditional expectations in these cases might not have analytical forms ("n.c.f." in Table \@ref(tab:ETSModelsForecasts) stands for "no closed-form"), and when working with these models, simulations might be required. This does not apply to the one-step-ahead forecasts, for which all the classical formulae work. This issue is discussed in Section \@ref(pureMultiplicativeExpectationAndVariance).
+**Not all point forecasts of ETS models correspond to conditional expectations**. This issue applies to the models with multiplicative trend and/or multiplicative seasonality. This is because the ETS model assumes that different states are correlated (they have the same source of error), and as a result, multiple steps ahead values (when h>1) of states introduce products of error terms. So, the conditional expectations in these cases might not have analytical forms ("n.c.f." in Table \@ref(tab:ETSModelsForecasts) stands for "No Closed Form"), and when working with these models, simulations might be required. This does not apply to the one-step-ahead forecasts, for which all the classical formulae work. This issue is discussed in Section \@ref(pureMultiplicativeExpectationAndVariance).
 :::
 
 ```{r ETSModelsForecasts, echo=FALSE}
@@ -392,10 +390,12 @@ if (knitr:::is_latex_output()) {
 
 The multiplicative error models have the same one step ahead expectations and point forecasts as the additive error ones. However, due to the multiplication by the error term, the multiple steps ahead conditional expectations between the two types of models might differ, specifically for the multiplicative trend and multiplicative seasonal models. These values do not have closed forms and can only be obtained via simulations.
 
-Although there are 30 potential ETS models, not all of them are stable. So, Rob Hyndman has reduced the pool of models under consideration in the `ets()` function of `forecast` package to the following 19: ANN, AAN, AAdN, ANA, AAA, AAdA, MNN, MAN, MAdN, MNA, MAA, MAdA, MNM, MAM, MAdM, MMN, MMdN, MMM, MMdM. In addition, the multiplicative trend models are unstable in data with outliers, so they are switched off in the `ets()` function by default, which reduces the pool of models further to the first 15.
+Although there are 30 potential ETS models, not all of them are sensible. So, Rob Hyndman has reduced the pool of models under consideration in the `ets()` function of `forecast` package to the following 19: ANN, AAN, AAdN, ANA, AAA, AAdA, MNN, MAN, MAdN, MNA, MAA, MAdA, MNM, MAM, MAdM, MMN, MMdN, MMM, MMdM. In addition, the multiplicative trend models are unstable in data with outliers, so they are switched off in the `ets()` function by default, which reduces the pool of models further to the first 15.
 
 
 ## ETS and SES {#SESandETS}
+Taking a step back, in this Section we discuss one of the basic ETS models, the local level model and the exponential smoothing method related to it.
+
 ### ETS(A,N,N)
 There have been several tries to develop statistical models underlying SES, and we know now that the model has underlying ARIMA(0,1,1) [@Muth1960], local level MSOE [Multiple Source of Error, @Muth1960] and SSOE [Single Source of Error, @Snyder1985] models. According to @Hyndman2002, the ETS(A,N,N) model also underlies the SES method. To see the connection and to get to it from SES, we need to recall two things: how in general, the actual value relates to the forecast error and the fitted value, and the error correction form of SES from Subsection \@ref(SESEC):
 \begin{equation}
@@ -421,9 +421,9 @@ If we now substitute the sample estimates of level, smoothing parameter and fore
   \end{aligned} ,
   (\#eq:ETSANN)
 \end{equation}
-where, as we know from Section \@ref(tsComponents), $l_t$ is the level of the data, $\epsilon_t$ is the error term, and $\alpha$ is the smoothing parameter. Note that we use $\alpha$ without the "hat" symbol, which implies that there is a "true" value of the parameter (which could be obtained if we had all the data in the world or just knew it for some reason). The main benefit of having the model \@ref(eq:ETSANN) instead of just the method \@ref(eq:SESErrorCorrection) is in having a flexible framework, which allows adding other components, selecting the most appropriate ones, consistently estimating parameters [see Section 6.3 of @SvetunkovSBA], producing prediction intervals etc.
+where, as we know from Section \@ref(tsComponents), $l_t$ is the level of the data, $\epsilon_t$ is the error term, and $\alpha$ is the smoothing parameter. Note that we use $\alpha$ without the "hat" symbol, which implies that there is a "true" value of the parameter (which could be obtained if we had all the data in the world or just knew it for some reason). The main benefit of having the model \@ref(eq:ETSANN) instead of just the method \@ref(eq:SESErrorCorrection) is in having a flexible framework, which allows adding other components, selecting the most appropriate ones (Section \@ref(ETSSelection)), consistently estimating parameters (Chapter \@ref(ADAMETSEstimation)), producing prediction intervals (Section \@ref(ADAMForecastingPI)) etc. In a way, this model is the basis of ADAM.
 
-In order to see the data that corresponds to the ETS(A,N,N) we can use `sim.es()` function from `smooth` package. Here are several examples with different smoothing parameters values:
+In order to see the data that corresponds to the ETS(A,N,N) we can use `sim.es()` function from the `smooth` package. Here are several examples with different smoothing parameters values:
 
 ```{r}
 # list with generated data
@@ -450,7 +450,7 @@ for(i in 1:6){
 }
 ```
 
-This simple simulation shows that the smoothing parameter in ETS(A,N,N) controls the variability in the data (Figure \@ref(fig:DGPetsANNExample)): the higher $\alpha$ is, the higher variability is and less predictable the data becomes. With the higher values of $\alpha$, the level changes faster, leading to increased uncertainty about the future values of the level in the data.
+This simple simulation shows that the smoothing parameter in ETS(A,N,N) controls the variability in the data (Figure \@ref(fig:DGPetsANNExample)): the higher $\alpha$ is, the higher variability is and less predictable the data becomes. With the higher values of $\alpha$, the level changes faster, leading to increased uncertainty about the future values.
 
 When it comes to the application of this model to the data, the conditional h steps ahead mean corresponds to the point forecast and is equal to the last observed level:
 \begin{equation}
@@ -459,24 +459,30 @@ When it comes to the application of this model to the data, the conditional h st
 \end{equation}
 this holds because it is assumed (see Section \@ref(assumptions)) that $\mathrm{E}(\epsilon_t)=0$, which implies that the conditional h steps ahead expectation of the level in the model is (from the second equation in \@ref(eq:ETSANN)):
 \begin{equation}
-  \mathrm{E}(l_{t+h}|t) = l_t + \mathrm{E}(\alpha\sum_{j=1}^{h-1}\epsilon_{t+j}|t) = l_t .
+  \mathrm{E}(l_{t+h-1}|t) = l_t + \mathrm{E}(\alpha\sum_{j=1}^{h-2}\epsilon_{t+j}|t) = l_t .
   (\#eq:ETSANNForecasthStepsAhead)
 \end{equation}
 
-Here is an example of a forecast from ETS(A,N,N) with automatic parameter estimation using `es()` function from `smooth` package:
+Here is an example of a forecast from ETS(A,N,N) with automatic parameter estimation using `es()` function from the `smooth` package:
 
 ```{r ETSANNExample, fig.cap="An example of ETS(A,N,N) applied to the data generated from the same model."}
 # Generate the data
 y <- sim.es("ANN", 120, 1, 12, persistence=0.3, initial=1000)
 # Apply ETS(A,N,N) model
-es(y$data, "ANN", h=12, holdout=TRUE, silent=FALSE)
+esModel <- es(y$data, "ANN", h=12, holdout=TRUE)
+# Produce forecasts
+esModel |> forecast(h=12, interval="pred") |>
+    plot(main=paste0("ETS(A,N,N) with alpha=",
+                     round(esModel$persistence,4)))
 ```
 
 As we see from Figure \@ref(fig:ETSANNExample), the true smoothing parameter is 0.3, but the estimated one is not exactly 0.3, which is expected because we deal with an in-sample estimation. Also, notice that with such a smoothing parameter, the prediction interval widens with the increase of the forecast horizon. If the smoothing parameter were lower, the bounds would not increase, but this might not reflect the uncertainty about the level correctly. Here is an example with $\alpha=0.01$ on the same data (Figure \@ref(fig:ETSANNExamplealpha01))
 
 ```{r ETSANNExamplealpha01, fig.cap="ETS(A,N,N) with $\\hat{\\alpha}=0.01$ applied to the data generated from the same model with $\\alpha=0.3$."}
-ourModel <- es(y$data, "ANN", h=12,
-               holdout=TRUE, silent=FALSE, persistence=0.01)
+es(y$data, "ANN", h=12,
+   holdout=TRUE, persistence=0.01) |>
+    forecast(h=12, interval="pred") |>
+    plot(main="ETS(A,N,N) with alpha=0.01")
 ```
 
 Figure \@ref(fig:ETSANNExamplealpha01) shows that the prediction interval does not expand, but at the same time is wider than needed, and the forecast is biased -- the model does not keep up to the fast-changing time series. So, it is essential to correctly estimate the smoothing parameters not only to approximate the data but also to produce a less biased point forecast and a more appropriate prediction interval.
@@ -509,12 +515,12 @@ Finally, opening the brackets, we get the SES in the form similar to \@ref(eq:SE
   (\#eq:ETSMNNEstimation4)
 \end{equation}
 
-This example again demonstrates the difference between a forecasting method and a model. When we use SES, we ignore the distributional assumptions, which restricts the usage of the method. When we use a model, we assume a specific structure, which on the one hand, makes it more restrictive, but on the other hand, gives it additional features. The main ones in the case of ETS(M,N,N) in comparison with ETS(A,N,N) are:
+This example again demonstrates the difference between a forecasting method and a model. When we use SES, we ignore the distributional assumptions, which restricts the usefulness of the method. When we work with a model, we assume a specific structure, which on the one hand, makes it more restrictive, but on the other hand, gives it additional features. The main ones in the case of ETS(M,N,N) in comparison with ETS(A,N,N) are:
 
 1. The variance of the actual values in ETS(M,N,N) increases with the increase of the level $l_{t}$. This allows modelling heteroscedasticity situation in the data;
 2. If $(1+\epsilon_t)$ is always positive, then the ETS(M,N,N) model will always produce only positive forecasts (both point and interval). This makes this model applicable in principle to the data with low levels.
 
-An alternative to \@ref(eq:ETSMNN) would be the model \@ref(eq:ETSANN) applied to the data in logarithms (assuming that the data we work with is always positive), implying that:
+An alternative to \@ref(eq:ETSMNN) would be the ETS(A,N,N) model \@ref(eq:ETSANN) applied to the data in logarithms (assuming that the data we work with is always positive), implying that:
 \begin{equation}
   \begin{aligned}
     & \log y_{t} = l_{t-1} + \epsilon_t \\
@@ -522,7 +528,7 @@ An alternative to \@ref(eq:ETSMNN) would be the model \@ref(eq:ETSANN) applied t
   \end{aligned} .
   (\#eq:ETSANNLogs)
 \end{equation}
-However, to produce forecasts from \@ref(eq:ETSANNLogs), exponentiation is needed, making the application of the model more difficult than needed. The ETS(M,N,N), on the other hand, does not rely on exponentiation, making it safe in cases when the model produces very high values (e.g. `exp(1000)` returns infinity in R).
+However, to produce forecasts from \@ref(eq:ETSANNLogs), exponentiation is needed, making the application of the model more difficult than needed. The ETS(M,N,N), on the other hand, does not rely on exponentiation, making it more practical and safe in cases when the model produces very high values (e.g. `exp(1000)` returns infinity in R).
 
 Finally, the conditional h steps ahead mean of ETS(M,N,N) corresponds to the point forecast and is equal to the last observed level, but only if $\mathrm{E}(1+\epsilon_t)=1$:
 \begin{equation}
@@ -534,21 +540,22 @@ And here is an example with the ETS(M,N,N) data (Figure \@ref(fig:ETSMNNExample)
 
 ```{r ETSMNNExample, fig.cap="ETS(M,N,N) model applied to the data generated from the same model."}
 y <- sim.es("MNN", 120, 1, 12, persistence=0.3, initial=1000)
-ourModel <- es(y$data, "MNN", h=12, holdout=TRUE,
-               silent=FALSE)
-ourModel
+esModel <- es(y$data, "MNN", h=12, holdout=TRUE)
+forecast(esModel, h=12, interval="pred") |>
+    plot(main=paste0("ETS(M,N,N) with alpha=",
+                     round(esModel$persistence,4)))
 ```
 
-Conceptually, the data in Figure \@ref(fig:ETSMNNExample) looks very similar to the one from ETS(A,N,N) (Figure \@ref(fig:ETSANNExample)), but demonstrating the changing variance of the error term with the change of the level.
+Conceptually, the data in Figure \@ref(fig:ETSMNNExample) looks very similar to the one from ETS(A,N,N) (Figure \@ref(fig:ETSANNExample)), but demonstrating the changing variance of the error term with the change of the level. The model itself would in general produce wider prediction interval than its additive error counterpart keeping the same smoothing parameter.
 
 
 ## Several examples of ETS and related exponential smoothing methods {#ETSExamples}
 There are other exponential smoothing methods, which include more components, as discussed in Section \@ref(tsComponents). This includes but is not limited to: Holt's [@Holt2004b, originally proposed in 1957], Holt-Winter's [@Winters1960], multiplicative trend [@Pegels1969], Damped trend (originally proposed by @Roberts1982 and then picked up by @Gardner1985a), Damped trend Holt-Winters [@Gardner1989] and damped multiplicative trend [@Taylor2003] methods. We will not discuss them here one by one, as we will not use them further in this monograph. Instead, we will focus on the ETS models underlying them.
 
-We already understand that there can be different components in time series and that they can interact either in an additive or a multiplicative way, which gives us the taxonomy above, discussed in Section \@ref(ETSTaxonomy). This section considers several examples of ETS models and their relations to the conventional exponential smoothing methods.
+We already understand that there can be different components in time series and that they can interact either in an additive or a multiplicative way, which gives us the taxonomy discussed in Section \@ref(ETSTaxonomy). This section considers several examples of ETS models and their relations to the conventional exponential smoothing methods.
 
 ### ETS(A,A,N) {#ETSAAN}
-This is also sometimes known as local trend model and is formulated similar to ETS(A,N,N), but with addition of the trend equation. It underlies **Holt's method** [@Ord1997]:
+This is also sometimes known as the local trend model and is formulated similar to ETS(A,N,N), but with addition of the trend equation. It underlies **Holt's method** [@Ord1997]:
 \begin{equation}
   \begin{aligned}
     & y_{t} = l_{t-1} + b_{t-1} + \epsilon_t \\
@@ -557,19 +564,19 @@ This is also sometimes known as local trend model and is formulated similar to E
   \end{aligned} ,
   (\#eq:ETSAAN)
 \end{equation}
-where $\beta$ is the smoothing parameter for the trend component. It has a similar idea as ETS(A,N,N): the states evolve, and the speed of their change depends on the values of $\alpha$ and $\beta$. The trend is not deterministic in this model: both the intercept and the slope change over time. The higher the smoothing parameters are, the more uncertain the level and the slope will be; thus, the higher the uncertainty about the future values is.
+where $\beta$ is the smoothing parameter for the trend component. It has a similar idea as ETS(A,N,N): the states evolve, and the speed of their change depends on the values of $\alpha$ and $\beta$. The trend is not deterministic in this model: both the intercept and the slope change over time. The higher the smoothing parameters are, the more uncertain the level and the slope will be, thus, the higher the uncertainty about the future values is.
 
 Here is an example of the data that corresponds to the ETS(A,A,N) model:
 
 ```{r ETSAANExample, fig.cap="Data generated from ETS(A,A,N) model."}
-y <- sim.es("AAN", 120, 1, 12, persistence=c(0.3,0.1),
-            initial=c(1000,20), mean=0, sd=20)
-plot(y)
+sim.es("AAN", 120, 1, 12, persistence=c(0.3,0.1),
+       initial=c(1000,20), mean=0, sd=20) |>
+    plot()
 ```
 
-The series in Figure \@ref(fig:ETSAANExample) demonstrates a trend that changes over time. If we needed to produce forecasts for this data, we would capture the dynamics of the trend component and then use the last values for the several steps ahead prediction. 
+The series in Figure \@ref(fig:ETSAANExample) demonstrates a trend that changes over time. If we need to produce forecasts for this data, we will capture the dynamics of the trend component via ETS(A,A,N) and then use the last values for the several steps ahead prediction. 
 
-The point forecast h steps ahead from this model is a straight line with a slope $b_t$ (as shown in Table \@ref(tab:ETSAdditiveError) from Section \@ref(ETSTaxonomyMaths)):
+The point forecast h steps ahead from this model is a straight line with a slope $b_t$ (as shown in Table \@ref(tab:ETSModelsForecasts) from Section \@ref(ETSTaxonomyMaths)):
 \begin{equation}
     \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} + h b_t.
   (\#eq:ETSAANForecast)
@@ -577,15 +584,15 @@ The point forecast h steps ahead from this model is a straight line with a slope
 This becomes apparent if one takes the conditional expectations E$(l_{t+h}|t)$ and E$(b_{t+h}|t)$ in the second and third equations of \@ref(eq:ETSAAN) and then inserts them in the measurement equation. Graphically it will look as shown in Figure \@ref(fig:ETSAANExampleForecast):
 
 ```{r ETSAANExampleForecast, fig.cap="ETS(A,A,N) and a point forecast produced from it."}
-esModel <- es(y, h=10)
-plot(esModel,7)
+es(y, h=10) |>
+    plot(which=7)
 ```
 
 If you want to experiment with the model and see how its parameters influence the fit and forecast, you can use the following R code:
 
 ```{r eval=FALSE}
-esModel <- es(y$data, h=10, persistence=c(0.2,0.1))
-plot(esModel,7)
+es(y$data, h=10, persistence=c(0.2,0.1)) |>
+    plot(which=7)
 ```
 where `persistence` is the vector of smoothing parameters (first $\hat\alpha$, then $\hat\beta$). By changing their values, we will make the model less/more responsive to the changes in the data.
 
@@ -633,7 +640,7 @@ or
   \end{aligned} ,
   (\#eq:ETSAANGT2)
 \end{equation}
-The main difference of \@ref(eq:ETSAANGT2) with the Global Trend model \@ref(eq:GlobalTrend) is that the latter explicitly includes the trend component $t$ and is formulated in one equation, while the former splits equation into two parts and has an explicit level component. They both fit the data in the same way and produce the same trajectories when $a_0 = l_0$ and $a_1 = b_0$ in the Global Trend model.
+The main difference of \@ref(eq:ETSAANGT2) with the Global Trend model \@ref(eq:GlobalTrend) is that the latter explicitly includes the trend component $t$ and is formulated in one equation, while the former splits equation into two parts and has an explicit level component. They both fit the data in the same way and produce the same forecasts when $a_0 = l_0$ and $a_1 = b_0$ in the Global Trend model.
 
 Due to its flexibility, the ETS(A,A,N) model is considered as one of the good benchmarks in the case of trended time series.
 
@@ -651,14 +658,14 @@ This is the model that underlies **Damped trend method** [@Roberts1982; @Gardner
 where $\phi$ is the dampening parameter, typically lying between 0 and 1. If it is equal to zero, the model reduces to ETS(A,N,N), \@ref(eq:ETSANN). If it is equal to one, it becomes equivalent to ETS(A,A,N), \@ref(eq:ETSAAN). The dampening parameter slows down the trend, making it non-linear. An example of data that corresponds to ETS(A,Ad,N) is provided in Figure \@ref(fig:ETSAAdNExample).
 
 ```{r ETSAAdNExample, fig.cap="An example of ETS(A,Ad,N) data."}
-y <- sim.es("AAdN", 120, 1, 12, persistence=c(0.3,0.1),
-            initial=c(1000,20), phi=0.95, mean=0, sd=20)
-plot(y)
+sim.es("AAdN", 120, 1, 12, persistence=c(0.3,0.1),
+       initial=c(1000,20), phi=0.95, mean=0, sd=20) |>
+    plot()
 ```
 
 Visually it is typically challenging to distinguish ETS(A,A,N) from ETS(A,Ad,N) data. So, some other model selection techniques are recommended (see Section \@ref(ETSSelection)).
 
-The point forecast from this model is a bit more complicated (see Section \@ref(ETSTaxonomyMaths)):
+The point forecast from this model is a bit more complicated than the one from ETS(A,A,N) (see Section \@ref(ETSTaxonomyMaths)):
 \begin{equation}
     \mu_{y,t+h|t} = \hat{y}_{t+h} = l_{t} + \sum_{j=1}^h \phi^j b_t.
   (\#eq:ETSAAdNForecast)
@@ -666,15 +673,15 @@ The point forecast from this model is a bit more complicated (see Section \@ref(
 It corresponds to the slowing down trajectory, as shown in Figure \@ref(fig:ETSAAdNExampleForecast).
 
 ```{r ETSAAdNExampleForecast, fig.cap="A point forecast from ETS(A,Ad,N).", echo=FALSE}
-esModel <- es(y, h=10)
-plot(esModel,7)
+es(y, h=10) |>
+    plot(which=7)
 ```
 
 As can be seen in Figure \@ref(fig:ETSAAdNExampleForecast), the forecast trajectory from the ETS(A,Ad,N) has a slowing down element in it. This is because of the $\phi=0.95$ in our example.
 
 
 ### ETS(A,A,M) {#ETSAAMModel}
-Finaly, this is an exotic model with additive error and trend, but multiplicative seasonality. Still, we list it here, because it underlies the **Holt-Winters method** [@Winters1960]:
+Finally, this is an exotic model with additive error and trend, but multiplicative seasonality. It can be considered exotic because of the misalignment of the error and seasonality. Still, we list it here, because it underlies the **Holt-Winters method** [@Winters1960]:
 \begin{equation}
   \begin{aligned}
     & y_{t} = (l_{t-1} + b_{t-1}) s_{t-m} + \epsilon_t \\
@@ -684,23 +691,23 @@ Finaly, this is an exotic model with additive error and trend, but multiplicativ
   \end{aligned} ,
   (\#eq:ETSAAM)
 \end{equation}
-where $s_t$ is the seasonal component and $\gamma$ is its smoothing parameter. This is one of the potentially unstable models, which due to the mix of components, might produce unreasonable forecasts because the seasonal component might become negative, while in the multiplicative model, it should always be positive. Still, it might work on the strictly positive high-level data. Figure \@ref(fig:ETSAAMExample) shows how the data for this model can look like.
+where $s_t$ is the seasonal component and $\gamma$ is its smoothing parameter. This is one of the potentially unstable models, which due to the mix of components, might produce unreasonable forecasts because the seasonal component might become negative, while it should always be positive. Still, it might work on the strictly positive high-level data. Figure \@ref(fig:ETSAAMExample) shows how the data for this model can look.
 
 ```{r ETSAAMExample, fig.cap="An example of ETS(A,A,M) data."}
-y <- sim.es("AAM", 120, 1, 4, persistence=c(0.3,0.05,0.2),
-            initial=c(1000,20), initialSeason=c(0.9,1.1,0.8,1.2),
-            mean=0, sd=20)
-plot(y)
+sim.es("AAM", 120, 1, 4, persistence=c(0.3,0.05,0.2),
+       initial=c(1000,20), initialSeason=c(0.9,1.1,0.8,1.2),
+            mean=0, sd=20) |>
+    plot()
 ```
 
 The data in Figure \@ref(fig:ETSAAMExample) exhibits an additive trend with increasing seasonal amplitude, which are the two characteristics of the model.
 
-Finally, the point forecast from this model build upon the ETS(A,A,N), introducing seasonal component:
+Finally, the point forecast from this model builds upon the ETS(A,A,N), introducing seasonal component:
 \begin{equation}
     \hat{y}_{t+h} = (l_{t} + h b_t) s_{t+h-m\lceil\frac{h}{m}\rceil},
   (\#eq:ETSAAAForecast)
 \end{equation}
-where $\lceil\frac{h}{m}\rceil$ is the rounded up value of the fraction in the brackets. The point forecast from this model is shown in Figure \@ref(fig:ETSAAMExampleForecast).
+where $\lceil\frac{h}{m}\rceil$ is the rounded up value of the fraction in the brackets, implying that the seasonal index from the previous period is used (e.g. previous January value). The point forecast from this model is shown in Figure \@ref(fig:ETSAAMExampleForecast).
 
 ```{r ETSAAMExampleForecast, fig.cap="A point forecast from ETS(A,A,M).", echo=FALSE}
 esModel <- es(y, h=10)
@@ -712,7 +719,7 @@ plot(esModel, 7)
 The point forecasts produced from this model do not correspond to the conditional expectations. This will be discussed in Section \@ref(ADAMETSMixedModelsGroup3).
 :::
 
-@Hyndman2008b argue that in ETS models, the error term should be aligned with the seasonal component because it is difficult to motivate why the amplitude of seasonality increases with the increase of level, while the variability of the error term stays the same. So, they recommend using ETS(M,A,M) instead of ETS(A,A,M) if you deal with positive high volume data. This is a reasonable recommendation, but keep in mind that both models might break if you deal with low volume data.
+@Hyndman2008b argue that in ETS models, the error term should be aligned with the seasonal component because it is difficult to motivate why the amplitude of seasonality should increase with the increase of level, while the variability of the error term should stay the same. So, they recommend using ETS(M,A,M) instead of ETS(A,A,M) if you deal with positive high volume data. This is a reasonable recommendation, but keep in mind that both models might break if you deal with the low volume data and the trend component becomes negative.
 
 
 ## ETS assumptions, estimation and selection

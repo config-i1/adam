@@ -135,9 +135,9 @@ The functions in R typically allow selecting between additive and multiplicative
 An example of the classical decomposition in R is the `decompose()` function from `stats` package. Here is an example with pure multiplicative model and `AirPassengers` data (Figure \@ref(fig:decomposeAirPassengers)).
 
 ```{r decomposeAirPassengers, fig.cap="Decomposition of AirPassengers time series according to multiplicative model."}
-ourDecomposition <- decompose(AirPassengers,
-                              type="multiplicative")
-plot(ourDecomposition)
+decompose(AirPassengers,
+          type="multiplicative") |>
+    plot()
 ```
 
 We can see from Figure \@ref(fig:decomposeAirPassengers) that the function has smoothed the original series and produced the seasonal indices. Note that the trend component has gaps at the beginning and the end. This is because the method relies on CMA (see above). Note also that the error term still contains some seasonal elements, which is a downside of such a simple decomposition procedure. However, the lack of precision in this method is compensated by the simplicity and speed of calculation. Note again that the trend component in `decompose()` function is in fact $d_t = l_{t}+b_{t}$.
@@ -145,9 +145,9 @@ We can see from Figure \@ref(fig:decomposeAirPassengers) that the function has s
 Figure \@ref(fig:decomposeRandomNoise) shows an example of decomposition of the **non-seasonal data** (we assume pure additive model in this example).
 
 ```{r decomposeRandomNoise, fig.cap="Decomposition of AirPassengers time series according to additive model."}
-y <- ts(c(1:100)+rnorm(100,0,10),frequency=12)
-ourDecomposition <- decompose(y, type="additive")
-plot(ourDecomposition)
+ts(c(1:100)+rnorm(100,0,10),frequency=12) |>
+    decompose(type="additive") |>
+    plot()
 ```
 
 As we can see from Figure \@ref(fig:decomposeRandomNoise), the original data is not seasonal, but the decomposition assumes that it is and proceeds with the default approach returning a seasonal component. You get what you ask for.
@@ -195,10 +195,10 @@ The statistical model underlying Naïve is called the "Random Walk" and is writt
 The variability of $\epsilon_t$ will impact the speed of change of the data: the higher it is, the more rapid the values will change. Random Walk and Naïve can be represented in Figure \@ref(fig:naiveExample). In the example of R code below, we use a simple moving average (discussed later in Section \@ref(SMA)) of order 1 to generate the data from Random Walk and then produce forecasts using Naïve.
 
 ```{r naiveExample, fig.cap="A Random Walk example."}
-y <- sim.sma(1, 120)
-testModel <- sma(y, order=1,
-                 h=10, holdout=TRUE)
-plot(testModel, 7, main="")
+sim.sma(1, 120) |>
+    sma(order=1,
+        h=10, holdout=TRUE) |>
+    plot(which=7, main="")
 ```
 
 As shown from the plot in Figure \@ref(fig:naiveExample), Naïve lags behind the actual time series by one observation because of how it is constructed via equation \@ref(eq:Naive). The point forecast corresponds to the straight line parallel to the x-axis. Given that the data was generated from Random Walk, the point forecast shown in Figure \@ref(fig:naiveExample) is the best possible forecast for the time series, even though it exhibits rapid changes in the level.
@@ -220,10 +220,10 @@ where $T$ is the sample size. The model underlying this forecasting method is ca
 so that the $\bar{y}$ is an estimate of the fixed expectation $\mu$. Graphically, this is represented with a straight line going through the series as shown in Figure \@ref(fig:globalMeanExample).
 
 ```{r globalMeanExample, fig.cap="A global level example."}
-y <- rnorm(120, 100, 10)
-testModel <- es(y, "ANN", persistence=0,
-                 h=10, holdout=TRUE)
-plot(testModel, 7, main="")
+rnorm(120, 100, 10) |>
+    es("ANN", persistence=0,
+       h=10, holdout=TRUE) |>
+    plot(which=7, main="")
 ```
 
 The series shown in Figure \@ref(fig:globalMeanExample) is generated from the global level model, and the point forecast corresponds to the forecast from the global mean method. Note that the method assumes that the weights of the in-sample observations are equal, i.e. the first observation has precisely the exact weight of $\frac{1}{T}$ as the last one (being as important as the last one). Suppose the series exhibits some changes in level over time. In that case, the global mean will not be suitable because it will produce the averaged out forecast, considering values for parts before and after the change. However, Global Mean works well in many demand forecasting tasks and is a decent benchmark on intermittent data (discussed in Chapter \@ref(ADAMIntermittent)).
@@ -243,21 +243,21 @@ which implies going through time series with something like a "window" of $m$ ob
 y <- sim.sma(10,120)
 par(mfcol=c(2,2), mar=c(2,2,2,1))
 # SMA(1)
-testModel <- sma(y$data, order=1,
-                 h=10, holdout=TRUE)
-plot(testModel, 7, main=testModel$model)
+sma(y$data, order=1,
+    h=10, holdout=TRUE) |>
+    plot(which=7)
 # SMA(10)
-testModel <- sma(y$data, order=10,
-                 h=10, holdout=TRUE)
-plot(testModel, 7, main=testModel$model)
+sma(y$data, order=10,
+    h=10, holdout=TRUE) |>
+    plot(which=7)
 # SMA(20)
-testModel <- sma(y$data, order=20,
-                 h=10, holdout=TRUE)
-plot(testModel, 7, main=testModel$model)
+sma(y$data, order=20,
+    h=10, holdout=TRUE) |>
+    plot(which=7)
 # SMA(110)
-testModel <- sma(y$data, order=110,
-                 h=10, holdout=TRUE)
-plot(testModel, 7, main=testModel$model)
+sma(y$data, order=110,
+    h=10, holdout=TRUE) |>
+    plot(which=7)
 ```
 
 Figure \@ref(fig:SMAExample) demonstrates the time series generated from SMA(10) and several SMA models applied to it. We can see that the higher orders of SMA lead to smoother fitted lines and calmer point forecasts. On the other hand, the SMA of a very high order, such as SMA(110), does not follow the changes in time series efficiently, ignoring the potential changes in level. Given the difficulty with selecting the order $m$, @Svetunkov2017 proposed using information criteria for the order selection of SMA in practice.
@@ -279,11 +279,11 @@ where $a_1$ is a constant term, the introduction of which leads to increasing or
 implying that the forecast from the model is a straight line with the slope parameter $a_1$. Figure \@ref(fig:RWDriftExample) shows how the data generated from Random Walk with drift and $a_1=10$ looks like. This model is discussed in Subsection \@ref(Differences).
 
 ```{r RWDriftExample, fig.cap="Random Walk with drift data and the model applied to that data."}
-y <- sim.ssarima(orders=list(i=1), lags=1, obs=120,
-                 constant=10)
-testModel <- msarima(y, orders=list(i=1), constant=TRUE,
-                     h=10, holdout=TRUE)
-plot(testModel, 7, main="")
+sim.ssarima(orders=list(i=1), lags=1, obs=120,
+            constant=10) |>
+    msarima(orders=list(i=1), constant=TRUE,
+            h=10, holdout=TRUE) |>
+    plot(which=7, main="")
 ```
 
 The data in Figure \@ref(fig:RWDriftExample) demonstrates a positive trend (because $a_1>0$) and randomness from one observation to another. The model is helpful as a benchmark and a special case for several other models because it is simple and requires the estimation of only one parameter.
@@ -329,9 +329,9 @@ Similar to Naïve, the higher variability of the error term $\epsilon_t$ in \@re
 ```{r NaiveSeasonalExample, fig.cap="Seasonal Random Walk and Seasonal Naïve."}
 y <- sim.ssarima(orders=list(i=1), lags=4,
                  obs=120, sd=50)
-testModel <- msarima(y$data, orders=list(i=1), lags=4,
-                     h=10, holdout=TRUE)
-plot(testModel, 7, main="")
+msarima(y$data, orders=list(i=1), lags=4,
+        h=10, holdout=TRUE) |>
+    plot(which=7, main="")
 ```
 
 Similarly to the previous methods, if other approaches cannot outperform seasonal Naïve, it is not worth spending time on those approaches.
@@ -352,40 +352,37 @@ Also, notice that this is a recursive method, meaning that there needs to be som
 Here is an example of how this method works on different time series. We start with generating a stationary series and using `es()` function from `smooth` package. Although it implements the ETS model, we will see in Section \@ref(SESandETS) the connection between SES and ETS(A,N,N). We start with the stationary time series and $\hat{\alpha}=0$:
 
 ```{r SESExample1, fig.cap="An example with a time series and SES forecast. $\\hat{\\alpha}=0$"}
-y <- rnorm(100,100,10)
-ourModel <- es(y, model="ANN", h=10, persistence=0)
-plot(ourModel, 7, main="")
+rnorm(100,100,10) |>
+    es(model="ANN", h=10, persistence=0) |>
+    plot(which=7, main="")
 ```
 
 As we see from Figure \@ref(fig:SESExample1), the SES works well in this case, capturing the deterministic level of the series and filtering out the noise. In this case, it works like a global average applied to the data. As mentioned before, the method is flexible, so if we have a level shift in the data and increase the smoothing parameter, it will adapt and get to the new level. Figure \@ref(fig:SESExample2) shows an example with a level shift in the data.
 
 ```{r SESExample2, fig.cap="An example with a time series and SES forecast. $\\hat{\\alpha}=0.1$"}
 y <- c(rnorm(50,100,10),rnorm(50,130,10))
-ourModel <- es(y, model="ANN", h=10, persistence=0.1)
-plot(ourModel, 7, main="")
+es(y, model="ANN", h=10, persistence=0.1) |>
+    plot(7, main="")
 ```
 
 With $\hat{\alpha}=0.1$, SES manages to get to the new level, but now the method starts adapting to noise a little bit -- it follows the peaks and troughs and repeats them with a lag, but with a much smaller magnitude (see Figure \@ref(fig:SESExample2)). Increasing the smoothing parameter, the model will react to the changes much faster, at the cost of responding more to noise. This is shown in Figure \@ref(fig:SESExamples) with different smoothing parameters values.
 
 ```{r SESExamples, fig.cap="SES with different smoothing parameters applied to the same data.", echo=FALSE}
 par(mfcol=c(3,1), mar=c(2,2,3,1))
-ourModel <- es(y, model="ANN", h=10, persistence=0.1)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
-ourModel <- es(y, model="ANN", h=10, persistence=0.3)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
-ourModel <- es(y, model="ANN", h=10, persistence=0.5)
-plot(ourModel, 7, main=paste0("SES with alpha=",
-                              ourModel$persistence))
+es(y, model="ANN", h=10, persistence=0.1) |>
+    plot(which=7, main="SES with alpha=0.1")
+es(y, model="ANN", h=10, persistence=0.3) |>
+    plot(which=7, main="SES with alpha=0.3")
+es(y, model="ANN", h=10, persistence=0.5) |>
+    plot(which=7, main="SES with alpha=0.5")
 ```
 
 If we set $\hat{\alpha}=1$, we will end up with Naive forecasting method (see Section \@ref(Naive)), which is not appropriate for our example (see Figure \@ref(fig:SESExampleNaive)).
 
 ```{r SESExampleNaive, fig.cap="SES with $\\hat{\\alpha}=1$.", echo=FALSE}
 par(mfcol=c(1,1))
-ourModel <- es(y, model="ANN", h=10, persistence=1)
-plot(ourModel, 7, main="")
+es(y, model="ANN", h=10, persistence=1) |>
+    plot(which=7, main="")
 ```
 
 So, when working with SES, we need to make sure that the reasonable smoothing parameter is selected. This can be done automatically via minimising the in-sample MSE (see Figure \@ref(fig:SESExample3)):
