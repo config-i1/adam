@@ -4,18 +4,18 @@
 
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <title>Chapter 15 Model selection and combinations in ADAM | Forecasting and Analytics with ADAM</title>
+  <title>4.5 ETS basic assumptions and principles | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
   <meta name="generator" content="bookdown 0.29 and GitBook 2.6.7" />
 
-  <meta property="og:title" content="Chapter 15 Model selection and combinations in ADAM | Forecasting and Analytics with ADAM" />
+  <meta property="og:title" content="4.5 ETS basic assumptions and principles | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
   
   <meta property="og:description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
   <meta name="github-repo" content="config-i1/adam" />
 
   <meta name="twitter:card" content="summary" />
-  <meta name="twitter:title" content="Chapter 15 Model selection and combinations in ADAM | Forecasting and Analytics with ADAM" />
+  <meta name="twitter:title" content="4.5 ETS basic assumptions and principles | Forecasting and Analytics with ADAM" />
   
   <meta name="twitter:description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
   
@@ -30,8 +30,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   
   
-<link rel="prev" href="diagnosticsMulticollinearity.html"/>
-<link rel="next" href="ETSSelection.html"/>
+<link rel="prev" href="ETSExamples.html"/>
+<link rel="next" href="ETSConventionalModel.html"/>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
@@ -586,60 +586,40 @@ div.csl-indent {
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<div id="ADAMSelection" class="section level1 hasAnchor" number="15">
-<h1><span class="header-section-number">Chapter 15</span> Model selection and combinations in ADAM<a href="ADAMSelection.html#ADAMSelection" class="anchor-section" aria-label="Anchor link to header"></a></h1>
-<p>So far, we have managed to avoid discussing the topic of model selection and combinations. However, it is important to understand how to select the most appropriate model and capture the uncertainty around the selection <span class="citation">(see discussion of sources of uncertainty in Section 1.4 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022a</a>)</span>. There are several ways to decide which model to use, and there are several dimensions in which a decision needs to be made:</p>
+<div id="ets-basic-assumptions-and-principles" class="section level2 hasAnchor" number="4.5">
+<h2><span class="header-section-number">4.5</span> ETS basic assumptions and principles<a href="ets-basic-assumptions-and-principles.html#ets-basic-assumptions-and-principles" class="anchor-section" aria-label="Anchor link to header"></a></h2>
+<p>Several assumptions need to hold for the conventional ETS models to work properly. Some of them have already been discussed in Section <a href="modelsMethods.html#assumptions">1.4.1</a>, and we will come back to them in Chapter <a href="diagnostics.html#diagnostics">14</a>. What is important in our context is that the conventional ETS assumes that the error term <span class="math inline">\(\epsilon_t\)</span> follows the Normal distribution with zero mean and variance <span class="math inline">\(\sigma^2\)</span>. There are several points related to this that need to be clarified:</p>
 <ol style="list-style-type: decimal">
-<li>Which of the models to use: ETS / ARIMA / ETS+ARIMA / Regression / ETSX / ARIMAX / ETSX+ARIMA?</li>
-<li>What components of the ETS model to select?</li>
-<li>What order of ARIMA model to select?</li>
-<li>Which of the explanatory variables to use?</li>
-<li>What distribution to use?</li>
-<li>Should we select the model or combine forecasts from different ones?</li>
-<li>Do we need all models in the pool?</li>
-<li>How should we do all the above?</li>
-<li>What about the demand occurrence part of the model? (luckily, this question has already been answered in Subsection <a href="ADAMOccurrence.html#oETSModelSelection">13.1.6</a>).</li>
+<li>If the mean was not equal to zero then, for example, the level models would act as models with drift (see Subsection <a href="simpleForecastingMethods.html#RWWithDrift">3.3.4</a>). This implies that the architecture of the model should change, and the conventional ETS models cannot be efficiently applied to such data. Furthermore, correctly estimating such models would not be straightforward, because ETS exhibits “pull to centre” effect, where the predicted value gets closer to the actual one based on the forecast error of the model. As a result, it would be challenging to capture the non-zero mean of the error term. So, <strong>the zero mean assumption is essential</strong> for such dynamic models as ETS. For the multiplicative error models, this translates into <span class="math inline">\(\mathrm{E}(1+\epsilon_t)=1\)</span>.</li>
+<li>As it is well known, the normal distribution is defined for positive, negative and zero values. This is not a big deal for additive models, which assume that the actual value can be anything, and it is not an issue for the multiplicative models when we deal with high-level positive data (e.g. thousands of units): in this case, the variance of the error term will be small enough, protecting it from becoming negative. However, if the level of the data is low, then the variance of the error term can be large enough for the normally distributed error to cover negative values. And if the error term <span class="math inline">\(1+\epsilon_t\)</span> becomes negative the model will break. This is a potential flaw in the conventional ETS model with the multiplicative error term. So, what the standard multiplicative error ETS model actually assumes, is that <strong>the data we work with is strictly positive and has high-level values</strong>.</li>
 </ol>
-<p>In this chapter, we discuss these questions. We start with principles based on information criteria <span class="citation">(addressed in Chapter 16 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022a</a>)</span> for ETS and ARIMA. We then move to selecting explanatory variables and finish with topics related to the combination of models.</p>
-<p>Before we do that, we need to recall the distributional assumptions in ADAM, which play an essential role if the model is estimated via the maximisation of the likelihood function (Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>). In this case, an information criterion (IC) can be calculated and used for the selection of the most appropriate model. Based on this, we can fit several ADAMs with different distributions and then select the one that leads to the lowest IC. Here is the list of the supported distributions in ADAM:</p>
-<ul>
-<li>Normal;</li>
-<li>Laplace;</li>
-<li>S;</li>
-<li>Generalised Normal;</li>
-<li>Log-Normal;</li>
-<li>Inverse Gaussian;</li>
-<li>Gamma.</li>
-</ul>
-<p>The function <code>auto.adam()</code> implements this automatic selection of distribution based on IC for the provided vector of <code>distribution</code> by a user. This selection procedure can be combined with other selection techniques for different elements of the ADAM discussed in the following sections of the monograph.</p>
-<p>Here is an example of selection of distribution for a specific model, ETS(M,M,N) on Box-Jenkins data using <code>auto.adam()</code>:</p>
-<div class="sourceCode" id="cb307"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb307-1"><a href="ADAMSelection.html#cb307-1" aria-hidden="true" tabindex="-1"></a>adamAutoETSBJ <span class="ot">&lt;-</span> <span class="fu">auto.adam</span>(BJsales, <span class="at">model=</span><span class="st">&quot;MMN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb307-2"><a href="ADAMSelection.html#cb307-2" aria-hidden="true" tabindex="-1"></a>adamAutoETSBJ</span></code></pre></div>
-<pre><code>## Time elapsed: 0.25 seconds
-## Model estimated using auto.adam() function: ETS(MMN)
-## Distribution assumed in the model: Log-Normal
-## Loss function type: likelihood; Loss function value: 245.3716
-## Persistence vector g:
-##  alpha   beta 
-## 1.0000 0.2406 
-## 
-## Sample size: 140
-## Number of estimated parameters: 5
-## Number of degrees of freedom: 135
-## Information criteria:
-##      AIC     AICc      BIC     BICc 
-## 500.7432 501.1909 515.4514 516.5577 
-## 
-## Forecast errors:
-## ME: 3.219; MAE: 3.332; RMSE: 3.786
-## sCE: 14.133%; Asymmetry: 91.6%; sMAE: 1.463%; sMSE: 0.028%
-## MASE: 2.819; RMSSE: 2.484; rMAE: 0.925; rRMSE: 0.922</code></pre>
-<p>In this case, the function has applied one and the same model but with different distributions, estimated it using likelihood and selected the one that has the lowest AICc value. It looks like log-normal is the most appropriate distribution for ETS(M,M,N) on this data.</p>
+<p>Based on the assumption of normality of error term, the ETS model can be estimated via the maximisation of likelihood (discussed in Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>), which is equivalent to the minimisation of the mean squared one step ahead forecast error <span class="math inline">\(e_t\)</span>. Note that in order to apply the ETS models to the data, we also need to know the initial values of components, <span class="math inline">\(\hat{l}_0, \hat{b}_0, \hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}\)</span>. The conventional approach is to estimate these values together with the smoothing parameters during likelihood maximisation. As a result, the optimisation might involve a large number of parameters. In addition, the variance of the error term is considered as an additional parameter in the maximum likelihood estimation, so the number of parameters for different models is (here “*” stands for any type):</p>
+<ol style="list-style-type: decimal">
+<li>ETS(*,N,N) – 3 parameters: <span class="math inline">\(\hat{l}_0\)</span>, <span class="math inline">\(\hat{\alpha}\)</span> and <span class="math inline">\(\hat{\sigma}^2\)</span>;</li>
+<li>ETS(*,*,N) – 5 parameters: <span class="math inline">\(\hat{l}_0\)</span>, <span class="math inline">\(\hat{b}_0\)</span>, <span class="math inline">\(\hat{\alpha}\)</span>, <span class="math inline">\(\hat{\beta}\)</span> and <span class="math inline">\(\hat{\sigma}^2\)</span>;</li>
+<li>ETS(*,*d,N) – 6 parameters: <span class="math inline">\(\hat{l}_0\)</span>, <span class="math inline">\(\hat{b}_0\)</span>, <span class="math inline">\(\hat{\alpha}\)</span>, <span class="math inline">\(\hat{\beta}\)</span>, <span class="math inline">\(\hat{\phi}\)</span> and <span class="math inline">\(\hat{\sigma}^2\)</span>;</li>
+<li>ETS(*,N,*) – 4+m-1 parameters: <span class="math inline">\(\hat{l}_0\)</span>, <span class="math inline">\(\hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}\)</span>, <span class="math inline">\(\hat{\alpha}\)</span>, <span class="math inline">\(\hat{\gamma}\)</span> and <span class="math inline">\(\hat{\sigma}^2\)</span>;</li>
+<li>ETS(*,*,*) – 6+m-1 parameters: <span class="math inline">\(\hat{l}_0\)</span>, <span class="math inline">\(\hat{b}_0\)</span>, <span class="math inline">\(\hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}\)</span>, <span class="math inline">\(\hat{\alpha}\)</span>, <span class="math inline">\(\hat{\beta}\)</span>, <span class="math inline">\(\hat{\gamma}\)</span> and <span class="math inline">\(\hat{\sigma}^2\)</span>;</li>
+<li>ETS(*,*d,*) – 7+m-1 parameters: <span class="math inline">\(\hat{l}_0\)</span>, <span class="math inline">\(\hat{b}_0\)</span>, <span class="math inline">\(\hat{s}_{-m+2}, \hat{s}_{-m+3}, \dots, \hat{s}_{0}\)</span>, <span class="math inline">\(\hat{\alpha}\)</span>, <span class="math inline">\(\hat{\beta}\)</span>, <span class="math inline">\(\hat{\gamma}\)</span>, <span class="math inline">\(\hat{\phi}\)</span> and <span class="math inline">\(\hat{\sigma}^2\)</span>.</li>
+</ol>
+<div class="remark">
+<p><span id="unlabeled-div-17" class="remark"><em>Remark</em>. </span>In the case of seasonal models, we typically make sure that the initial seasonal indices are normalised, so we only need to estimate <span class="math inline">\(m-1\)</span> of them, the last one is calculated based on the linear combination of the others. For example, for the additive seasonality, it is equal to <span class="math inline">\(-\sum_{j=1}^{m-1} s_j\)</span> because the sum of all the indices should be equal to zero.</p>
+</div>
+<p>When it comes to selecting the most appropriate model, the conventional approach involves the application of all models to the data and then selecting the most appropriate of them based on an information criterion (Section <a href="ETSSelection.html#ETSSelection">15.1</a>). This was first proposed by <span class="citation">Hyndman et al. (<a href="#ref-Hyndman2002" role="doc-biblioref">2002</a>)</span>. In the case of the conventional ETS model, this relies on the likelihood value of normal distribution used in the estimation of the model.</p>
+<p>Finally, the assumption of normality is used to generate prediction interval from the model. There are typically two ways of doing that:</p>
+<ol style="list-style-type: decimal">
+<li>Calculating the variance of multiple steps ahead forecast error and then using it for the intervals construction (see Chapter 6 of <span class="citation">Hyndman et al. (<a href="#ref-Hyndman2008b" role="doc-biblioref">2008</a>)</span> or Sections <a href="pureAdditiveExpectationAndVariance.html#pureAdditiveExpectationAndVariance">5.3</a> and <a href="ADAMForecastingMoments.html#ADAMForecastingMoments">18.2</a>);</li>
+<li>Generating thousands of possible paths for the components of the series and the actual values and then taking the necessary quantiles for the prediction intervals (see Section <a href="ADAMForecastingSimulations.html#ADAMForecastingSimulations">18.1</a> for details).</li>
+</ol>
+<p>Typically, (1) is applied for the pure additive models, where the closed forms for the variances are known, and the assumption of normality holds for several steps ahead. In some special cases of mixed models, approximations for variances work on short horizons <span class="citation">(see Section 6.4 of <a href="#ref-Hyndman2008b" role="doc-biblioref">Hyndman et al., 2008</a>)</span>. But in all the other cases, (2) should be used, despite being typically slower than (1) and producing bounds that differ slightly from run to run due to randomness.</p>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
-<div id="ref-SvetunkovSBA" class="csl-entry">
-• Svetunkov, I., 2022a. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 31.10.2022)
+<div id="ref-Hyndman2008b" class="csl-entry">
+• Hyndman, R.J., Koehler, A.B., Ord, J.K., Snyder, R.D., 2008. <span class="nocase">Forecasting with Exponential Smoothing</span>. Springer Berlin Heidelberg.
+</div>
+<div id="ref-Hyndman2002" class="csl-entry">
+• Hyndman, R.J., Koehler, A.B., Snyder, R.D., Grose, S., 2002. <span class="nocase">A state space framework for automatic forecasting using exponential smoothing methods</span>. International Journal of Forecasting. 18, 439–454. <a href="https://doi.org/10.1016/S0169-2070(01)00110-8">https://doi.org/10.1016/S0169-2070(01)00110-8</a>
 </div>
 </div>
 
@@ -648,8 +628,8 @@ div.csl-indent {
           </div>
         </div>
       </div>
-<a href="diagnosticsMulticollinearity.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-<a href="ETSSelection.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="ETSExamples.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="ETSConventionalModel.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
@@ -680,7 +660,7 @@ gitbook.start({
 "size": 2
 },
 "edit": {
-"link": "https://github.com/config-i1/adam/tree/master/Chapters//15-ADAM-Selection.Rmd",
+"link": "https://github.com/config-i1/adam/tree/master/Chapters//04-ETS-Methods.Rmd",
 "text": "Edit"
 },
 "history": {
