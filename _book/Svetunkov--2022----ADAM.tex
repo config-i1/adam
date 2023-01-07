@@ -142,7 +142,7 @@
 
 \title{Forecasting and Analytics with ADAM}
 \author{Ivan Svetunkov}
-\date{2023-01-02}
+\date{2023-01-07}
 
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}[chapter]
@@ -403,7 +403,7 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well behaved data, point forecast and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 81.06 and 120.9. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 82.35 and 122.36. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For a more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 6 of \citet{SvetunkovSBA}.
 
@@ -1146,7 +1146,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.07339956 0.06575116 0.05275014
+## 0.04572575 0.05299617 0.05012422
 \end{verbatim}
 
 In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with an alternative one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(0,2,2) to the same data, we will get:
@@ -1164,7 +1164,7 @@ In this example, we use the \texttt{apply()} function to distinguish between the
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.08527950 0.08659004 0.07157330
+## 0.04707129 0.05430745 0.05883006
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.
@@ -2907,22 +2907,32 @@ As you see, the admissible bounds are much wider than the conventional and usual
 \hypertarget{ADAMETSIntroduction}{%
 \chapter{Pure additive ADAM ETS}\label{ADAMETSIntroduction}}
 
-Now that we are familiar with the conventional ETS, we can move to the discussion of ADAM implementation of ETS, which has several important differences from the classical one. We start the discussion with the pure additive models, which are much easier to work with than other ETS models. This chapter focuses on technical details of the model, discussing general formulation in algebraic form, then moving to recursive relations, which are needed to understand how to produce forecasts from the model and how to estimate it correctly (i.e.~impose restrictions on the parameters). Finally, we discuss the distributional assumptions for ADAM ETS, introducing not only the Normal distribution but also showing how to use Laplace, S, Generalised Normal, Log-Normal, Gamma and Inverse Gaussian distributions in the context.
+Now that we are familiar with the conventional ETS, we can move to the discussion of ADAM implementation of ETS, which has several important differences from the classical one. This chapter focuses on technical details of the pure additive model, discussing general formulation in algebraic form, then moving to recursive relations, which are needed to understand how to produce forecasts from the model and how to estimate it correctly (i.e.~impose restrictions on the parameters). Finally, we discuss the distributional assumptions for ADAM ETS, introducing not only the Normal distribution but also showing how to use Laplace, S, Generalised Normal, Log-Normal, Gamma and Inverse Gaussian distributions in the context.
 
 \hypertarget{ADAMETSPureAdditive}{%
 \section{Model formulation}\label{ADAMETSPureAdditive}}
 
 The pure additive case is interesting, because this is the group of models that have closed forms for both conditional mean and variance. In order to understand how we can get to the general model form, we consider an example of ETS(A,A,A) model, which, as discussed in Section \ref{ETSTaxonomyMaths}, is formulated as:
 \begin{equation}
-  \begin{aligned}
-    y_{t} = & l_{t-1} & + & b_{t-1} & + & s_{t-m} & + & \epsilon_t \\
-    l_t = & l_{t-1} & + & b_{t-1} & & & + & \alpha \epsilon_t \\
-    b_t = & & & b_{t-1} & & & + & \beta \epsilon_t \\
-    s_t = & & & & & s_{t-m} & + & \gamma \epsilon_t 
-  \end{aligned}.
+    \begin{aligned}
+        & y_t = l_{t-1} + b_{t-1} + s_{t-m} + \epsilon_{t} \\
+        & l_{t} = l_{t-1} + b_{t-1} + \alpha \epsilon_{t} \\ 
+        & b_{t} = b_{t-1} + \beta \epsilon_{t} \\
+        & s_{t} = s_{t-m} + \gamma \epsilon_{t}
+    \end{aligned}.
   \label{eq:ETSADAMAAA}
 \end{equation}
-The same model can be represented in the matrix form based on \eqref{eq:ETSADAMAAA}:
+This model can be formatted in the following way:
+\begin{equation}
+  \begin{aligned}
+    y_{t} = & l_{t-1} & + & b_{t-1} & + & s_{t-m} & + & \epsilon_t \\
+    l_t = & l_{t-1} & + & b_{t-1} & + & 0 & + & \alpha \epsilon_t \\
+    b_t = & 0 & + & b_{t-1} & + & 0 & + & \beta \epsilon_t \\
+    s_t = & 0 & + & 0 & + & s_{t-m} & + & \gamma \epsilon_t 
+  \end{aligned}
+  \label{eq:ETSADAMAAASimplified}
+\end{equation}
+to see how its elements can then be represented in the matrix form based on \eqref{eq:ETSADAMAAASimplified}:
 \begin{equation}
   \begin{aligned}
     y_t & = \begin{pmatrix} 1 & 1 & 1 \end{pmatrix}
@@ -2946,7 +2956,7 @@ The same model can be represented in the matrix form based on \eqref{eq:ETSADAMA
   \end{aligned}.
   \label{eq:ETSADAMAAAMatrixForm}
 \end{equation}
-I use spaces in equation \eqref{eq:ETSADAMAAA} to show how the matrix form is related to the general one. The positions of \(l_{t-1}\), \(b_{t-1}\) and \(s_{t-m}\) correspond to the non-zero values in the matrices in \eqref{eq:ETSADAMAAAMatrixForm}. Now we can give names to each matrix and vector, for example:
+I use spaces in equation \eqref{eq:ETSADAMAAASimplified} to show how the matrix form is related to the general one. The positions of \(l_{t-1}\), \(b_{t-1}\) and \(s_{t-m}\) correspond to the non-zero values in the matrices in \eqref{eq:ETSADAMAAAMatrixForm}. Now we can give names to each matrix and vector, for example:
 \begin{equation}
   \begin{aligned}
     \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \end{pmatrix}, & \mathbf{F} = \begin{pmatrix} 1 & 1 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{pmatrix}, & \mathbf{g} = \begin{pmatrix} \alpha \\ \beta \\ \gamma \end{pmatrix}, \\
@@ -3219,7 +3229,7 @@ The series in Figure \ref{fig:BJsalesDataPlot} seem to exhibit trend, so we will
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.02 seconds
+## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.8098
@@ -3343,7 +3353,7 @@ If we want to test ADAM ETS with another distribution, it can be done using the 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.03 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Generalised Normal with shape=1.741
 ## Loss function type: likelihood; Loss function value: 258.456
@@ -3769,7 +3779,7 @@ We can also compare the performance of ETS(M,M,N) with \(\Gamma\) distribution a
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.03 seconds
+## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 245.3872
@@ -3869,11 +3879,11 @@ If we want to calculate the error measures based on the conditional expectation,
 
 \begin{verbatim}
 ##            ME           MAE           MSE           MPE          MAPE 
-##  -5.184907863  15.594998425 481.512272094  -0.015468584   0.033886802 
+##  -5.415809114  15.499493032 479.628351360  -0.015900377   0.033738306 
 ##           sCE          sMAE          sMSE          MASE         RMSSE 
-##  -0.237031200   0.059411232   0.006988337   0.647526084   0.700347815 
+##  -0.247586991   0.059047392   0.006960995   0.643560566   0.698976414 
 ##          rMAE         rRMSE          rAME     asymmetry          sPIS 
-##   0.205197348   0.213091147   0.072855848  -0.200085540   2.043509863
+##   0.203940698   0.212673878   0.076100362  -0.213006953   2.089607655
 \end{verbatim}
 
 These can be compared with the measures from the ETS(A,A,A) model:
@@ -4935,7 +4945,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     578.4400     578.4389
+##     531.4876     531.3023
 \end{verbatim}
 
 \begin{Shaded}
@@ -4948,7 +4958,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     1162.880     1162.878
+##     1068.975     1068.605
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
@@ -4963,7 +4973,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##    0.1062805    0.1084086
+##    0.2281668    0.2618537
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related (Figure \ref{fig:ETSARIMAConnection}):
@@ -5914,7 +5924,7 @@ The ETS model closest to the logSARIMA(0,1,1)(0,1,1)\(_{12}\) would probably be 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.12 seconds
+## Time elapsed: 0.13 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.5176
@@ -6401,7 +6411,7 @@ This simple model already does a fine job fitting the data and producing forecas
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.1 seconds
+## Time elapsed: 0.09 seconds
 ## Model estimated using adam() function: ETS(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1125.509
@@ -6508,7 +6518,7 @@ In this specific case, the difference between the ETSX and ETSX\{D\} models is i
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.42 seconds
+## Time elapsed: 0.41 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.215
@@ -7629,7 +7639,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.48 seconds
+## Time elapsed: 0.49 seconds
 ## Model estimated using adam() function: ETS(MNM)[48, 336]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 25682.88
@@ -7680,7 +7690,7 @@ Next, we can plot the fitted values and forecasts to see how the model performs 
 \caption{\label{fig:adamModelETSMNM}The fit and the forecast of the ETS(M,N,M){[}48,336{]} model on half-hourly electricity demand data.}
 \end{figure}
 
-As we might notice from Figure \ref{fig:adamModelETSMNM} the model was constructed in 0.48 seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \ref{multistepLossesGTMSE}):
+As we might notice from Figure \ref{fig:adamModelETSMNM} the model was constructed in 0.49 seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \ref{multistepLossesGTMSE}):
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -7929,7 +7939,7 @@ Another model we can try on this data is ARIMA. We have not yet discussed the or
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.19 seconds
+## Time elapsed: 0.32 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.76
@@ -8826,7 +8836,7 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.07 seconds
+## Time elapsed: 0.06 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log-Normal
@@ -10151,7 +10161,7 @@ Here is an example of selection of distribution for a specific model, ETS(M,M,N)
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.24 seconds
+## Time elapsed: 0.23 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 245.3716
@@ -10248,7 +10258,7 @@ Here is an example with automatically selected ETS model using the branch-and-bo
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.07 seconds
+## Time elapsed: 1.01 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 467.2981
@@ -10352,7 +10362,7 @@ Based on the relation between ARIMA and ETS (see Section \ref{ARIMAandETS}), we 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.27 seconds
+## Time elapsed: 1.25 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -10735,16 +10745,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6486           254.8531            260.4397
-## 142 257.7038           253.3178            262.1103
-## 143 257.7556           251.7684            263.7423
-## 144 257.8005           250.3009            265.3212
-## 145 257.8544           248.7891            267.0498
-## 146 257.8991           247.2163            268.7254
-## 147 257.9559           245.7117            270.4192
-## 148 258.0178           244.1217            272.1134
-## 149 258.0634           242.4223            273.8345
-## 150 258.1136           240.8977            275.6288
+## 141 257.6634           254.8955            260.4464
+## 142 257.7096           253.3472            262.0919
+## 143 257.7834           251.8267            263.7417
+## 144 257.8296           250.2971            265.3357
+## 145 257.8890           248.7543            266.9932
+## 146 257.9388           247.3289            268.6177
+## 147 257.9786           245.6558            270.2590
+## 148 258.0223           244.1500            271.9032
+## 149 258.0573           242.4583            273.6226
+## 150 258.0877           240.7294            275.3314
 \end{verbatim}
 
 In order to see how the forecast looks like, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -10842,7 +10852,7 @@ Here is an example of how the function works on the data above -- it is possible
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.48 seconds
+## Time elapsed: 0.5 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamETSBJBoot\$vcov}. The same procedure is used in \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -10855,11 +10865,11 @@ The covariance matrix can then be extracted from the result via \texttt{adamETSB
 
 \begin{verbatim}
 ##        alpha   beta    phi  level  trend
-## alpha  0.008  0.001  0.000  0.006 -0.009
-## beta   0.001  0.006 -0.001 -0.016  0.023
-## phi    0.000 -0.001  0.012  0.054 -0.058
-## level  0.006 -0.016  0.054  0.507 -0.682
-## trend -0.009  0.023 -0.058 -0.682  0.987
+## alpha  0.015  0.001  0.002  0.014 -0.017
+## beta   0.001  0.007  0.001 -0.006  0.017
+## phi    0.002  0.001  0.010  0.042 -0.044
+## level  0.014 -0.006  0.042  0.514 -0.710
+## trend -0.017  0.017 -0.044 -0.710  1.059
 \end{verbatim}
 
 \hypertarget{confidence-intervals-for-parameters}{%
@@ -11639,7 +11649,7 @@ The \texttt{sm} function accepts roughly the same set of parameters as \texttt{a
 
 \begin{verbatim}
 ## **Scale Model**
-## Time elapsed: 0.13 seconds
+## Time elapsed: 0.14 seconds
 ## Model estimated using sm.adam() function: ETS(MNN)
 ## Distribution assumed in the model: Inverse Gaussian
 ## Loss function type: likelihood; Loss function value: 474.332
@@ -12288,7 +12298,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, w
 \caption{\label{fig:adamModeliETSCumulative}The actual cumulative demand (black dot), the expectation (the solid blue line) and the 95\% quantile of the distribution of the cumulative demand (the dashed grey line) based on iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 15 units, while the upper bound of the interval was approximately 30. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 31 units, while the upper bound of the interval was approximately 50. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section \ref{rollingOrigin}) or to a set of products to collect the distribution of related error measures.
 
