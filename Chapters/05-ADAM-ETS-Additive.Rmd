@@ -281,19 +281,19 @@ adamETSBJ <- adam(BJsales, "AAN")
 adamETSBJ
 ```
 
-The model's output summarises which specific model was constructed, assuming what distribution, how it was estimated, and the values of smoothing parameters. It also reports the sample size, the number of parameters, degrees of freedom and produces information criteria [see Section 16.4 of @SvetunkovSBA]. We can compare this model with the ETS(A,N,N) to see which of them performs better in terms of information criteria (e.g. in terms of AICc):
+The model's output summarises which specific model was constructed, what distribution was assumed, how the model was estimated, and also provides the values of smoothing parameters. It also reports the sample size, the number of parameters, degrees of freedom and produces information criteria [see Section 16.4 of @SvetunkovSBA]. We can compare this model with the ETS(A,N,N) to see which of them performs better in terms of information criteria (e.g. in terms of AICc):
 ```{r}
 adam(BJsales, "ANN")
 ```
 In this situation the AICc for ETS(A,N,N) is higher than for ETS(A,A,N), so we should use the latter for forecasting purposes. We can produce point forecasts and prediction interval (in this example we will construct 90% and 95% ones) and plot them (Figure \@ref(fig:BJsalesAANForecast)):
 
 ```{r BJsalesAANForecast, fig.cap="Forecast for Box-Jenkins sales data from ETS(A,A,N) model."}
-plot(forecast(adamETSBJ, h=10,
-              interval="prediction", level=c(0.9,0.95)),
-     main="")
+forecast(adamETSBJ, h=10,
+         interval="prediction", level=c(0.9,0.95)) |>
+    plot(main="")
 ```
 
-Notice that the smoothing parameters of ETS(A,A,N) are very high, with $\alpha=1$. This might mean that the maximum likelihood is achieved in the *admissible* bounds. We can try it out and see what happens:
+Notice that the bounds in Figure \@ref(fig:BJsalesAANForecast) are expanding fast, demonstrating that the components of the model exhibit high uncertainty, which is then reflected in the holdout sample. This is partially due to the high values of the smoothing parameters of ETS(A,A,N), with $\alpha=1$. While we typically want to have lower smoothing parameters, in this specific case this might mean that the maximum likelihood is achieved in the *admissible* bounds (i.e. data exhibits even higher variability than we expected with the usual bounds). We can try it out and see what happens:
 
 ```{r}
 adamETSBJ <- adam(BJsales, "AAN", bounds="admissible")
@@ -303,19 +303,21 @@ adamETSBJ
 Both smoothing parameters are now higher, which implies that the uncertainty about the future values of states is higher as well, which is then reflected in the slightly wider prediction interval (Figure \@ref(fig:BJsalesAANForecastAdmissible)):
 
 ```{r BJsalesAANForecastAdmissible, fig.cap="Forecast for Box-Jenkins sales data from ETS(A,A,N) model with admissible bounds."}
-plot(forecast(adamETSBJ, h=10,
-              interval="prediction", level=c(0.9,0.95)))
+forecast(adamETSBJ, h=10,
+         interval="prediction", level=c(0.9,0.95)) |>
+    plot(main="")
 ```
 
-Although the values of smoothing parameters are larger than one, the model is still stable. In order to see that, we can calculate the discount matrix $\mathbf{D}$ using the objects returned by the function:
+Although the values of smoothing parameters are higher than one, the model is still stable. In order to see that, we can calculate the discount matrix $\mathbf{D}$ using the objects returned by the function to reflect the formula $\mathbf{D}=\mathbf{F} -\mathbf{g}\mathbf{w}^\prime$:
 ```{r}
-discountMatrix <- adamETSBJ$transition - adamETSBJ$persistence %*%
-                  adamETSBJ$measurement[nobs(adamETSBJ),,drop=FALSE]
-eigen(discountMatrix)$values
+(adamETSBJ$transition - adamETSBJ$persistence %*%
+    adamETSBJ$measurement[nobs(adamETSBJ),,drop=FALSE]) |>
+    eigen(only.values=TRUE)
 ```
+
 Notice that the absolute values of both eigenvalues in the matrix are less than one, which means that the newer observations have higher weights than the older ones and that the absolute values of weights decrease over time, making the model stable.
 
-If we want to test ADAM ETS with another distribution, it can be done using the respective parameter (here we use Generalised Normal, estimating the shape together with the other parameters):
+If we want to test ADAM ETS with another distribution, it can be done using the respective parameter in the function (here we use Generalised Normal, estimating the shape together with the other parameters):
 ```{r}
 adamETSBJ <- adam(BJsales, "AAN", distribution="dgnorm")
 print(adamETSBJ, digits=3)
@@ -324,11 +326,11 @@ print(adamETSBJ, digits=3)
 Similar to the previous cases, we can plot the forecasts from the model:
 
 ```{r BJsalesAANForecastGN, fig.cap="Forecast for Box-Jenkins sales data from ETS(A,A,N) model with Generalised Normal distribution."}
-plot(forecast(adamETSBJ, h=10, interval="prediction"),
-     main="")
+forecast(adamETSBJ, h=10, interval="prediction") |>
+    plot(main="")
 ```
 
-The prediction interval in this case is slightly wider than in the previous one, because $\mathcal{GN}$ distribution with $\beta=$ `r round(adamETSBJ$other$shape,2)` has fatter tails than the normal distribution (Figure \@ref(fig:BJsalesAANForecastGN)).
+The prediction interval in this case is slightly wider than in the previous one, because $\mathcal{GN}$ distribution with $\beta=$ `r round(adamETSBJ$other$shape,2)` has fatter tails than the normal one (Figure \@ref(fig:BJsalesAANForecastGN)).
 
 
 ### Seasonal data {#ADAMETSPureAdditiveExamplesETSAAA}
@@ -336,7 +338,7 @@ The prediction interval in this case is slightly wider than in the previous one,
 plot(AirPassengers)
 ```
 
-Now we will check what happens in the case of seasonal data. We use `AirPassengers` data, plotted in Figure \@ref(fig:AirPassengersPlot), which has multiplicative seasonality. But for demonstration purposes, we will see what happens when we use the wrong model with additive seasonality. We will withhold 12 observations to look closer at the performance of the ETS(A,A,A) model in this case:
+Now we will check what happens in the case of seasonal data. We use `AirPassengers` data, plotted in Figure \@ref(fig:AirPassengersPlot), which apparently has multiplicative seasonality. But for demonstration purposes, we will see what happens when we use the wrong model with additive seasonality. We will withhold last 12 observations to look closer at the performance of the ETS(A,A,A) model in this case:
 
 ```{r}
 adamETSAir <- adam(AirPassengers, "AAA", lags=12,
@@ -344,7 +346,7 @@ adamETSAir <- adam(AirPassengers, "AAA", lags=12,
 ```
 
 ::: remark
-In this specific case, the `lags` parameter is not necessary because the function will automatically get the frequency from the `ts` object. If we were to provide a vector of values instead of the `ts` object, we would need to specify the correct lag. Note that `1` (lag for level and trend) is unnecessary; the function will always use it anyway.
+In this specific case, the `lags` parameter is not necessary because the function will automatically get the frequency from the `ts` object `AirPassengers`. If we were to provide a vector of values instead of the `ts` object, we would need to specify the correct lag. Note that `1` (lag for level and trend) is unnecessary; the function will always use it anyway.
 :::
 
 ::: remark
@@ -359,17 +361,18 @@ adamETSAir <- adam(AirPassengers, "AAA", lags=12,
 adamETSAir
 ```
 
-Notice that because we fit the seasonal additive model to the data with multiplicative seasonality, the smoothing parameter $\gamma$ has become large -- the seasonal component needs to be updated to keep up with the changing seasonal profile. In addition, because we use the `holdout` parameter, the function also reports the error measures for the point forecasts on that part of the data. This can be useful when comparing the performance of several models on a time series. Here is how the forecast from ETS(A,A,A) looks on this data:
+Notice that because we fit the seasonal additive model to the data with multiplicative seasonality, the smoothing parameter $\gamma$ has become large -- the seasonal component needs to be updated frequently to keep up with the changing seasonal profile. In addition, because we use the `holdout` parameter, the function also reports the error measures for the point forecasts on that part of the data. This can be useful when comparing the performance of several models on a time series. And here is how the forecast from ETS(A,A,A) looks on this data:
 
 ```{r AirPassengersAAAForecast, fig.cap="Forecast for air passengers data using ETS(A,A,A) model.", echo=FALSE}
-plot(forecast(adamETSAir, h=12, interval="prediction"))
+forecast(adamETSAir, h=12, interval="prediction") |>
+    plot()
 ```
 
 Figure \@ref(fig:AirPassengersAAAForecast) demonstrates that while the fit to the data is far from perfect, due to a pure coincidence, the point forecast from this model is decent.
 
-In order to see how the ADAM ETS decomposes the data into components, we can plot it via the `plot()` method with `which` parameter:
+In order to see how the ADAM ETS decomposes the data into components, we can plot it via the `plot()` method with `which=12` parameter:
 
-```{r AirPassengersAAADecomposition, fig.cap="Decomposition of air passengers data using ETS(A,A,A) model.", echo=FALSE}
+```{r AirPassengersAAADecomposition, fig.cap="Decomposition of air passengers data using ETS(A,A,A) model.", echo=TRUE}
 plot(adamETSAir, which=12)
 ```
 
