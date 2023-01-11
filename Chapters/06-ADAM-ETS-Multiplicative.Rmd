@@ -1,9 +1,9 @@
 # Pure multiplicative ADAM ETS {#ADAMETSPureMultiplicativeChapter}
-There is a reason why we discuss pure multiplicative ADAM ETS models separately: they are suitable for the positive data, especially when the level is low, yet they do not rely on prior data transformations (such as taking logarithms or applying a power transform). However, the models discussed in this chapter are not easy to work with -- they typically do not have closed forms for the conditional h steps ahead mean and variance and do not have well-defined parameters space. Furthermore, they make more sense in conjunction with positive-valued distributions, although they also work with the normal one. All these aspects are discussed in this chapter.
+There is a reason why we discuss pure multiplicative ADAM ETS models separately: they are suitable for the positive data, especially when the level is low, yet they do not rely on prior data transformations (such as taking logarithms or applying a power transform), which makes them useful in a variety of contexts. However, the models discussed in this chapter are not easy to work with -- they typically do not have closed forms for the conditional h steps ahead mean and variance and do not have well-defined parameters space. Furthermore, they make more sense in conjunction with positive-valued distributions, although they also work with the normal one. All these aspects are discussed in this chapter.
 
 
 ## Model formulation {#ADAMETSPureMultiplicative}
-The pure multiplicative ETS implemented in ADAM framework can be formulated using logarithms, similar to how the pure additive ADAM ETS is formulated in \@ref(eq:ETSADAMStateSpacePureAdditive):
+The pure multiplicative ETS implemented in ADAM framework can be formulated using logarithms in the following way:
 \begin{equation}
   \begin{aligned}
 		\log y_t = & \mathbf{w}^\prime \log(\mathbf{v}_{t-\boldsymbol{l}}) + \log(1 + \epsilon_{t}) \\
@@ -11,7 +11,7 @@ The pure multiplicative ETS implemented in ADAM framework can be formulated usin
   \end{aligned},
   (\#eq:ETSADAMStateSpacePureMultiplicative)
 \end{equation}
-where $\mathbf{1}_k$ is the vector of ones, containing $k$ elements (number of components in the model), $\log$ is the natural logarithm, applied element-wise to the vectors, and all the other values have been discussed in the previous sections. An example of a pure multiplicative model is ETS(M,M,M), for which we have the following values:
+where $\mathbf{1}_k$ is the vector of ones, containing $k$ elements (number of components in the model), $\log$ is the natural logarithm, applied element-wise to the vectors, and all the other objects correspond to the ones discussed in Section \@ref(ADAMETSPureAdditive). An example of a pure multiplicative model is ETS(M,M,M), for which we have the following:
 \begin{equation}
   \begin{aligned}
     \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \end{pmatrix}, & \mathbf{F} = \begin{pmatrix} 1 & 1 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{pmatrix}, & \mathbf{g} = \begin{pmatrix} \alpha \\ \beta \\ \gamma \end{pmatrix}, \\
@@ -19,7 +19,7 @@ where $\mathbf{1}_k$ is the vector of ones, containing $k$ elements (number of c
   \end{aligned}.
   (\#eq:ETSADAMMMMMatrices)
 \end{equation}
-By inserting these values in the equation \@ref(eq:ETSADAMStateSpacePureMultiplicative), we obtain model in logarithms:
+By inserting these values in equation \@ref(eq:ETSADAMStateSpacePureMultiplicative), we obtain the model in logarithms:
 \begin{equation}
 	\begin{aligned}
 		\log y_t = & \log l_{t-1} + \log b_{t-1} + \log s_{t-m} + \log \left(1 + \epsilon_{t} \right) \\
@@ -39,6 +39,8 @@ which after exponentiation becomes equal to the one, discussed in Section \@ref(
   \end{aligned}.
   (\#eq:ETSADAMMMM)
 \end{equation}
+This example demonstrates that the model \@ref(eq:ETSADAMStateSpacePureMultiplicative) underlies other pure multiplicative ETS models. While it can be used for some inference, it has limitations due to the $\log(\mathbf{1}_k + \mathbf{g} \epsilon_t)$ term, which introduces a non-linear transformation of the smoothing parameters and the error term (this will be discussed in more detail in next sections).
+
 An interesting observation is that the model \@ref(eq:ETSADAMMMMLogs) will produce values similar to the model ETS(A,A,A) applied to the data in logarithms, when the values of smoothing parameters are close to zero. This becomes apparent, when recalling the limit:
 \begin{equation}
   \lim\limits_{x \to 0}\log(1+x) = x .
@@ -54,7 +56,8 @@ Based on that, the model will become close to the following one in cases of smal
 	\end{aligned} ,
 	(\#eq:ETSADAMMMMLogsEquivalent)
 \end{equation}
-which is the ETS(A,A,A) applied to the data in the logarithms. In many cases, the smoothing parameters will be small enough for the limit \@ref(eq:limitOf1x) to hold, so the two models will produce similar forecasts. The main benefit of \@ref(eq:ETSADAMMMMLogsEquivalent) is that it has closed forms for the conditional mean and variance, so the model \@ref(eq:ETSADAMMMMLogsEquivalent) can be used instead of \@ref(eq:ETSADAMMMMLogs) when the smoothing parameters are close to zero, and the variance of the error term is small to get conditional moments and quantiles of distribution. However, the form \@ref(eq:ETSADAMMMMLogsEquivalent) does not permit mixed components -- it only supports the multiplicative ones, making it detached from the other ETS models.
+which is the ETS(A,A,A) applied to the data in the logarithms. In many cases, the smoothing parameters will be small enough for the limit \@ref(eq:limitOf1x) to hold, so the two models will produce similar forecasts. The main benefit of \@ref(eq:ETSADAMMMMLogsEquivalent) is that it has closed forms for the conditional mean and variance. However, the form \@ref(eq:ETSADAMMMMLogsEquivalent) does not permit mixed components -- it only supports the multiplicative ones, making it detached from the other ETS models.
+<!-- so the model \@ref(eq:ETSADAMMMMLogsEquivalent) can be used instead of \@ref(eq:ETSADAMMMMLogs) when the smoothing parameters are close to zero, and the variance of the error term is small to get conditional moments and quantiles of distribution. -->
 
 
 ## Recursive relation {#adamETSPuremultiplicativeRecursive}
@@ -69,7 +72,7 @@ Similarly to how it was done for the pure additive model in Section \@ref(adamET
   \end{aligned}.
   (\#eq:ETSADAMStateSpacePureMultiplicativeRecursion)
 \end{equation}
-In order to see how this recursion works, we can take the example of ETS(M,N,N), for which $m_1=1$ and all the other frequencies are equal to zero:
+In order to see how this recursion works, we can take the example of ETS(M,N,N), for which $m_1=1$ and all the other lags are equal to zero:
 \begin{equation}
     y_{t+h} = \exp\left(\mathbf{w}_{1}^\prime \mathbf{F}_{1}^{h-1} \log\mathbf{v}_{t} + \mathbf{w}_{1}^\prime \sum_{j=1}^{h-1} \mathbf{F}_{1}^{j-1} \log \left(\mathbf{1}_k + \mathbf{g}_{1} \epsilon_{t+h-j}\right) +\log \left(1 + \epsilon_{t+h}\right)\right) ,
   (\#eq:ETSMNNADAMStateSpacePureMultiplicativeRecursion01)
@@ -80,18 +83,13 @@ or after inserting $\mathbf{w}_{1}=1$, $\mathbf{F}_{1}=1$, $\mathbf{v}_{t}=l_t$,
   (\#eq:ETSMNNADAMStateSpacePureMultiplicativeRecursion02)
 \end{equation}
 
-This recursion is useful to understand how the states evolve, and in the case of ETS(M,N,N), it allows obtaining the conditional expectation and variance. But in general, for models with trend and/or seasonality, it cannot be used to calculate moments, like the one for the pure additive ADAM ETS. This is discussed in Section \@ref(pureMultiplicativeExpectationAndVariance)).
+This recursion is useful to understand how the states evolve, and in the case of ETS(M,N,N), it allows obtaining the conditional expectation and variance. Unfortunately, in general, for models with trend and/or seasonality, the recursion \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion) cannot be used to calculate conditional moments, like the one for the pure additive ADAM ETS. This is discussed in the next Section \@ref(pureMultiplicativeExpectationAndVariance).
 
 
-## The problem with moments in pure multiplicative ETS {#pureMultiplicativeExpectationAndVariance}
-The recursion \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion) obtained in the previous subsection shows how the previous values influence the logarithms of states. While it is possible to calculate the expectation of the logarithm of the variable $y_{t+h}$, in general, this does not allow deriving the expectation of the variable in the original scale. This is because of the convolution of terms $\log(\mathbf{1}_k + \mathbf{g}_{m_i} \epsilon_{t+j})$ for different $j$. To better understand this issue, we consider this persistence part of the equation for the ETS(M,N,N) model:
-\begin{equation}
-    \log(1+\alpha\epsilon_t) = \log(1-\alpha + \alpha(1+\epsilon_t)).
-  (\#eq:ETSMNNADAMPersistenceIssue)
-\end{equation}
-Whatever we assume about the distribution of the variable $(1+\epsilon_t)$, the distribution of \@ref(eq:ETSMNNADAMPersistenceIssue) will be more complicated. For example, if we assume that $(1+\epsilon_t)\sim\mathrm{log}\mathcal{N}(0,\sigma^2)$, then the distribution of \@ref(eq:ETSMNNADAMPersistenceIssue) is something like exp three-parameter log-normal distribution [@Sangal1970]. The convolution of \@ref(eq:ETSMNNADAMPersistenceIssue) for different $t$ does not follow a known distribution, so it is not possible to calculate the conditional expectation and variance based on \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion). Similar issues arrise if we assume any other distribution. The problem is worsened in case of multiplicative trend and / or multiplicative seasonality models, because then the recursion \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion) contains several errors on the same observation (e.g. $\log(1+\alpha\epsilon_t)$ and $\log(1+\beta\epsilon_t)$).
+## Moments and quantiles of pure multiplicative ETS {#pureMultiplicativeExpectationAndVariance}
+The recursion \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion) obtained in the previous Section shows how the information on observation $t$ influences the logarithms of states. While it is possible to calculate the expectation of the logarithm of the variable $y_{t+h}$ based on that information under some conditions, in general, this does not allow deriving the expectation of the variable in the original scale. This is because the expectations of terms $\log(\mathbf{1}_k + \mathbf{g}_{m_i} \epsilon_{t+j})$ for different $j$ and $i$ are not known and are difficult to derive analytically (if possible at all). The situation does not become simpler for the conditional variance.
 
-The only way to derive the conditional expectation and variance for the pure multiplicative models is to use the formulae from tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) in Section \@ref(ETSTaxonomyMaths) and manually derive the values in the original scale. This works well only for the ETS(M,N,N) model, for which it is possible to take conditional expectation and variance of the recursion \@ref(eq:ETSMNNADAMStateSpacePureMultiplicativeRecursion02) to obtain:
+The only way to derive the conditional expectation and variance for the pure multiplicative models is to use the formulae from Tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) in Section \@ref(ETSTaxonomyMaths) and manually derive the values in the original scale. This works well only for the ETS(M,N,N) model, for which it is possible to take conditional expectation and variance of the recursion \@ref(eq:ETSMNNADAMStateSpacePureMultiplicativeRecursion02) to obtain:
 \begin{equation}
     \begin{aligned}
 	    \mu_{y,t+h} = \mathrm{E}(y_{t+h}|t) = & l_{t} \\
@@ -99,7 +97,7 @@ The only way to derive the conditional expectation and variance for the pure mul
 	\end{aligned}
 	(\#eq:ETSMNNADAMConditionalValues)
 \end{equation}
-where $\sigma^2$ is the variance of the error term. For the other models, the conditional moments do not have a general closed forms because of the product of $\log(1+\alpha\epsilon_t)$, $\log(1+\beta\epsilon_t)$ and $\log(1+\gamma\epsilon_t)$. It is still possible to derive the moments for special cases of $h$, but this is a tedious process. In order to see that, we demonstrate here how the recursion looks for ETS(M,Md,M) model:
+where $\sigma^2$ is the variance of the error term. For the other models, the conditional moments do not have general closed forms because of the product of $\log(1+\alpha\epsilon_t)$, $\log(1+\beta\epsilon_t)$ and $\log(1+\gamma\epsilon_t)$. It is still possible to derive the moments for special cases of $h$, but this is a tedious process. In order to see that, we demonstrate here how the recursion looks for the ETS(M,Md,M) model:
 \begin{equation}
 	\begin{aligned}
 	    & y_{t+h} = l_{t+h-1} b_{t+h-1}^\phi s_{t+h-m} \left(1 + \epsilon_{t+h} \right) = \\
@@ -112,12 +110,23 @@ The conditional expectation of the recursion \@ref(eq:ETSMMdMADAMRecursion) does
 	\mu_{y,t+2} = l_{t} b_{t}^{\phi+\phi^2} \left(1 + \alpha \beta \sigma^2 \right),
 	(\#eq:ETSMMdMADAMRecursionHorizon2)
 \end{equation}
-introducing the second moment, the variance of the error term $\sigma^2$. The case of $h=3$ implies the appearance of the third moment, the $h=4$ -- the fourth etc. This is why there are no closed forms for the conditional moments for the pure multiplicative models with trend and/or seasonality. In some special cases, when smoothing parameters and the variance of error term are all low, it is possible to use approximate formulae for some of the multiplicative models. These are discussed in Chapter 6 of @Hyndman2008b. In a special case, when all smoothing parameters are equal to zero or when $h=1$, the conditional expectation will coincide with the point forecast from the Tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) in Section \@ref(ETSTaxonomyMaths). But in general, the best thing that can be done in this case is the simulation of possible paths (using the formulae from the tables mentioned above) and then the calculation of mean and variance based on them. Finally, it can be shown for pure multiplicative models that:
+introducing the second moment, the variance of the error term $\sigma^2$. The case of $h=3$ implies the appearance of the third moment, the $h=4$ -- the fourth etc. This is why there are no closed forms for the conditional moments for the pure multiplicative ETS models with trend and/or seasonality. In some special cases, when smoothing parameters and the variance of error term are all low, it is possible to use approximate formulae for some of the multiplicative models. These are discussed in Chapter 6 of @Hyndman2008b. In a special case when all smoothing parameters are equal to zero or when $h=1$, the conditional expectation will coincide with the point forecast from the Tables \@ref(tab:ETSAdditiveError) and \@ref(tab:ETSMultiplicativeError) in Section \@ref(ETSTaxonomyMaths). But in general, the best thing that can be done in this case is the simulation of possible paths (using the formulae from the tables mentioned above) and then the calculation of mean and variance based on them.
+
+Furthermore, it can be shown for pure multiplicative models that:
 \begin{equation}
     \hat{y}_{t+h} \leq \check{\mu}_{t+h} \leq \mu_{y,t+h} ,
     (\#eq:ETSADAMpointValueInequality)
 \end{equation}
-where $\mu_{y,t+h}$ is the conditional h steps ahead expectation, $\check{\mu}_{t+h}$ is the conditional h steps ahead geometric expectation (expectation in logarithms) and $\hat{y}_{t+h}$ is the point forecast [@Svetunkov2020ETS].
+where $\mu_{y,t+h}$ is the conditional h steps ahead expectation, $\check{\mu}_{t+h}$ is the conditional h steps ahead geometric expectation (expectation in logarithms) and $\hat{y}_{t+h}$ is the point forecast [@Svetunkov2020ETS]. This gives an understanding that the point forecasts from pure multiplicative ETS models are always lower than geometric and arithmetic moments. If the variance of the error term is close to zero, the three elements in \@ref(eq:ETSADAMpointValueInequality) will be close to each other. Similar effect will be achieved when all smoothing parameters are close to zero. Moreover, the three elements will coincide for $h=1$ [@Svetunkov2020ETS].
+
+Finally, when it comes to conditional quantiles, the same term $\log(\mathbf{1}_k + \mathbf{g}_{m_i} \epsilon_{t+j})$ causes different set of problems, introducing convolutions of products of random variables. To better understand this issue, we consider persistence part of the equation for the ETS(M,N,N) model, which is:
+\begin{equation}
+    \log(1+\alpha\epsilon_t) = \log(1-\alpha + \alpha(1+\epsilon_t)).
+  (\#eq:ETSMNNADAMPersistenceIssue)
+\end{equation}
+Whatever we assume about the distribution of the variable $(1+\epsilon_t)$, the distribution of \@ref(eq:ETSMNNADAMPersistenceIssue) will be more complicated. For example, if we assume that $(1+\epsilon_t)\sim\mathrm{log}\mathcal{N}(0,\sigma^2)$, then the distribution of \@ref(eq:ETSMNNADAMPersistenceIssue) is something like exp-three-parameter log-normal distribution [@Sangal1970]. The convolution of \@ref(eq:ETSMNNADAMPersistenceIssue) for different $t$ does not follow a known distribution, so it is not possible to calculate the conditional quantiles based on \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion). Similar issues arise if we assume any other distribution. The problem is worsened in case of multiplicative trend and/or multiplicative seasonality models, because then the recursion \@ref(eq:ETSADAMStateSpacePureMultiplicativeRecursion) contains several errors on the same observation (e.g. $\log(1+\alpha\epsilon_t)$ and $\log(1+\beta\epsilon_t)$), introducing product of random variables.
+
+All of this means that in general in order to get adequate estimates of moments or quantiles for pure multiplicative ETS model, we need to revert to simulations (discussed in Section \@ref(ADAMForecastingExpectationSimulations)).
 
 
 ## Smoothing parameters bounds {#stabilityConditionMultiplicativeError}
@@ -126,17 +135,17 @@ Similar to the pure additive ADAM ETS, it is possible to have different restrict
     l_t = l_{t-1} (1 + \alpha\epsilon_t) = l_{t-1} (1-\alpha + \alpha(1+\epsilon_t)).
   (\#eq:ETSMNNADAMLevelUpdate)
 \end{equation}
-As discussed previously, the main benefit of pure multiplicative models is in dealing with positive data. So, it is reasonable to assume that $(1 + \epsilon_t)>0$, which implies that the actual values will always be positive and that each model component should also be positive. This means that $\alpha(1 + \epsilon_t)>0$, which implies that $(1-\alpha + \alpha(1+\epsilon_t))>1-\alpha$ or equivalently based on \@ref(eq:ETSMNNADAMPersistenceIssue) $(1 + \alpha\epsilon_t)>1-\alpha$ should always hold. In order for the model to make sense, the condition $(1 + \alpha\epsilon_t)>0$ should hold as well, ensuring that the level is always positive. Connecting the two inequalities, this can be achieved when $1-\alpha \geq 0$, meaning that $\alpha \leq 1$. Furthermore, for the level to be positive irrespective of the specific error on observation $t$, the smoothing parameter should be non-negative. So, in general, the bounds $[0, 1]$ guarantee that the model ETS(M,N,N) will produce positive values only. The two special cases $\alpha=0$ and $\alpha=1$ make sense because the level in \@ref(eq:ETSMNNADAMLevelUpdate) will be positive in both of them, implying that for the former, the model becomes equivalent to the global level, while for the latter the model is equivalent to Random Walk. Using similar logic, it can be shown that the **classical restriction** $\alpha, \beta, \gamma \in [0, 1]$ guarantees that the model will always produce positive values.
+As discussed previously, the main benefit of pure multiplicative models is in dealing with positive data. So, it is reasonable to assume that $(1 + \epsilon_t)>0$, which implies that the actual values will always be positive and that each model component should also be positive. This means that $\alpha(1 + \epsilon_t)>0$, which implies that $(1-\alpha + \alpha(1+\epsilon_t))>1-\alpha$ or equivalently based on \@ref(eq:ETSMNNADAMLevelUpdate) $(1 + \alpha\epsilon_t)>1-\alpha$ should always hold. In order for the model to make sense, the condition $(1 + \alpha\epsilon_t)>0$ should hold as well, ensuring that the level is always positive. Connecting the two inequalities, this can be achieved when $1-\alpha \geq 0$, meaning that $\alpha \leq 1$. Furthermore, for the level to be positive irrespective of the specific error on observation $t$, the smoothing parameter should be non-negative. So, in general, the bounds $[0, 1]$ guarantee that the model ETS(M,N,N) will produce positive values only. The two special cases $\alpha=0$ and $\alpha=1$ make sense because the level in \@ref(eq:ETSMNNADAMLevelUpdate) will be positive in both of them, implying that for the former, the model becomes equivalent to the global level, while for the latter the model is equivalent to Random Walk. Using similar logic, it can be shown that the **classical restriction** $\alpha, \beta, \gamma \in [0, 1]$ guarantees that the model will always produce positive values.
 
 The more restrictive condition of the **usual bounds**, discussed in Section \@ref(ETSParametersBounds), makes sense as well, although it might be more restrictive than needed. But it has a different idea: guaranteeing that the model exhibits averaging properties.
 
-Finally, the **admissible bounds** might still make sense for the pure multiplicative models, but the condition for parameters bounds becomes more complicated and implies that the distribution of the error term becomes trimmed from below to satisfy the classical restrictions discussed above [see, for example, discussion in @Akram2009]. Very crudely, the conventional restriction from pure additive models can be used to approximate the proper admissible bounds, given the limit \@ref(eq:limitOf1x), but this should be used with care, given the discussion above.
+Finally, the **admissible bounds** might still make sense for the pure multiplicative models in some cases, but the condition for parameters bounds becomes more complicated and implies that the distribution of the error term becomes trimmed from below to satisfy the classical restrictions discussed above [this is also discussed in @Akram2009]. Very crudely, the conventional restriction from pure additive models can be used to approximate the proper admissible bounds, based on the limit \@ref(eq:limitOf1x), but this should be used with care, given the discussion above.
 
 From the practical point of view, the pure multiplicative models typically have low smoothing parameters, close to zero, because they rely on multiplication of components rather than on addition, so even the classical restriction might seem broad in many situations.
 
 
 ## Distributional assumptions in pure multiplicative ETS {#ADAMETSMultiplicativeDistributions}
-The conventional assumption for the error term in ETS is that $\epsilon_t\sim\mathcal{N}(0,\sigma^2)$, which guarantees that the conditional expectation of the model will be equal to the point forecasts when the trend and seasonal components are not multiplicative. In general, ETS works well in many cases with this assumption, mainly when the data is strictly positive, and the level of series is high (e.g. thousands of units). However, this assumption might become unhelpful when dealing with lower-level data because the models may start generating non-positive values, which contradicts the idea of pure multiplicative ETS models. @Akram2009 studied the ETS models with multiplicative error and suggested that applying ETS on data in logarithms is a better approach than just using ETS(M,Y,Y) models (here "Y" stands for non-additive components). However, this approach sidesteps the ETS taxonomy, creating a new group of models. An alternative [also discussed in @Akram2009] is to assume that the error term $1+\epsilon_t$ follows some distribution for positive data. The authors mentioned log-normal, truncated and Gamma distributions but never explored them further.
+The conventional assumption for the error term in ETS is that $\epsilon_t \sim \mathcal{N}(0,\sigma^2)$. The condition that $\mathrm{E}(\epsilon_t)=0$ guarantees that the conditional expectation of the model will be equal to the point forecasts when the trend and seasonal components are not multiplicative. In general, ETS works well in many cases with this assumption, mainly when the data is strictly positive, and the level of series is high (e.g. thousands of units). However, this assumption might become unhelpful when dealing with lower-level data because the models may start generating non-positive values, which contradicts the idea of pure multiplicative ETS models. @Akram2009 studied the ETS models with the multiplicative error and suggested that applying ETS on data in logarithms is a better approach than just using ETS(M,Y,Y) models (here "Y" stands for a non-additive component). However, this approach sidesteps the ETS taxonomy, creating a new group of models. An alternative [also discussed in @Akram2009] is to assume that the error term $1+\epsilon_t$ follows some distribution for positive data. The authors mentioned log-normal, truncated normal and Gamma distributions but never explored them further.
 
 @Svetunkov2020ETS discussed several options for the distribution of $1+\epsilon_t$ in ETS, including log-normal, Gamma and Inverse Gaussian. Other distributions for positive data can be applied as well, but their usage might become complicated, because they need to meet condition $\mathrm{E}(1+\epsilon_t)=1$ in order for the expectation to coincide with the point forecasts for models with non-multiplicative trend and seasonality. For example, if the error term follows log-normal distribution, then this restriction implies that the location of the distribution should be non-zero: $1+\epsilon_t\sim\mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2},\sigma^2\right)$. Using this principle the following distributions can be used for ADAM ETS:
 
@@ -144,7 +153,7 @@ The conventional assumption for the error term in ETS is that $\epsilon_t\sim\ma
 2. Gamma: $\left(1+\epsilon_t \right) \sim \Gamma (\sigma^{-2}, \sigma^2)$, so that $y_t = \mu_{y,t} (1+\epsilon_t) \sim \Gamma (\sigma^{-2}, \sigma^2 \mu_{y,t})$;
 3. Log-normal: $\left(1+\epsilon_t \right) \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$ so that $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathrm{log}\mathcal{N}(\log \mu_{y,t} -\frac{\sigma^2}{2}, \sigma^2)$.
 
-The MLE of $s$ in $\mathcal{IG}$ is straightforward and is:
+The MLE of $s$ in Inverse Gaussian is straightforward (see Section \@ref(ADAMETSEstimationLikelihood)) and is:
 \begin{equation}
 	\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^{T} \frac{e_{t}^2}{1+e_t} ,
 	(\#eq:ETSMultiplicativeErrorMLESigmaIG)
@@ -154,24 +163,24 @@ where $e_t$ is the estimate of the error term $\epsilon_t$. However, when it com
 	\hat{\sigma}^2 = 2\left(1-\sqrt{ 1-\frac{1}{T} \sum_{t=1}^{T} \log^2(1+e_{t})}\right).
 	(\#eq:ETSMultiplicativeErrorMLESigmaLogN)
 \end{equation}
-Finally, MLE of $s$ in $\mathcal{\Gamma}$ does not have a closed form. Luckily, method of moments can be used to obtain its value [@Svetunkov2020ETS]:
+Finally, MLE of $s$ in Gamma does not have a closed form. Luckily, method of moments can be used to obtain its value [@Svetunkov2020ETS]:
 \begin{equation}
 	\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^{T} e_{t}^2 .
 	(\#eq:ETSMultiplicativeErrorMLESigmaGamma)
 \end{equation}
-This value will coincide with the variance of the error term, given the imposed restrictions on the $\Gamma$ distribution.
+This value will coincide with the variance of the error term, given the imposed restrictions on the Gamma distribution.
 
-Even if we deal with strictly positive high level data, it is not necessary to limit the distribution with Normal only. The following distributions can be applied as well:
+Even if we deal with strictly positive high level data, it is not necessary to limit the distribution exclusively with the positive ones. The following distributions can be applied as well:
 
 1. Normal: $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$, implying that $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{N}(\mu_{y,t}, \mu_{y,t}^2 \sigma^2)$;
 2. Laplace: $\epsilon_t \sim \mathcal{Laplace}(0, s)$, meaning that $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{Laplace}(\mu_{y,t}, \mu_{y,t} s)$;
-3. S: $\epsilon_t \sim \mathcal{S}(0, s)$, so that $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{S}(\mu_{y,t}, \sqrt{\mu_{y,t}} s)$;
-4. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$ and $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{GN}(\mu_{y,t}, \mu_{y,t}^\beta s)$;
+3. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$ and $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{GN}(\mu_{y,t}, \mu_{y,t}^\beta s)$;
+4. S: $\epsilon_t \sim \mathcal{S}(0, s)$, so that $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{S}(\mu_{y,t}, \sqrt{\mu_{y,t}} s)$;
 <!-- 5. Logistic: $\epsilon_t \sim \mathcal{Logis}(0, s)$; -->
 <!-- 6. Student's t: $\epsilon_t \sim \mathcal{t}(\nu)$; -->
 <!-- 5. Asymmetric Laplace: $\epsilon_t \sim \mathcal{ALaplace}(0, s, \alpha)$ with $y_t = \mu_{y,t} (1+\epsilon_t) \sim \mathcal{ALaplace}(\mu_{y,t}, \mu_{y,t} s, \alpha)$. -->
 
-The MLE of scale parameters for these distributions will be calculated differently than in the case of pure additive models. For example, for the normal distribution it is:
+The MLE of scale parameters for these distributions will be calculated differently than in the case of pure additive models (these are provided in Section \@ref(ADAMETSEstimationLikelihood)). For example, for the normal distribution it is:
 \begin{equation}
 	\hat{\sigma}^2 = \frac{1}{T}\sum_{t=1}^T \frac{y_t-\hat{\mu}_{y,t}}{\hat{\mu}_{y,t}} ,
 	(\#eq:ETSMultiplicativeErrorMLESigmaNormal)
@@ -186,9 +195,8 @@ implying that
 	e_t = \frac{y_t-\hat{\mu}_{y,t}}{\hat{\mu}_{y,t}}.
 	(\#eq:ETSMultiplicativeErrorFormula)
 \end{equation}
-The estimates of scale can then be used in the next phase, when parameters are optimised via the maximisation of respective log-likelihood function. The maximum likelihood approach is in case of ADAM models is discussed in detail in Section \@ref(ADAMETSEstimationLikelihood).
 
-The distributional assumptions impact both the estimation of models and the prediction intervals. In the case of asymmetric distributions (such as log-normal, Gamma and Inverse Gaussian), the intervals will typically be asymmetric, with the upper bound being further away from the point forecast than the lower one. Furthermore, even with the comparable estimates of scales of distributions, Inverse Gaussian distribution will typically produce wider bounds than log-normal and Gamma. The width of intervals relates to the kurtosis of distributions [this is discussed, for example, in Chapter 5 of @SvetunkovSBA].
+The distributional assumptions impact both the estimation of models and the prediction intervals. In the case of asymmetric distributions (such as log-normal, Gamma and Inverse Gaussian), the intervals will typically be asymmetric, with the upper bound being further away from the point forecast than the lower one. Furthermore, even with the comparable estimates of scales of distributions, Inverse Gaussian distribution will typically produce wider bounds than log-normal and Gamma, making it a viable option for data with higher uncertainty. The width of intervals for these distributions relates to their kurtoses [@Svetunkov2020ETS].
 
 
 ## Examples of application {#ADAMETSMultiplicativeExamples}
@@ -200,7 +208,7 @@ adamETSBJ <- adam(BJsales, "MMN", h=10, holdout=TRUE)
 adamETSBJ
 ```
 
-The output above is similar to the one we discussed in Section \@ref(ADAMETSPureAdditiveExamples), so we can compare the two models using various criteria and select the most appropriate. Even though the default distribution for the multiplicative error models in ADAM is $\Gamma$, we can compare this model with the ETS(A,A,N) via information criteria. For example, here are the AICc for the two models:
+The output above is similar to the one we discussed in Section \@ref(ADAMETSPureAdditiveExamples), so we can compare the two models using various criteria and select the most appropriate. Even though the default distribution for the multiplicative error models in ADAM is Gamma, we can compare this model with the ETS(A,A,N) via information criteria. For example, here are the AICc for the two models:
 ```{r}
 # ETS(M,M,N)
 AICc(adamETSBJ)
@@ -217,9 +225,10 @@ plot(adamETSBJ,7,main="")
 
 If we want to produce the forecasts (conditional expectation and prediction interval) from the model, we can do it, using the same command as in Section \@ref(ADAMETSPureAdditiveExamples):
 
-```{r BJSalesadamETSMMNForecast, fig.cap="Forecast for Box-Jenkins Sales data from ETS(M,M,N).", echo=FALSE}
-plot(forecast(adamETSBJ, h=10,
-              interval="prediction", level=0.95))
+```{r BJSalesadamETSMMNForecast, fig.cap="Forecast for Box-Jenkins Sales data from ETS(M,M,N)."}
+forecast(adamETSBJ, h=10,
+         interval="prediction", level=0.95) |>
+    plot()
 ```
 
 Note that, when we ask for "prediction" interval, the `forecast()` function will automatically decide what to use based on the estimated model: in case of pure additive one, it will use analytical solutions, while in the other cases, it will use simulations (see Section \@ref(ADAMForecastingPI)). The point forecast obtained from the forecast function corresponds to the conditional expectation and is calculated based on the simulations. This also means that it will differ slightly from one run of the function to another (reflecting the uncertainty in the error term). Still, the difference, in general, should be negligible for a large number of simulation paths.
@@ -229,7 +238,7 @@ The forecast with prediction interval is shown in Figure \@ref(fig:BJSalesadamET
 sigma(adamETSBJ)^2
 ```
 
-We can also compare the performance of ETS(M,M,N) with $\Gamma$ distribution and the conventional ETS(M,M,N), assuming normality:
+We can also compare the performance of ETS(M,M,N) with Gamma distribution with the conventional ETS(M,M,N) assuming normality:
 
 ```{r}
 adamETSBJNormal <- adam(BJsales, "MMN", h=10, holdout=TRUE,
@@ -244,23 +253,28 @@ The `AirPassengers` data used in Section \@ref(ADAMETSPureAdditiveExamples) has 
 
 ```{r}
 adamETSAir <- adam(AirPassengers, "MMM", h=12, holdout=TRUE)
-adamForecast <- forecast(adamETSAir, h=12, interval="prediction")
+```
+
+After running the command above we might get warning, saying that the model has a potentially explosive multiplicative trend. This happens, when the final in-sample value of the trend component is greater than one, in which case the forecast trajectory might exhibit exponential growth. Here what we have in the output of this model:
+
+```{r}
 adamETSAir
 ```
 
-Notice that the smoothing parameter $\gamma=0$, which implies that we deal with the data with deterministic multiplicative seasonality. Comparing the information criteria (e.g. AICc) with the ETS(A,A,A) (discussed in Section \@ref(ADAMETSPureAdditiveExamplesETSAAA)), the pure multiplicative model does a better job at fitting the data than the additive one:
+Notice that the smoothing parameter $\gamma=0$, which implies that we deal with the data with deterministic multiplicative seasonality. Comparing the information criteria (e.g. AICc) with the ETS(A,A,A) (discussed in Subsection \@ref(ADAMETSPureAdditiveExamplesETSAAA)), the pure multiplicative model does a better job at fitting the data than the additive one:
 ```{r}
 adamETSAirAdditive <- adam(AirPassengers, "AAA", lags=12,
                            h=12, holdout=TRUE)
 AICc(adamETSAirAdditive)
 ```
-The conditional expectation and prediction interval from this model are mroe adequate as well (Figure \@ref(fig:AirPassengersMMMForecast)):
+The conditional expectation and prediction interval from this model are more adequate as well (Figure \@ref(fig:AirPassengersMMMForecast)):
 
-```{r AirPassengersMMMForecast, fig.cap="Forecast for air passengers data using ETS(M,M,M) model.", echo=FALSE}
+```{r AirPassengersMMMForecast, fig.cap="Forecast for air passengers data using ETS(M,M,M) model."}
+adamForecast <- forecast(adamETSAir, h=12, interval="prediction")
 plot(adamForecast, main="")
 ```
 
-If we want to calculate the error measures based on the conditional expectation, we can use the `measures()` function from `greybox` package the following way:
+If we want to calculate the error measures based on the conditional expectation, we can use the `measures()` function from `greybox` package in the following way:
 ```{r}
 measures(adamETSAir$holdout,adamForecast$mean,actuals(adamETSAir))
 ```
@@ -271,17 +285,17 @@ measures(adamETSAir$holdout,adamETSAirAdditive$forecast,actuals(adamETSAir))
 
 Comparing, for example, MSE from the two models, we can conclude that the pure multiplicative model is more accurate than the pure additive one.
 
-We can also produce the plot of the time series decomposition according to ETS(M,M,M) (see Figure \@ref(fig:AirPassengersMMMDecomposition)).
+We can also produce the plot of the time series decomposition according to ETS(M,M,M) (see Figure \@ref(fig:AirPassengersMMMDecomposition)):
 
-```{r AirPassengersMMMDecomposition, fig.cap="Decomposition of air passengers data using ETS(M,M,M) model.", echo=FALSE}
-plot(adamETSAir,12)
+```{r AirPassengersMMMDecomposition, fig.cap="Decomposition of air passengers data using ETS(M,M,M) model."}
+plot(adamETSAir, which=12)
 ```
 
 The plot in Figure \@ref(fig:AirPassengersMMMDecomposition) shows that the residuals are more random for the pure multiplicative model than for the ETS(A,A,A), but there still might be some structure left. The autocorrelation and partial autocorrelation functions (discussed in Section \@ref(BJApproach)) might help in understanding this better:
 
 ```{r AirPassengersMMMACFPACF, fig.cap="ACF and PACF of residuals of ETS(M,M,M) model."}
 par(mfcol=c(2,1), mar=c(2,4,2,1))
-plot(adamETSAir,10:11)
+plot(adamETSAir, which=10:11)
 ```
 
-The plot in Figure \@ref(fig:AirPassengersMMMDecomposition) shows that there is still some correlation left in the residuals, which could be either due to pure randomness or imperfect estimation of the model. Tuning the parameters of the optimiser or selecting a different model might solve the problem.
+The plot in Figure \@ref(fig:AirPassengersMMMACFPACF) shows that there is still some correlation left in the residuals, which could be either due to pure randomness or imperfect estimation of the model. Tuning the parameters of the optimiser or selecting a different model might solve the problem.
