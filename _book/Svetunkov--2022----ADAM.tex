@@ -142,7 +142,7 @@
 
 \title{Forecasting and Analytics with ADAM}
 \author{Ivan Svetunkov}
-\date{2023-01-12}
+\date{2023-01-14}
 
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}[chapter]
@@ -403,7 +403,7 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well behaved data, point forecast and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 80.88 and 117.91. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 80.55 and 119.7. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For a more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 6 of \citet{SvetunkovSBA}.
 
@@ -1146,7 +1146,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.05491671 0.05415208 0.05427490
+## 0.09596509 0.09913919 0.12095075
 \end{verbatim}
 
 In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with an alternative one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(0,2,2) to the same data, we will get:
@@ -1163,8 +1163,8 @@ In this example, we use the \texttt{apply()} function to distinguish between the
 \end{Shaded}
 
 \begin{verbatim}
-##         h1         h2         h3 
-## 0.05553351 0.06402488 0.05576637
+##        h1        h2        h3 
+## 0.1047779 0.1132830 0.1323382
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.
@@ -3233,7 +3233,7 @@ The series in Figure \ref{fig:BJsalesDataPlot} seem to exhibit trend, so we will
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.04 seconds
+## Time elapsed: 0.02 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.8098
@@ -3921,12 +3921,12 @@ If we want to calculate the error measures based on the conditional expectation,
 \end{Shaded}
 
 \begin{verbatim}
-##           ME          MAE          MSE          MPE         MAPE          sCE 
-##  -5.61020581  15.52089332 481.63242373  -0.01634208   0.03381078  -0.25647395 
-##         sMAE         sMSE         MASE        RMSSE         rMAE        rRMSE 
-##   0.05912892   0.00699008   0.64444914   0.70043519   0.20422228   0.21311773 
-##         rAME    asymmetry         sPIS 
-##   0.07883193  -0.22165005   2.10723803
+##            ME           MAE           MSE           MPE          MAPE 
+##  -5.078370493  15.696638897 485.474586549  -0.015279264   0.034051309 
+##           sCE          sMAE          sMSE          MASE         RMSSE 
+##  -0.232160780   0.059798445   0.007045843   0.651746338   0.703223456 
+##          rMAE         rRMSE          rAME     asymmetry          sPIS 
+##   0.206534722   0.213966103   0.071358836  -0.178364901   2.004139751
 \end{verbatim}
 
 These can be compared with the measures from the ETS(A,A,A) model:
@@ -4223,11 +4223,11 @@ The discussion in this section demonstrates that the renormalisation of seasonal
 
 Another important dynamic element in ADAM is the ARIMA model \citep[developed originally by][]{Box1976}. ARIMA stands for ``AutoRegressive Integrated Moving Average'', although the name does not tell much on its own and needs additional explanation, which will be provided in this chapter.
 
-The main idea of the model is that the data might have dynamic relations over time, where the new values depend on the values on the previous observations. This becomes more obvious in the case of engineering systems and modelling physical processes. For example, \citet{Box1976} use an example of a series of CO\(_2\) output of a furnace when the input gas rate changes. In this case, the elements of the ARIMA process are natural, as the CO\(_2\) cannot just drop to zero when the gas is switched off -- it will leave the furnace, in reducing quantity over time (i.e.~leaving \(\phi_1\times100\%\) of CO\(_2\) in the next minute, where \(\phi_1\) is a parameter in the model).
+The main idea of the model is that the data might have dynamic relations over time, where the new values depend on the values on the previous observations. This becomes more obvious in the case of engineering systems and modelling physical processes. For example, \citet{Box1976} use an example of a series of CO\(_2\) output of a furnace when the input gas rate changes. In this case, the elements of the ARIMA process are natural, as the CO\(_2\) cannot just drop to zero when the gas is switched off -- it will leave the furnace in reducing quantity over time (i.e.~leaving \(\phi_1\times100\%\) of CO\(_2\) in the next minute, where \(\phi_1\) is a parameter in the model).
 
-Another example where AR processes are natural is the temperature in the room, measured with 5 minutes intervals. In this case, the temperature at 5:30 pm will depend on the one at 5:25 pm: if the temperature outside the room is lower, then the one in the room will go down slightly due to the loss of heat. Every 5 minutes it will go down on average by some quantity \(\phi_1\).
+Another example where AR processes are natural is modelling the temperature in the room, measured with 5 minutes intervals. In this case, the temperature at 5:30 pm will depend on the one at 5:25 pm: if the temperature outside the room is lower, then the one in the room will go down slightly due to the loss of heat. Every 5 minutes it will go down on average by some quantity \(\phi_1\).
 
-Both these examples describe the AR(1) processes, and in both of them the ARIMA model can be considered a ``true model'' (see discussion in Section \ref{modelsMethods}). Unfortunately, when it comes to time series from the social or business domains, it becomes very difficult to motivate ARIMA usage from the modelling point of view. For example, the demand for a product does not reproduce itself and in real life does not depend on the demand on previous observations. So, if we construct ARIMA for such a process, we turn a blind eye to the fact that the observed time series relations in the data are most probably spurious. At best, in this case, ARIMA can be considered a very crude approximation of a complex process (demand is typically influenced by price changes, consumer behaviour, and promotional activities, etc). Thus, whenever we work with ARIMA models in social or business domains, we should keep in mind that they are wrong even from the philosophical point of view. Nevertheless, they still can be useful (as was pointed out by one of the original authors, George Box), which is why we discuss them in this chapter. We focus our discussion on forecasting with ARIMA. A reader interested in time series analysis is directed to \citet{Box1976} or to more modern editions of that textbook. ARIMA is also well explained in Chapter 6 of \citet{Ord2017}.
+Both these examples describe the AR(1) process, and in both of them the ARIMA model can be considered a ``true model'' (see discussion in Section \ref{modelsMethods}). Unfortunately, when it comes to time series in the social or business domains, it becomes very difficult to motivate ARIMA usage from the modelling point of view. For example, the demand for a product does not reproduce itself and in real life does not depend on the demand on previous observations. So, if we construct ARIMA for such a process, we turn a blind eye to the fact that the observed time series relations in the data are most probably spurious. At best, in this case, ARIMA can be considered a very crude approximation of a complex process (demand is typically influenced by price changes, consumer behaviour, and promotional activities, etc). Thus, whenever we work with ARIMA models in social or business domains, we should keep in mind that they are wrong even from the philosophical point of view. Nevertheless, they still can be useful (as was pointed out by one of the original authors, George Box), which is why we discuss them in this chapter. We focus our discussion on forecasting with ARIMA. A reader interested in time series analysis is directed to \citet{Box1976} or to more modern editions of that textbook. ARIMA is also well explained in Chapter 6 of \citet{Ord2017}.
 
 This chapter will discuss the main theoretical properties of ARIMA processes (i.e.~what would happen if the data indeed followed the specified model), moving to more practical aspects in the next chapter. We start the discussion with the non-seasonal ARIMA models, explaining how the forecasts from those models would look like, then move to the seasonal and multi-seasonal ARIMA, then discuss the classical Box-Jenkins approach for ARIMA order selection and its limitations. Finally, we explain the connection between ARIMA and ETS models.
 
@@ -4242,7 +4242,7 @@ ARIMA contains several elements:
 \item
   AR(p) -- the AutoRegressive part, showing how the variable is impacted by its values on the previous observations. It contains \(p\) lags. For example, the quantity of the liquid in a vessel with an opened tap on some observation will depend on the quantity on the previous steps;
 \item
-  I(d) -- the number of differences \(d\) taken in the model (I stands for ``Integrated''). Working with differences rather than with the original data means that we deal with changes and rates of changes, not with just values. Technically, differences are needed to make data stationary (i.e.~with fixed expectation and variance, although there are different definitions of the term \emph{stationarity}, see below);
+  I(d) -- the number of differences \(d\) taken in the model (I stands for ``Integrated''). Working with differences rather than with the original data means that we deal with changes and rates of changes, rather than the original values. Technically, differences are needed to make data stationary (i.e.~with fixed expectation and variance, although there are different definitions of the term \emph{stationarity}, see below);
 \item
   MA(q) -- the Moving Average component, explaining how the previous white noise impacts the variable. It contains \(q\) lags. Once again, in technical systems, the idea that random error can affect the value has a relatively simple explanation. For example, when the liquid drips out of a vessel, we might not be able to predict the air fluctuations, which would impact the flow and could be perceived as elements of random noise. This randomness might, in turn, influence the quantity of liquid in a vessel on the following observation, thus introducing the MA elements in the model.
 \end{enumerate}
@@ -4259,7 +4259,11 @@ Before continuing our discussion, we should define the term \textbf{stationarity
   Time series is said to be \textbf{strong stationary} when its unconditional joint probability distribution does not change over time. This automatically implies that all its moments are constant (i.e.~the process is also weak stationary).
 \end{itemize}
 
-The stationarity is essential in the ARIMA context and plays an important role in regression analysis. If the series is not stationary, it might be challenging to estimate its moments correctly using conventional methods. In some cases, it might be impossible to get the correct parameters (e.g.~there is an infinite combination of parameters that would produce the minimum of the selected loss function). To avoid this issue, the series is transformed to ensure that the moments are finite and constant (e.g.~take logarithms or do Box-Cox transform, take differences or detrend the series). After that, the model becomes easier to identify. In contrast with ARIMA, the ETS models are almost always non-stationary and do not require the series to be stationary. We will see the connection between the two approaches later in this chapter.
+The stationarity is essential in the ARIMA context and plays an important role in regression analysis. If the series is not stationary, it might be challenging to estimate its moments correctly using conventional methods. In some cases, it might be impossible to get the correct parameters (e.g.~there is an infinite combination of parameters that would produce the minimum of the selected loss function). To avoid this issue, the series is transformed to ensure that the moments are finite and constant. Taking differences or detrending time series (e.g.~via seasonal decomposition discussed in Section \ref{ClassicalDecomposition}) allows making the first moment (mean) constant, while taking logarithms or doing the Box-Cox transform of the original series typically stabilises the variance, making it constant as well. After that, the model becomes easier to identify.
+
+In contrast with ARIMA, the ETS models are almost always non-stationary and do not require the series to be stationary. We will see the connection between the two approaches in Section \ref{ARIMAandETS}.
+
+Finally, conventional ARIMA is always a pure additive model, and as a result its point forecasts coincide with the conditional expectation, and it has closed forms for the conditional moments and quantiles.
 
 \hypertarget{AR}{%
 \subsection{AR(p)}\label{AR}}
@@ -4269,9 +4273,21 @@ We start with a simple AR(1) model, which is written as:
   {y}_{t} = \phi_1 y_{t-1} + \epsilon_t ,
   \label{eq:ARIMA100Example}
 \end{equation}
-where \(\phi_1\) is the parameter of the model. This formula tells us that the value on the previous observation is carried out to the new one in the proportion of \(\phi_1\). Typically, the parameter \(\phi_1\) is restricted with the region (-1, 1) to make the model stationary, but very often in real life, \(\phi_1\) lies in the (0, 1) region. If the parameter is equal to 1, the model becomes equivalent to Random Walk (Section \ref{Naive}).
+where \(\phi_1\) is the parameter of the model. This formula tells us that the value on the previous observation is carried over to the new one in the proportion of \(\phi_1\). Typically, the parameter \(\phi_1\) is restricted with the region (-1, 1) to make the model stationary, but very often in real life, \(\phi_1\) lies in the (0, 1) region. If the parameter is equal to 1, the model becomes equivalent to Random Walk (Section \ref{Naive}).
 
-The forecast trajectory (conditional expectation several steps ahead) of this model would typically correspond to the exponentially declining curve. Here is a simple example in R of a very basic forecast from AR(1) with \(\phi_1=0.9\) (see Figure \ref{fig:AR1Trajectory}):
+The forecast trajectory (conditional expectation several steps ahead) of this model would typically correspond to the exponentially declining curve. This is because for the \(y_{t+h}\) value AR(1) is:
+\begin{equation}
+  {y}_{t+h} = \phi_1 y_{t+h-1} + \epsilon_{t+h} = \phi_1^2 y_{t+h-2} + \phi_1 \epsilon_{t+h-1} + \epsilon_{t+h} = \dots  \phi_1^h y_{t} + \sum_{j=0}^{h-1} \phi_1^{j} \epsilon_{t+h-j}.
+  \label{eq:ARIMA100ExamplehSteps}
+\end{equation}
+If we then take expectation conditional on the information available up until observation \(t\), all error terms will disappear (because we assume that \(\mathrm{E}(\epsilon_{t+j})=0\) for all \(j\)) leading to:
+\begin{equation}
+  \mathrm{E}({y}_{t+h} |t) = \phi_1^h y_{t} .
+  \label{eq:ARIMA100ExamplehStepsExpectation}
+\end{equation}
+If \(\phi_1 \in (0, 1)\), the forecast trajectory will decline exponentially.
+
+Here is a simple example in R of a very basic forecast from AR(1) with \(\phi_1=0.9\) (see Figure \ref{fig:AR1Trajectory}):
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4291,7 +4307,7 @@ The forecast trajectory (conditional expectation several steps ahead) of this mo
 \caption{\label{fig:AR1Trajectory}Forecast trajectory for AR(1) with \(\phi_1=0.9\).}
 \end{figure}
 
-If, for some reason, we get \(\phi_1>1\), then the trajectory corresponds to an exponential increase, becoming explosive, implying non-stationary behaviour. The model, in this case, becomes very difficult to work with, even if the parameter is close to one. So it is typically advised to restrict the parameter with the stationarity region (we will discuss this in more detail later in this chapter).
+If, for some reason, we get \(\phi_1>1\), then the trajectory will exhibit an exponential increase, becoming explosive, implying non-stationary behaviour. The model, in this case, becomes very difficult to work with, even if the parameter is close to one. So it is typically advised to restrict the parameter with the stationarity region (we will discuss this in more detail later in this chapter).
 
 In general, it is possible to imagine the situation, when the value at the moment of time \(t\) would depend on several previous values, so the model AR(p) would be needed:
 \begin{equation}
@@ -4320,15 +4336,25 @@ where \(\phi_i\) is the parameter for the \(i\)-th lag of the model. So, the mod
 
 No matter what the forecast trajectory of the AR model is, it will asymptotically converge to zero as long as the model is stationary.
 
+An example of AR(3) time series generated using \texttt{sim.ssarima()} function from the \texttt{smooth} package and forecast for it via \texttt{msarima()} is shown in Figure \ref{fig:ARExample}.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/ARExample-1.pdf}
+\caption{\label{fig:ARExample}An example of AR(3) series and forecast for it.}
+\end{figure}
+
+As can be seen from Figure \ref{fig:ARExample}, the series does not exhibit any distinct characteristics so that it would be possible to identify the order of the model just by looking at it. The only thing that we can probably say is that there is some structure in it: it has some periodic fluctuations and some parts of series are consistently above zero, while the others are consistently below. The latter is an indicator of autocorrelation in data. We do not discuss how to identify order of AR in this Section, we will come back to it in Section \ref{BJApproach}.
+
 \hypertarget{MA}{%
 \subsection{MA(q)}\label{MA}}
 
-Before discussing the ``Moving Averages'' model, we should acknowledge that the name is quite misleading and that the model has \emph{nothing to do} with Centred Moving Averages used in time series decomposition (Section \ref{ClassicalDecomposition}) or Simple Moving Averages (discussed in Section \ref{SMA}). The idea of the simplest MA(1) model can be summarised in the following mathematical way:
+Before discussing the ``Moving Averages'' model, we should acknowledge that the name is quite misleading and that the model has \emph{nothing to do} with Centred Moving Averages used in time series decomposition (Section \ref{ClassicalDecomposition}) or Simple Moving Averages (discussed in Section \ref{SMA}) used in forecasting. The idea of the simplest MA(1) model can be summarised in the following mathematical way:
 \begin{equation}
   {y}_{t} = \theta_1 \epsilon_{t-1} + \epsilon_t ,
   \label{eq:ARIMA001Example}
 \end{equation}
-where \(\theta_1\) is the parameter of the model, typically lying between (-1, 1), showing what part of the error is carried out to the next observation. Because of the conventional assumption that the error term has a zero mean (\(\mathrm{E}(\epsilon_{t})=0\)), the forecast trajectory of this model is just a straight line coinciding with zero starting from the \(h=2\). But for the one step ahead forecast we have:
+where \(\theta_1\) is the parameter of the model, typically lying between (-1, 1), showing what part of the error is carried out to the next observation. Because of the conventional assumption that the error term has a zero mean (\(\mathrm{E}(\epsilon_{t})=0\)), the forecast trajectory of this model is just a straight line coinciding with zero starting from the \(h=2\). But for the one step ahead point forecast we have:
 \begin{equation}
   \mathrm{E}({y}_{t+1}|t) = \theta_1 \mathrm{E}(\epsilon_{t}|t) + \mathrm{E}(\epsilon_{t+1}|t) = \theta_1 \epsilon_{t}.
   \label{eq:ARIMA001ExampleForecast}
@@ -4338,7 +4364,7 @@ Starting from \(h=2\) there are no observable error terms \(\epsilon_t\), so all
   \mathrm{E}({y}_{t+2}|t) = \theta_1 \mathrm{E}(\epsilon_{t+1}|t) + \mathrm{E}(\epsilon_{t+2}|t) = 0.
   \label{eq:ARIMA001ExampleForecastInSample}
 \end{equation}
-So, the forecast trajectory for MA(1) model converges to zero, when \(h>1\).
+So, the forecast trajectory for MA(1) model drops to zero, when \(h>1\).
 
 More generally, MA(q) model is written as:
 \begin{equation}
@@ -4346,6 +4372,16 @@ More generally, MA(q) model is written as:
   \label{eq:ARIMA00qExample}
 \end{equation}
 where \(\theta_i\) is the parameters for the \(i\)-th lag of the error term, typically restricted with the so-called invertibility region (discussed in the next section). In this case, the model implies that the recent observation is influenced by several errors on previous observations (your mistakes in the past will haunt you in the future). The more lags we introduce, the more complicated the model becomes. As for the forecast trajectory, it will reach zero when \(h>q\).
+
+An example of MA(3) time series and a forecast for it is shown in Figure \ref{fig:MAExample}.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/MAExample-1.pdf}
+\caption{\label{fig:MAExample}An example of MA(3) series and forecast for it.}
+\end{figure}
+
+Similarly to how it was with AR(3), Figure \ref{fig:MAExample} does not show anything specific that could tell us that this is MA(3) process. The proper identification of MA orders will be discussed in Section \ref{BJApproach}.
 
 \hypertarget{ARMA}{%
 \subsection{ARMA(p,q)}\label{ARMA}}
@@ -4359,7 +4395,7 @@ which has the properties of the two models discussed above. The forecast traject
 
 To simplify the work with ARMA models, the equation \eqref{eq:ARIMAp0q} is typically rewritten by moving all terms with \(y_t\) to the left-hand side:
 \begin{equation}
-  {y}_{t} -\phi_1 y_{t-1} -\phi_2 y_{t-2} -\dots -\phi_p y_{t-p} = \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \dots + \theta_q \epsilon_{t-q} + \epsilon_t .
+  {y}_{t} -\phi_1 y_{t-1} -\phi_2 y_{t-2} -\dots -\phi_p y_{t-p} = \epsilon_t + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \dots + \theta_q \epsilon_{t-q} .
   \label{eq:ARIMAp0qLeft}
 \end{equation}
 Furthermore, in order to make this even more compact, the backshift operator B can be introduced. It just shows by how much the subscript of the variable is shifted back in time:
@@ -4387,7 +4423,17 @@ Inserting the functions \eqref{eq:ARMAPolynomials} in \eqref{eq:ARIMAp0qCompacte
 \end{equation}
 The model \eqref{eq:ARIMAp0qCompact} can be considered a compact form of \eqref{eq:ARIMAp0q}. It is more difficult to understand and interpret but easier to work with from a mathematical point of view. In addition, this form permits introducing additional elements, which will be discussed later in this chapter.
 
-Coming back to the ARMA model \eqref{eq:ARIMAp0q}, as discussed earlier, it assumes convergence of forecast trajectory to zero, the speed of which is regulated via the parameters. This implies that the data has the mean of zero, and ARMA should be applied to somehow pre-processed data so that it is stationary and varies around zero. This means that if you work with non-stationary and/or with non-zero mean data, the pure AR/MA or ARMA will be inappropriate -- some prior transformations are in order.
+Figure \ref{fig:ARMAExample} shows an example of ARMA(3,3) series with a forecast from it.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/ARMAExample-1.pdf}
+\caption{\label{fig:ARMAExample}An example of ARMA(3,3) series and forecast for it.}
+\end{figure}
+
+Similarly to AR(3) and MA(3) examples above, the process is not visually distinguishable from other ARMA process.
+
+Coming back to the ARMA model \eqref{eq:ARIMAp0q}, as discussed earlier, it assumes convergence of forecast trajectory to zero, the speed of which is regulated by its parameters. This implies that the data has the mean of zero, and ARMA should be applied to somehow pre-processed data so that it is stationary and varies around zero. This means that if you work with non-stationary and/or with non-zero mean data, the pure AR/MA or ARMA will be inappropriate -- some prior transformations will be required.
 
 \hypertarget{ARMAConstant}{%
 \subsection{ARMA with constant}\label{ARMAConstant}}
@@ -4402,7 +4448,7 @@ or
   {y}_{t} \varphi^p(B) = a_0 + \epsilon_t \vartheta^q(B) ,
   \label{eq:ARIMAp0qCompactConstant}
 \end{equation}
-where \(a_0\) is the constant parameter, which in this case also works as the unconditional mean of the series. The forecast trajectory in this case would converge to a positive number, but with some minor differences from the trajectory of ARMA without constant. For example, in case of ARMA(1,1) with constant we will have:
+where \(a_0\) is the constant parameter, which in this case also works as the unconditional mean of the series. The forecast trajectory in this case would converge to a non-zero number, but with some minor differences from the trajectory of ARMA without constant. For example, in case of ARMA(1,1) with constant we will have:
 \begin{equation}
   {y}_{t} = a_0 + \phi_1 y_{t-1} + \theta_1 \epsilon_{t-1} + \epsilon_t .
   \label{eq:ARIMA101ConstExample01}
@@ -4420,7 +4466,7 @@ or in general for the horizon \(h\):
   \mathrm{E}({y}_{t+h}|t) = \sum_{j=1}^h a_0\phi_1^{j-1} + \phi_1^h y_{t} + \phi_1^{h-1} \theta_1 \epsilon_{t} .
   \label{eq:ARIMA101ConstExampleForecast}
 \end{equation}
-So, the forecast trajectory from this model dampens out, similar to the ETS(A,Ad,N) model (Subsection \ref{ETSAAdN}), and the rate of dampening is regulated by the value of \(\phi_1\). The following simple example demonstrates this point (see Figure \ref{fig:ARMAConstantTrajectory}; I drop the MA(1) part because it does not change the shape of the curve):
+So, the forecast trajectory from this model dampens out, similar to the ETS(A,Ad,N) model (Subsection \ref{ETSAAdN}), and the rate of dampening is regulated by the value of \(\phi_1\). The following simple example demonstrates this point (see Figure \ref{fig:ARMAConstantTrajectory}; I drop the MA(1) part because it does not change the shape of the curve, but only shifts it):
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -4442,31 +4488,46 @@ So, the forecast trajectory from this model dampens out, similar to the ETS(A,Ad
 
 The more complicated ARMA(p,q) models with p\textgreater1 will have more complex trajectories with potential harmonics, but the idea of dampening in AR(p) part of the model stays.
 
-Finally, as alternative to adding \(a_0\), each actual value of \(y_t\) can be centred via \(y^\prime_t = y_t -\bar{y}\), making sure that the mean of \(y^\prime_t\) is zero and ARMA can be applied to the \(y^\prime_t\) data instead of \(y_t\). However, this approach introduces additional steps, but the result on stationary data is typically the same as adding the constant.
+An example of time series generated from ARMA(3,3) with constant is provided in Figure \ref{fig:ARMAConstExample}.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/ARMAConstExample-1.pdf}
+\caption{\label{fig:ARMAConstExample}An example of ARMA(3,3) with constant series and forecast for it.}
+\end{figure}
+
+Finally, as alternative to adding \(a_0\), each actual value of \(y_t\) can be centred via \(y^\prime_t = y_t -\bar{y}\), where \(\bar{y}\) is the in-sample mean, making sure that the mean of \(y^\prime_t\) is zero and ARMA can be applied to the \(y^\prime_t\) data instead of \(y_t\). However, this approach introduces additional steps, but the result on stationary data is typically the same as adding the constant.
 
 \hypertarget{Differences}{%
 \subsection{I(d)}\label{Differences}}
 
-Based on the previous discussion, we can conclude that ARMA cannot be applied to non-stationary data. So, if we deal with one, we need to make it stationary somehow. The conventional way of doing that is by taking differences in the data. The logic behind this is straightforward: if the data is not stationary, the mean somehow changes over time. This can be, for example, due to a trend in the data. In this case, we should be talking about the change of variable \(y_t\) rather than the variable itself. So we should work on the following data instead:
+Based on the previous discussion, we can conclude that ARMA cannot be efficiently applied to non-stationary data. So, if we deal with one, we need to make it stationary. The conventional way of doing that is by taking differences in the data. The logic behind this is straightforward: if the data is not stationary, the mean somehow changes over time. This can be, for example, due to a trend in the data. In this case, we should be talking about the change of variable \(y_t\) rather than the variable itself. So we should work on the following data instead:
 \begin{equation}
   \Delta y_t = y_t -y_{t-1} = y_t (1 -B),
   \label{eq:ARIMADifferencesFirst}
 \end{equation}
-if the differences have constant mean. The simplest model with differences is I(1), which is also known as the \textbf{Random walk} (see Section \ref{Naive}):
+if the first differences have constant mean. The simplest model with differences is I(1), which is also known as the \textbf{Random walk} (see Section \ref{Naive}):
 \begin{equation}
-  \Delta y_t = \epsilon_t,
+  \Delta y_t = \epsilon_t.
   \label{eq:ARIMARandomWalk}
 \end{equation}
-which can be reformulated in a simpler, more interpretable form by inserting \eqref{eq:ARIMADifferencesFirst} in \eqref{eq:ARIMARandomWalk} and regrouping elements:
+It can also be reformulated in a simpler, more interpretable form by inserting \eqref{eq:ARIMADifferencesFirst} in \eqref{eq:ARIMARandomWalk} and regrouping elements:
 \begin{equation}
   y_t = y_{t-1} + \epsilon_t.
   \label{eq:ARIMARandomWalk02}
 \end{equation}
-The model \eqref{eq:ARIMARandomWalk02} can also be perceived as AR(1) with \(\phi_1=1\). This is a non-stationary model (meaning that the unconditional mean of \(y_t\) is not constant) and the point forecast from it corresponds to the one from the Naïve method (see Section \ref{Naive}) with a straight line equal to the last observed actual value (again, assuming that \(\mathrm{E}(\epsilon_{t})=0\) and that other basic assumptions from Section \ref{assumptions} hold):
+The model \eqref{eq:ARIMARandomWalk02} can also be perceived as AR(1) with \(\phi_1=1\). This is a non-stationary model (meaning that the unconditional mean of \(y_t\) is not constant) and the point forecast from it corresponds to the one from the Naïve method (see Section \ref{Naive}) with a straight line equal to the last observed actual value (again, assuming that \(\mathrm{E}(\epsilon_{t})=0\) and that the other basic assumptions from Section \ref{assumptions} hold):
 \begin{equation}
   \mathrm{E}(y_{t+h}|t) = \mathrm{E}(y_{t+h-1}|t) + \mathrm{E}(\epsilon_{t+h}|t) = y_{t} .
   \label{eq:ARIMARandomWalkForecast}
 \end{equation}
+Visually, the Random Walk data and the forecast from it are shown in Figure \ref{fig:naiveExample2}.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/naiveExample2-1.pdf}
+\caption{\label{fig:naiveExample2}A Random Walk data example.}
+\end{figure}
 
 Another simple model that relies on differences of the data is called \textbf{Random Walk with drift} (which was discussed in Section \ref{RWWithDrift}) and is formulated by adding constant \(a_0\) to the right hand side of equation \eqref{eq:ARIMARandomWalk}:
 \begin{equation}
@@ -4474,10 +4535,9 @@ Another simple model that relies on differences of the data is called \textbf{Ra
   \label{eq:ARIMARandomWalkWithDrift}
 \end{equation}
 This model has some similarities with the global level model, which is formulated via the actual value rather than differences (see Section \ref{GlobalMean}):
-\begin{equation}
+\begin{equation*}
   {y}_{t} = a_0 + \epsilon_t.
-  \label{eq:ARIMAGlobalMean}
-\end{equation}
+\end{equation*}
 Using a similar regrouping as with the Random Walk, we can obtain a simpler form of \eqref{eq:ARIMARandomWalkWithDrift}:
 \begin{equation}
   y_t = a_0 + y_{t-1} + \epsilon_t.
@@ -4493,18 +4553,25 @@ or in general for the horizon \(h\):
   \mathrm{E}(y_{t+h}|t) = h a_0 + y_t .
   \label{eq:ARIMARandomWalkWithDriftForecasth}
 \end{equation}
+Visually, the data and the forecast from it are shown in Figure \ref{fig:RWDriftExample2}.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/RWDriftExample2-1.pdf}
+\caption{\label{fig:RWDriftExample2}A Random Walk with drift with \(a_0=2\).}
+\end{figure}
 
 In a manner similar to \eqref{eq:ARIMADifferencesFirst}, we can also introduce second differences of the data (differences of differences) if we suspect that the change of variable over time is not stationary, which would be written as:
 \begin{equation}
   \Delta^2 y_t = \Delta y_t -\Delta y_{t-1} = y_t -y_{t-1} -y_{t-1} + y_{t-2},
   \label{eq:ARIMADifferencesSecond}
 \end{equation}
-which can also be written using the backshift operator:
+or using the backshift operator:
 \begin{equation}
   \Delta^2 y_t = y_t(1 -2B + B^2) = y_t (1 -B)^2.
   \label{eq:ARIMADifferencesSecondBackshift}
 \end{equation}
-In fact, we can introduce higher level differences if we want (but typically we should not) based on the idea of \eqref{eq:ARIMADifferencesSecondBackshift}:
+In fact, we can introduce higher level differences if we want to (but typically we should not) based on the idea of \eqref{eq:ARIMADifferencesSecondBackshift}:
 \begin{equation}
   \Delta^d = (1-B)^d.
   \label{eq:ARIMADifferences}
@@ -4523,14 +4590,22 @@ Finally, having made the data stationary via the differences, we can introduce A
   y_t \Delta^d(B) \varphi^p(B) = \epsilon_t \vartheta^q(B) ,
   \label{eq:ARIMApdqCompact}
 \end{equation}
-or in a more general form \eqref{eq:ARIMAp0qCompacter} with \eqref{eq:ARIMADifferencesSecondBackshift}:
+or in a more general form \eqref{eq:ARIMAp0qCompacter} with \eqref{eq:ARIMADifferences}:
 \begin{equation}
   y_t (1-B)^d (1 -\phi_1 B -\dots -\phi_p B^p) = \epsilon_t (1 + \theta_1 B + \dots + \theta_q B^q),
   \label{eq:ARIMApdq}
 \end{equation}
-which is ARIMA(p,d,q) model. This model allows producing trends with some values of differences and also inherits the trajectories from both AR(p) and MA(q). This implies that the point forecasts from the model can exhibit complicated trajectories, depending on the values of the model's parameters.
+which is ARIMA(p,d,q) model. This model allows producing trends with some values of differences and also inherits the trajectories from both AR(p) and MA(q). This implies that the point forecasts from the model can exhibit complicated trajectories, depending on the values of p, d, q and the model's parameters.
 
-The model \eqref{eq:ARIMApdq} is difficult to interpret in a general form, but opening the brackets and moving all elements but \(y_t\) to the right-hand side helps understand each specific model.
+The model \eqref{eq:ARIMApdq} is difficult to interpret in a general form, but opening the brackets and moving all elements but \(y_t\) to the right-hand side helps understanding each specific model.
+
+Figure \ref{fig:ARIMA112Example} demonstrates how data would look if it was generated from ARIMA(1,1,2) and how the forecasts would look if the same model ARIMA(1,1,2) was applied to the data. Because of the AR(1) term in the model, its forecast trajectory is dampening, similar to how it was done in ETS(A,Ad,N) model.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2022----ADAM_files/figure-latex/ARIMA112Example-1.pdf}
+\caption{\label{fig:ARIMA112Example}An example of ARIMA(1,1,2) data and forecasts for it.}
+\end{figure}
 
 \hypertarget{ARIMABounds}{%
 \subsection{Parameters bounds}\label{ARIMABounds}}
@@ -4546,7 +4621,7 @@ ARMA models have two conditions that need to be satisfied for them to be useful 
   Invertibility.
 \end{enumerate}
 
-Condition (1) has already been discussed in Section \ref{ARIMAIntro}. It is imposed on the model's AR parameters, ensuring that the forecast trajectories do not exhibit explosive behaviour (in terms of both mean and variance). (2) is equivalent to the stability condition in ETS (Section \ref{stabilityConditionAdditiveError}) and refers to the MA parameters: it guarantees that the old observations do not have an increasing impact on the recent ones. The term ``invertibility'' comes from the idea that any MA process can be represented as an infinite AR process via the inversion of the parameters. For example, MA(1) model, which is written as:
+Condition (1) has already been discussed in Section \ref{ARIMAIntro}. It is imposed on the model's AR parameters, ensuring that the forecast trajectories do not exhibit explosive behaviour (in terms of both mean and variance). (2) is equivalent to the stability condition in ETS (Section \ref{stabilityConditionAdditiveError}) and refers to the MA parameters: it guarantees that the old observations do not have an increasing impact on the recent ones. The term ``invertibility'' comes from the idea that any MA process can be represented as an infinite AR process via the inversion of the parameters as long as the parameters lie in some specific bounds. For example, MA(1) model, which is written as:
 \begin{equation}
   y_t = \epsilon_t + \theta_1 \epsilon_{t-1} = \epsilon_t (1 + \theta_1 B) ,
   \label{eq:ARIMA100Example01}
@@ -4561,7 +4636,7 @@ or in a slightly easier to digest form (based on \eqref{eq:ARIMA100Example01} an
   y_t = \theta_1 y_{t-1} -\theta_1^2 \epsilon_{t-2} + \epsilon_t = \theta_1 y_{t-1} -\theta_1^2 y_{t-2} + \theta_1^3 \epsilon_{t-2} + \epsilon_t = \sum_{j=1}^\infty -1^{j-1} \theta_1^j y_{t-j} + \epsilon_t.
   \label{eq:ARIMA100Example03}
 \end{equation}
-The recursion in \eqref{eq:ARIMA100Example03} shows that the recent actual value \(y_t\) depends on the previous infinite number of values of \(y_{t-j}\) for \(j=\{1,\dots,\infty\}\). The parameter \(\theta_1\), in this case, is exponentiated and leads to the distribution of weights in this infinite series exponentially (reminds SES from Section \ref{SES}, doesn't it?). The \emph{invertibility} condition makes sure that those weights decline over time with the increase of \(j\) so that the older observations do not have an increasing impact on the most recent \(y_t\).
+The recursion in \eqref{eq:ARIMA100Example03} shows that the recent actual value \(y_t\) depends on the previous infinite number of values of \(y_{t-j}\) for \(j=\{1,\dots,\infty\}\). The parameter \(\theta_1\), in this case, is exponentiated to the power \(j\) and leads to the exponential distribution of weights in this infinite series (reminds SES from Section \ref{SES}, doesn't it?). The \emph{invertibility} condition makes sure that those weights decline over time with the increase of \(j\) so that the older observations do not have an increasing impact on the most recent \(y_t\).
 
 There are different ways how to check both conditions, the conventional one is by calculating the roots of the polynomial equations:
 \begin{equation}
@@ -4589,7 +4664,7 @@ Calculating roots of polynomials is a difficult task, so there are simpler speci
 \end{aligned} .
   \label{eq:ARIMApdqConditionsSpecial}
 \end{equation}
-But note that the condition \eqref{eq:ARIMApdqConditionsSpecial} is rather restrictive and not generally applicable for all ARIMA models. It can be used to skip the check of the more complicated condition \eqref{eq:ARIMApdqConditions} if it is satisfied by a set of estimated parameters.
+But note that the condition \eqref{eq:ARIMApdqConditionsSpecial} is rather restrictive and is not generally applicable for all ARIMA models. It can be used to skip the check of the more complicated condition \eqref{eq:ARIMApdqConditions} if it is satisfied by a set of estimated parameters.
 
 Finally, in a special case with AR(p) model with \(0 < \phi_j < 1\) for all \(j\) and \(\sum_{j=1}^p \phi_j = 1\), we end up with the moving weighted average, which is a non-stationary model. This becomes apparent from the connection between Simple Moving Average and AR processes \citep{Svetunkov2017}.
 
@@ -5005,7 +5080,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     509.2228     509.2063
+##     488.0438     487.8073
 \end{verbatim}
 
 \begin{Shaded}
@@ -5018,7 +5093,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     1024.446     1024.413
+##     982.0876     981.6147
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce the same values:
@@ -5033,7 +5108,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##    0.1101301    0.1198166
+##    0.2734375    0.2810313
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related (Figure \ref{fig:ETSARIMAConnection}):
@@ -5984,7 +6059,7 @@ The ETS model closest to the logSARIMA(0,1,1)(0,1,1)\(_{12}\) would probably be 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.12 seconds
+## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.5176
@@ -6014,7 +6089,7 @@ Comparing information criteria, ETS(M,M,M) should be preferred to logARIMA, but 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.2 seconds
+## Time elapsed: 0.19 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[12]
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 472.923
@@ -6471,7 +6546,7 @@ This simple model already does a fine job fitting the data and producing forecas
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.09 seconds
+## Time elapsed: 0.1 seconds
 ## Model estimated using adam() function: ETS(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1125.509
@@ -6578,7 +6653,7 @@ In this specific case, the difference between the ETSX and ETSX\{D\} models is i
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.49 seconds
+## Time elapsed: 0.4 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1114.215
@@ -7999,7 +8074,7 @@ Another model we can try on this data is ARIMA. We have not yet discussed the or
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.2 seconds
+## Time elapsed: 0.3 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.76
@@ -8896,7 +8971,7 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.07 seconds
+## Time elapsed: 0.06 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## Occurrence model type: Direct
 ## Distribution assumed in the model: Mixture of Bernoulli and Log-Normal
@@ -10318,7 +10393,7 @@ Here is an example with automatically selected ETS model using the branch-and-bo
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.03 seconds
+## Time elapsed: 1.02 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 467.2981
@@ -10422,7 +10497,7 @@ Based on the relation between ARIMA and ETS (see Section \ref{ARIMAandETS}), we 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.27 seconds
+## Time elapsed: 1.25 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.391
@@ -10805,16 +10880,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6549           254.9238            260.4340
-## 142 257.7077           253.3486            262.1048
-## 143 257.7633           251.8856            263.7461
-## 144 257.8215           250.3595            265.3563
-## 145 257.8762           248.8216            266.9827
-## 146 257.9371           247.2588            268.6825
-## 147 257.9976           245.7176            270.2969
-## 148 258.0551           244.1053            272.0849
-## 149 258.1079           242.5192            273.7541
-## 150 258.1613           240.8288            275.5648
+## 141 257.6636           254.8940            260.4501
+## 142 257.7212           253.3150            262.0599
+## 143 257.7801           251.8790            263.6737
+## 144 257.8345           250.3247            265.3085
+## 145 257.8913           248.9042            266.9030
+## 146 257.9527           247.3682            268.5183
+## 147 257.9916           245.8237            270.2109
+## 148 258.0442           244.2025            271.8793
+## 149 258.0942           242.6488            273.5823
+## 150 258.1396           240.9653            275.4130
 \end{verbatim}
 
 In order to see how the forecast looks like, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -10912,7 +10987,7 @@ Here is an example of how the function works on the data above -- it is possible
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.52 seconds
+## Time elapsed: 0.53 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamETSBJBoot\$vcov}. The same procedure is used in \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -10924,12 +10999,12 @@ The covariance matrix can then be extracted from the result via \texttt{adamETSB
 \end{Shaded}
 
 \begin{verbatim}
-##        alpha   beta    phi  level  trend
-## alpha  0.022  0.006  0.004  0.021 -0.024
-## beta   0.006  0.013 -0.005 -0.029  0.036
-## phi    0.004 -0.005  0.014  0.068 -0.071
-## level  0.021 -0.029  0.068  0.563 -0.734
-## trend -0.024  0.036 -0.071 -0.734  1.057
+##        alpha  beta    phi  level  trend
+## alpha  0.024 0.006  0.005  0.023 -0.025
+## beta   0.006 0.007  0.001  0.000  0.011
+## phi    0.005 0.001  0.011  0.048 -0.051
+## level  0.023 0.000  0.048  0.532 -0.717
+## trend -0.025 0.011 -0.051 -0.717  1.042
 \end{verbatim}
 
 \hypertarget{confidence-intervals-for-parameters}{%
@@ -11709,7 +11784,7 @@ The \texttt{sm} function accepts roughly the same set of parameters as \texttt{a
 
 \begin{verbatim}
 ## **Scale Model**
-## Time elapsed: 0.15 seconds
+## Time elapsed: 0.13 seconds
 ## Model estimated using sm.adam() function: ETS(MNN)
 ## Distribution assumed in the model: Inverse Gaussian
 ## Loss function type: likelihood; Loss function value: 474.332
@@ -12358,7 +12433,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, w
 \caption{\label{fig:adamModeliETSCumulative}The actual cumulative demand (black dot), the expectation (the solid blue line) and the 95\% quantile of the distribution of the cumulative demand (the dashed grey line) based on iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 19 units, while the upper bound of the interval was approximately 42. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of 7 days, the cumulative demand was around 20 units, while the upper bound of the interval was approximately 35. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section \ref{rollingOrigin}) or to a set of products to collect the distribution of related error measures.
 
