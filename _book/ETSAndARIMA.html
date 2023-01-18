@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-01-14" />
+<meta name="date" content="2023-01-18" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -591,14 +591,15 @@ div.csl-indent {
 <p>Coming back to the topic of ETS and ARIMA, we can now look at it from the point of view of the SSOE state space model.</p>
 <div id="pure-additive-models" class="section level3 hasAnchor" number="9.4.1">
 <h3><span class="header-section-number">9.4.1</span> Pure additive models<a href="ETSAndARIMA.html#pure-additive-models" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>A pure additive ETS + ARIMA model can be formulated in the general form, which we have <a href="ADAMETSPureAdditive.html#ADAMETSPureAdditive">already discussed</a> several times in this monograph:
+<p>A pure additive ETS + ARIMA model can be formulated in the general form, which we have already discussed several times in this monograph (Section <a href="ADAMETSPureAdditive.html#ADAMETSPureAdditive">5.1</a>):
 <span class="math display">\[\begin{equation*}
   \begin{aligned}
     &amp;{y}_{t} = \mathbf{w}^\prime \mathbf{v}_{t-\boldsymbol{l}} + \epsilon_t \\
     &amp;\mathbf{v}_{t} = \mathbf{F} \mathbf{v}_{t-\boldsymbol{l}} + \mathbf{g} \epsilon_t
   \end{aligned},
 \end{equation*}\]</span>
-but now the matrices and vectors of the model contain ETS and ARIMA components, stacked one after another. For example, if we want to construct ETS(A,N,A)+ARIMA(2,0,0), we can formulate this model as:
+but now the matrices and vectors of the model contain ETS and ARIMA components, stacked one after another.</p>
+<p>For example, if we want to construct ETS(A,N,A)+ARIMA(2,0,0), we can formulate this model as:
 <span class="math display" id="eq:ADAMETSARIMAANA100">\[\begin{equation}
   \begin{aligned}
     &amp;{y}_{t} = l_{t-1} + s_{t-m} + v_{1,t-1} + v_{2,t-2} + \epsilon_t \\
@@ -609,7 +610,7 @@ but now the matrices and vectors of the model contain ETS and ARIMA components, 
   \end{aligned},
   \tag{9.30}
 \end{equation}\]</span>
-where <span class="math inline">\(\phi_1\)</span> is the parameter of the AR(1) part of the model. This model represented in the conventional additive SSOE state space model leads to the following matrices and vectors:
+where <span class="math inline">\(\phi_i\)</span> is the <span class="math inline">\(i\)</span>-th parameter of the AR(2) part of the model. This model represented in the conventional additive SSOE state space form leads to the following matrices and vectors:
 <span class="math display" id="eq:ADAMETSARIMAANN100Matrices">\[\begin{equation}
   \begin{aligned}
     \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \\ 1 \end{pmatrix}, &amp; \mathbf{F} = \begin{pmatrix} 1 &amp; 0 &amp; 0 &amp; 0 \\ 0 &amp; 1 &amp; 0 &amp; 0 \\ 0 &amp; 0 &amp; \phi_1 &amp; \phi_1 \\ 0 &amp; 0 &amp; \phi_2 &amp; \phi_2 \end{pmatrix}, &amp; \mathbf{g} = \begin{pmatrix} \alpha \\ \gamma \\ \phi_1 \\ \phi_2 \end{pmatrix}, \\
@@ -617,7 +618,7 @@ where <span class="math inline">\(\phi_1\)</span> is the parameter of the AR(1) 
   \end{aligned}.
   \tag{9.31}
 \end{equation}\]</span>
-So, in this formulation the states of ETS and ARIMA are independent and form a combination of models only in the measurement equation. In a way, this model becomes similar to fitting first ETS to the data and then ARIMA to the residuals, but estimating both elements at the same time.</p>
+So, in this formulation, the states of ETS and ARIMA are independent and form a combination of models only in the measurement equation. In a way, this model becomes similar to fitting sequentially ETS to the data and then ARIMA to the residuals, but estimating both elements at the same time. This simultaneous estimation is supposed to remove the bias in the estimates of parameters, which might appear in the sequential procedure.</p>
 <p>ADAM introduces the flexibility necessary for fitting any ETS+ARIMA combination, but not all combinations make sense. For example, here how ETS(A,N,N)+ARIMA(0,1,1) would look like:
 <span class="math display" id="eq:ADAMETSARIMAANN011">\[\begin{equation}
   \begin{aligned}
@@ -635,9 +636,9 @@ In the transition part of the model <a href="ETSAndARIMA.html#eq:ADAMETSARIMAANN
   \end{aligned},
   \tag{9.33}
 \end{equation}\]</span>
-which leads to an infinite combination of values of parameters <span class="math inline">\(\theta\)</span> and <span class="math inline">\(\alpha\)</span> that would produce exactly the same model fit. So, the model <a href="ETSAndARIMA.html#eq:ADAMETSARIMAANN011">(9.32)</a> does not have unique parameters and thus is <strong>unidentifiable</strong>. This means that we cannot reach the “true model” based on ETS(A,N,N)+ARIMA(0,1,1) and thus the model selection via information criteria becomes inappropriate. Furthermore, the estimates of parameters of such a model might become biased, inefficient and inconsistent due to the “infinite combination” issue mentioned above.</p>
-<p>In some other cases, some parts of the model might be duplicated, making the whole model unidentifiable, so it makes sense to switch to either ETS or ARIMA, depending on the circumstances. For example, if we have ETS(A,A,N)+ARIMA(0,2,3), then some parts of the models will be duplicated (because ETS(A,A,N) is equivalent to ARIMA(0,2,2)), so it would be more reasonable to switch to pure ARIMA(0,2,3) instead. On the other hand, if we deal with ETS(A,Ad,N)+ARIMA(0,1,2), then dropping the ARIMA part would be more appropriate.</p>
-<p>These examples show that, when using ETS+ARIMA, model building needs to be done with care, not to get an unreasonable model that cannot be identified. As a general recommendation, keep the ETS and ARIMA connection (see Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>) in mind, when deciding, what to construct. And here is a short list of guidelines of what to do in some special cases:</p>
+which leads to an infinite combination of values of parameters <span class="math inline">\(\theta\)</span> and <span class="math inline">\(\alpha\)</span> that would produce exactly the same model fit. So, the model <a href="ETSAndARIMA.html#eq:ADAMETSARIMAANN011">(9.32)</a> does not have unique parameters and thus is <strong>unidentifiable</strong>. This means that we cannot reach the “true model” based on ETS(A,N,N)+ARIMA(0,1,1) and thus the model selection via information criteria becomes inappropriate. Furthermore, the estimates of parameters of such model might become biased, inefficient and inconsistent due to the “infinite combination” issue mentioned above.</p>
+<p>In some other cases, some parts of the model might be duplicated (not the whole), making the overall model unidentifiable, so it makes sense to switch to either ETS or ARIMA, depending on circumstances. For example, if we have ETS(A,A,N)+ARIMA(0,2,3), then some parts of the models will be duplicated (because ETS(A,A,N) is equivalent to ARIMA(0,2,2)), so it would be more reasonable to switch to pure ARIMA(0,2,3) instead. On the other hand, if we deal with ETS(A,Ad,N)+ARIMA(0,1,2), then dropping the ARIMA part would be more appropriate (due to the relation between ETS(A,Ad,N) and ARIMA(1,1,2)).</p>
+<p>These examples show that, when using ETS+ARIMA, model building needs to be done with care, not to get an unreasonable model that cannot be identified. As a general recommendation, keep the ETS and ARIMA connection in mind (see Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>), when deciding, what to construct. And here is a short list of guidelines of what to do in some special cases:</p>
 <ol style="list-style-type: decimal">
 <li>For ETS(A,N,N)+ARIMA(0,1,q):</li>
 </ol>
@@ -659,27 +660,10 @@ which leads to an infinite combination of values of parameters <span class="math
 <li>use ARIMA(p,1,q), when either <span class="math inline">\(p&gt;1\)</span> or <span class="math inline">\(q&gt;2\)</span>,</li>
 <li>use ETS(A,Ad,N), when <span class="math inline">\(p \leq 1\)</span> and <span class="math inline">\(q \leq 2\)</span>.</li>
 </ul>
-<p>Regarding seasonal models, the relation between ETS and ARIMA is more complex. It is highly improbable to get to equivalent ARIMA models, so it makes sense to make sure that the three rules above hold for the non-seasonal part of the model.</p>
+<p>Regarding seasonal models, the relation between ETS and ARIMA is more complex. It is highly improbable to get to equivalent ARIMA models, so we can neglect the rules for the seasonal part and focus on making sure that the three rules above hold for the non-seasonal part of the model.</p>
 </div>
 <div id="ADAMARIMAMultiplicative" class="section level3 hasAnchor" number="9.4.2">
 <h3><span class="header-section-number">9.4.2</span> Pure multiplicative models<a href="ETSAndARIMA.html#ADAMARIMAMultiplicative" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>When it comes to the multiplicative error and mixed ETS models, the ETS+ARIMA might not have the same issues as the pure additive one. This is because the multiplicative ETS (Section <a href="ADAMETSPureMultiplicative.html#ADAMETSPureMultiplicative">6.1</a>) and multiplicative ARIMA (Section <a href="StateSpaceARIMA.html#ADAMARIMAPureMultiplicative">9.1.4</a>) are formulated differently. An example is an ETS(M,N,N)+logARIMA(0,1,1), which is formulated as:
-<span class="math display" id="eq:ADAMETSARIMAMNN011">\[\begin{equation}
-  \begin{aligned}
-    &amp;{y}_{t} = l_{t-1} v_{1,t-1} (1 + \epsilon_t) \\
-    &amp;l_t = l_{t-1}(1 + \alpha \epsilon_t) \\
-    &amp;\log v_{1,t} = \log v_{1,t-1} + (1+\theta_1) \log (1 + \epsilon_t)
-  \end{aligned}.
-  \tag{9.34}
-\end{equation}\]</span>
-The last equation in <a href="ETSAndARIMA.html#eq:ADAMETSARIMAMNN011">(9.34)</a> can be rewritten as <span class="math inline">\(v_{1,t} = v_{1,t-1} (1 + \epsilon_t)^{(1+\theta_1)}\)</span>, demonstrating the difference between the transition equation of ETS(M,N,N) and multiplicative ARIMA(0,1,1). Still, the two models will be similar in cases, when <span class="math inline">\(\alpha\)</span> is close to zero and (respectively) <span class="math inline">\(\theta\)</span> is close to -1. So this combination of models should be treated with care, along with other potentially similar combinations. The following combinations of the two models can be considered as potentially unidentifiable under some conditions:</p>
-<ol style="list-style-type: decimal">
-<li>ETS(M,N,N)+logARIMA(0,1,1);</li>
-<li>ETS(M,M,N)+logARIMA(0,2,2);</li>
-<li>ETS(M,Md,N)+logARIMA(1,1,1).</li>
-</ol>
-<p>In addition, the recommendations discussed for the pure additive ETS+ARIMA can be applied here for the pure multiplicative ETS+ARIMA to guarantee that the resulting model is identifiable no matter what.</p>
-<p>Finally, mixing additive ETS with multiplicative ARIMA or multiplicative ETS with additive ARIMA does not make sense from the modelling point of view. It only complicates the model building process, so we do not consider these exotic cases in this book, although they are theoretically possible.</p>
 <p>In the most general case the pure multiplicative ETS+ARIMA model can be written as (based on <a href="ADAMETSPureMultiplicative.html#eq:ETSADAMStateSpacePureMultiplicative">(6.1)</a> and <a href="StateSpaceARIMA.html#eq:ADAMStateSpaceMultiplicative">(9.16)</a>):
 <span class="math display" id="eq:ADAMETSARIMA">\[\begin{equation}
   \begin{aligned}
@@ -687,9 +671,25 @@ The last equation in <a href="ETSAndARIMA.html#eq:ADAMETSARIMAMNN011">(9.34)</a>
         &amp;\log \mathbf{v}_{E,t} = \mathbf{F}_{E} \log \mathbf{v}_{E,t-\boldsymbol{l}_E} + \log(\mathbf{1}_k + \mathbf{g}_E \epsilon_t) \\
     &amp;\log \mathbf{v}_{A,t} = \mathbf{F}_{A} \log \mathbf{v}_{A,t-\boldsymbol{l}_A} + \mathbf{g}_A \log(1+\epsilon_t)
   \end{aligned} ,
+  \tag{9.34}
+\end{equation}\]</span>
+where the subscript reflects, which part corresponds to which model: “E” - ETS, “A” - ARIMA. The formulation <a href="ETSAndARIMA.html#eq:ADAMETSARIMA">(9.34)</a> demonstrates that the ETS+ARIMA might not have the same issues as the pure additive one. This is because the multiplicative ETS (Section <a href="ADAMETSPureMultiplicative.html#ADAMETSPureMultiplicative">6.1</a>) and multiplicative ARIMA (Subsection <a href="StateSpaceARIMA.html#ADAMARIMAPureMultiplicative">9.1.4</a>) are formulated differently. Consider an example of ETS(M,N,N)+logARIMA(0,1,1), which is formulated as:
+<span class="math display" id="eq:ADAMETSARIMAMNN011">\[\begin{equation}
+  \begin{aligned}
+    &amp;{y}_{t} = l_{t-1} v_{1,t-1} (1 + \epsilon_t) \\
+    &amp;l_t = l_{t-1}(1 + \alpha \epsilon_t) \\
+    &amp;\log v_{1,t} = \log v_{1,t-1} + (1+\theta_1) \log (1 + \epsilon_t)
+  \end{aligned}.
   \tag{9.35}
 \end{equation}\]</span>
-where the subscript reflects, which part corresponds to which model: “E” - ETS, “A” - ARIMA.</p>
+The last equation in <a href="ETSAndARIMA.html#eq:ADAMETSARIMAMNN011">(9.35)</a> can be rewritten as <span class="math inline">\(v_{1,t} = v_{1,t-1} (1 + \epsilon_t)^{(1+\theta_1)}\)</span>, demonstrating the difference between the transition equation of ETS(M,N,N) and multiplicative ARIMA(0,1,1). Still, the two models will be similar in cases when <span class="math inline">\(\alpha\)</span> is close to zero and (respectively) <span class="math inline">\(\theta\)</span> is close to -1. So this combination of models should be treated with care, along with other potentially similar combinations. The following combinations of the two models can be considered as potentially unidentifiable under some conditions:</p>
+<ol style="list-style-type: decimal">
+<li>ETS(M,N,N)+logARIMA(0,1,1);</li>
+<li>ETS(M,M,N)+logARIMA(0,2,2);</li>
+<li>ETS(M,Md,N)+logARIMA(1,1,2).</li>
+</ol>
+<p>In addition, the recommendations discussed for the pure additive ETS+ARIMA can be applied here for the pure multiplicative ETS+ARIMA to guarantee that the resulting model is identifiable in all cases.</p>
+<p>Finally, mixing additive ETS with multiplicative ARIMA or multiplicative ETS with additive ARIMA does not make sense from the modelling point of view. It only complicates the model building process, so we do not consider these exotic cases in this book, although they are theoretically possible.</p>
 </div>
 </div>
 
