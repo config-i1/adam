@@ -121,7 +121,7 @@ In the case of models with trend and/or seasonal components, the model becomes e
 
 ## Conditional expectation and variance of ADAMX {#ADAMXConventionalConditionalMoments}
 ### ADAMX with deterministic explanatory variables
-ETS models have a severe limitation, which will be discussed in Chapter \@ref(ADAMUncertainty): they assume that the model's parameters are known, i.e. there is no variability in them and that the in-sample estimates are fixed no matter how the sample size changes. This limitation also impacts the ETSX part. While in the case of point forecasts, this is not important, this affects the conditional variance and prediction intervals. As a result, the conditional mean and variance of the conventional ADAMX assume that the parameters $a_0, \dots a_n$ are also known, leading to the following formulae in the case of the pure additive model, based on what was discussed in the Section \@ref(pureAdditiveExpectationAndVariance):
+The conventional ETS and ARIMA models have a severe limitation, which will be discussed in Chapter \@ref(ADAMUncertainty): it assume that the model's parameters are known, i.e. there is no variability in them and that the in-sample estimates are fixed no matter how the sample size changes. While in the case of point forecasts, this is not important, this affects the conditional variance and prediction intervals, which appear too narrow in many studies [e.g. @Athanasopoulos2011]. In case of regression, this limitation is lifted: the uncertainty of parameters in it translates to the final uncertainty in confidence/prediction interval. ADAMX, having both dynamic (ETS/ARIMA) and static (regression) parts, has the limitation of the former, which can be resolved only with more complicated approaches (Section \@ref(adamRefitted)). As a result, the conditional mean and variance of the conventional ADAMX assume that the parameters $a_0, \dots a_n$ are known, leading to the following formulae in the case of the pure additive model, based on what was discussed in the Section \@ref(pureAdditiveExpectationAndVariance):
 \begin{equation}
   \begin{aligned}
     \mu_{y,t+h} = \text{E}(y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i,t}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
@@ -137,11 +137,17 @@ the main difference from the moments of the conventional model (from Section \@r
   \end{aligned},
   (\#eq:ETSXADAMStateSpaceANNRecursionMeanAndVariance)
 \end{equation}
-where the variance ignores the potential variability rising from the explanatory variables because of the ETS limitations. This assumes that the future values of explanatory variables $x_{i,t}$ are known (the variable is deterministic). As a result, the prediction and confidence intervals for the ADAMX model would typically be narrower than expected and would only be adequate in cases of large samples, where the Law of Large Numbers would start working [Section 6.1 of @SvetunkovSBA], reducing the variance of parameters (this is assuming that the typical assumptions of the model from Section \@ref(assumptions) hold).
+where the variance ignores the potential variability rising from the explanatory variables because of the limitations discussed above. The formulae assume that the future values of explanatory variables $x_{i,t}$ are known (the variable is deterministic). As a result, the prediction and confidence intervals for the ADAMX would typically be narrower than expected and would only be adequate in cases of large samples, where the Law of Large Numbers would start working [Section 6.1 of @SvetunkovSBA], reducing the variance of parameters (this is assuming that the typical assumptions of the model from Subsection \@ref(assumptions) hold).
 
 
 ### ADAMX with stochastic explanatory variables {#ADAMXConventionalConditionalMomentsRandom}
-Note that the ADAMX works well in cases when the future values of $x_{i,t+h}$ are known. It is a realistic assumption when we control the explanatory variables (e.g. prices and promotions for our product). But when the variables are out of our control, they need to be forecasted somehow. In this case we are assuming that each $x_{i,t}$ is a stochastic variable with some dynamic conditional one step ahead expectation $\mu_{x_{i,t}}$ and a one step ahead variance $\sigma^2_{x_{i,1}}$. **Note** that in this case, we treat the available explanatory variables as models on their own, not just as values given to us from above. This assumption of randomness will change the conditional moments of the model. Here is what we will have in the case of ETSX(A,N,N) (given that the typical assumptions from Section \@ref(assumptions) hold):
+Note that the ADAMX works well in cases when the future values of $x_{i,t+h}$ are known. It is a realistic assumption when we control the explanatory variables (e.g. prices and promotions for our product). But when the variables are out of our control, they need to be forecasted somehow. In this case we are assuming that each $x_{i,t}$ is a stochastic variable with some dynamic conditional one step ahead expectation $\mu_{x_{i,t}}$ and a one step ahead variance $\sigma^2_{x_{i,1}}$.
+
+::: remark
+In this case, we treat the available explanatory variables as models on their own, not just as values given to us from above. This assumption of randomness will change the conditional moments of the model.
+:::
+
+Here is what we will have for the moments of the model in the case of ETSX(A,N,N) (given that the typical assumptions from Subsection \@ref(assumptions) hold):
 \begin{equation}
   \begin{aligned}
     \mu_{y,t+h} = \text{E}(y_{t+h}|t) = & l_{t} + \sum_{i=1}^n a_i \mu_{x_{i,t+h}} \\
@@ -149,7 +155,7 @@ Note that the ADAMX works well in cases when the future values of $x_{i,t+h}$ ar
   \end{aligned},
   (\#eq:ETSXADAMStateSpaceANNRecursionMeanAndVarianceRandomness)
 \end{equation}
-where $\sigma^2_{x_{i,h}}$ is the conditional variance of $x_{i}$ h steps ahead, $\sigma_{x_{i,h},x_{j,h}}$ is the h steps ahead covariance between the explanatory variables $x_{i,h}$ and $x_{j,h}$, both conditional on the information available at the observation $t$. similarly, if we are interested in one step ahead point forecast from the model, it should take the randomness of explanatory variables into account and become:
+where $\sigma^2_{x_{i,h}}$ is the conditional variance of $x_{i}$ h steps ahead, $\sigma_{x_{i,h},x_{j,h}}$ is the h steps ahead covariance between the explanatory variables $x_{i,t+h}$ and $x_{j,t+h}$, both conditional on the information available at the observation $t$. Similarly, if we are interested in one step ahead point forecast from the model, it should take the randomness of explanatory variables into account and become:
 \begin{equation}
   \begin{aligned}
     \mu_{y,t |t-1} = &  \left. \mathrm{E}\left(l_{t-1} + \sum_{i=1}^n a_i x_{i,t} + \epsilon_{t} \right| t-1 \right) = \\
@@ -157,7 +163,7 @@ where $\sigma^2_{x_{i,h}}$ is the conditional variance of $x_{i}$ h steps ahead,
   \end{aligned}.
   (\#eq:ADAMETSXANNStepAhead)
 \end{equation}
-So, in the case of ADAMX with random explanatory variables, the model should be constructed based on the expectations of those variables, not the random values themselves. This explains, for example, why @Athanasopoulos2011 found that some models with predicted explanatory variables work better than the model with the variables themselves. This means that, when estimating the model, such as ETS(A,N,N), the following should be constructed:
+So, in the case of ADAMX with random explanatory variables, the model should be constructed based on the expectations of those variables, not the random values themselves. This explains, for example, why @Athanasopoulos2011 found that some models with predicted explanatory variables work better than the models with the original variables. This means that when estimating the model, such as ETS(A,N,N), the following should be constructed:
 \begin{equation}
   \begin{aligned}
     & \hat{y}_{t} = \hat{l}_{t-1} + \sum_{i=1}^n \hat{a}_{i,t} \hat{x}_{i,t} \\
@@ -169,22 +175,22 @@ So, in the case of ADAMX with random explanatory variables, the model should be 
 \end{equation}
 where $\hat{x}_{i,t}$ is the in-sample conditional one step ahead mean for the explanatory variable $x_i$.
 
-Finally, as discussed previously, the conditional moments for the pure multiplicative and mixed models do not generally have closed forms, implying that the simulations need to be carried out. The situation becomes more challenging in the case of random explanatory variables because that randomness needs to be introduced in the model itself and propagated throughout the time series. This is not a trivial task, which we will discuss in Section \@ref(adamRefitted).
+Finally, as discussed previously, the conditional moments for the pure multiplicative and mixed models do not generally have closed forms, implying that the simulations need to be carried out. The situation becomes more challenging in the case of random explanatory variables because that randomness needs to be introduced in the model itself and propagated throughout the time series. This is not a trivial task, which has not been resolved yet.
 
 
 ## Dynamic X in ADAMX {#ADAMXDynamic}
 ::: remark
-The model discussed in this section assumes particular dynamics of parameters, aligning with what the conventional ETS assumes: parameters are correlated with the states of the model. It does not treat parameters as independent as, for example, MSOE state space models do, which makes this model restrictive in its application. But this type of model works well with categorical variables, as I show later in this section.
+The model discussed in this section assumes particular dynamics of parameters, aligning with what the conventional ETS assumes: regression parameters are correlated with the states of the model. It does not treat parameters as independent as, for example, MSOE state space models do, which makes this model restrictive in its application. But this type of model works well with categorical variables, as I show later in this section.
 :::
 
-As discussed in Section \@ref(ADAMXFormulation), the parameters of the explanatory variables in ADAMX can be assumed to be constant over time or can be assumed to vary according to some mechanism. The most reasonable one in the SSOE framework relies on the same error for different components of the model because this mechanism aligns with the model itself. @Osman2015 proposed one of such mechanisms, relying on the differences of the data. The primary motivation of their approach was to make the dynamic ADAMX model stable, which is a challenging task. However, this mechanism relies on the assumption of non-stationarity of the explanatory variables, which does not always make sense (for example, it is unreasonable in the case of promotional data). An alternative approach discussed in this section is the one initially proposed by @Svetunkov1985 based on the stochastic approximation mechanism and further developed in @Svetunkov2014Textbook.
+As discussed in Section \@ref(ADAMXFormulation), the parameters of the explanatory variables in ADAMX can be assumed to be constant over time or can be assumed to vary according to some mechanism. The most reasonable one in the SSOE framework relies on the same error for different components of the model because this mechanism aligns with the model itself. @Osman2015 proposed one of such mechanisms, relying on the differences of the data. The primary motivation of their approach was to make the dynamic ETSX model stable, which is a challenging task. However, this mechanism relies on the assumption of non-stationarity of the explanatory variables, which does not always make sense (for example, it is unreasonable in the case of promotional data). An alternative approach discussed in this section is the one initially proposed by @Svetunkov1985, based on the stochastic approximation mechanism and further developed in @Svetunkov2014Textbook.
 
 We start with the following linear regression model:
 \begin{equation}
     y_{t} = a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + \epsilon_t ,
   (\#eq:linearRegressionDynamic)
 \end{equation}
-where all parameters vary over time and $a_{0,t}$ represents the value from the conventional additive error ETS model. The updating mechanism for the parameters is straight forward and relies on the ratio of the error term and the respective explanatory variables:
+where all parameters vary over time and $a_{0,t}$ represents the value from the conventional additive error ETS model (e.g. level of series, i.e. $a_{0,t}=l_t$). The updating mechanism for the parameters in this case is straight forward and relies on the ratio of the error term and the respective explanatory variables:
 \begin{equation}
     a_{i,t} = a_{i,t-1} + \left \lbrace \begin{aligned}
                   &\delta_i \frac{\epsilon_t}{x_{i,t}} \text{ for each } i \in \{1, \dots, n\}, \text{ if } x_{i,t}\neq 0 \\
@@ -200,7 +206,7 @@ where $\delta_i$ is the smoothing parameter of the $i$-th explanatory variable. 
   \end{aligned}
   (\#eq:ADAMETSXPureAdditiveDynamicFull)
 \end{equation}
-where $\mathbf{z}_t = \mathrm{diag}\left(\mathbf{w}_t\right)^{-1}=\mathbf{I}_{k+n} \odot (\mathbf{w}_t \mathbf{1}_{k+n})$ is the diagonal matrix consisting of inverses of explanatory variables, $\mathbf{I}_{k+n}$ is the identity matrix for $k$ ADAM components and $n$ explanatory variables and $\odot$ is Hadamard product for element-wise multiplication. This is the inverse of the diagonal matrix based on the measurement vector, for which those values that cannot be inverted (due to division by zero) are substitute by zeroes in order to reflect the condition in \@ref(eq:linearRegressionDynamicUpdates). In addition to what \@ref(eq:ETSXADAMStateSpacePureAdditiveFull) contained, we add smoothing parameters $\delta_i$ in the persistence vector $\mathbf{g}$ for each of the explanatory variables.
+where $\mathbf{z}_t = \mathrm{diag}\left(\mathbf{w}_t\right)^{-1}= \left(\mathbf{I}_{k+n} \odot (\mathbf{w}_t \mathbf{1}^{\prime}_{k+n})\right)^{-1}$ is the diagonal matrix consisting of inverses of explanatory variables, $\mathbf{I}_{k+n}$ is the identity matrix for $k$ components and $n$ explanatory variables and $\odot$ is Hadamard product for element-wise multiplication. This is the inverse of the diagonal matrix based on the measurement vector, for which those values that cannot be inverted (due to division by zero) are substitute by zeroes in order to reflect the condition in \@ref(eq:linearRegressionDynamicUpdates). In addition to what \@ref(eq:ETSXADAMStateSpacePureAdditiveFull) contained, we add smoothing parameters $\delta_i$ in the persistence vector $\mathbf{g}$ for each of the explanatory variables.
 
 If the error term is multiplicative, then the model changes to:
 \begin{equation}
@@ -213,9 +219,9 @@ If the error term is multiplicative, then the model changes to:
   \end{aligned} .
   (\#eq:linearRegressionDynamicMultiplicative)
 \end{equation}
-The formulation \@ref(eq:linearRegressionDynamicMultiplicative) differs from the conventional pure multiplicative ETS model because the smoothing parameter $\delta_i$ is not included inside the error term $1+\epsilon_t$, which simplifies some derivations and makes the model easier to work with. Mixed ETS models can also have explanatory variables, but I suggest aligning the type of explanatory variable model with the error term.
+The formulation \@ref(eq:linearRegressionDynamicMultiplicative) differs from the conventional pure multiplicative ETS model because the smoothing parameter $\delta_i$ is not included inside the error term $1+\epsilon_t$, which simplifies some derivations and makes the model easier to work with (it has some similarities to logARIMA from Subsection \@ref(ADAMARIMAPureMultiplicative)).
 
-Note that if it is suspected that the explanatory variables exhibit non-stationarity and are not cointegrated with the response variable, then their differences can be used instead of $x_{i,t}$ in \@ref(eq:ADAMETSXPureAdditiveDynamicFull) and \@ref(eq:linearRegressionDynamicMultiplicative). In this case, the model would coincide with the one proposed by @Osman2015. The decision of taking the differences for the different parts of the model should be made based on each specific situation. Here is an example of the ETSX(A,N,N) model with differenced explanatory variables:
+Note that if it is suspected that the explanatory variables exhibit non-stationarity and are not cointegrated with the response variable, then their differences can be used instead of $x_{i,t}$ in \@ref(eq:ADAMETSXPureAdditiveDynamicFull) and \@ref(eq:linearRegressionDynamicMultiplicative). In this case, the additive model would coincide with the one proposed by @Osman2015. However, the decision of taking the differences for the different parts of the model should be made based on each specific situation, not across the whole set of variables. Here is an example of the ETSX(A,N,N) model with differenced explanatory variables:
 \begin{equation}
   \begin{aligned}
     & y_{t} = a_{0,t-1} + a_{1,t-1} \Delta x_{1,t} + \dots + a_{n,t-1} \Delta x_{n,t} + \epsilon_t , \\
@@ -228,11 +234,11 @@ Note that if it is suspected that the explanatory variables exhibit non-stationa
 \end{equation}
 where $\Delta x_{i,t} = x_{i,t} -x_{i,t-1}$ is the differences of the $i$-th exogenous variable.
 
-Finally, to distinguish the ADAMX with static parameters from the ADAMX with dynamic ones, we will use the letters "S" and "D" in the names of models. So, the model \@ref(eq:ETSXADAMANNDeterministic) can be called ETSX(A,N,N){S}, while the model \@ref(eq:linearRegressionDynamicMultiplicative), assuming that $a_{0,t-1}=l_{t-1}$, would be called ETSX(M,N,N){D}. We use curly brackets to split the ETS states from the type of X. Furthermore, given that the model with static regressors is assumed in many contexts to be the default one, the ETSX(\*,\*,\*){S} model can also be denoted as just ETSX(\*,\*,\*).
+Finally, to distinguish the ADAMX with static parameters from the one with dynamic ones, we will use the letters "S" and "D" in the names of models. So, the model \@ref(eq:ETSXADAMANNDeterministic) can be called ETSX(A,N,N){S}, while the model \@ref(eq:linearRegressionDynamicMultiplicative), assuming that $a_{0,t-1}=l_{t-1}$, would be called ETSX(M,N,N){D}. We use curly brackets to split the ETS states from the type of X. Furthermore, given that the model with static regressors is assumed in many contexts to be the default one, the ETSX(\*,\*,\*){S} model can also be denoted as just ETSX(\*,\*,\*).
 
 
 ### Recursion for dynamic ADAMX {#ADAMXDynamicMoments}
-Similar to how it was discussed in Section \@ref(ADAMXConventionalConditionalMomentsRandom), we can have two cases in the dynamic model: (1) deterministic explanatory variables, (2) stochastic explanatory variables. For illustrative purposes, we will use a non-seasonal model for which the lag vector $\boldsymbol{l}$ contains ones only, keeping in mind that other pure additive models can be easily used instead. The cases of non-additive ETS models are not discussed in this part in detail -- the moments for these models need to be calculated based on simulations. So, as discussed previously, the model can be written in the following general way, assuming that all elements of $\boldsymbol{l}$ are equal to one:
+Similarly to how it was discussed in Subsection \@ref(ADAMXConventionalConditionalMomentsRandom), we can have two cases in the dynamic model: (1) deterministic explanatory variables, (2) stochastic explanatory variables. For illustrative purposes, we will use a non-seasonal model for which the lag vector $\boldsymbol{l}$ contains ones only, keeping in mind that other pure additive models can be easily used instead with slight changes in formulae. The cases of non-additive ETS models are complicated and are not discussed in this monograph. So, as discussed previously, the model can be written in the following general way:
 \begin{equation}
   \begin{aligned}
     & {y}_{t} = \mathbf{w}'_t \mathbf{v}_{t-1} + \epsilon_t \\
@@ -248,27 +254,29 @@ Based on this model, we can get the recursive relation for $h$ steps ahead, simi
   \end{aligned} ,
   (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursive01)
 \end{equation}
-where the second equation can be represented based on the values available on observation $t$:
+where the second equation can be expressed via matrices and vectors using the values available on observations from $t$ to $t+h-1$:
 \begin{equation}
   \mathbf{v}_{t+h-1} = \mathbf{F}^{h-1} \mathbf{v}_{t} + \sum_{j=1}^{h-1} \mathbf{F}^{h-1-j} \mathbf{z}_{t+j} \mathbf{g} \epsilon_{t+j} .
   (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursive02)
 \end{equation}
 Substituting the equation \@ref(eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursive02) in the measurement equation of \@ref(eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursive01) leads to the final recursion:
 \begin{equation}
-    {y}_{t+h} = \mathbf{w}'_{t+h} \mathbf{F}^{h-1} \mathbf{v}_{t} + \mathbf{w}'_{t+h} \sum_{j=1}^{h-1} \mathbf{F}^{h-1-j} \mathbf{z}_{t+j} \mathbf{g} \epsilon_{t+j} + \epsilon_{t+h} .
+    {y}_{t+h} = \mathbf{w}'_{t+h} \mathbf{F}^{h-1} \mathbf{v}_{t} + \mathbf{w}'_{t+h} \sum_{j=1}^{h-1} \mathbf{F}^{h-1-j} \mathbf{z}_{t+j} \mathbf{g} \epsilon_{t+j} + \epsilon_{t+h} ,
   (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursiveFinal)
 \end{equation}
+which can be used for the derivation of moments of ADAMX{D}.
+
 
 ### Conditional moments for deterministic explanatory variables in ADAMX{D}
-Based on this recursion, we can calculate the conditional mean and variance for the model. First, we assume that the explanatory variables are controlled by an analyst, and are known for $j=1, \dots, h$:
+Based on the recursion \@ref(eq:ADAMETSXPureAdditiveDynamicNonSeasonalRecursiveFinal), we can calculate the conditional mean and variance for the model. First, we assume that the explanatory variables are controlled by an analyst, and are known for all $j=1, \dots, h$, which leads to:
 \begin{equation}
   \begin{aligned}
     \mu_{y,t+h} = & \text{E}(y_{t+h}|t) = \mathbf{w}'_{t+h} \mathbf{F}^{h-1} \mathbf{v}_{t} \\
-    & \text{V}(y_{t+h}|t) = \left(\mathbf{w}'_{t+h} \sum_{j=1}^{h-1} \mathbf{F}^{h-1-j} \mathbf{z}_{t+j} \mathbf{g} \right)^2 \sigma^2 + \sigma^2
+    & \text{V}(y_{t+h}|t) = \left( \left(\mathbf{w}'_{t+h} \sum_{j=1}^{h-1} \mathbf{F}^{h-1-j} \mathbf{z}_{t+j} \mathbf{g} \right)^2 + 1 \right) \sigma^2
   \end{aligned} .
   (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalMomentsNonRandom)
 \end{equation}
-The formulae for conditional moments in this case look similar to the ones from the pure additive ETS model in Section \@ref(pureAdditiveExpectationAndVariance) with only difference being the interaction with time varying measurument vector.
+The formulae for conditional moments in this case look similar to the ones from the pure additive ETS model in Section \@ref(pureAdditiveExpectationAndVariance) with only difference being that the element $\mathbf{z}_{t+j} \mathbf{g}$ is in general not equal to zero for the parameters of the explanatory variables.
 
 ### Conditional mean for stochastic explanatory variables in ADAMX{D}
 In the case of stochastic explanatory variables, the conditional expectation is straightforward and is similar to the one in the static ADAMX model:
@@ -276,7 +284,7 @@ In the case of stochastic explanatory variables, the conditional expectation is 
     \mu_{y,t+h} = \text{E}(y_{t+h}|t) = \boldsymbol{\mu}'_{w,t+h} \mathbf{F}^{h-1} \mathbf{v}_{t} ,
   (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalMomentsRandom)
 \end{equation}
-where $\boldsymbol{\mu}'_{w,t+h}$ is the vector of conditional h steps ahead expectations for each element in the $\mathbf{w}_{t+h}$. In the case of ETS components, the vector would contain ones. However, when it comes to conditional variance, it is more complicated because it introduces complex interactions between variances of different variables and the error term. As a result, it would be easier to get the correct variance based on simulations, assuming that the explanatory variables and the error term change according to some assumed models.
+where $\boldsymbol{\mu}'_{w,t+h}$ is the vector of conditional h steps ahead expectations for each element in the $\mathbf{w}_{t+h}$. In the case of ETS components, the vector would contain ones. However, when it comes to conditional variance, it becomes more complicated because it introduces complex interactions between variances of different variables and the error term of the model. As a result, it would be easier to get the correct variance based on simulations, assuming that the explanatory variables and the error term change according to some assumed models instead of deriving analytical expressions.
 
 
 ## Stability and forecastability conditions of ADAMX
