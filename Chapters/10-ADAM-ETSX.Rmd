@@ -1,29 +1,31 @@
 # Explanatory variables in ADAM {#ADAMX}
-In real life, the need for explanatory variables arises when some external factors influence the response variable, which cannot be ignored and impact the final forecasts and their accuracy. Examples of such variables in the demand forecasting context include price changes, promotional activities, temperature etc. In some cases, the changes in these factors would not substantially impact the demand, but this does not apply universally to the problem. If we omit this information from the model, this will be damaging for both point forecasts and prediction intervals [see discussion in Chapter 15 of @SvetunkovSBA].
+In real life, the need for explanatory variables arises when there are some external factors that have relation with the response variable and impact the final forecasts and their accuracy. Examples of such variables in the demand forecasting context include price changes, promotional activities, temperature etc. In some cases, the changes in these factors would not substantially influence the demand, but this does not apply universally to the problem. If we omit this information from the model, this will be damaging for both point forecasts and prediction intervals [see discussion in Chapter 15 of @SvetunkovSBA].
 
-While the inclusion of explanatory variables in the context of ARIMA models is a relatively well-studied topic [for example, this was discussed by @Box1976], in the case of ETS, there is only a Chapter 9 in @Hyndman2008b and a handful of papers. @Koehler2012 discuss the mechanism detection and approximation of outliers via an ETSX model (ETS with explanatory variables). The authors show that if an outlier appears at the end of the series, it will seriously impact the final forecast. However, if it appears either in the middle or at the beginning of the series, the impact on the final forecast is typically negligible. This is relevant to our discussion because there is a direct link between dealing with outliers in @Koehler2012 and including explanatory variables in ETSX in terms of how the model is formulated in these two situations. @Kourentzes2015 used ETSX successfully for promotional modelling, demonstrating that it outperforms the conventional ETS in terms of point forecasts accuracy in cases when promotions happen.
+While the inclusion of explanatory variables in the context of ARIMA models is a relatively well-studied topic [for example, this was discussed by @Box1976], in the case of ETS, there is only a Chapter 9 in @Hyndman2008b and a handful of papers. @Koehler2012 discuss the mechanism of detection and approximation of outliers via an ETSX model (ETS with explanatory variables). The authors show that if an outlier appears at the end of the series, it will seriously impact the final forecast and needs to be modelled correctly. However, if it appears either in the middle or at the beginning of the series, the impact on the final forecast is typically negligible.
+<!-- This is relevant to our discussion because there is a direct link between dealing with outliers in @Koehler2012 and including explanatory variables in ETSX in terms of how the model is formulated in these two situations. -->
+@Kourentzes2015 used ETSX successfully for promotional modelling, demonstrating that it outperforms the conventional ETS in terms of point forecasts accuracy in cases when promotions happen. So, the inclusion of explanatory variables in dynamic models is not just a nice feature, but in some situations is a necessity, which helps improving the forecasting accuracy.
 
-The state-space model \@ref(eq:ETSADAMStateSpace) can be easily extended by including additional components and explanatory variables. This chapter discusses the main aspects of ADAM with explanatory variables, how it is formulated, and how the more advanced models can be built upon it. Furthermore, the parameters for these additional components can either be fixed (static) or change over time (dynamic). We discuss both in the following sections. We also show that the stability and forecastability conditions, discussed in Section \@ref(stabilityConditionAdditiveError) for the pure additive ETS model, will be different in the case of the ETSX model and that the classical definitions should be updated to cater for the introduction of the explanatory variables. We also briefly discuss the inclusion of categorical variables in the ETSX model and show that the seasonal ETS models can be considered special cases of ADAM ETSX in some situations.
+In ADAM, the state-space model \@ref(eq:ETSADAMStateSpace) can be easily extended by including additional components and explanatory variables. This chapter discusses the main aspects of ADAM with explanatory variables, how it is formulated, and how the more advanced models can be built upon it. Furthermore, the parameters for these additional components can either be fixed (static) or change over time (dynamic). We discuss both in the following sections. We also show that the stability and forecastability conditions, discussed in Section \@ref(stabilityConditionAdditiveError) for the pure additive ETS model, will be different in the case of the ETSX model and that the classical definitions should be updated to cater for the introduction of the explanatory variables. We also briefly discuss the inclusion of categorical variables in the ETSX model and show that the seasonal ETS models can be considered as special cases of ADAM ETSX with dummy variables.
 
-Furthermore, we will use the terms "**deterministic**" and "**stochastic**" explanatory variables to denote the situations when the values of these variables are known in advance or can be controlled by us. An example of the former would be the price of a product or a promotion that we decide to have. An example of the latter would be the temperature, which we cannot control and thus can be considered as a stochastic variable.
+Furthermore, we will use the term "**deterministic**" explanatory variable to denote the situations when the values of variables are known in advance or can be controlled by us. An example is the price of a product or a promotion that we decide to have. On contrary, we will use term "**stochastic**" explanatory variable for the cases, when its future value is not known and is beyond our control. An example of this variable is the temperature, which we cannot control and do not know for sure in advance. Usage of deterministic variables in dynamic models might differ from the usage of the stochastic ones.
 
-As a final note, we will carry out the discussion of the topic on the example of ADAM ETSX, keeping in mind that the same principles will hold for ADAM ARIMAX because the two are formulated in the same way. The more general dynamic model (encompassing ETS and/or ARIMA) with explanatory variables is called "ADAMX" in this and further chapters.
+As a final note, we will carry out the discussion of the topic in this Chapter on the example of ADAM ETSX, keeping in mind that the same principles will hold for ADAM ARIMAX because the two are formulated in the same framework. We will call the more general dynamic model (encompassing ETS and/or ARIMA) with explanatory variables "ADAMX" in this and further chapters.
 
 
 ## ADAMX: Model formulation {#ADAMXFormulation}
-As discussed previously, there are two types of errors in ADAM:
+As discussed previously, there are two types of error terms in ADAM:
 
-1. Additive discussed in @Hyndman2008b in Chapter \@ref(ADAMETSIntroduction) in case of ETS and Chapter \@ref(ADAMARIMA) for ARIMA,
-2. Multiplicative covered in Chapter \@ref(ADAMETSPureMultiplicativeChapter) for ETS and in Subsection \@ref(ADAMARIMAPureMultiplicative).
+1. Additive discussed in Chapter \@ref(ADAMETSIntroduction) in case of ETS and Chapter \@ref(ADAMARIMA) for ARIMA,
+2. Multiplicative covered in Chapter \@ref(ADAMETSPureMultiplicativeChapter) for ETS and in Subsection \@ref(ADAMARIMAPureMultiplicative) for ARIMA.
 
 The inclusion of explanatory variables in ADAMX is determined by the type of the error, so that in case of (1) the measurement equation of the model is:
 \begin{equation}
   {y}_{t} = a_{0,t} + a_{1,t} x_{1,t} + a_{2,t} x_{2,t} + \dots + a_{n,t} x_{n,t} + \epsilon_t ,
   (\#eq:ETSXADAMStateSpacePureAdditiveMeasurement)
 \end{equation}
-where $a_{0,t}$ is the point value based on all ETS components (for example, $a_{0,t}=l_{t-1}$ in case of ETS(A,N,N)), $x_{i,t}$ is the $i$-th explanatory variable, $a_{i,t}$ is its parameter and $n$ is the number of explanatory variables. We will call the estimated parameters of such model $\hat{a}_{i,t}$. In the simple case, the transition equation for such model would imply that the parameters $a_{i,t}$ do not change over time:
+where $a_{0,t}$ is the point value based on all ETS components (for example, $a_{0,t}=l_{t-1}$ in case of ETS(A,N,N)), $x_{i,t}$ is the $i$-th explanatory variable, $a_{i,t}$ is its parameter and $n$ is the number of explanatory variables. We will denote the estimated parameters of such model as "$\hat{a}_{i,t}$". In the simple case, the transition equation for such model would imply that the parameters $a_{i,t}$ do not change over time and are equal to some fixed value:
 \begin{equation}
-    a_{i,t} = a_{i,t-1} \text{ for all } i = 1, \dots, n
+    a_{i,t} = a_{i,t-1} = \dots = a_{i,0} \text{ for all } i = 1, \dots, n
   (\#eq:ETSXADAMStateSpacePureAdditiveTransition)
 \end{equation}
 Various complex mechanisms for the states update can be proposed instead of \@ref(eq:ETSXADAMStateSpacePureAdditiveTransition), but we do not discuss them at this point. Typically, the initial values of parameters would be estimated at the optimisation stage, either based on likelihood or some other loss function, so the index $t$ can be dropped, substituting $a_{i,t}=a_{i}$ for all $i=1,\dots,n$.
@@ -38,15 +40,17 @@ When it comes to the multiplicative error model, it should be formulated differe
 If log-log model is required, all that needs to be done, is to substitute $x_{i,t}$ with $\log x_{i,t}$.
 :::
 
-The compact form of the ADAMX model implies that the explanatory variables $x_{i,t}$ are included in the measurement vector $\mathbf{w}_{t}$, making it change over time. The parameters are then moved to the state vector, and a diagonal matrix is added to the existing transition matrix. Finally, the persistence vector for the parameters of explanatory variables should contain zeroes. The state space model, in that case, can be represented as:
+The model \@ref(eq:ETSXADAMStateSpacePureMultiplicativeMeasurement) aligns with both pure multiplicative ETS and ARIMA, discussed respectively in Chapter \@ref(ADAMETSPureMultiplicativeChapter) and in Subsection \@ref(ADAMARIMAPureMultiplicative).
+
+The compact form of the ADAMX model implies that the explanatory variables $x_{i,t}$ are included in the measurement vector $\mathbf{w}_{t}$, making it change over time. The parameters are then moved to the state vector, and a diagonal matrix is added to the existing transition matrix to reflect the updating mechanism \@ref(eq:ETSXADAMStateSpacePureAdditiveTransition). Finally, the persistence vector for the parameters of explanatory variables should contain zeroes, because for now we assume that the parameters do not change over time. The pure additive state space model, in that case, can be represented as:
 \begin{equation}
   \begin{aligned}
     & {y}_{t} = \mathbf{w}'_t \mathbf{v}_{t-\boldsymbol{l}} + \epsilon_t \\
     & \mathbf{v}_t = \mathbf{F} \mathbf{v}_{t-\boldsymbol{l}} + \mathbf{g} \epsilon_t
-  \end{aligned}
+  \end{aligned} ,
   (\#eq:ETSXADAMStateSpacePureAdditiveFull)
 \end{equation}
-for the pure additive and 
+while the pure multiplicative models is:
 \begin{equation}
   \begin{aligned}
     {y}_{t} = & \exp\left(\mathbf{w}'_t \log \mathbf{v}_{t-\boldsymbol{l}} + \log(1 + \epsilon_t)\right) \\
@@ -54,7 +58,7 @@ for the pure additive and
   \end{aligned}. 
   (\#eq:ETSXADAMStateSpacePureMultiplicativeFull)
 \end{equation}
-for the pure multiplicative models. So, the only thing that changes in these models is the time varying measurement vector $\mathbf{w}'_t$ instead of the fixed one. For example, in case of ETSX(A,Ad,A) we will have:
+So, the only thing that changes in these models in comparison with the conventional ones in Chapter \@ref(ADAMETSIntroduction) and \@ref(ADAMETSPureMultiplicativeChapter) is the time varying measurement vector $\mathbf{w}'_t$ instead of the fixed one. For example, in case of ETSX(A,Ad,A) we will have:
 \begin{equation}
   \begin{aligned}
     \mathbf{F} =
@@ -72,7 +76,7 @@ for the pure multiplicative models. So, the only thing that changes in these mod
   \end{aligned},
   (\#eq:ETSXADAMAAAMatrices)
 \end{equation}
-which is equivalent to the combination of equations \@ref(eq:ETSXADAMStateSpacePureAdditiveMeasurement) and \@ref(eq:ETSXADAMStateSpacePureAdditiveTransition):
+which is equivalent to the set of equations:
 \begin{equation}
   \begin{aligned}
     & y_{t} = l_{t-1} + \phi b_{t-1} + s_{t-m} + a_{1,t} x_{1,t} + \dots + a_{n,t} x_{n,t} + \epsilon_t \\
@@ -96,7 +100,7 @@ Alternatively, the state, measurement and persistence vectors and transition mat
 \end{equation}
 where $\mathbf{w}$, $\mathbf{F}$, $\mathbf{g}$ and $\mathbf{v}_{t}$ contain the elements of the conventional components of ADAM and $\mathbf{a}_{t}$ is the vector of parameters for the explanatory variables.
 
-When all the smoothing parameters of the ETS part of the model are equal to zero, the ETSX reverts to a deterministic model, directly related to the multiple linear regression. For example, in case of ETSX(A,N,N) with $\alpha=0$ we get:
+When all the smoothing parameters of the ETS part of the model are equal to zero, the ETSX reverts to a deterministic model, becoming just a multiple linear regression. For example, in case of ETSX(A,N,N) with $\alpha=0$ we get:
 \begin{equation}
   \begin{aligned}
     & y_{t} = l_{t-1} + a_{1,t} x_{1,t} + \dots + a_{n,t} x_{n,t} + \epsilon_t \\
@@ -107,17 +111,17 @@ When all the smoothing parameters of the ETS part of the model are equal to zero
   \end{aligned},
   (\#eq:ETSXADAMANNDeterministic)
 \end{equation}
-where $l_t=a_0$ is the intercept of the model. \@ref(eq:ETSXADAMANNDeterministic) can be rewritten in the conventional way, dropping the transition part of the state space model:
+where $l_t=a_0$ is the intercept of the model. \@ref(eq:ETSXADAMANNDeterministic) can be rewritten then in the conventional way, dropping the transition part of the state space model:
 \begin{equation}
     y_{t} = a_0 + a_{1} x_{1,t} + \dots + a_{n} x_{n,t} + \epsilon_t .
   (\#eq:linearRegression)
 \end{equation}
-In the case of models with trend and/or seasonal, the model becomes equivalent to the regression with deterministic trend and/or seasonality. This means that, in general, ADAMX implies that we are dealing with a regression with time-varying intercept, where the principles of this variability are defined by the ADAM components (e.g. intercept can vary seasonally). Similar properties are obtained with the multiplicative error model. The main difference is that the impact of explanatory variables on the response variable will vary with the intercept changes. The model, in this case, combines the strengths of the multiplicative regression and the dynamic model, where the variability of the response variable changes with the change of the baseline model (ADAM ETS and/or ADAM ARIMA in this case).
+In the case of models with trend and/or seasonal components, the model becomes equivalent to the regression with deterministic trend and/or seasonality. This means that, in general, ADAMX implies that we are dealing with a regression with time-varying intercept, where the principles of this variability are defined by the ADAM components (e.g. intercept can vary seasonally). Similar properties are obtained with the multiplicative error model. The main difference is that the specific impact of explanatory variables on the response variable will vary with the intercept changes. The model, in this case, combines the strengths of the multiplicative regression and the dynamic model, where the variability of the response variable changes with the change of the baseline model (ADAM ETS and/or ADAM ARIMA in this case).
 
 
 ## Conditional expectation and variance of ADAMX {#ADAMXConventionalConditionalMoments}
 ### ADAMX with deterministic explanatory variables
-ETS models have a severe limitation, which will be discussed in chapter \@ref(ADAMUncertainty): they assume that the model's parameters are known, i.e. there is no variability in them and that the in-sample estimates are fixed no matter how the sample size changes. This limitation also impacts the ETSX part. While in the case of point forecasts, this is not important, this affects the conditional variance and prediction intervals. As a result, the conditional mean and variance of the conventional ADAMX assume that the parameters $a_0, \dots a_n$ are also known, leading to the following formulae in the case of the pure additive model, based on what was discussed in the section \@ref(pureAdditiveExpectationAndVariance):
+ETS models have a severe limitation, which will be discussed in Chapter \@ref(ADAMUncertainty): they assume that the model's parameters are known, i.e. there is no variability in them and that the in-sample estimates are fixed no matter how the sample size changes. This limitation also impacts the ETSX part. While in the case of point forecasts, this is not important, this affects the conditional variance and prediction intervals. As a result, the conditional mean and variance of the conventional ADAMX assume that the parameters $a_0, \dots a_n$ are also known, leading to the following formulae in the case of the pure additive model, based on what was discussed in the Section \@ref(pureAdditiveExpectationAndVariance):
 \begin{equation}
   \begin{aligned}
     \mu_{y,t+h} = \text{E}(y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i,t}' \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
