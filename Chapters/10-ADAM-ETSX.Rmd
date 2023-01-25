@@ -288,42 +288,42 @@ where $\boldsymbol{\mu}'_{w,t+h}$ is the vector of conditional h steps ahead exp
 
 
 ## Stability and forecastability conditions of ADAMX
-It can be shown that any static ADAMX is not stable (as it was defined for pure additive ETS models in Section \@ref(stabilityConditionAdditiveError)), meaning that the weights of such model do not decline to zero over time. To see this, we can draw an analogy with a deterministic model, discussed in the context of pure additive ETS (from Section \@ref(stabilityConditionAdditiveError)). For example, we have already discussed that when $\alpha=0$, the ETS(A,N,N) model becomes equivalent to the global level, loses the stability condition, but still can be forecastable. It becomes a simple but still useful and efficient model:
+It can be shown that any **static** ADAMX is not *stable* (as it was defined for pure additive ETS models in Section \@ref(stabilityConditionAdditiveError)), meaning that the weights of such model do not decline to zero over time. To see this, we can draw an analogy with a deterministic model, discussed in the context of pure additive ETS (from Section \@ref(stabilityConditionAdditiveError)). For example, we have already discussed that when $\alpha=0$, the ETS(A,N,N) model becomes equivalent to the global level, loses the stability condition, but still can be forecastable. It becomes a simple but still useful and efficient model:
 \begin{equation}
   y_{t} = a_0 + \epsilon_t .
   (\#eq:ADAMETSGlobalLevelSimple)
 \end{equation}
 Similarly, the X part of ADAMX will always be unstable, but can be useful. For example, with $\alpha=0$, ETSX(A,N,N) reverts back to the linear regression:
 \begin{equation}
-  y_{t} = a_0 + a_{1} x_{1,t} + \dots + a_n x_{n,t} + \epsilon_t .
+  y_{t} = a_0 + a_{1} x_{1,t} + \dots + a_n x_{n,t} + \epsilon_t ,
   (\#eq:ADAMETSXRegression)
 \end{equation}
-This does not make the model inappropriate and only means that the weights do not decline over time. According to the conventional approach to ETS, if the dynamic part of the model is stable, but the overall model does not pass stability check just because of the X part, then the whole model will be considered unstable and potentially dangerous to use. But this is absurd. Following the same logic, we would need to avoid regression models in forecasting because they are not stable. Furthermore, there are no issues constructing ARIMAX models, but @Hyndman2008b claim that there are some with ETSX, which does not make sense if we recall the connection between ETS and ARIMA (discussed in Section \@ref(ARIMAandETS)). This only means that the stability/forecastability conditions should be checked for the dynamic part of the model (ETS or ARIMA) separately, ignoring the X part. Technically, this implies creating a separate transition matrix, persistence and measurement vectors and calculating the discount matrix for the ETS / ARIMA part to check already discussed stability and forecastability conditions (Section \@ref(stabilityConditionAdditiveError)).
+which is not stable, because its weights do not decline over time, and the very first observation (a set of initial states with models parameters) impacts the final forecast. This does not make the model inappropriate in any way, but according to the conventional approach to ETS, if the dynamic part of the model is stable, but the overall model does not pass stability check just because of the X part, then the whole model will be considered unstable and potentially dangerous to use. This is absurd. Following the same logic, we would need to avoid regression models in forecasting because they are not stable. Furthermore, there are no issues constructing ARIMAX models, but @Osman2015 argue that there are some with ETSX, which does not make sense if we recall the connection between ETS and ARIMA (discussed in Section \@ref(ARIMAandETS)). This only means that the stability/forecastability conditions should be checked for the dynamic part of the model (ETS or ARIMA) separately, ignoring the X part. Technically, this implies creating a separate transition matrix, persistence and measurement vectors and calculating the discount matrix for the ETS / ARIMA part to check already discussed stability and forecastability conditions (Section \@ref(stabilityConditionAdditiveError)).
 
-When it comes to the dynamic ADAMX, the situation changes because now the smoothing parameters for the model coefficients determine how weights decline over time. It can be shown based on \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) that the values of the state vector on the observation $t$ can be calculated via the recursion (here we provide a formula for the non-seasonal case, keeping in mind that in case of the seasonal one, the derivation and the main message will be similar):
+When it comes to the **dynamic** ADAMX, the situation changes because now the smoothing parameters for the model coefficients determine how weights decline over time. It can be shown based on \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) that the values of the state vector on the observation $t$ can be calculated via the recursion (here we provide a formula for the non-seasonal case, keeping in mind that in case of the seasonal one, the derivation and the main message will be similar):
 \begin{equation}
   \mathbf{v}_{t} = \prod_{j=1}^{t-1}\mathbf{D}_{t-j} \mathbf{v}_{0} + \sum_{j=0}^{t-1} \prod_{i=0}^{j} \mathbf{D}_{t-i} y_{t-j},
   (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalBackRecursion)
 \end{equation}
 where $\mathbf{D}_t=\mathbf{F} -\mathbf{z}_t \mathbf{g} \mathbf{w}_{t}'$ is the time varying discount matrix. The main issue in the case of dynamic ADAMX is that the stability condition varies over time together with the values of explanatory variables in $\mathbf{z}_t$. So, it is not possible to derive the stability condition for the general case. In order to make sure that the model is stable, we need for all eigenvalues of each $\mathbf{D}_{j}$ for all $j=\{1,\dots,t\}$ to lie in the unit circle.
 
-Alternatively, we can introduce a new condition. We say that the model is **stable on average** if the eigenvalues of $\mathbf{\bar{D}}=\frac{1}{t}\sum_{j=1}^t\mathbf{D}_j$ all lie in the unit circle. This way, some of the observations might have a higher impact on the final value, but they will be cancelled out by those with much lower weights in the product in \@ref(eq:ADAMETSXPureAdditiveDynamicNonSeasonalBackRecursion). This condition can be checked during the model estimation, similar to how the conventional stability condition is checked.
+Alternatively, we can introduce a new condition. We say that the model is **stable on average** if the eigenvalues of the geometric mean $\mathbf{\bar{D}}=\sqrt[t]{\prod_{j=1}^t\mathbf{D}_j}$ all lie in the unit circle. This way, some of the observations might have a higher impact on the final value, but they will be cancelled out by those with much lower weights in the product in \@ref(eq:ADAMETSXPureAdditiveDynamicNonSeasonalBackRecursion). This condition can be checked during the model estimation, similar to how the conventional stability condition is checked.
 
 As for the **forecastability** condition, for the ADAMX{D} it should be (based on the same logic as in Section \@ref(stabilityConditionAdditiveError)):
 \begin{equation}
   \lim\limits_{t\rightarrow\infty}\left(\mathbf{w}'_{t}\prod_{j=1}^{t-1}\mathbf{D}_{t-j} \mathbf{v}_{0}\right) = \text{const} .
   (\#eq:ADAMETSXPureAdditiveDynamicNonSeasonalBackForecastability)
 \end{equation}
-However, this condition will always be violated for the ADAMX models, just because the explanatory variables in $\mathbf{w}_{t}$ have their own variability and typically do not converge to a stable value with the increase of the sample size. So, if a forecastability condition needs to be checked for either ADAMX{D} or ADAMX{S}, I recommend checking it separately for the dynamic part of the model.
+However, this condition will always be violated for the ADAMX models, just because the explanatory variables in $\mathbf{w}_{t}$ have their own variability and typically do not converge to a stable value with the increase of the sample size. So, if a forecastability condition needs to be checked for either ADAMX{D} or ADAMX{S}, it should be checked separately for the dynamic part of the model, dropping the X part.
 
 
 ## Dealing with categorical variables in ADAMX {#ETSXDynamicCategories}
-When dealing with categorical variables in a regression context, they are typically expanded to a set of dummy variables [see Chapter 13 of @SvetunkovSBA]. So, for example, a variable "promotions" that can be "light", "medium" and "heavy" for different observations $t$ would be expanded to three dummy variables, `promoLight`, `promoMedium` and `promoHeavy`, each one of which is equal to 1, when the respective promotion type happens and equal to zero otherwise. When including these variables in the model, we would typically drop one of them (which is sometimes called pivot variable) and have a model with two dummy variables of a type:
+When dealing with categorical variables in a regression context, they are typically expanded to a set of dummy variables. So, for example, a variable "promotions" that can be "light", "medium" and "heavy" for different observations $t$ would be expanded to three dummy variables, `promoLight`, `promoMedium` and `promoHeavy`, each one of which is equal to 1, when the respective promotion type happens and equal to zero otherwise. When including these variables in the model, we would typically drop one of them (it is sometimes called pivot variable) and have a model with two dummy variables of a type:
 \begin{equation}
   y_t = a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + d_1 promoLight_t + d_2 promoMedium_t + \epsilon_t,
   (\#eq:RegressionWithDummies)
 \end{equation}
-where $d_i$ is the parameter for the $i$-th dummy variable. The same procedure can be done in the context of ADAMX, and the principles will be exactly the same for ADAMX{S}. However, when it comes to the dynamic model, the parameters have time indeces, and there can be different ways of formulating the model. Here is the first one:
+where $d_i$ is the parameter for the $i$-th dummy variable. The same procedure can be done in the context of ADAMX. The logic will be exactly the same for ADAMX{S}, but when it comes to the dynamic model, the parameters will have time indeces, and there can be different ways of formulating the model. Here is the first one:
 \begin{equation}
   \begin{aligned}
     & y_{t} = a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + d_1 promoLight_t + d_2 promoMedium_t + \epsilon_t \\
@@ -356,13 +356,15 @@ Here we assume that each specific category of the variable promotion changes ove
   \end{aligned} .
   (\#eq:ETSXDynamicDummies02)
 \end{equation}
-The rationale for such restriction is that we might expect the adaptation mechanism to apply to the promo variable as a whole, not to its specific values. This case also becomes useful in connecting the ETSX and the conventional seasonal ETS model. Let's assume that we deal with quarterly data with no trend, and we have a categorical variable `quarterOfYear`, which can be `First`, `Second`, `Third` and `Fourth`, depending on the specific observation. For convenience, I will call the parameters for the dummy variables, created from this categorical variable $s_{1,t}, s_{2,t}, s_{3,t} \text{ and } s_{4,t}$. Based on \@ref(eq:ETSXDynamicDummies02), the model can then be formulated as:
+The rationale for such restriction is that we might expect the adaptation mechanism to apply to the promo variable as a whole, not to its specific values. Indeed, in the example above, the variable of interest is `promo`, not the `promoLight` or `promoMedium`. Doing that will reduce the number of parameters and might simplify the estimation.
+
+The mechanism \@ref(eq:ETSXDynamicDummies02) also becomes useful in connecting the ETSX and the conventional seasonal ETS model. Consider an example with quarterly data with no trend, and a categorical variable `quarterOfYear`, which can be `First`, `Second`, `Third` and `Fourth`, depending on the specific observation. For convenience, I will call the parameters for the dummy variables, created from this categorical variable as $s_{1,t}, s_{2,t}, s_{3,t} \text{ and } s_{4,t}$. Based on \@ref(eq:ETSXDynamicDummies02), the model can then be formulated as:
 \begin{equation}
   \begin{aligned}
-    & y_{t} = l_{t-1} + s_{1,t} quarterOfYear_{1,t} + s_{2,t} quarterOfYear_{2,t} \\
-            & + s_{3,t} quarterOfYear_{3,t} + s_{4,t} quarterOfYear_{4,t} + \epsilon_t \\
-    & l_t = l_{t-1} + \alpha \epsilon_t \\
-    & s_{i,t} = s_{i,t-1} + \left \lbrace \begin{aligned}
+    y_{t} = & l_{t-1} + s_{1,t} quarterOfYear_{1,t} + s_{2,t} quarterOfYear_{2,t} + \\
+            & s_{3,t} quarterOfYear_{3,t} + s_{4,t} quarterOfYear_{4,t} + \epsilon_t \\
+    l_t = & l_{t-1} + \alpha \epsilon_t \\
+    s_{i,t} = & s_{i,t-1} + \left \lbrace \begin{aligned}
                   &\delta \epsilon_t \text{ for each } i \in \{1, \dots, 4\}, \text{ if } quarterOfYear_{i,t}\neq 0 \\
                   &0 \text{ otherwise }
             \end{aligned} \right.
@@ -378,11 +380,11 @@ We intentionally added all four dummy variables in \@ref(eq:ETSXDynamicDummiesSe
   \end{aligned} .
   (\#eq:ADAMETSANAQuarterly)
 \end{equation}
-So, this comparison shows on one hand that the mechanism of ADAMX{D} is natural for the ADAM, and on the other hand that using the same smoothing parameters for categorical variables can be a reasonable idea, especially in cases when we do not have grounds to assume that each category of the variable should evolve independently.
+So, this comparison shows on one hand that the mechanism of ADAMX{D} is natural for the ADAM, and on the other hand that using the same smoothing parameter for different values of a categorical variable can be a reasonable idea, especially in cases when we can assume that all categories of the variable should evolve together.
 
 
 ## Examples of application {#ETSXRExample}
-For this example, we will use the data of Road Casualties in Great Britain 1969–84, `Seatbelts` dataset in `datasets` package for R, which contains several variables (the description is provided in the documentation for the data and can be accessed via `?Seatbelts` command). The variable of interest, in this case, is `drivers`, and the dataset contains more variables than needed, so we will restrict the data with `drivers`, `kms` (distance driven), `PetrolPrice` and `law` -- the latter three seem to influence the number of injured/killed drivers in principle:
+For the example in this Section, we will use the data of Road Casualties in Great Britain 1969–84, `Seatbelts` dataset in `datasets` package for R, which contains several variables (the description is provided in the documentation for the data and can be accessed via `?Seatbelts` command). The variable of interest, in this case is `drivers`, and the dataset contains more variables than needed, so we will restrict the data with `drivers`, `kms` (distance driven), `PetrolPrice` and `law` -- the latter three seem to influence the number of injured/killed drivers in principle:
 ```{r}
 SeatbeltsData <- Seatbelts[,c("drivers","kms","PetrolPrice","law")]
 ```
@@ -397,10 +399,11 @@ Apparently, the `drivers` variable exhibits seasonality but does not seem to hav
 ```{r SeatbeltsForecast, fig.cap="The actual values for drivers and a forecast from ETS(M,N,M) model."}
 adamETSMNMSeat <- adam(SeatbeltsData[,"drivers"], "MNM",
                        h=12, holdout=TRUE)
-plot(forecast(adamETSMNMSeat, h=12, interval="prediction"))
+forecast(adamETSMNMSeat, h=12, interval="prediction") |>
+    plot()
 ```
 
-This simple model already does a fine job fitting the data and producing forecasts. However, the forecast is biased and is lower than needed because of the sudden drop in the level of series, which can only be explained by the introduction of the new law in the UK in 1983, making the seatbelts compulsory for drivers. Due to the sudden drop, the smoothing parameter for the level of series is higher than needed, leading to wider intervals and less accurate forecasts. Here is the output of the model:
+This simple model already does a fine job fitting the data and producing forecasts. However, the forecast is biased and is consistently lower than needed because of the sudden drop in the level of series, which can only be explained by the introduction of the new law in the UK in 1983, making the seatbelts compulsory for drivers. Due to the sudden drop, the smoothing parameter for the level of series is higher than needed, leading to wider intervals and less accurate forecasts. Here is the output of the model:
 ```{r}
 adamETSMNMSeat
 ```
@@ -418,10 +421,11 @@ adamETSXMNMSeat <- adam(SeatbeltsData, "MNM", h=12, holdout=TRUE,
                         formula=drivers~log(kms)+log(PetrolPrice)+law)
 ```
 
-The parameter `formula` in general is not compulsory. It can either be substituted by `formula=drivers~.` or dropped completely -- the function would fit the model of the first variable in the matrix from everything else. We need it in our case because we introduce log-transformations of some explanatory variables.
+The parameter `formula` in general is not compulsory. It can either be substituted by `formula=drivers~.` or dropped completely -- in the latter case, the function would fit the model of the first variable in the matrix from everything else. We need the formula in our case because we introduce log-transformations of some explanatory variables.
 
 ```{r SeatbeltsForecastX, fig.cap="The actual values for drivers and a forecast from ETSX(M,N,M) model."}
-plot(forecast(adamETSXMNMSeat, h=12, interval="prediction"))
+forecast(adamETSXMNMSeat, h=12, interval="prediction") |>
+    plot()
 ```
 
 Figure \@ref(fig:SeatbeltsForecastX) shows the forecast from the second model, which is slightly more accurate. More importantly, the prediction interval is narrower than in the simple ETS(M,N,M) because now the model takes the external information into account. Here is the summary of the second model:
@@ -430,27 +434,44 @@ Figure \@ref(fig:SeatbeltsForecastX) shows the forecast from the second model, w
 adamETSXMNMSeat
 ```
 
-Note that the smoothing parameter $\alpha$ has reduced from `r round(adamETSMNMSeat$persistence["alpha"],2)` to `r round(adamETSXMNMSeat$persistence["alpha"],2)`. This led to the reduction in error measures. For example, based on MASE, we can conclude that the model with explanatory variables is more precise than the simple univariate ETS(M,N,M). Still, we could try introducing the update of the parameters for the explanatory variables to see how it works (it might be unnecessary for this data):
+Note that the smoothing parameter $\alpha$ has reduced from `r round(adamETSMNMSeat$persistence["alpha"],2)` to `r round(adamETSXMNMSeat$persistence["alpha"],2)`. This led to the reduction in error measures. For example, based on RMSE, we can conclude that the model with explanatory variables is more precise than the simple univariate ETS(M,N,M). Still, we could try introducing the update of the parameters for the explanatory variables to see how it works (it might be unnecessary for this data):
 ```{r SeatbeltsForecastXD, fig.cap="The actual values for drivers and a forecast from ETSX(M,N,M){D} model."}
 adamETSXMNMDSeat <- adam(SeatbeltsData, "MNM", h=12, holdout=TRUE,
                          formula=drivers~log(kms)+log(PetrolPrice)+law,
-                         regressors="adapt")
+                         regressors="adapt", maxeval=10000)
 ```
 
-In this specific case, the difference between the ETSX and ETSX{D} models is infinitesimal in terms of the accuracy of final forecasts and prediction intervals. Here is the output of the model:
+::: remark
+Given the complexity of the estimation task, the default number of iterations needed for the optimiser to find the minimum of the loss function might not be sufficient. This is why I introduced `maxeval=10000` in the code above, increasing the number of maximum iterations to 10,000. In order to see how the optimiser worked out, you can add `print_level=41` in the code above.
+:::
+
+In our specific case, the difference between the ETSX and ETSX{D} models is infinitesimal in terms of the accuracy of final forecasts and prediction intervals. Here is the output of the model:
 ```{r}
 adamETSXMNMDSeat
 ```
 
-We can spot that the error measures of the dynamic model are a bit higher than the ones from the static one (e.g., compare MASE and RMSSE of models). In addition, the information criteria are slightly lower for the static model. So based on all of this, we should probably use the static one for forecasting and analytical purposes. To see the effect of the explanatory variables on the number of incidents with drivers, we can look at the parameters for those variables:
+We can spot that the error measures of the dynamic model are slightly lower than the ones from the static one (e.g., compare RMSE of models). The information criteria are slightly lower as well. So based on all of this, we should use the dynamic model for forecasting and analytical purposes. In order to see the set of smoothing parameters for the explanatory variables in this model, we can use the command:
 
-```{r, warning=FALSE}
-adamETSXMNMSeat$initial$xreg
+```{r}
+round(adamETSXMNMDSeat$persistence,4)
 ```
 
-Based on that, we can conclude that the introduction of the law reduced on average the number of incidents by approximately `r abs(round(adamETSXMNMSeat$initial$xreg[3],2))*100`%, while the increase of the petrol price by 1% leads on average to decrease in the number of incidents by `r abs(round(adamETSXMNMSeat$initial$xreg[2],2))`%. Finally, the distance negatively impacts the incidents as well, reducing it on average by `r abs(round(adamETSXMNMSeat$initial$xreg[1],1))`% for each 1% increase in the distance. This is the standard interpretation of parameters, which we can use based on the estimated model [see, for example, discussion in Section 11.3 of @SvetunkovSBA]. We will discuss how to do the analysis using ADAM in Chapter \@ref(ADAMUncertainty), introducing the standard errors and confidence intervals for the parameters.
+And see how the states/parameters of the model change over time (Figure \@ref(fid:adamETSXMNMDSeatStates)):
+```{r adamETSXMNMDSeatStates, fig.cap="Dynamic of states of the ETSX(M,N,M){D} model."}
+plot(adamETSXMNMDSeat, 12, main="")
+```
 
-Finally, `adam()` has some shortcuts when a matrix of variables is provided with no formula, assuming that the necessary expansion has already been done. This leads to the decrease in computational time of the function and becomes especially useful when working on large samples of data. Here is an example with ETSX(M,N,N):
+As we see in Figure \@ref(fid:adamETSXMNMDSeatStates), the effects of variables change over time. This mainly applies to `PetrolPrice` variable, the smoothing parameter for which is the highest among all $\delta_i$ parameters.
+
+To see the initial effects of the explanatory variables on the number of incidents with drivers, we can look at the parameters for those variables:
+
+```{r, warning=FALSE}
+adamETSXMNMDSeat$initial$xreg
+```
+
+Based on that, we can conclude that the introduction of the law reduced on average the number of incidents by approximately `r abs(round(adamETSXMNMSeat$initial$xreg[3],2))*100`%, while the increase of the petrol price by 1% leads on average to decrease in the number of incidents by `r abs(round(adamETSXMNMSeat$initial$xreg[2],2))`%. Finally, the distance negatively impacts the incidents as well, reducing it on average by `r abs(round(adamETSXMNMSeat$initial$xreg[1],1))`% for each 1% increase in the distance. This is the standard interpretation of parameters, which we can use based on the estimated model [see, for example, discussion in Section 11.3 of @SvetunkovSBA]. We will discuss how to do further analysis using ADAM in Chapter \@ref(ADAMUncertainty), introducing the standard errors and confidence intervals for the parameters.
+
+Finally, `adam()` has some shortcuts when a matrix of variables (not a data frame!) is provided with no formula, assuming that the necessary expansion has already been done. This leads to the decrease in computational time of the function and becomes especially useful when working on large samples of data. Here is an example with ETSX(M,N,N):
 ```{r eval=FALSE}
 # Create matrix for the model
 SeatbeltsDataExpanded <-
