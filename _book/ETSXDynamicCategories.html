@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-01-24" />
+<meta name="date" content="2023-01-25" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -588,12 +588,12 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ETSXDynamicCategories" class="section level2 hasAnchor" number="10.5">
 <h2><span class="header-section-number">10.5</span> Dealing with categorical variables in ADAMX<a href="ETSXDynamicCategories.html#ETSXDynamicCategories" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>When dealing with categorical variables in a regression context, they are typically expanded to a set of dummy variables <span class="citation">(see Chapter 13 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022a</a>)</span>. So, for example, a variable “promotions” that can be “light”, “medium” and “heavy” for different observations <span class="math inline">\(t\)</span> would be expanded to three dummy variables, <code>promoLight</code>, <code>promoMedium</code> and <code>promoHeavy</code>, each one of which is equal to 1, when the respective promotion type happens and equal to zero otherwise. When including these variables in the model, we would typically drop one of them (which is sometimes called pivot variable) and have a model with two dummy variables of a type:
+<p>When dealing with categorical variables in a regression context, they are typically expanded to a set of dummy variables. So, for example, a variable “promotions” that can be “light”, “medium” and “heavy” for different observations <span class="math inline">\(t\)</span> would be expanded to three dummy variables, <code>promoLight</code>, <code>promoMedium</code> and <code>promoHeavy</code>, each one of which is equal to 1, when the respective promotion type happens and equal to zero otherwise. When including these variables in the model, we would typically drop one of them (it is sometimes called pivot variable) and have a model with two dummy variables of a type:
 <span class="math display" id="eq:RegressionWithDummies">\[\begin{equation}
   y_t = a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + d_1 promoLight_t + d_2 promoMedium_t + \epsilon_t,
   \tag{10.31}
 \end{equation}\]</span>
-where <span class="math inline">\(d_i\)</span> is the parameter for the <span class="math inline">\(i\)</span>-th dummy variable. The same procedure can be done in the context of ADAMX, and the principles will be exactly the same for ADAMX{S}. However, when it comes to the dynamic model, the parameters have time indeces, and there can be different ways of formulating the model. Here is the first one:
+where <span class="math inline">\(d_i\)</span> is the parameter for the <span class="math inline">\(i\)</span>-th dummy variable. The same procedure can be done in the context of ADAMX. The logic will be exactly the same for ADAMX{S}, but when it comes to the dynamic model, the parameters will have time indeces, and there can be different ways of formulating the model. Here is the first one:
 <span class="math display" id="eq:ETSXDynamicDummies01">\[\begin{equation}
   \begin{aligned}
     &amp; y_{t} = a_{0,t-1} + a_{1,t-1} x_{1,t} + \dots + a_{n,t-1} x_{n,t} + d_1 promoLight_t + d_2 promoMedium_t + \epsilon_t \\
@@ -626,13 +626,14 @@ Here we assume that each specific category of the variable promotion changes ove
   \end{aligned} .
   \tag{10.33}
 \end{equation}\]</span>
-The rationale for such restriction is that we might expect the adaptation mechanism to apply to the promo variable as a whole, not to its specific values. This case also becomes useful in connecting the ETSX and the conventional seasonal ETS model. Let’s assume that we deal with quarterly data with no trend, and we have a categorical variable <code>quarterOfYear</code>, which can be <code>First</code>, <code>Second</code>, <code>Third</code> and <code>Fourth</code>, depending on the specific observation. For convenience, I will call the parameters for the dummy variables, created from this categorical variable <span class="math inline">\(s_{1,t}, s_{2,t}, s_{3,t} \text{ and } s_{4,t}\)</span>. Based on <a href="ETSXDynamicCategories.html#eq:ETSXDynamicDummies02">(10.33)</a>, the model can then be formulated as:
+The rationale for such restriction is that we might expect the adaptation mechanism to apply to the promo variable as a whole, not to its specific values. Indeed, in the example above, the variable of interest is <code>promo</code>, not the <code>promoLight</code> or <code>promoMedium</code>. Doing that will reduce the number of parameters and might simplify the estimation.</p>
+<p>The mechanism <a href="ETSXDynamicCategories.html#eq:ETSXDynamicDummies02">(10.33)</a> also becomes useful in connecting the ETSX and the conventional seasonal ETS model. Consider an example with quarterly data with no trend, and a categorical variable <code>quarterOfYear</code>, which can be <code>First</code>, <code>Second</code>, <code>Third</code> and <code>Fourth</code>, depending on the specific observation. For convenience, I will call the parameters for the dummy variables, created from this categorical variable as <span class="math inline">\(s_{1,t}, s_{2,t}, s_{3,t} \text{ and } s_{4,t}\)</span>. Based on <a href="ETSXDynamicCategories.html#eq:ETSXDynamicDummies02">(10.33)</a>, the model can then be formulated as:
 <span class="math display" id="eq:ETSXDynamicDummiesSeasonal">\[\begin{equation}
   \begin{aligned}
-    &amp; y_{t} = l_{t-1} + s_{1,t} quarterOfYear_{1,t} + s_{2,t} quarterOfYear_{2,t} \\
-            &amp; + s_{3,t} quarterOfYear_{3,t} + s_{4,t} quarterOfYear_{4,t} + \epsilon_t \\
-    &amp; l_t = l_{t-1} + \alpha \epsilon_t \\
-    &amp; s_{i,t} = s_{i,t-1} + \left \lbrace \begin{aligned}
+    y_{t} = &amp; l_{t-1} + s_{1,t} quarterOfYear_{1,t} + s_{2,t} quarterOfYear_{2,t} + \\
+            &amp; s_{3,t} quarterOfYear_{3,t} + s_{4,t} quarterOfYear_{4,t} + \epsilon_t \\
+    l_t = &amp; l_{t-1} + \alpha \epsilon_t \\
+    s_{i,t} = &amp; s_{i,t-1} + \left \lbrace \begin{aligned}
                   &amp;\delta \epsilon_t \text{ for each } i \in \{1, \dots, 4\}, \text{ if } quarterOfYear_{i,t}\neq 0 \\
                   &amp;0 \text{ otherwise }
             \end{aligned} \right.
@@ -648,13 +649,7 @@ We intentionally added all four dummy variables in <a href="ETSXDynamicCategorie
   \end{aligned} .
   \tag{10.35}
 \end{equation}\]</span>
-So, this comparison shows on one hand that the mechanism of ADAMX{D} is natural for the ADAM, and on the other hand that using the same smoothing parameters for categorical variables can be a reasonable idea, especially in cases when we do not have grounds to assume that each category of the variable should evolve independently.</p>
-</div>
-<h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<div id="refs" class="references csl-bib-body hanging-indent">
-<div id="ref-SvetunkovSBA" class="csl-entry">
-• Svetunkov, I., 2022a. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 31.10.2022)
-</div>
+So, this comparison shows on one hand that the mechanism of ADAMX{D} is natural for the ADAM, and on the other hand that using the same smoothing parameter for different values of a categorical variable can be a reasonable idea, especially in cases when we can assume that all categories of the variable should evolve together.</p>
 </div>
 
             </section>
