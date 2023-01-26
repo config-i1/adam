@@ -34,19 +34,9 @@ The aspects above are covered in this chapter.
 
 
 ## Maximum Likelihood Estimation {#ADAMETSEstimationLikelihood}
-This section relies on the approach explained in detail in Chapter 16 of @SvetunkovSBA, so an interested reader is directed to that chapter.
+Maximum Likelihood Estimation (MLE) is one of the popular approaches for estimating parameters of a statistical model. It relies on assumptions about the distribution of the response variable and uses either a probability density or a cumulative distribution functions, depending on the assumed model and aims to maximise the likelihood that the observations can be described by the model with specific parameters. An interested reader can find a detailed explanation of likelihood approach in Chapter 16 of @SvetunkovSBA.
 
-The maximum likelihood estimation (MLE) of the ADAM relies on the distributional assumptions of each specific model. It might differ from one model to another (see Sections \@ref(ADAMETSAdditiveDistributions), \@ref(ADAMETSMultiplicativeDistributions) and \@ref(ADAMARIMADistributions)). There are several options for the `distribution` supported by the `adam()` function in the `smooth` package, here we briefly discuss how the estimation is done for each one. We start with the additive error models, for which the assumptions, log-likelihoods and MLE of scales are provided in Table \@ref(tab:additiveErrorLikelihoods). The likelihoods are derived based on the probability density functions [discussed, for example, in Chapter 4 of @SvetunkovSBA], by taking logarithms of the product of probability density functions for all in sample observations. For example, this is what we get for the normal distribution:
-\begin{equation}
-  \begin{aligned}
-    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \prod_{t=1}^T \left(\frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t -\mu_t \right)^2}{2 \sigma^2} \right)\right) \\
-    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \frac{1}{\left(\sqrt{2 \pi \sigma^2}\right)^T} \exp \left( \sum_{t=1}^T -\frac{\epsilon_t^2}{2 \sigma^2} \right) \\
-    \ell(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \log \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) \\
-    \ell(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & -\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}
-  \end{aligned},
-  (\#eq:ETSADAMNormalDistributionExample01)
-\end{equation}
-where $\mathbf{y}$ is the vector of all in-sample actual values. As for the scale, it is obtained by solving the equation after taking derivative of the log-likelihood \@ref(eq:ETSADAMNormalDistributionExample01) with respect to $\sigma^2$ and setting it equal to zero. We do not discuss the concentrated log-likelihoods (obtained after inserting the estimated scale in the respective log-likelihood function), because they are not useful in understanding of how the model is estimated, but knowing how to calculate scale helps, because it simplifies the model estimation process.
+MLE of the ADAM relies on the distributional assumptions of each specific model and might differ from one model to another (see assumptions in Sections \@ref(ADAMETSAdditiveDistributions), \@ref(ADAMETSMultiplicativeDistributions) and \@ref(ADAMARIMADistributions)). There are several options for the `distribution` supported by the `adam()` function in the `smooth` package, here we briefly discuss how the estimation is done for each one of them. We start with the additive error model, for which the assumptions, log-likelihoods and MLE of scales are provided in Table \@ref(tab:additiveErrorLikelihoods).
 
 ```{r echo=FALSE}
 if (knitr:::is_latex_output()) {
@@ -97,7 +87,7 @@ distributionsTable <- matrix(distributionsTable, 7, 3, byrow=TRUE,
                                            # "\\textbf{Asymmetric Laplace}",
                                            "\\textbf{Inverse Gaussian}","\\textbf{Gamma}","\\textbf{Log-normal}"),
                                          c("\\textbf{Assumption}","\\textbf{log-likelihood}","\\textbf{MLE of scale}")))
-kableTable <- kableExtra::kable(distributionsTable, escape=FALSE, caption="Likelihood approach for additive error models",
+kableTable <- kableExtra::kable(distributionsTable, escape=FALSE, caption="Likelihood approach for additive error models. $\\mathcal{N}$ is the Normal, $\\mathcal{L}$ is the Laplace, $\\mathcal{S}$ is the S, $\\mathcal{GN}$ is the Generalised Normal, $\\mathcal{IG}$ is the Inverse Gaussian, $\\Gamma$ is the Gamma, and $\\mathrm{log}\\mathcal{N}$ is the Log-Normal distribution.",
                                 col.names=c("Assumption","log-likelihood","MLE of scale"), label="additiveErrorLikelihoods")
 kableExtra::kable_styling(kableTable, font_size=12, protect_latex=TRUE, latex_options="scale_down")
 if (knitr:::is_latex_output()) {
@@ -105,12 +95,23 @@ if (knitr:::is_latex_output()) {
 }
 ```
 
+The likelihoods are derived based on the probability density functions, by taking the logarithms of their products for all in-sample observations. For example, this is what we get for the normal distribution:
+\begin{equation}
+  \begin{aligned}
+    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \prod_{t=1}^T \left(\frac{1}{\sqrt{2 \pi \sigma^2}} \exp \left( -\frac{\left(y_t -\mu_t \right)^2}{2 \sigma^2} \right)\right) \\
+    \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \frac{1}{\left(\sqrt{2 \pi \sigma^2}\right)^T} \exp \left( \sum_{t=1}^T -\frac{\epsilon_t^2}{2 \sigma^2} \right) \\
+    \ell(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & \log \mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) \\
+    \ell(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y}) = & -\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}
+  \end{aligned},
+  (\#eq:ETSADAMNormalDistributionExample01)
+\end{equation}
+where $\mathbf{y}$ is the vector of all in-sample actual values, $\mathcal{L}(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y})$ is the likelihood value, while $\ell(\boldsymbol{\theta}, {\sigma}^2 | \mathbf{y})$ is the log-likelihood. As for the scale, it is obtained by solving the equation after taking derivative of the log-likelihood \@ref(eq:ETSADAMNormalDistributionExample01) with respect to $\sigma^2$ and setting it equal to zero. We do not discuss the concentrated log-likelihoods (obtained after inserting the estimated scale in the respective log-likelihood function), because they are not useful in understanding of how the model is estimated, but knowing how to calculate scale helps, because it simplifies the model estimation process.
 
 ::: remark
 MLE of scale parameter for Gamma distribution (formulated in ADAM) does not have a closed-form. While there are no proofs for it, it seems that the maximum of the likelihood of Gamma distribution is achieved, when $\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^T \left(\frac{e_t}{\mu_{y,t}}\right)^2$, which corresponds to the estimate based on method of moments.
 :::
 
-Other distributions can be used in ADAM ETS (for example, Logistic distribution or Student's t), but we do not discuss them here. Note that for the additive error models $y_t = \mu_{y,t}+\epsilon_t$, thus some formulae in Table \@ref(tab:additiveErrorLikelihoods) are simplified. In all cases in Table \@ref(tab:additiveErrorLikelihoods), the assumptions imply that the actual value follows the same distribution but with a different location and/or scale. For example, for the Normal distribution, we have:
+While other distributions can be used in ADAM ETS (for example, Logistic distribution or Student's t), we do not discuss them here. In all cases in Table \@ref(tab:additiveErrorLikelihoods), the assumptions imply that the actual value follows the same distributionn as the error term (due to additivity of the model) but with a different location and/or scale. For example, for the Normal distribution, we have:
 \begin{equation}
   \begin{aligned}
     & \epsilon_t \sim \mathcal{N}(0, \sigma^2) \\
@@ -132,10 +133,10 @@ As a result, the log-likelihoods would have the $\mu_{y,t}$ part in the formulae
 \end{equation}
 
 ::: remark
-The part $\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}$ does not contain $\mu_{y,t}$ because when inserted in the formula of Normal distribution, the numerator is: $y_t - \mu_{y,t}$, which is based on \@ref(eq:ETSADAMNormalDistributionExample03) is $\mu_{y,t} \epsilon_t$. After inserting in the formula for the Normal distribution that part becomes: $\frac{1}{2} \sum_{t=1}^T \frac{(\mu_{y,t} \epsilon_t)^2}{\mu_{y,t}^2\sigma^2}$ which after cancellations leads to \@ref(eq:ETSADAMNormalDistributionExample04).
+The part $\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}$ does not contain $\mu_{y,t}$ because when inserted in the formula of Normal distribution, the numerator is: $y_t - \mu_{y,t}$, which is based on \@ref(eq:ETSADAMNormalDistributionExample03) is $\mu_{y,t} \epsilon_t$. After inserting it in the formula for the Normal distribution that part becomes: $\frac{1}{2} \sum_{t=1}^T \frac{(\mu_{y,t} \epsilon_t)^2}{\mu_{y,t}^2\sigma^2}$ which after cancellations leads to \@ref(eq:ETSADAMNormalDistributionExample04).
 :::
 
-Similar logic is applicable to $\mathcal{L}$, $\mathcal{S}$ and $\mathcal{GN}$ distributions. From the practical point of view, these assumptions imply that the scale (and variance) of the distribution of $y_t$ changes together with the level of the series. When it comes to the $\mathcal{IG}$, $\Gamma$ and log$\mathcal{N}$, the assumptions are imposed on the $1+\epsilon_t$ part of the model, the respective likelihoods do not involve the expectation $\mu_{y,t}$, but the formulation still implies that the variance of the data increases together with the increase of the level of data.
+Similar logic is applicable to Laplace ($\mathcal{L}$), Generalised Normal ($\mathcal{GN}$) and S ($\mathcal{S}$) distributions. From the practical point of view, these assumptions imply that the scale (and variance) of the distribution of $y_t$ changes together with the level of the series. When it comes to the Inverse Gaussian ($\mathcal{IG}$), Gamma ($\Gamma$) and log-normal (log$\mathcal{N}$), the assumptions are imposed on the $1+\epsilon_t$ part of the model, the respective likelihoods do not involve the expectation $\mu_{y,t}$, but the formulation still implies that the variance of the data increases together with the increase of the level of data.
 
 All the likelihoods for the multiplicative error models are summarised in Table \@ref(tab:multiplicativeErrorLikelihoods).
 
@@ -191,7 +192,7 @@ distributionsTable <- matrix(distributionsTable, 7, 3, byrow=TRUE,
                                            # "\\textbf{Asymmetric Laplace}",
                                            "\\textbf{Inverse Gaussian}","\\textbf{Gamma}","\\textbf{Log-normal}"),
                                          c("\\textbf{Assumption}","\\textbf{log-likelihood}","\\textbf{MLE of scale}")))
-kableTable <- kableExtra::kable(distributionsTable, escape=FALSE, caption="Likelihood approach for multiplicative error models",
+kableTable <- kableExtra::kable(distributionsTable, escape=FALSE, caption="Likelihood approach for multiplicative error models. $\\mathcal{N}$ is the Normal, $\\mathcal{L}$ is the Laplace, $\\mathcal{S}$ is the S, $\\mathcal{GN}$ is the Generalised Normal, $\\mathcal{IG}$ is the Inverse Gaussian, $\\Gamma$ is the Gamma, and $\\mathrm{log}\\mathcal{N}$ is the Log-Normal distribution.",
                                 col.names=c("Assumption","log-likelihood","MLE of scale"), label="multiplicativeErrorLikelihoods")
 kableExtra::kable_styling(kableTable, font_size=12, protect_latex=TRUE, latex_options="scale_down")
 if (knitr:::is_latex_output()) {
@@ -201,35 +202,35 @@ if (knitr:::is_latex_output()) {
 
 When it comes to practicalities, the optimiser in `adam()` function calculates the scale from Tables \@ref(tab:additiveErrorLikelihoods) and \@ref(tab:multiplicativeErrorLikelihoods) on each iteration and then uses it in the log-likelihood based on the respective distribution function. For additive error models:
 
-1. $\mathcal{N}$ -- `dnorm(x=actuals, mean=fitted, sd=scale,  log=TRUE)` from `stats` package;
-2. $\mathcal{L}$ -- `dlaplace(q=actuals, mu=fitted, scale=scale, log=TRUE)` from `greybox` package;
-3. $\mathcal{S}$ -- `ds(q=actuals, mu=fitted, scale=scale, log=TRUE)` from `greybox` package;
-4. $\mathcal{GN}$ -- `dgnorm(x=actuals, mu=fitted, alpha=scale, beta=beta, log=TRUE)` implemented in `greybox` package based on `gnorm` package (the version on CRAN is outdated);
+1. Normal, $\mathcal{N}$ -- `dnorm(x=actuals, mean=fitted, sd=scale,  log=TRUE)` from `stats` package;
+2. Laplace, $\mathcal{L}$ -- `dlaplace(q=actuals, mu=fitted, scale=scale, log=TRUE)` from `greybox` package;
+3. S, $\mathcal{S}$ -- `ds(q=actuals, mu=fitted, scale=scale, log=TRUE)` from `greybox` package;
+4. Generalised Normal, $\mathcal{GN}$ -- `dgnorm(x=actuals, mu=fitted, alpha=scale, beta=beta, log=TRUE)` implemented in `greybox` package based on `gnorm` package (the version on CRAN is outdated);
 <!-- 5. $\mathcal{ALaplace}$ -- `dalaplace(q=actuals, mu=fitted, scale=scale,  alpha=alpha, log=TRUE)` from `greybox` package; -->
-5. $\mathcal{IG}$ -- `dinvgauss(x=actuals, mean=fitted, dispersion=scale/fitted, log=TRUE)` from `statmod` package;
-6. log$\mathcal{N}$ -- `dlnorm(x=actuals, meanlog=fitted-scale^2/2, sdlog=scale, log=TRUE)` from `stats` package;
-7. $\mathcal{Gamma}$ -- `dgamma(x=actuals, shape=1/scale, scale=scale*fitted, log=TRUE)` from `stats` package.
+5. Inverse Gaussian, $\mathcal{IG}$ -- `dinvgauss(x=actuals, mean=fitted, dispersion=scale/fitted, log=TRUE)` from `statmod` package;
+6. Log-normal, log$\mathcal{N}$ -- `dlnorm(x=actuals, meanlog=fitted-scale^2/2, sdlog=scale, log=TRUE)` from `stats` package;
+7. Gamma, $\Gamma$ -- `dgamma(x=actuals, shape=1/scale, scale=scale*fitted, log=TRUE)` from `stats` package.
 
 and for multiplicative error models:
 
-1. $\mathcal{N}$ -- `dnorm(x=actuals, mean=fitted, sd=scale*fitted,  log=TRUE)`;
-2. $\mathcal{L}$ -- `dlaplace(q=actuals, mu=fitted, scale=scale*fitted, log=TRUE)`;
-3. $\mathcal{S}$ -- `ds(q=actuals, mu=fitted, scale=scale*sqrt(fitted), log=TRUE)`;
-4. $\mathcal{GN}$ -- `dgnorm(x=actuals, mu=fitted, alpha=scale*fitted^beta, beta=beta, log=TRUE)`;
+1. Normal, $\mathcal{N}$ -- `dnorm(x=actuals, mean=fitted, sd=scale*fitted,  log=TRUE)`;
+2. Laplace, $\mathcal{L}$ -- `dlaplace(q=actuals, mu=fitted, scale=scale*fitted, log=TRUE)`;
+3. S, $\mathcal{S}$ -- `ds(q=actuals, mu=fitted, scale=scale*sqrt(fitted), log=TRUE)`;
+4. Generalised Normal, $\mathcal{GN}$ -- `dgnorm(x=actuals, mu=fitted, alpha=scale*fitted^beta, beta=beta, log=TRUE)`;
 <!-- 5. $\mathcal{ALaplace}$ -- `dalaplace(q=actuals, mu=fitted, scale=scale*fitted,  alpha=alpha, log=TRUE)`; -->
-5. $\mathcal{IG}$ -- `dinvgauss(x=actuals, mean=fitted, dispersion=scale/fitted, log=TRUE)`;
-6. log$\mathcal{N}$ -- `dlnorm(x=actuals, meanlog=fitted-scale^2/2, sdlog=scale, log=TRUE)`;
-7. $\mathcal{Gamma}$ -- `dgamma(x=actuals, shape=1/scale, scale=scale*fitted, log=TRUE)`.
+5. Inverse Gaussian, $\mathcal{IG}$ -- `dinvgauss(x=actuals, mean=fitted, dispersion=scale/fitted, log=TRUE)`;
+6. Log-normal, log$\mathcal{N}$ -- `dlnorm(x=actuals, meanlog=fitted-scale^2/2, sdlog=scale, log=TRUE)`;
+7. Gamma, $\Gamma$ -- `dgamma(x=actuals, shape=1/scale, scale=scale*fitted, log=TRUE)`.
 
 ::: remark
-In cases of $\mathcal{GN}$, additional parameter (namely $\beta$) is needed. If the user does not provide it, it will be estimated together with the other parameters via the maximisation of respective likelihoods.
+In cases of $\mathcal{GN}$, additional parameter (namely $\beta$) is needed. If the user does not provide it, it will be estimated together with the other parameters via the maximisation of respective likelihoods. Note however that the estimate of $\beta$ can be inefficient if its true value is lower than 1.
 :::
 
-The MLE of parameters of ADAM ETS models makes them comparable with each other irrespective of the types of components and distributional assumptions. As a result, model selection based on information criteria can be made using the `auto.adam()` function from the `smooth`, which will select the most appropriate distribution for ADAM.
+The MLE of ADAM makes different models comparable with each other irrespective of the types of components and distributional assumptions. As a result, model selection based on information criteria can be done using the `auto.adam()` function from the `smooth`, which will select the most appropriate distribution for ADAM.
 
 
 ### An example in R
-`adam()` function in smooth package has the parameter `distribution`, which allows selecting between several options discussed in this chapter, based on the respective density functions (see the list above). Here is a brief example in R with ADAM ETS(M,A,M) applied to the `AirPassengers` data with several distributions:
+`adam()` function in `smooth` package has the parameter `distribution`, which allows selecting between several options discussed in this chapter, based on the respective density functions. Here is a brief example in R with ADAM ETS(M,A,M) applied to the `AirPassengers` data with several distributions:
 ```{r}
 adamETSMAMAir <- vector("list",5)
 adamETSMAMAir[[1]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
@@ -247,12 +248,12 @@ adamETSMAMAir[[5]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
 In this case, the function will select the most appropriate ETS model for each distribution. We can see what was selected in each case and compare the models using information criteria:
 
 ```{r}
-setNames(sapply(adamETSMAMAir, AICc),
-         c("dnorm","dlaplace","dgnorm","dinvgauss","dgamma"))
+sapply(adamETSMAMAir, AICc) |>
+    setNames(c("dnorm","dlaplace","dgnorm","dinvgauss","dgamma"))
 ```
-We could compare the performance of models in detail, but for demonstration, it should suffice to say that among the four models considered above, the model with the Normal distribution should be preferred based on the AICc value. This process of fit and selection can be automated using `auto.adam()` model, which accepts the vector of distributions to test and by default would consider `distribution=c("default", "dnorm", "dlaplace", "ds", "dgnorm", "dlnorm", "dinvgauss", "dgamma")`:
+We could compare the performance of models in detail, but for demonstration purpose, it should suffice to say that among the four models considered above, based on the AICc value, the model with the Normal distribution should be selected. This process of fit and selection can be automated using `auto.adam()` function, which accepts the vector of distributions to test and by default would consider `distribution=c("default", "dnorm", "dlaplace", "ds", "dgnorm", "dlnorm", "dinvgauss", "dgamma")` (where `default` is normal for additive error and Gamma for the multiplicative error model):
 ```{r eval=FALSE}
-adamETSMAMAir <- auto.adam(AirPassengers, "MAM", h=12, holdout=TRUE)
+auto.adam(AirPassengers, "MAM", h=12, holdout=TRUE)
 ```
 This command should return the ADAM ETS(M,A,M) model with the most appropriate distribution, selected based on the AICc.
 
