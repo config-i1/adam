@@ -259,16 +259,18 @@ This command should return the ADAM ETS(M,A,M) model with the most appropriate d
 
 
 ## Non MLE-based loss functions
-An alternative approach for estimating ADAM ETS is using the conventional loss functions, such as MSE, MAE etc. In this case, the model selection using information criteria would not work, but this might not matter when you have already decided what model to use and want to improve it. In some special cases [as discussed in Chapter 16 of @SvetunkovSBA], the minimisation of these losses would give the same results as the maximisation of some likelihood functions:
+An alternative approach for estimating ADAM is using the conventional loss functions, such as MSE, MAE etc. In this case, the model selection using information criteria would not work, but this might not matter when you have already decided what model to use and want to improve it. Alternatively, you can use cross validation (e.g. rolling origin from Section \@ref(rollingOrigin)) to select a model estimated non MLE-based loss function. But in some special cases, the minimisation of these losses would give the same results as the maximisation of some likelihood functions:
 
-- Minimum of MSE corresponds to the maximum likelihood of Normal distribution [see discussion in @Kolassa2016];
-- Minimum of MAE corresponds to the maximum likelihood of Laplace distribution [@Schwertman1990];
-- Minimum of RMSLE corresponds to the maximum likelihood of Log-Normal distribution.
+- MSE is minimised by mean, and its minimum corresponds to the maximum likelihood of Normal distribution [see discussion in @Kolassa2016];
+- MAE is minimised by median, and its minimum corresponds to the maximum likelihood of Laplace distribution [@Schwertman1990];
+- RMSLE is minimised by the geometric mean, and its minimum corresponds to the maximum likelihood of Log-Normal distribution (this is based on the fact that the maximum of the distribution coincides with the Normal one applied to the log-transformed data).
 <!-- 3. Minimum of pinball function [@Koenker1978, quantile regression] corresponds to the maximum of the likelihood of Asymmetric Laplace distribution [@Yu2005]; -->
 
-The main difference between using these losses and maximising respective likelihoods is in the number of estimated parameters [see discussion in Section 16.3 of @SvetunkovSBA]: the latter implies that the scale is estimated together with the other parameters, while the former does not consider it and in a way provides it for free.
+The main difference between using these losses and maximising respective likelihoods is in the number of estimated parameters: the latter implies that the scale is estimated together with the other parameters, while the former does not consider it and in a way provides it for free.
 
-The assumed distribution does not necessarily depend on the used loss and vice versa. For example, we can assume that the actuals follow the Inverse Gaussian distribution but estimate the MAE model. The estimates of parameters might not be as efficient as in the case of MLE, but it is still possible to do. The error term, which is minimised in respective losses, depends on the error type:
+The assumed distribution does not necessarily depend on the used loss and vice versa. For example, we can assume that the actuals follow the Inverse Gaussian distribution, but estimate model via minimisation of MAE. The estimates of parameters in this case might not be as efficient as in the case of MLE, but it is still possible to do.
+
+When it comes to different types of models, the forecast error (which is used in respective losses) depends on the error type:
 
 - Additive error: $e_t = y_t -\hat{\mu}_{y,t}$;
 - Multiplicative error: $e_t = \frac{y_t -\hat{\mu}_{y,t}}{\hat{\mu}_{y,t}}$.
@@ -277,7 +279,7 @@ This follows directly from the respective ETS models.
 
 
 ### MSE and MAE {#MSEandMAEEstimators}
-MSE and MAE have been discussed in Section \@ref(errorMeasures), but in the context of forecasts evaluation. If they are used for the estimation of a model, then the formulae \@ref(eq:RMSE) and \@ref(eq:MAE) would need to be amended to:
+MSE and MAE have been discussed in Section \@ref(errorMeasures), but in the context of forecasts evaluation rather than estimation. If they are used for the latter, then the formulae \@ref(eq:RMSE) and \@ref(eq:MAE) will be amended to:
 \begin{equation}
     \mathrm{MSE} = \sqrt{\frac{1}{T} \sum_{j=1}^T \left( e_t \right)^2 }
     (\#eq:MSEInSample)
@@ -287,7 +289,7 @@ and
     \mathrm{MAE} = \frac{1}{T} \sum_{j=1}^T \left| e_t \right| ,
     (\#eq:MAEInSample)
 \end{equation}
-where the specific formula for $e_t$ would depend on the error type. The main difference between the two estimators is what they are minimised with: MSE is minimised by mean, while MAE is minimised by the median. This means that models estimated using MAE will typically be more conservative (i.e. in the case of ETS, have lower smoothing parameters). @Gardner2006 recommended using MAE in cases of outliers in the data, as the model becomes not as reactive as MSE in this situation. Note that in case of intermittent demand, MAE should be in general avoided due to the issues discussed in Section \@ref(errorMeasures).
+where the specific formula for $e_t$ would depend on the error type as shown above. The main difference between the two estimators is in what they are minimised by: MSE is minimised by mean, while MAE is minimised by the median. This means that models estimated using MAE will typically be more conservative (i.e. in the case of ETS, have lower smoothing parameters). @Gardner2006 recommended using MAE in cases of outliers in the data, as the ETS model is supposed to become less reactive than in case of MSE. Note that in case of intermittent demand, MAE should be in general avoided due to the issues discussed in Section \@ref(errorMeasures).
 
 
 ### HAM
@@ -296,13 +298,13 @@ Along with the discussed MSE and MAE, there is also HAM -- "Half Absolute Moment
   \mathrm{HAM} = \frac{1}{T} \sum_{j=1}^T \sqrt{\left|e_t\right|},
   (\#eq:HAM)
 \end{equation}
-the minimum of which corresponds to the maximum likelihood of S distribution [see Chapter 4 of @SvetunkovSBA]. The idea of this estimator is to minimise the errors that happen very often, close to the location of the distribution. It will typically ignore the outliers and focus on the most frequently appearing values. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution if it is unimodal. I do not have proof of this property, but it becomes apparent, given that the square root in \@ref(eq:HAM) would reduce the influence of all values lying above one and increase the values of everything that lies between (0, 1) (e.g. $\sqrt{0.16}=0.4$, but $\sqrt{16}=4$).
+the minimum of which corresponds to the maximum likelihood of S distribution. The idea of this estimator is to minimise the errors that happen very often, close to the location of the distribution. It will typically ignore the outliers and focus on the most frequently appearing values. As a result, if used for the integer values, the minimum of HAM would correspond to the mode of that distribution if it is unimodal. I do not have a proof of this property, but it becomes apparent, given that the square root in \@ref(eq:HAM) would reduce the influence of all values lying above one and increase the values of everything that lies between (0, 1) (e.g. $\sqrt{0.16}=0.4$, but $\sqrt{16}=4$).
 
 Similar to HAM, one can calculate other fractional losses, which would be even less sensitive to outliers and more focused on the frequently appearing values, e.g. by using the $\sqrt[^\alpha]{\left|e_t\right|}$ with $\alpha>1$. This would then correspond to the maximum of Generalised Normal distribution with shape parameter $\beta=\frac{1}{\alpha}$.
 
 
 ### LASSO and RIDGE
-It is also possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation of ETS models [@James2017 give a good overview of these losses with examples in R]. This was studied in detail be @Pritularga2022. The losses can be formulated in ADAM ETS as:
+It is also possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation of ADAM [@James2017 give a good overview of these losses with examples in R]. This was studied in detail for ETS by @Pritularga2022. The losses can be formulated in ADAM as:
 \begin{equation}
   \begin{aligned}
     \mathrm{LASSO} = &(1-\lambda) \sqrt{\frac{1}{T} \sum_{j=1}^T e_t^2} + \lambda \sum |\hat{\theta}| \\
@@ -312,24 +314,24 @@ It is also possible to use LASSO [@Tibshirani1996] and RIDGE for the estimation 
 \end{equation}
 where $\theta$ is the vector of all parameters in the model except for initial states of ETS and ARIMA components (thus this includes all smoothing parameters, dampening parameter, AR, MA and the initial parameters for the explanatory variables) and $\lambda$ is the regularisation parameter. The idea of these losses is in the shrinkage of parameters. If $\lambda=0$, then the losses become equivalent to the MSE, when $\lambda=1$, the optimiser would minimise the values of parameters, ignoring the MSE part. @Pritularga2022 argues that the initial states of the model do not need to be shrunk (they will be handled by the optimiser automatically) and that the dampening parameter should shrink to 1 instead of zero (thus enforcing local trend model). Following the same idea, we introduce the following modifications of parameters in the loss in ADAM:
 
-1. The smoothing parameters should shrink towards zero, implying that the respective states will be updated less over time (the model becomes deterministic);
+1. The smoothing parameters should shrink towards zero, implying that the respective states will change slower over time (the model becomes less stochastic);
 2. Damping parameter is modified to shrink towards one, enforcing no dampening of the trend via $\hat{\phi}^\prime=1-\hat{\phi}$;
 3. All AR parameters are forced to shrink to one: $\hat{\phi}_i^\prime=1-\hat{\phi}_i$ for all $i$. This means that ARIMA shrinks towards non-stationarity (this idea comes from the connection of ETS and ARIMA, discussed in Section \@ref(ARIMAandETS));
 4. All MA parameters shrink towards zero, removing their impact on the model;
 5. If there are explanatory variables and the error term of the model is *additive*, then the respective parameters are divided by the standard deviations of the respective variables. In the case of the *multiplicative* error term, nothing is done because the parameters would typically be close to zero anyway (see a Chapter \@ref(ADAMXFormulation)).
-6. Finally, in order to make $\lambda$ slightly more meaningful, in case of *additive* error model, we also divide the MSE part of the loss by $\mathrm{V}\left({\Delta}y_t\right)$, where ${\Delta}y_t=y_t-y_{t-1}$. This sort of scaling helps in cases when there is a trend in the data and when the data does not exhibit one. We do not do anything for the *multiplicative* error models because, typically, the error is already small.
+6. Finally, in order to make $\lambda$ slightly more meaningful, in case of *additive* error model, we also divide the MSE part of the loss by $\mathrm{V}\left({\Delta}y_t\right)$, where ${\Delta}y_t=y_t-y_{t-1}$. This sort of scaling helps in cases when there is a trend in the data. We do not do anything for the *multiplicative* error models because, typically, the error is already small.
 
 ::: remark
 There is no good theory behind the shrinkage of AR and MA parameters. More research is required to understand how to shrink them properly.
 :::
 
 ::: remark
-The `adam()` function does not select the most appropriate `lambda` and will set it equal to zero if the user does not provide it. It is up to a user to try out different `lambda` and select the one that minimises a chosen error measure. This can be done, for example, using rolling origin procedure (discussed in Section \@ref(rollingOrigin)).
+The `adam()` function does not select the most appropriate `lambda` and will set it equal to zero if the user does not provide it. It is up to a user to try out different `lambda` and select the one that minimises a chosen error measure. This can be done, for example, using rolling origin procedure (Section \@ref(rollingOrigin)).
 :::
 
 
 ### Custom losses
-It is also possible to use other non-standard loss functions. `adam()` function allows doing that via the parameter `loss`. For example, we could estimate an ETS(A,A,N) model on the `BJsales` data using an absolute cubic loss (note that the parameters `actual`, `fitted` and `B` are compulsory for the function):
+It is also possible to use other non-standard loss functions for ADAM estimation. `adam()` function allows doing that via the parameter `loss`. For example, we could estimate an ETS(A,A,N) model on the `BJsales` data using an absolute cubic loss (note that the parameters `actual`, `fitted` and `B` are compulsory for the function):
 ```{r eval=FALSE}
 lossFunction <- function(actual, fitted, B){
     return(mean(abs(actual-fitted)^3));
@@ -337,11 +339,11 @@ lossFunction <- function(actual, fitted, B){
 adam(BJsales, "AAN", loss=lossFunction, h=10, holdout=TRUE)
 ```
 
-where `actual` is the vector of actual values $y_t$, `fitted` is the estimate of the one-step-ahead point forecast $\hat{y}_t$, and $B$ is the vector of all estimated parameters, $\hat{\theta}$. This way, one can use more advanced estimators, such as, for example, M-estimators [@Barrow2020].
+where `actual` is the vector of actual values $y_t$, `fitted` is the estimate of the one-step-ahead point forecast $\hat{y}_t$, and $B$ is the vector of all estimated parameters, $\hat{\theta}$. The syntax above allows using more advanced estimators, such as, for example, M-estimators [@Barrow2020].
 
 
 ### Examples in R
-`adam()` has two parameters, one regulating the assumed `distribution`, and another one, regulating how the model will be estimated, what `loss` will be used for these purposes. Here are examples with combinations of different losses and an assumed Inverse Gaussian distribution for ETS(M,A,M) on `AirPassengers` data. We start with MSE, MAE and HAM:
+`adam()` has two parameters, one regulating the assumed `distribution`, and another one, regulating how the model will be estimated, what `loss` will be used for these purposes. Here are examples with combinations of different losses and the Inverse Gaussian distribution for ETS(M,A,M) on `AirPassengers` data. We start with likelihood, MSE, MAE and HAM:
 ```{r}
 adamETSMAMAir <- vector("list",6)
 names(adamETSMAMAir) <-
@@ -360,7 +362,7 @@ adamETSMAMAir[[4]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
                            loss="HAM")
 ```
 
-In these three cases, the models assuming the same distribution for the error term are estimated using MSE, MAE and HAM. Their smoothing parameters should differ, with MSE producing fitted values closer to the mean, MAE -- closer to the median and HAM -- closer to the mode (but not exactly the mode) of the distribution.
+In these cases, the models assuming the same distribution for the error term are estimated using likelihood, MSE, MAE and HAM. Their smoothing parameters should differ, with MSE producing fitted values closer to the mean, MAE -- closer to the median and HAM -- closer to the mode (but not exactly the mode) of the distribution.
 
 In addition, we introduce ADAM ETS(M,A,M) estimated using LASSO with arbitrarily selected $\lambda=0.9$:
 
@@ -387,30 +389,33 @@ adamETSMAMAir[[6]] <- adam(AirPassengers, "MAM", h=12, holdout=TRUE,
 Now we can compare the performance of the six models. First, we can compare the smoothing parameters:
 
 ```{r}
-round(sapply(adamETSMAMAir,"[[","persistence"),3)
+sapply(adamETSMAMAir,"[[","persistence") |>
+    round(3)
 ```
 
-What we observe in this case is that LASSO has the lowest smoothing parameter $\alpha$ because it is shrunk directly in the model estimation. Also note that Likelihood and MSE give similar values. They both rely on squared errors, but not the same because the likelihood of Inverse Gaussian distribution also has additional elements (see Section \@ref(ADAMETSEstimationLikelihood)).
+What we observe in this case is that LASSO has the lowest smoothing parameter $\alpha$ because it is shrunk directly in the model estimation. Also note that Likelihood and MSE give similar values. They both rely on squared errors, but not in the same way because the likelihood of Inverse Gaussian distribution has some additional elements (see Section \@ref(ADAMETSEstimationLikelihood)).
 
 Unfortunately, we do not have information criteria for models 2 -- 6 in this case because the likelihood function is not maximised with these losses, so it's not possible to compare them via the in-sample statistics. But we can compare their holdout sample performance:
 
 ```{r}
-round(sapply(adamETSMAMAir,"[[","accuracy"),3)[c("ME","MAE","MSE"),]
+round(sapply(adamETSMAMAir,"[[","accuracy"),
+      3)[c("ME","MAE","MSE"),]
 ```
 
 And we can also produce forecasts and plot them for the visual inspection (Figure \@ref(fig:adamModelsForecasts)):
 
 ```{r adamModelsForecasts, fig.width=8, fig.height=10, fig.cap="Forecasts from ETS(M,A,M) model estimated using different loss functions."}
-adamETSMAMAirForecasts <- lapply(adamETSMAMAir,forecast,
+adamETSMAMAirForecasts <- lapply(adamETSMAMAir, forecast,
                                  h=12, interval="empirical")
 layout(matrix(c(1:6),3,2,byrow=TRUE))
 for(i in 1:6){
     plot(adamETSMAMAirForecasts[[i]],
-         main=paste0("ETS(MAM) estimated using ",names(adamETSMAMAir)[i]))
+         main=paste0("ETS(MAM) estimated using ",
+                     names(adamETSMAMAir)[i]))
 }
 ```
 
-What we observe in Figure \@ref(fig:adamModelsForecasts) is that different losses led to different forecasts and prediction intervals (we used the empirical ones, discussed in Section \@ref(ADAMForecastingPIEmpirical)). What can be done to make this practical is the rolling origin evaluation (Section \@ref(rollingOrigin)) for different losses and then comparing forecast errors between them to select the most accurate one.
+What we observe in Figure \@ref(fig:adamModelsForecasts) is that different losses led to different forecasts and prediction intervals (we used the empirical ones, discussed in Subsection \@ref(ADAMForecastingPIEmpirical)). What can be done to make this practical is the rolling origin evaluation (Section \@ref(rollingOrigin)) for different losses and then comparing forecast errors between them to select the most accurate approach.
 
 
 ## Multistep losses {#multistepLosses}
