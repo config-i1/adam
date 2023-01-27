@@ -547,29 +547,29 @@ In this case, ETS(A,A,N) estimated using GPL produced a more accurate forecast t
 
 
 ## Initialisation of ADAM {#ADAMInitialisation}
-To construct a model, we need to initialise it, defining the values of $\mathbf{v}_{-m+1}, \dots, \mathbf{v}_0$ -- initial states of the model. There are different ways of doing that, but here we only discuss the following three:
+To construct a model, we need to initialise it, defining the values of initial states of the model. In case of non-seasonal model, this means estimating values of $\mathbf{v}_{0}$. In case of the seasonal one, it is $\mathbf{v}_{-m+1}, \dots, \mathbf{v}_0$, where $m$ is the seasonal lag. There are different ways of doing that, but here we only discuss the following three:
 
 1. Optimisation of initials,
 2. Backcasting,
 3. Provided values.
 
-The first option implies that the values of initial states are found in the same procedure as the other parameters of the model. (2) means that the initials are refined iteratively when the model is fit to the data from observation $t=1$ to $t=T$ and backwards. Finally, (3) is when a user knows initials and provides them to the model.
+The first option implies that the values of initial states are found in the same procedure as the other parameters of the model. This is what @Hyndman2002 suggested doing. (2) means that the initials are refined iteratively when the model is fit to the data from observation $t=1$ to $t=T$ and then going backwards to get values for $t=0$. Finally, (3) is when a user knows initials and provides them to the model.
 
-As a side note, we assume in ADAM that the model is initialised at the moment just before $t=1$. We do not believe that it was initialised at some point before the Big Bang (as ARIMA typically does), and we do not initialise it at the start of the sample. This way, we make all models in ADAM comparable, making them work on the same sample, no matter how many differences are taken or how many seasonal components they contain.
+As a side note, we assume in ADAM that the model is initialised at the moment just before $t=1$. We do not believe that it was initialised at some point before the Big Bang (as ARIMA typically does), and we do not initialise it at the start of the sample. This way, we make all models in ADAM comparable, making them work on the same sample, no matter how many differences are taken or how many seasonal components we define.
 
 
 ### Optimisation vs backcasting {#ADAMInitialisationOptAndBack}
-In the case of optimisation, all the model parameters are estimated together. This includes (depending on the type of model):
+In the case of **optimisation**, all the model parameters are estimated together. This includes (depending on the type of model, in the order used in optimiser):
 
 - Smoothing parameters of ETS,
 - Smoothing parameters for the regression part of the model (from Section \@ref(ADAMXDynamic)),
 - Dampening parameter of ETS,
-- Parameters of ARIMA: both AR(p) and MA(q),
+- Parameters of ARIMA: first AR(p), then MA(q),
 - Initials of ETS,
 - Initials of ARIMA,
 - Initial values for parameters of explanatory variables,
 - Constant / drift for ARIMA,
-- Other additional parameters are needed by assumed distributions.
+- Other additional parameters that are needed by assumed distributions.
 
 The more complex the selected model is, the more parameters we will need to estimate, and all of this will happen in one and the same iterative process in the optimiser:
 
@@ -589,7 +589,11 @@ The user can specify the stopping criteria. There are several options accepted b
 
 All these parameters are explained in more detail in the documentation of the `nloptr()` function from the `nloptr` package for R [@nlopt], which handles the estimation of ADAM. `adam()` accepts several other stopping criteria, which can be found in the documentation of the function.
 
-The mechanism explained above can become quite complicated if a complex model is constructed and might take a lot of time and manual tuning of parameters to get to the optimum. In some cases, reducing the number of estimated parameters is worth considering, and one way of doing so is backcasting.
+::: remark
+`adam()` can also print the results of the optimisation via the `print_level` parameter, which is defined in the same way as in the `nloptr()` function, but with an additional option of `print_level=41`, which will print the results of the optimisation, without producing step-by-step outputs.
+:::
+
+The mechanism explained above can slow down substantially if a complex model is constructed and might take a lot of time and manual tuning of parameters to get to the optimum. In some cases, reducing the number of estimated parameters is worth considering, and one way of doing that is backcasting.
 
 In case of **backcasting** we do not need to estimate initials of ETS, ARIMA and regression. What model does in this case is goes through the series from $t=1$ to $t=T$, fitting to the data and then reverses and goes back from $t=T$ to $t=1$ based on the following state space model:
 \begin{equation}
@@ -599,75 +603,76 @@ In case of **backcasting** we do not need to estimate initials of ETS, ARIMA and
   \end{aligned}.
   (\#eq:ETSADAMStateSpaceBackwards)
 \end{equation}
-The new values of $\mathbf{v}_t$ for $t<1$ are then used to fit the model to the data again. The procedure can be repeated several times for the initial states to converge to more reasonable values.
+The new values of $\mathbf{v}_t$ for $t<1$ are then used to fit the model to the data again. The procedure can be repeated several times for the initial states to converge to more reasonable values. `adam()` does that only two times.
 
-The backcasting procedure implies the extended fitting process for the model, removing the need to estimate all the initials. It works exceptionally well on large samples of data (thousands of observations) and with models with several seasonal components. The bigger your model is, the more time the optimisation will take, and the more likely backcasting would do better. On the other hand, you might also prefer backcasting to optimisation in small samples when you do not have more than two seasons of data -- estimation of initial seasonal components might become challenging and can lead to overfitting.
+The backcasting procedure implies the extended fitting process for the model, removing the need to estimate all the initials. It works exceptionally well on large samples of data (thousands of observations) and with models with several seasonal components. The bigger your model is, the more time the optimisation will take, and the more likely backcasting would do better. On the other hand, you might also prefer backcasting to optimisation on small samples when you do not have more than two seasons of data -- estimation of initial seasonal components might become challenging and can lead to overfitting.
 
-When discussing specific models, ADAM ARIMA works better (faster and more accurate) with backcasting than with optimisation because it does not need to estimate as many parameters as in the latter case. On the other hand, ADAM ETS typically works quite well in case of optimisation, when there is enough data to train the model on. Last but not least, if you introduce explanatory variables, backcasting mechanism implemented in `adam()` will optimise their parameters. In case of a dynamic ETSX / ARIMAX (Section \@ref(ADAMXDynamic)) this will mean that the initial values of the part of the state vector for explanatory variables will be optimised and then backcasted. If you want them not to be optimised you can use `initial="complete"` to do full backcasting of all elements of the state vector.
+When discussing specific models, ADAM ARIMA works better (faster and more accurate) with backcasting than with optimisation because it does not need to estimate as many parameters as in the latter case. On the other hand, ADAM ETS typically works quite well in case of optimisation, when there is enough data to train the model on. Last but not least, if you introduce explanatory variables, backcasting mechanism implemented in `adam()` will optimise their parameters instead of backcasting. In case of a dynamic ETSX / ARIMAX (Section \@ref(ADAMXDynamic)) this will mean that the initial values of the part of the state vector for explanatory variables will be estimated as well. If you want them not to be optimised you can use `initial="complete"` to do full backcasting of all elements of the state vector.
 
-It is also important to note that **the information criteria of models with backcasting are typically lower than in the case of the optimised initials**. This is because the difference in the number of estimated parameters is substantial in these two cases, and the models are initialised differently. So, it is advised not to mix the model selection between the two initialisation techniques.
+It is also important to note that **the information criteria of models with backcasting are typically lower than in the case of the optimised initials**. This is because the difference in the number of estimated parameters is substantial in these two cases, and the models are initialised differently. So, it is advised not to mix the model selection between the two initialisation techniques, although there is no theoretical ground for forbid it.
 
-Nonetheless, no matter what initialisation method is used, we need to start the fitting process from $t=1$. This cannot be done unless we provide some pre-initialised values of parameters to the optimiser. The better we guess the initial values, the faster the optimiser will converge to the optimum. `adam()` uses several heuristics in this stage, explained in more detail in the following subsections.
+Nonetheless, no matter what initialisation method is used, we need to start the fitting process from $t=1$. This cannot be done unless we provide some starting (pre-initialised) values of parameters to the optimiser. The better we guess the starting values, the faster the optimiser will converge to the optimum. `adam()` uses several heuristics at this stage, explained in more detail in the following subsections.
 
 
-### Pre-initialisation of ADAM parameters
+### Starting optimisation of parameters
+::: remark
 In this subsection, we discuss how the values of smoothing parameters, damping parameters and coefficients of ARIMA are preset before the initialisation. All the things discussed here are heuristics, developed based on my experience and many experiments with ADAM.
+:::
 
 Depending on the model type, the vector of estimated parameters will have different lengths. We start with smoothing parameters of ETS:
 
 1. For the unsafe mixed models ETS(A,A,M), ETS(A,M,A), ETS(M,A,A) and ETS(M,A,M): $\hat{\alpha}=0.01$, $\hat{\beta}=0$ and $\hat{\gamma}=0$. This is needed because the models listed above are susceptible to the changes in smoothing parameters and might fail for time series with actual values close to zero;
 2. For the one of the most complicated and sensitive models ETS(M,M,A) $\hat{\alpha}=\hat{\beta}=\hat{\gamma}=0$. The combination of additive seasonality and the multiplicative trend is the most difficult one. The multiplicative error makes estimation even more challenging in cases of low-level data. So starting from the deterministic model, that will work for sure is a safe option;
 3. ETS(M,A,N) is slightly easier to estimate than ETS(M,A,M) and ETS(M,A,A), so $\hat{\alpha}=0.2$, $\hat{\beta}=0.01$. The low value for the trend is needed to avoid the difficult situations with low level data, when the fitted values become negative;
-4. ETS(M,M,N) and ETS(M,M,M) have $\hat{\alpha}=0.1$, $\hat{\beta}=0.05$ and $\hat{\gamma}=0.01$, making the trend and seasonal components a bit more conservative. The high values are typically not needed in this model as they might lead to explosive behaviour;
+4. ETS(M,M,N) and ETS(M,M,M) have $\hat{\alpha}=0.1$, $\hat{\beta}=0.05$ and $\hat{\gamma}=0.01$, making the trend and seasonal components a bit more conservative. The high values are typically not needed in this model as they might lead to explosive trends;
 5. Other models with multiplicative components (ETS(M,N,N), ETS(M,N,A), ETS(M,N,M), ETS(A,N,M), ETS(A,M,N) and ETS(A,M,M)) are slightly easier to estimate and harder to break, so their parameters are set to $\hat{\alpha}=0.1$, $\hat{\beta}=0.05$ and $\hat{\gamma}=0.05$;
-6. Finally, pure additive models are initialised with $\hat{\alpha}=0.1$, $\hat{\beta}=0.05$ and $\hat{\gamma}=0.11$. Their parameter space is the widest, and the models do not break any data.
+6. Finally, pure additive models are initialised with $\hat{\alpha}=0.1$, $\hat{\beta}=0.05$ and $\hat{\gamma}=0.11$. Their parameter space is the widest, and the models do not break on any data.
 
 The smoothing parameter for the explanatory variables (Section \@ref(ADAMXDynamic)) is set to $\hat{\delta}=0.01$ in case of additive error and $\hat{\delta}=0$ in case of the multiplicative one. The latter is done because the model might break if some ETS components are additive.
 
-If a dampening parameter is needed in the model, then its pre-initialised value is $\hat{\phi}=0.95$.
+If a dampening parameter is needed in the model, then its starting value is $\hat{\phi}=0.95$.
 
-In the case of ARIMA, the parameters are pre-initialised based on ACF and PACF (Sections \@ref(ACF) and \@ref(PACF)). First, the in-sample actual values are differenced, according to the selected order $D_j$ for all $j=0,\dots,n$, after which the ACF and PACF are calculated. Then the initials for AR parameters are taken from the PACF, while the initials for MA parameters are taken from ACF, making sure that the sum of parameters is not greater than one in both cases. If it is, then the parameters are renormalised to satisfy the condition. This mechanism aims to get a potentially correct direction towards the optimal parameters of the model and make sure that the initial values meet the basic stationarity and invertibility conditions. In cases when it is not possible to calculate ACF and PACF for the specified lags and orders, AR parameters are set to -0.1, while the MA parameters are set to 0.1, making sure that the conditions mentioned above hold.
+In case of ARIMA, the parameters are pre-initialised based on ACF and PACF (Sections \@ref(ACF) and \@ref(PACF)). First, the in-sample actual values are differenced, according to the selected order $D_j$ for all $j=0,\dots,n$, after which the ACF and PACF are calculated. Then the initials for AR parameters are taken from the PACF, while the initials for MA parameters are taken from ACF, making sure that the sum of parameters is not greater than one in both cases. If it is, then the parameters are renormalised to satisfy the condition. This mechanism aims to get a potentially correct direction towards the optimal parameters of the model and make sure that the initial values meet the basic stationarity and invertibility conditions. In cases when it is not possible to calculate ACF and PACF for the specified lags and orders, AR parameters are set to -0.1, while the MA parameters are set to 0.1, making sure that the conditions mentioned above hold.
 
-In the case of Generalised Normal distribution, the shape parameter is set to 2 (if it is estimated), making the optimiser start from the conventional Normal distribution.
+In case of Generalised Normal distribution, the shape parameter is set to 2 (if it is estimated), making the optimiser start from the conventional Normal distribution.
 <!-- If the skewness parameter of Asymmetric Laplace distribution is not provided, then its pre-initial value is set to 0.5, corresponding to the median of the data. -->
 
 The pre-initialisations described above guarantee that the model is estimable for a wide variety of time series and that the optimiser will reach the optimum in a limited time. If it does not work for a specific case, a user can provide their vector of pre-initialised parameters via the parameter `B` in the ellipsis of the model. Furthermore, the typical bounds for the parameters can be tuned as well. For example, the bounds for smoothing parameters in ADAM ETS are (-5, 5), and they are needed only to simplify the optimisation procedure. The function will check the violation of either `usual` or `admissible` bounds inside the optimiser, but having some ideas of where to search for optimal parameters, helps. A user can provide their vector for the lower bound via `lb` and the upper one via `ub`.
 
 
-### Pre-initialisation of ADAM states, ETS
-After defining the pre-initial parameters, we need to provide similar values for the initial state vector $\mathbf{v}_t$. The steps explained below are based on my experience and typically lead to a robust model. The pre-initialisation of states of ADAM ETS differs depending on whether the model is seasonal or not. If it is **seasonal**, then the multiple seasonal decomposition is done using the `msdecompose()` function from the `smooth` with the seasonality set to "multiplicative" if either error or seasonal component of ETS is multiplicative. After that:
+### Starting optimisation of ETS states
+After defining the pre-initial parameters, we need to provide similar values for the initial state vector $\mathbf{v}_t$. The steps explained below are based on my experience and typically lead to a robust model. The pre-initialisation of states of ADAM ETS differs depending on whether the model is seasonal or not. If it is **seasonal**, then the multiple seasonal decomposition is done using the `msdecompose()` function from the `smooth` package with the seasonality set to "multiplicative" if either error or seasonal component of ETS is multiplicative. After that:
 
-- Initial level is equal to the first initial value from the function (which is the back forecasted de-seasonalised series);
-- The value is corrected if regressors are included to remove their impact on the value (either by subtracting the fitted of the regression part or by dividing by them -- depending on the type of error);
-- If the trend is additive and seasonality is multiplicative, then the trend component is obtained by multiplying the initial level and trend from the decomposition (remember, the assumed model is multiplicative in this case) and then subtracting the previous level;
+- Initial level is set to be equal to the first initial value from the function (which is the back forecasted de-seasonalised series);
+- The value is corrected if regressors are included to remove their impact on the value (either by subtracting the fitted of the regression part or by dividing by them -- depending on the error type);
+- If the trend is additive and seasonality is multiplicative, then the trend component is obtained by multiplying the initial level and trend from the decomposition (remember, the assumed model is multiplicative in this case) and then subtracting the previous level from the resulting value;
 - If the trend is multiplicative and seasonality is additive, then the initials are added and then divided by the previous level to get the initial multiplicative trend component;
-- If there is no seasonality and the trend is multiplicative, then the initial trend is set to 1. This is done to avoid the potentially explosive behaviour of the model;
+- If there is no seasonality and the trend is multiplicative, then the initial trend is set to 1. This is done to avoid the potentially explosive behaviour in the model;
 - If the trend is multiplicative and the level is negative, then the level is substituted by the first actual value. This might happen in some weird cases of time series with low values;
 - When it comes to seasonal components, if we have a pure additive or a pure multiplicative ETS model or ETS(A,Z,M), we use the seasonal indices obtained from the `msdecompose()` function, making sure that they are normalised. The type of seasonality in `msdecompose()` corresponds to the seasonal component of ETS in this case, and nothing additional needs to be done;
-- The situation is more challenging with ETS(M,Z,A), for which the decomposition would return the multiplicative seasonal components. To convert them to the additive, we take their logarithm and multiply them by the minimum value of the actual time series. This way, we guarantee that the seasonal components are closer to the optimal ones.
+- The situation is more challenging with ETS(M,Z,A), for which the decomposition would return the multiplicative seasonal components. To convert them to the additive ones, we take their logarithm and multiply them by the minimum value of the actual time series. This way, we guarantee that the seasonal components are closer to the optimal ones.
 
 In the case of the **non-seasonal** model, the algorithm is more straightforward:
 
 - The initial level is equal to either arithmetic or geometric mean (depending on the type of trend component) of the first $\max(m_1,\dots,m_n)$ observations, where $m_j$ is the model lag (e.g. in case of ARIMA(1,1,2), the components will have lags of 1 and 2). If the length of this mean is smaller than 20% of the sample, then the arithmetic mean of the first 20% of actual values is used;
-- If regressors are included, then the value is modified, similar to how it is done in the seasonal case discussed above;
+- If regressors are included, then the value is modified, similarly to how it is done in the seasonal case discussed above;
 - If the model has an additive trend, then its initial value is equal to the mean difference between first $\max(m_1,\dots,m_n)$ observations;
 - In the case of multiplicative trend, the initial value is equal to the geometric mean of ratios between first $\max(m_1,\dots,m_n)$ observations;
 
-In cases of the small samples (less than two seasonal periods), the procedure is similar to the one above. However, the seasonal indices are obtained by taking the actual values and either subtracting arithmetic mean or dividing them by the geometric one of the first $m_j$ observations, depending on the seasonality type, normalising them afterwards.
+In cases of the small samples (less than two seasonal periods), the procedure is similar to the one above. However, the seasonal indices are obtained by taking the actual values and either subtracting arithmetic mean from them or dividing them by the geometric one of the first $m_j$ observations, depending on the seasonality type, normalising them afterwards.
 
 Finally, to ensure that the safe initials were provided, for the ETS(M,Z,Z) models, if the initial level contains a negative value, it is substituted by the global mean of the series.
 
 The pre-initialisation described here is not simple, but it guarantees that any ETS model can be constructed and estimated almost to any data. Yes, there might still be some issues with mixed ETS models, but the mechanism used in ADAM is quite robust.
 
 
-### Pre-initialisation of ADAM states, ARIMA
-ADAM ARIMA models have as many states as the number of polynomials $K$ (see Section \@ref(StateSpaceARIMAAdditive)). Each state $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second etc). This leads in general to more initial values for states than the SSARIMA from @Svetunkov2019: $\frac{K(K+1)}{2}$ instead of $K$.
-However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or using the following trick. In order to reduce the number of estimated parameters to $K$, we can take the conditional expectations for all ARIMA states, in which case we will have:
+### Starting optimisation of ARIMA states
+ADAM ARIMA models have as many states as the number of polynomials $K$ (see Subsection \@ref(StateSpaceARIMAAdditive)). Each state $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second etc). This leads in general to more initial values for states than the SSARIMA from @Svetunkov2019: $\frac{K(K+1)}{2}$ instead of $K$. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or using the following trick. First, we take the conditional expectations of all ARIMA states, which leads to:
 \begin{equation}
   \mathrm{E}(v_{i,t} | t) = \eta_i y_{t} \text{ for } t=\{-K+1, -K+2, \dots, 0\},
   (\#eq:MSARIMAInitialisation00)
 \end{equation}
-and then use these expectations for the initialisation of ARIMA. This still implies calculating a lot of initials, but we can further reduce their number. We can express the actual value in terms of the state and error from \@ref(eq:MSARIMAState) for the last state $K$:
+and then we use these expectations for the initialisation of ARIMA states. This still implies calculating a lot of initials, but we can further reduce their number. We can express the actual value in terms of the state and error from \@ref(eq:MSARIMAState) for the last state $K$:
 \begin{equation}
   y_{t} = \frac{v_{K,t} -\theta_K \epsilon_{t}}{\eta_K}.
   (\#eq:MSARIMAInitialisation01)
@@ -682,12 +687,53 @@ This formula shows how the expectation of each state $i$ depends on the expectat
 Having said all that, we need to point out that it is advised to use backcasting in the ADAM ARIMA model -- this is a more reliable and faster procedure for initialisation of ARIMA than the optimisation.
 
 
-### Pre-initialisation of ADAM states, Regressors and constant
+### Starting optimisation of regressor states and constant
 When it comes to the initials for the regressors, they are obtained from the parameters of the `alm()` model based on the rules below:
 
 - The model with the logarithm of the response variable is constructed, if the **error term is multiplicative** and one of the following distributions has been selected: Normal, Laplace, S or Generalised Normal;
 - Otherwise, the model is constructed based on the provided formula and selected distribution;
 - In any case, the global trend is added to the formula to make sure that its effect on the values of parameters is reduced;
-- If the data contains categorical variables (aka "factors" in R), then the factors are expanded to dummy variables, adding the baseline value. While the classical multiple regression would not be estimable in this situation, dynamic models like ETSX and ARIMAX can work with the complete set of levels of categorical variables. To get the missing level, the intercept is added to the parameters of dummy variables, after which the obtained vector is normalised. This way, we can get, for example, all seasonal components if we want to model seasonality via X part of the model, not merging one of the components with level (see discussion in Section \@ref(ETSXDynamicCategories)).
+- If the data contains categorical variables (aka "factors" in R), then they are expanded to set of dummy variables, adding the baseline value to the mix (i.e. not dropping any categories). While the classical multiple regression would not be estimable in this situation, dynamic models like ETSX and ARIMAX can work with the complete set of levels of categorical variables. To get the missing level, the intercept is added to the parameters of dummy variables, after which the obtained vector is normalised. This way, we can get, for example, all seasonal components if we want to model seasonality via X part of the model, not merging one of the components with level (see discussion in Section \@ref(ETSXDynamicCategories)).
 
-Finally, the initialisation of constant (if needed in the model) depends on the selected model. In the case of ARIMA with all $D_j=0$, the mean of the data is used. In all other cases, the arithmetic mean of difference or the geometric mean of ratios of all actual values is used depending on the error type. This is because the constant acts as a drift in the model in the case of non-zero differences. In the case of ETS, the impact of the constant is removed from the level in ETS and the states of ARIMA by either subtraction or division, again depending on the type of the error term.
+Finally, the initialisation of constant (if needed in the model) depends on the selected model. In case of ARIMA with all $D_j=0$, the mean of the data is used. In all other cases, the arithmetic mean of difference or the geometric mean of ratios of all actual values is used depending on the error type. This is because the constant acts as a drift in the model in the case of non-zero differences. In case of ETS, the impact of the constant is removed from the level in ETS and the states of ARIMA by either subtraction or division, again depending on the error term type.
+
+
+### Example in R
+All the details discussed above allow us telling ADAM what values to start from if we want to help it in optimisation. For demonstration purposes, we consider the ETS(A,A,N)+ARIMA(2,0,0) applied to Box-Jenkins data:
+
+```{r}
+adamETSBJ <- adam(BJsales, "AAN", orders=c(2,0,0))
+```
+
+The function will return the vector of parameters in the form it was used by the optimiser:
+```{r}
+adamETSBJ$B
+```
+
+It can be amended to help optimiser if we have an idea of what values we should have or just reused again to get to better set of values:
+
+```{r}
+adamETSBJ <- adam(BJsales, "AAN", orders=c(2,0,0),
+                  B=adamETSBJ$B)
+```
+
+If we are dissatisfied with the result, we can print the solution found by the optimiser to understand why it stopped:
+```{r}
+adamETSBJ <- adam(BJsales, "AAN", orders=c(2,0,0),
+                  B=adamETSBJ$B, print_level=41)
+```
+
+But hopefully after several iterations, we will get a better estimates of parameters of the model:
+
+```{r}
+adamETSBJ
+```
+
+Given that we are trying the ETS+ARIMA model, we can use backcasting, which should help optimiser by reducing the number of estimated parameters:
+
+```{r}
+adam(BJsales, "AAN", orders=c(2,0,0),
+     initial="backcasting")
+```
+
+Hopefully this gives an idea how the estimation of parameters in `adam()` can be fine-tuned.
