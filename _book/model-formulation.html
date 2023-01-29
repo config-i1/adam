@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-01-27" />
+<meta name="date" content="2023-01-29" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -608,7 +608,7 @@ where <span class="math inline">\(m_i\)</span> is the <span class="math inline">
 <li><p>Additive seasonality:
 <span class="math display" id="eq:ETSADAMAdditiveSeasonality">\[\begin{equation}
   \begin{aligned}
-&amp; {y}_{t} = \check{y}_t + s_{1,t-m_1} + \dots + s_{n,t-m_n} \epsilon_t \\
+&amp; {y}_{t} = \hat{y}_t + s_{1,t-m_1} + \dots + s_{n,t-m_n} \epsilon_t \\
 &amp; \vdots \\
 &amp; s_{1,t} = s_{1,t-m_1} + \gamma_1 \epsilon_t \\
 &amp; \vdots \\
@@ -616,11 +616,11 @@ where <span class="math inline">\(m_i\)</span> is the <span class="math inline">
   \end{aligned},
   \tag{12.3}
 \end{equation}\]</span>
-where <span class="math inline">\(\check{y}_t\)</span> is the point value based on all non-seasonal components (e.g. <span class="math inline">\(\check{y}_t=l_{t-1}\)</span> in case of no trend model) and <span class="math inline">\(\gamma_i\)</span> is the <span class="math inline">\(i\)</span>-th seasonal smoothing parameter.</p></li>
+where <span class="math inline">\(\hat{y}_t\)</span> is the point value based on all non-seasonal components (e.g. <span class="math inline">\(\hat{y}_t=l_{t-1}+\phi b_{t-1}\)</span> in case of damped trend model) and <span class="math inline">\(\gamma_i\)</span> is the <span class="math inline">\(i\)</span>-th seasonal smoothing parameter.</p></li>
 <li><p>Multiplicative seasonality:
 <span class="math display" id="eq:ETSADAMMultiplicativeSeasonality">\[\begin{equation}
   \begin{aligned}
-&amp; {y}_{t} = \check{y}_t \times s_{1,t-m_1} \times \dots \times s_{n,t-m_n} \times(1+\epsilon_t) \\
+&amp; {y}_{t} = \hat{y}_t \times s_{1,t-m_1} \times \dots \times s_{n,t-m_n} \times(1+\epsilon_t) \\
 &amp; \vdots \\
 &amp; s_{1,t} = s_{1,t-m_1} (1 + \gamma_1 \epsilon_t) \\
 &amp; \vdots \\
@@ -629,7 +629,13 @@ where <span class="math inline">\(\check{y}_t\)</span> is the point value based 
 \tag{12.4}
 \end{equation}\]</span></p></li>
 </ol>
-<p>Depending on a specific model, the number of seasonal components can be 1, 2, 3 or more (although more than three might not make much sense from the modelling point of view). <span class="citation">De Livera (<a href="#ref-DeLivera2010" role="doc-biblioref">2010</a>)</span> introduced components based on Fourier terms, updated over time via smoothing parameters. This feature is not yet fully supported in <code>adam()</code>, but it is possible to substitute some of the seasonal components (especially those that have fractional periodicity) with Fourier terms via explanatory variables and update them over time. The explanatory variables idea was discussed in Chapter <a href="ADAMX.html#ADAMX">10</a> and will also be addressed in Section <a href="ETSXMultipleSeasonality.html#ETSXMultipleSeasonality">12.3</a>.</p>
+<p>Depending on a specific model, the number of seasonal components can be 1, 2, 3 or more (although more than three might not make much sense from the modelling point of view). But there are two issues with this model:</p>
+<ol style="list-style-type: decimal">
+<li>Estimation,</li>
+<li>Fractional seasonality.</li>
+</ol>
+<p>The first one is discussed in Section @ref(#ADAMMultiplIssues). As for the second one, it appears if we think that a year contains 365.25 days, not the 365 (because of the leap year). There are several solutions to this. One of those is discussed in Section <a href="MultipleFrequenciesDSTandLeap.html#MultipleFrequenciesDSTandLeap">12.4</a>. Another one was proposed by <span class="citation">De Livera (<a href="#ref-DeLivera2010" role="doc-biblioref">2010</a>)</span> by introducing new types of components, based on Fourier terms, updated over time via smoothing parameters. This feature is not yet fully supported in <code>adam()</code>, but it is possible to substitute some of the seasonal components (especially those that have fractional periodicity) with Fourier terms via explanatory variables and update them over time. The explanatory variables idea was discussed in Chapter <a href="ADAMX.html#ADAMX">10</a> and will also be addressed in Section <a href="ETSXMultipleSeasonality.html#ETSXMultipleSeasonality">12.3</a>.</p>
+<p>Another issues with the models <a href="model-formulation.html#eq:ETSADAMAdditiveSeasonality">(12.3)</a> and <a href="model-formulation.html#eq:ETSADAMMultiplicativeSeasonality">(12.4)</a> is that they have intersecting components, competing for the same space: if we deal with hourly data, we might have hour of day, hour of week and hour of year seasonality. However it might be more logical not to have such intersections and introduce hour of day, day of week and week of year instead. This is discussed to some extent in Section <a href="ETSXMultipleSeasonality.html#ETSXMultipleSeasonality">12.3</a>.</p>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
