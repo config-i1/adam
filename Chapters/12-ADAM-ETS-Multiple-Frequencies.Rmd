@@ -6,7 +6,7 @@ To correctly capture such a complicated structure in the data, we need to have a
 Among the papers related to the topic, we should start with @Taylor2003, who proposed an exponential smoothing model with double seasonality and applied it to energy data. Since then, the topic was developed by @Gould2008, @Taylor2008, @Taylor2010, @DeLivera2010 and @DeLivera2011. In this chapter, we will discuss some of the proposed models, how they relate to the ADAM framework and can be implemented.
 
 
-## Model formulation
+## Model formulation {#ADAMMultipleFrequenciesModel}
 Multiple seasonal ARIMA has already been discussed in Subsections \@ref(MSARIMA) and \@ref(StateSpaceARIMA). Therefore, here we focus the discussion on ETS.
 
 Roughly, the idea of a model with multiple seasonalities is in introducing additional seasonal components. For the general framework this means that the state vector (for example, in a model with trend and seasonality) becomes:
@@ -78,15 +78,15 @@ The related issue to this in the context of ADAM ARIMA (Section \@ref(StateSpace
 
 
 ## Using explanatory variables for multiple seasonalities {#ETSXMultipleSeasonality}
-The conventional way of introducing several seasonal components discussed in Section \@ref(ADAMMultiplIssues) has several issues:
+The conventional way of introducing several seasonal components in ETS discussed in Section \@ref(ADAMMultipleFrequenciesModel) has several issues:
 
 1. It only works with the data with fixed periodicity (the problem sometimes referred to as "fractional frequency"): if $m_i$ is not fixed and changes from period to period, the model becomes misaligned. An example of such a problem is fitting ETS on daily data with $m=365$, while there are leap years that contain 366 days;
-2. If the model fits high-frequency data, the parameter estimation problem becomes non-trivial. Indeed, on daily data with $m=365$, we need to estimate 364 initial seasonal indices together with the other parameters;
-3. Different seasonal indices would "compete" with each other for each observation, thus making the model overfit the data. An example is daily data with $m_1=7$ and $m_2=365$, where both seasonal components are updated on each observation based on the same error but with different smoothing parameters. In this situation, the model implies that the day of year seasonality should be updated together with the day of week one.
+2. If the model fits high-frequency data, the parameter estimation problem becomes non-trivial. Indeed, on daily data with $m=365$, we need to estimate 364 initial seasonal indices together with other parameters (as discussed in Section \@ref(ADAMMultiplIssues));
+3. Different seasonal indices would "compete" with each other for each observation, thus making the model overfit the data. An example is daily data with $m_1=7$ and $m_2=365$, where both seasonal components are updated on each observation based on the same error but with different smoothing parameters. In this situation, the model implies that the day of year seasonality should be updated together with the day of week one, and this mixture might not lead to the correct split of the dynamic effects, i.e. one of seasonalities being updated more often than needed.
 
 The situation becomes even more complicated when the model has more than two seasonal components. But there are at least two ways of resolving these issues in the ADAM framework.
 
-The first is based on the idea of @DeLivera2010 and the dynamic ETSX (discussed in Section \@ref(ADAMXDynamic)). In this case, we need to generate fourier series and use them as explanatory variables in the model, turning on the mechanism of adaptation. For example, for the pure additive model, in this case, we will have:
+The first is based on the idea of @DeLivera2010 and the dynamic ETSX (discussed in Section \@ref(ADAMXDynamic)). In this case, we generate fourier series and use them as explanatory variables in the model, turning on the mechanism of adaptation. For example, for the pure additive model, in this case, we will have:
 \begin{equation}
   \begin{aligned}
     & {y}_{t} = \hat{y}_t + \sum_{i=1}^p a_{i,t-1} x_{i,t} + \epsilon_t \\
@@ -95,9 +95,9 @@ The first is based on the idea of @DeLivera2010 and the dynamic ETSX (discussed 
   \end{aligned},
   (\#eq:ETSXADAMMultipleSeasonalityFourier)
 \end{equation}
-where $p$ is the number of Fourier harmonics. In this case, we can introduce the conventional seasonal part of the model for the fixed periodicity (e.g. days of the week) in $\hat{y}_t$ and use the updated harmonics for the non-fixed one. This approach is not the same as @DeLivera2010 but might lead to similar results. The only issue here is selecting the number of harmonics, which can be done via the variables selection mechanism (which will be discussed in Sectio \@ref(ETSXSelection)) but would inevitably increase computational time.
+where $x_{i,t}$ is the $i$-th harmonic and $p$ is the number of Fourier harmonics. In this case, we can introduce the conventional seasonal part of the model for the fixed periodicity (e.g. days of the week) in $\hat{y}_t$ and use the updated harmonics for the non-fixed one. This approach is not the same as @DeLivera2010 but might lead to similar results. The only issue here is selecting the number of harmonics. This can be done judgmentally or via the variables selection mechanism (which will be discussed in Section \@ref(ETSXSelection)), but would inevitably increase computational time.
 
-The second option is based on the idea of a dynamic model with categorical variables (from Section \@ref(ETSXDynamicCategories)). Instead of trying to fix the problem with days of the year, we first introduce the categorical variables for days of the week and then for the weeks of the year (or months of the year if we can assume that the effects of months are more appropriate). After that, we can introduce both categorical variables in the model, using a similar adaptation mechanism to \@ref(eq:ETSXADAMMultipleSeasonalityFourier). If some variables have fixed periodicity, we can substitute them with the conventional seasonal components. So, for example, ETSX(M,N,M)[7]{D} could be written as:
+The second option is based on the idea of a dynamic model with categorical variables (from Section \@ref(ETSXDynamicCategories)). Instead of trying to fix the problem with days of the year, we first introduce the categorical variables for days of week and then for weeks of year (or months of year if we can assume that the effects of months are more appropriate than the weekly ones). After that, we can introduce both categorical variables in the model, using a similar adaptation mechanism to \@ref(eq:ETSXADAMMultipleSeasonalityFourier). If some variables have fixed periodicity, we can substitute them with the conventional seasonal components. So, for example, ETSX(M,N,M)$_7${D} could be written as:
 \begin{equation}
   \begin{aligned}
     & {y}_{t} = l_{t-1} s_{t-7} \times \prod_{i=1}^q \exp(a_{i,t-1} x_{i,t}) (1 + \epsilon_t) \\
@@ -111,6 +111,10 @@ The second option is based on the idea of a dynamic model with categorical varia
 (\#eq:ETSXADAMMultipleSeasonalityCategories)
 \end{equation}
 where $q$ is the number of levels in the categorical variable (for weeks of year, this should be 53). The number of parameters to estimate in this situation might be greater than the number of harmonics in the first case, but this type of model resolves all three issues as well and does not have the dilemma of the number of harmonics selection.
+
+::: remark
+A multiplicative model might make more sense in this context, because the seasonal effect captured by categorical variables will be multiplied by the baseline value, which might help in modelling a potentially more complicated seasonal pattern.
+:::
 
 
 ## Dealing with daylight saving and leap years {#MultipleFrequenciesDSTandLeap}
