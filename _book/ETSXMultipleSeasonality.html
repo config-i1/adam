@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-01-29" />
+<meta name="date" content="2023-01-31" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -424,7 +424,7 @@ div.csl-indent {
 </ul></li>
 <li class="chapter" data-level="12" data-path="ADAMMultipleFrequencies.html"><a href="ADAMMultipleFrequencies.html"><i class="fa fa-check"></i><b>12</b> Multiple frequencies in ADAM</a>
 <ul>
-<li class="chapter" data-level="12.1" data-path="model-formulation.html"><a href="model-formulation.html"><i class="fa fa-check"></i><b>12.1</b> Model formulation</a></li>
+<li class="chapter" data-level="12.1" data-path="ADAMMultipleFrequenciesModel.html"><a href="ADAMMultipleFrequenciesModel.html"><i class="fa fa-check"></i><b>12.1</b> Model formulation</a></li>
 <li class="chapter" data-level="12.2" data-path="ADAMMultiplIssues.html"><a href="ADAMMultiplIssues.html"><i class="fa fa-check"></i><b>12.2</b> Estimation of multiple seasonal model</a>
 <ul>
 <li class="chapter" data-level="12.2.1" data-path="ADAMMultiplIssues.html"><a href="ADAMMultiplIssues.html#adam-ets-issues"><i class="fa fa-check"></i><b>12.2.1</b> ADAM ETS issues</a></li>
@@ -589,14 +589,14 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ETSXMultipleSeasonality" class="section level2 hasAnchor" number="12.3">
 <h2><span class="header-section-number">12.3</span> Using explanatory variables for multiple seasonalities<a href="ETSXMultipleSeasonality.html#ETSXMultipleSeasonality" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>The conventional way of introducing several seasonal components discussed in Section <a href="ADAMMultiplIssues.html#ADAMMultiplIssues">12.2</a> has several issues:</p>
+<p>The conventional way of introducing several seasonal components in ETS discussed in Section <a href="ADAMMultipleFrequenciesModel.html#ADAMMultipleFrequenciesModel">12.1</a> has several issues:</p>
 <ol style="list-style-type: decimal">
 <li>It only works with the data with fixed periodicity (the problem sometimes referred to as “fractional frequency”): if <span class="math inline">\(m_i\)</span> is not fixed and changes from period to period, the model becomes misaligned. An example of such a problem is fitting ETS on daily data with <span class="math inline">\(m=365\)</span>, while there are leap years that contain 366 days;</li>
-<li>If the model fits high-frequency data, the parameter estimation problem becomes non-trivial. Indeed, on daily data with <span class="math inline">\(m=365\)</span>, we need to estimate 364 initial seasonal indices together with the other parameters;</li>
-<li>Different seasonal indices would “compete” with each other for each observation, thus making the model overfit the data. An example is daily data with <span class="math inline">\(m_1=7\)</span> and <span class="math inline">\(m_2=365\)</span>, where both seasonal components are updated on each observation based on the same error but with different smoothing parameters. In this situation, the model implies that the day of year seasonality should be updated together with the day of week one.</li>
+<li>If the model fits high-frequency data, the parameter estimation problem becomes non-trivial. Indeed, on daily data with <span class="math inline">\(m=365\)</span>, we need to estimate 364 initial seasonal indices together with other parameters (as discussed in Section <a href="ADAMMultiplIssues.html#ADAMMultiplIssues">12.2</a>);</li>
+<li>Different seasonal indices would “compete” with each other for each observation, thus making the model overfit the data. An example is daily data with <span class="math inline">\(m_1=7\)</span> and <span class="math inline">\(m_2=365\)</span>, where both seasonal components are updated on each observation based on the same error but with different smoothing parameters. In this situation, the model implies that the day of year seasonality should be updated together with the day of week one, and this mixture might not lead to the correct split of the dynamic effects, i.e. one of seasonalities being updated more often than needed.</li>
 </ol>
 <p>The situation becomes even more complicated when the model has more than two seasonal components. But there are at least two ways of resolving these issues in the ADAM framework.</p>
-<p>The first is based on the idea of <span class="citation">De Livera (<a href="#ref-DeLivera2010" role="doc-biblioref">2010</a>)</span> and the dynamic ETSX (discussed in Section <a href="ADAMXDynamic.html#ADAMXDynamic">10.3</a>). In this case, we need to generate fourier series and use them as explanatory variables in the model, turning on the mechanism of adaptation. For example, for the pure additive model, in this case, we will have:
+<p>The first is based on the idea of <span class="citation">De Livera (<a href="#ref-DeLivera2010" role="doc-biblioref">2010</a>)</span> and the dynamic ETSX (discussed in Section <a href="ADAMXDynamic.html#ADAMXDynamic">10.3</a>). In this case, we generate fourier series and use them as explanatory variables in the model, turning on the mechanism of adaptation. For example, for the pure additive model, in this case, we will have:
 <span class="math display" id="eq:ETSXADAMMultipleSeasonalityFourier">\[\begin{equation}
   \begin{aligned}
     &amp; {y}_{t} = \hat{y}_t + \sum_{i=1}^p a_{i,t-1} x_{i,t} + \epsilon_t \\
@@ -605,8 +605,8 @@ div.csl-indent {
   \end{aligned},
   \tag{12.5}
 \end{equation}\]</span>
-where <span class="math inline">\(p\)</span> is the number of Fourier harmonics. In this case, we can introduce the conventional seasonal part of the model for the fixed periodicity (e.g. days of the week) in <span class="math inline">\(\hat{y}_t\)</span> and use the updated harmonics for the non-fixed one. This approach is not the same as <span class="citation">De Livera (<a href="#ref-DeLivera2010" role="doc-biblioref">2010</a>)</span> but might lead to similar results. The only issue here is selecting the number of harmonics, which can be done via the variables selection mechanism (which will be discussed in Sectio <a href="ETSXSelection.html#ETSXSelection">15.3</a>) but would inevitably increase computational time.</p>
-<p>The second option is based on the idea of a dynamic model with categorical variables (from Section <a href="ETSXDynamicCategories.html#ETSXDynamicCategories">10.5</a>). Instead of trying to fix the problem with days of the year, we first introduce the categorical variables for days of the week and then for the weeks of the year (or months of the year if we can assume that the effects of months are more appropriate). After that, we can introduce both categorical variables in the model, using a similar adaptation mechanism to <a href="ETSXMultipleSeasonality.html#eq:ETSXADAMMultipleSeasonalityFourier">(12.5)</a>. If some variables have fixed periodicity, we can substitute them with the conventional seasonal components. So, for example, ETSX(M,N,M)[7]{D} could be written as:
+where <span class="math inline">\(x_{i,t}\)</span> is the <span class="math inline">\(i\)</span>-th harmonic and <span class="math inline">\(p\)</span> is the number of Fourier harmonics. In this case, we can introduce the conventional seasonal part of the model for the fixed periodicity (e.g. days of the week) in <span class="math inline">\(\hat{y}_t\)</span> and use the updated harmonics for the non-fixed one. This approach is not the same as <span class="citation">De Livera (<a href="#ref-DeLivera2010" role="doc-biblioref">2010</a>)</span> but might lead to similar results. The only issue here is selecting the number of harmonics. This can be done judgmentally or via the variables selection mechanism (which will be discussed in Section <a href="ETSXSelection.html#ETSXSelection">15.3</a>), but would inevitably increase computational time.</p>
+<p>The second option is based on the idea of a dynamic model with categorical variables (from Section <a href="ETSXDynamicCategories.html#ETSXDynamicCategories">10.5</a>). Instead of trying to fix the problem with days of the year, we first introduce the categorical variables for days of week and then for weeks of year (or months of year if we can assume that the effects of months are more appropriate than the weekly ones). After that, we can introduce both categorical variables in the model, using a similar adaptation mechanism to <a href="ETSXMultipleSeasonality.html#eq:ETSXADAMMultipleSeasonalityFourier">(12.5)</a>. If some variables have fixed periodicity, we can substitute them with the conventional seasonal components. So, for example, ETSX(M,N,M)<span class="math inline">\(_7\)</span>{D} could be written as:
 <span class="math display" id="eq:ETSXADAMMultipleSeasonalityCategories">\[\begin{equation}
   \begin{aligned}
     &amp; {y}_{t} = l_{t-1} s_{t-7} \times \prod_{i=1}^q \exp(a_{i,t-1} x_{i,t}) (1 + \epsilon_t) \\
@@ -620,6 +620,9 @@ where <span class="math inline">\(p\)</span> is the number of Fourier harmonics.
 \tag{12.6}
 \end{equation}\]</span>
 where <span class="math inline">\(q\)</span> is the number of levels in the categorical variable (for weeks of year, this should be 53). The number of parameters to estimate in this situation might be greater than the number of harmonics in the first case, but this type of model resolves all three issues as well and does not have the dilemma of the number of harmonics selection.</p>
+<div class="remark">
+<p><span id="unlabeled-div-36" class="remark"><em>Remark</em>. </span>A multiplicative model might make more sense in this context, because the seasonal effect captured by categorical variables will be multiplied by the baseline value, which might help in modelling a potentially more complicated seasonal pattern.</p>
+</div>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
