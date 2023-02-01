@@ -164,21 +164,21 @@ adamETSMNM <- adam(y, "MNM", lags=c(1,48,336),
 adamETSMNM
 ```
 
-Notice that the seasonal smoothing parameters are relatively high in this model. For example, the second $\gamma$ is equal to `r round(adamETSMNM$persistence[3],4)`, which means that the model adapts the seasonal profile to the data substantially (takes `r round(adamETSMNM$persistence[3],4)*100`% of the error from the previous observation in it). Furthermore, the smoothing parameter $\alpha$ is equal to `r round(adamETSMNM$persistence[1],4)`, which is also potentially too high, given that we have well-behaved data and that we deal with a multiplicative model. This might indicate that the model overfits the data. To see if this is the case, we can produce the plot of components over time (Figure \@ref(fig:adamModelETSMNM12)).
+As we see from the output above, the model was constructed in `r round(adamETSMNM$timeElapsed,2)` seconds. Notice that the seasonal smoothing parameters are relatively high in this model. For example, the second $\gamma$ is equal to `r round(adamETSMNM$persistence[3],4)`, which means that the model adapts the seasonal profile to the data substantially (takes `r round(adamETSMNM$persistence[3],4)*100`% of the error from the previous observation in it). Furthermore, the smoothing parameter $\alpha$ is equal to `r round(adamETSMNM$persistence[1],4)`, which is also potentially too high, given that we have well-behaved data and that we deal with a multiplicative model. This might indicate that the model overfits the data. To see if this is the case, we can produce the plot of components over time (Figure \@ref(fig:adamModelETSMNM12)).
 
 ```{r adamModelETSMNM12, fig.cap="Half-hourly electricity demand data decomposition according to ETS(M,N,M)[48,336]"}
-plot(adamETSMNM,12)
+plot(adamETSMNM, which=12)
 ```
 
-As the plot in Figure \@ref(fig:adamModelETSMNM12) shows, the level of series repeats the seasonal pattern in the original data, although in a diminished way. In addition, the second seasonal component repeats the intra-day seasonality in it, although it is also reduced.
+As the plot in Figure \@ref(fig:adamModelETSMNM12) shows, the level of series repeats the seasonal pattern in the original data, although in a diminished way. In addition, the second seasonal component repeats the intra-day seasonality in it, although it is also reduced. Ideally, we want to have a smooth level component and for the second seasonal component not to have those spikes for half-hour of day seasonality.
 
 Next, we can plot the fitted values and forecasts to see how the model performs overall (Figure \@ref(fig:adamModelETSMNM)).
 
 ```{r adamModelETSMNM, fig.cap="The fit and the forecast of the ETS(M,N,M)[48,336] model on half-hourly electricity demand data."}
-plot(adamETSMNM,7)
+plot(adamETSMNM, which=7)
 ```
 
-As we might notice from Figure \@ref(fig:adamModelETSMNM) the model was constructed in `r round(adamETSMNM$timeElapsed,2)` seconds, and while it might not be the most accurate model for the data, it fits it well and produces reasonable forecasts. So, it is a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \@ref(multistepLossesGTMSE)):
+As we see from Figure \@ref(fig:adamModelETSMNM), the model fits data well and produces reasonable forecasts. Given that it only took `r round(adamETSMNM$timeElapsed,2)` seconds for the model estimation and construction, this model can be considered as a good starting point. If we want to improve upon it, we can try one of the multistep estimators, for example, GTMSE (Subsection \@ref(multistepLossesGTMSE)):
 
 ```{r eval=FALSE}
 adamETSMNMGTMSE <- adam(y, "MNM", lags=c(1,48,336),
@@ -195,10 +195,10 @@ adamETSMNMGTMSE
 The smoothing parameters of the second model are closer to zero than in the first one, which might mean that it does not overfit the data as much. We can analyse the components of the second model by plotting them over time, similarly to how we did it for the previous model (Figure \@ref(fig:adamModelETSMNMGTMSE12)):
 
 ```{r adamModelETSMNMGTMSE12, fig.cap="Half-hourly electricity demand data decomposition according to ETS(M,N,M)[48,336] estimated with GTMSE."}
-plot(adamETSMNMGTMSE,12)
+plot(adamETSMNMGTMSE, which=12)
 ```
 
-The components on the plot in Figure \@ref(fig:adamModelETSMNMGTMSE12) are still not ideal, but at least the level does not seem to contain the seasonality in it anymore. The seasonal components could still be improved if, for example, the initial seasonal indices were smoother (this applies especially to the seasonal component 2).
+The components on the plot in Figure \@ref(fig:adamModelETSMNMGTMSE12) are still not ideal, but at least the level does not seem to contain the seasonality anymore. The seasonal components could still be improved if, for example, the initial seasonal indices were smoother (this applies especially to the seasonal component 2).
 
 Comparing the accuracy of the two models, for example, using RMSSE, we can conclude that the one with GTMSE was more accurate than the one estimated using the conventional likelihood.
 
@@ -210,17 +210,17 @@ adamETSMNMAR <- adam(y, "MNM", lags=c(1,48,336),
                      h=336, holdout=TRUE, maxeval=1000)
 ```
 
-Estimating the ETS+ARIMA model is a complicated task because of the increase of dimensionality of the matrices in the transition equation. Still, by default, the number of iterations would be restricted by 160, which might not be enough to get to the minimum of the loss. This is why I increased the number of iterations in the example above to 1000. If you want to get more feedback on how the optimisation has been carried out, you can ask the function to print details via `print_level=41`.
+Estimating the ETS+ARIMA model is a complicated task because of the increase of dimensionality of the matrices in the transition equation. Still, by default, the number of iterations would be restricted by 160, which might not be enough to get to the minimum of the loss. This is why I increased the number of iterations in the example above to 1000 via `maxeval=1000`. If you want to get more feedback on how the optimisation has been carried out, you can ask the function to print details via `print_level=41`. This is how the output of the model looks:
 
 ```{r}
 adamETSMNMAR
 ```
 
-In this specific example, we see that the ADAM ETS(M,N,M)+AR(1) leads to a slight improvement in accuracy in comparison with the ADAM ETS(M,N,M) estimated using the conventional loss function.
+In this specific example, we see that the ADAM ETS(M,N,M)+AR(1) leads to a slight improvement in accuracy in comparison with the ADAM ETS(M,N,M) estimated using the conventional loss function (it also has a lower AICc), but cannot beat the one estimated using GTMSE. We could try other options in `adam()` to get further improvements in accuracy, but we do not aim to get the best model in this Section. An interested reader is encouraged to do that on their own.
 
 
 ### ADAM ETSX
-Another option of dealing with multiple seasonalities, as discussed in Section \@ref(ETSXMultipleSeasonality), is the introduction of explanatory variables. We start with a static model that captures half-hours of the day via its seasonal component and days of week frequency via an explanatory variable. We will use the `temporaldummy()` function from the `greybox` package to create respective categorical variables. This function works much better when the data contains proper time stamps and, for example, is of class `zoo` or `xts`:
+Another option of dealing with multiple seasonalities, as discussed in Section \@ref(ETSXMultipleSeasonality), is the introduction of explanatory variables. We start with a static model that captures half-hours of the day via its seasonal component and days of week frequency via an explanatory variable. We will use the `temporaldummy()` function from the `greybox` package to create respective categorical variables. This function works better when the data contains proper time stamps and, for example, is of class `zoo` or `xts`. It becomes especially useful when dealing with DST and Leap years (see Section \@ref(MultipleFrequenciesDSTandLeap)) because it will encode the dummy variables based on dates, allowing to sidestep the issue with changing frequency in the data. 
 
 ```{r}
 x1 <- temporaldummy(y,type="day",of="week",factors=TRUE)
@@ -228,14 +228,14 @@ x2 <- temporaldummy(y,type="hour",of="day",factors=TRUE)
 taylorData <- data.frame(y=y,x1=x1,x2=x2)
 ```
 
-This function becomes especially useful when dealing with DST and Leap years (see Section \@ref(MultipleFrequenciesDSTandLeap)) because it will encode the dummy variables based on dates, allowing to sidestep the issue with changing frequency in the data. We can now fit the ADAM ETSX model with dummy variables for days of the week:
+Now that we created the data with categorical variables, we can fit the ADAM ETSX model with dummy variables for days of week and use complete backcasting for initialisation:
 
 ```{r eval=FALSE}
 adamETSXMNN <- adam(taylorData, "MNN", h=336, holdout=TRUE,
-                    initial="back")
+                    initial="complete")
 ```
 
-In the code above, we use the initialisation via backcasting (see discussion in Section \@ref(ADAMInitialisationOptAndBack)), because otherwise the calculation will take much more time and might require additional manual tuning. Here is what we get as a result:
+In the code above, the initialisation method leads to potentially biased estimates of parameters at the cost of a reduced computational time (see discussion in Section \@ref(ADAMInitialisationOptAndBack)). Here is what we get as a result:
 
 ```{r}
 adamETSXMNN
@@ -251,7 +251,7 @@ As we see from Figure \@ref(fig:adamETSXMNN121), the level component absorbs sea
 ```{r eval=FALSE}
 adamETSXMNNGTMSE <- adam(taylorData, "MNN",
                          h=336, holdout=TRUE,
-                         initial="back", loss="GTMSE")
+                         initial="complete", loss="GTMSE")
 adamETSXMNNGTMSE
 ```
 
@@ -263,7 +263,7 @@ While the model's performance with GTMSE has improved due to the shrinkage of $\
 ```{r eval=FALSE}
 adamETSXMNMGTMSE <- adam(taylorData, "MNM", lags=48,
                          h=336, holdout=TRUE,
-                         initial="back", loss="GTMSE",
+                         initial="complete", loss="GTMSE",
                          formula=y~x1)
 adamETSXMNMGTMSE
 ```
@@ -276,7 +276,7 @@ We can see an improvement compared to the previous model, so the seasonal states
 
 
 ### ADAM ARIMA
-Another model we can try on this data is ARIMA. We have not yet discussed the order selection mechanism for ARIMA, so I will construct a model based on my judgment. Keeping in mind that ETS(A,N,N) is equivalent to ARIMA(0,1,1) and that the changing seasonality in ARIMA context can be modelled with seasonal differences, I will construct SARIMA(0,1,1)(0,1,1)$_{336}$, skipping the frequencies for a half-hour of the day. Hopefully, this will be enough to model: (a) changing level of data; (b) changing seasonal amplitude. Here is how we can construct this model using `adam()`:
+Another model we can try on this data is multiple seasonal ARIMA. We have not yet discussed the order selection mechanism for ARIMA, so I will construct a model based on my judgment. Keeping in mind that ETS(A,N,N) is equivalent to ARIMA(0,1,1) and that the changing seasonality in ARIMA context can be modelled with seasonal differences, I will construct SARIMA(0,1,1)(0,1,1)$_{336}$, skipping the frequencies for a half-hour of the day. Hopefully, this will suffice to model: (a) changing level of data; (b) changing seasonal amplitude. Here is how we can construct this model using `adam()`:
 ```{r}
 adamARIMA <- adam(y, "NNN", lags=c(1,336), initial="back",
                   orders=list(i=c(1,1),ma=c(1,1)),
@@ -284,10 +284,10 @@ adamARIMA <- adam(y, "NNN", lags=c(1,336), initial="back",
 adamARIMA
 ```
 
-Figure \@ref(fig:adamARIMA) shows the fit and forecast from this model.
+As we see from the output above, this model has the lowest RMSSE value among all models we tried. Furthermore, this model is directly comparable with ADAM ETS via information criteria, and as we can see, it is worse than ADAM ETS(M,N,M)+AR(1) and multiple seasonal ETS(M,N,M) in terms of AICc. Figure \@ref(fig:adamARIMA) shows the fit and forecast from this model.
 
 ```{r adamARIMA, fig.cap="The fit and the forecast of the ARIMA(0,1,1)(0,1,1)$_{336}$ model on half-hourly electricity demand data."}
 plot(adamARIMA,7)
 ```
 
-This model is directly comparable with ADAM ETS via information criteria, and as we can see, it is worse than ADAM ETS(M,N,M)+AR(1) and multiple seasonal ETS(M,N,M) in terms of AICc. But it is better in terms of the holdout RMSSE, producing more accurate forecasts. We could analyse the residuals of this model and iteratively test whether the addition of AR terms and a half-hour of day seasonality improves the model's accuracy. We could also try ARIMA models with different distributions, compare them and select the most appropriate one. The reader is encouraged to do this on their own.
+We could analyse the residuals of this model and iteratively test whether the addition of AR terms and a half-hour of day seasonality improves the model's accuracy. We could also try ARIMA models with different distributions, compare them and select the most appropriate one or estimate the model using multistep losses. All of this can be done in `adam()`. The reader is encouraged to do this on their own.
