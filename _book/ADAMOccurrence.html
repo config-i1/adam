@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-02-01" />
+<meta name="date" content="2023-02-06" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -589,12 +589,12 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ADAMOccurrence" class="section level2 hasAnchor" number="13.1">
 <h2><span class="header-section-number">13.1</span> Occurrence part of the model<a href="ADAMOccurrence.html#ADAMOccurrence" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>The general model <a href="ADAMIntermittent.html#eq:IntermittentDemandModel">(13.1)</a> assumes that demand occurs randomly and that the variable <span class="math inline">\(o_t\)</span> can be either zero (no demand) or one (there is some demand). While this process can be modelled using different distributions, <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019a" role="doc-biblioref">2019</a>)</span> proposed using Bernoulli with a time varying probability (in the most general case):
+<p>The general model <a href="ADAMIntermittent.html#eq:IntermittentDemandModel">(13.1)</a> assumes that demand occurs randomly and that the variable <span class="math inline">\(o_t\)</span> can be either zero (no demand) or one (there is some demand). While this process can be modelled using different distributions, <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019a" role="doc-biblioref">2019</a>)</span> proposed using Bernoulli with a time varying probability:
 <span class="math display" id="eq:OccurrenceModelBernoulli">\[\begin{equation}
 o_t \sim \text{Bernoulli} \left(p_t \right) ,
 \tag{13.2}
 \end{equation}\]</span>
-where <span class="math inline">\(p_t\)</span> is the probability of occurrence. The higher it is, the more frequently the demand will happen. If <span class="math inline">\(p_t=1\)</span>, then the demand becomes continuous, while with <span class="math inline">\(p_t=0\)</span>, nobody buys the product at all. This section will discuss different types of models for this probability. For each of them, there are different mechanisms of the model construction, estimation, error calculation, update of the states and the generation of forecasts. To estimate any of these models using likelihood, we need to know the Probability Mass Function (PMF), which for Bernoulli distribution is:
+where <span class="math inline">\(p_t\)</span> is the probability of occurrence. The higher it is, the more frequently the demand will happen. If <span class="math inline">\(p_t=1\)</span>, then the demand becomes regular, while with <span class="math inline">\(p_t=0\)</span>, nobody buys the product at all. This section will discuss different types of models for the probability of occurrence. For each of them, there are different mechanisms of the model construction, estimation, error calculation, update of the states and the generation of forecasts. To estimate any of these models, I recommend using likelihood, which can be calculated based on the Probability Mass Function (PMF) of Bernoulli distribution:
 <span class="math display" id="eq:BernoulliPMF">\[\begin{equation}
 f_o(o_t, p_t) = p_t^{o_t}(1-p_t)^{1-o_t}.
 \tag{13.3}
@@ -608,7 +608,7 @@ where <span class="math inline">\(\hat{p}_t\)</span> is the in-sample conditiona
 <p>In order to demonstrate the difference between specific types of oETS models, we will use the following artificial data:</p>
 <div class="sourceCode" id="cb224"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb224-1"><a href="ADAMOccurrence.html#cb224-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">ts</span>(<span class="fu">c</span>(<span class="fu">rpois</span>(<span class="dv">20</span>,<span class="fl">0.25</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="fl">0.5</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">1</span>),</span>
 <span id="cb224-2"><a href="ADAMOccurrence.html#cb224-2" aria-hidden="true" tabindex="-1"></a>          <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">2</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">3</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">5</span>)))</span></code></pre></div>
-<p>Figure <a href="ADAMOccurrence.html#fig:intermittentExamplePlot">13.1</a> shows how the data looks like:</p>
+<p>Figure <a href="ADAMOccurrence.html#fig:intermittentExamplePlot">13.1</a> shows how the data looks:</p>
 <div class="sourceCode" id="cb225"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb225-1"><a href="ADAMOccurrence.html#cb225-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(y)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:intermittentExamplePlot"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/intermittentExamplePlot-1.png" alt="Example of intermittent demand data." width="672" />
@@ -616,7 +616,7 @@ where <span class="math inline">\(\hat{p}_t\)</span> is the in-sample conditiona
 Figure 13.1: Example of intermittent demand data.
 </p>
 </div>
-<p>The probability of occurrence in this example increases together with the demand sizes. This example corresponds to the situation of intermittent demand for a product becoming regular.</p>
+<p>The probability of occurrence in this example increases together with the demand sizes. This example corresponds to the situation of intermittent demand for a product evolving to the regular one.</p>
 <div id="fixed-probability-model-oets_f" class="section level3 hasAnchor" number="13.1.1">
 <h3><span class="header-section-number">13.1.1</span> Fixed probability model, oETS<span class="math inline">\(_F\)</span><a href="ADAMOccurrence.html#fixed-probability-model-oets_f" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>We start with the simplest case of fixed probability of occurrence, oETS<span class="math inline">\(_F\)</span> model:
@@ -625,13 +625,13 @@ o_t \sim \text{Bernoulli}(p) ,
 \tag{13.5}
 \end{equation}\]</span>
 This model assumes that demand happens with the same probability no matter what. This might sound exotic because, in practice, there might be many factors influencing customers’ desire to purchase, and the impact of these factors might change over time. But this is a basic model, which can be used as a benchmark on intermittent demand data. Furthermore, it might be suitable for modelling demand on expensive high-tech products, such as jet engines, which is “very slow” in its nature and typically does not evolve much over time.</p>
-<p>When estimated via maximisation of likelihood function <a href="ADAMOccurrence.html#eq:oETSLikelihood">(13.4)</a>, the probability of occurrence is equal to:
+<p>When estimated via maximisation of likelihood function <a href="ADAMOccurrence.html#eq:oETSLikelihood">(13.4)</a>, the probability of occurrence in this model is equal to:
 <span class="math display" id="eq:oETSFixedProbabilityMLE">\[\begin{equation}
 \hat{p} = \frac{T_1}{T},
 \tag{13.6}
 \end{equation}\]</span>
 where <span class="math inline">\(T_1\)</span> is the number of non-zero observations and <span class="math inline">\(T\)</span> is the number of all the available observations in sample.</p>
-<p>The occurrence part of the model, oETS<span class="math inline">\(_F\)</span> can be constructed using <code>oes()</code> function from <code>smooth</code> package:</p>
+<p>The occurrence part of the model, oETS<span class="math inline">\(_F\)</span> can be constructed using <code>oes()</code> function from the <code>smooth</code> package:</p>
 <div class="sourceCode" id="cb226"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb226-1"><a href="ADAMOccurrence.html#cb226-1" aria-hidden="true" tabindex="-1"></a>oETSFModel <span class="ot">&lt;-</span> <span class="fu">oes</span>(y, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb226-2"><a href="ADAMOccurrence.html#cb226-2" aria-hidden="true" tabindex="-1"></a>                  <span class="at">occurrence=</span><span class="st">&quot;fixed&quot;</span>)</span>
 <span id="cb226-3"><a href="ADAMOccurrence.html#cb226-3" aria-hidden="true" tabindex="-1"></a>oETSFModel</span></code></pre></div>
@@ -656,11 +656,11 @@ where <span class="math inline">\(T_1\)</span> is the number of non-zero observa
 Figure 13.2: Demand occurrence and probability of occurrence in the oETS<span class="math inline">\(_F\)</span> model.
 </p>
 </div>
-<p>The plot in Figure <a href="ADAMOccurrence.html#fig:oETSFModel">13.2</a> above demonstrates the dynamics of the occurrence variable <span class="math inline">\(o_t\)</span> and the fitted and predicted probabilities. The solid line shows when zeroes and ones happen, depicting the variable <span class="math inline">\(o_t\)</span>. The dashed line corresponds to the fixed probability of occurrence <span class="math inline">\(\hat{p}\)</span> in the sample.</p>
+<p>The plot in Figure <a href="ADAMOccurrence.html#fig:oETSFModel">13.2</a> demonstrates the dynamics of the occurrence variable <span class="math inline">\(o_t\)</span> and the fitted and predicted probabilities. The solid line shows when zeroes and ones happen, depicting the variable <span class="math inline">\(o_t\)</span>. The dashed line corresponds to the fixed probability of occurrence <span class="math inline">\(\hat{p}\)</span> in the sample.</p>
 </div>
 <div id="oETSO" class="section level3 hasAnchor" number="13.1.2">
 <h3><span class="header-section-number">13.1.2</span> Odds ratio model, oETS<span class="math inline">\(_O\)</span><a href="ADAMOccurrence.html#oETSO" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>In this model, it is assumed that the update of the probability is driven by the occurrence of variable. It is more complicated than the previous as the probability now changes over time and can be modelled, for example, with ETS(M,N,N) model:
+<p>In this model, it is assumed that the update of the probability is driven by the previously observed occurrence of variable. It is more complicated than the previous model, as the probability now changes over time and can be modelled, for example, with ETS(M,N,N) model:
 <span class="math display" id="eq:oETSOddsMNN">\[\begin{equation}
 \begin{aligned}
 &amp; o_t \sim \text{Bernoulli} \left(p_t \right) \\
@@ -671,11 +671,11 @@ Figure 13.2: Demand occurrence and probability of occurrence in the oETS<span cl
 \end{aligned},
 \tag{13.7}
 \end{equation}\]</span>
-where <span class="math inline">\(l_{a,t}\)</span> is the unobserved level component, <span class="math inline">\(\alpha_{a}\)</span> is the smoothing parameter, <span class="math inline">\(1+\epsilon_{a,t}\)</span> is the error term , which is positive, has mean of one and follows an unknown distribution, and <span class="math inline">\(\mu_{a,t}\)</span>is the conditional expectation for the unobservable shape variable <span class="math inline">\(a_t\)</span>. The measurement and transition equations in <a href="ADAMOccurrence.html#eq:oETSOddsMNN">(13.7)</a> can be substituted by any other ADAM ETS or ARIMA model if it is reasonable to assume that the probability dynamics has some additional components, such as trend, seasonality or exogenous variables. This model is called the “odds ratio” because the probability of occurrence in <a href="ADAMOccurrence.html#eq:oETSOddsMNN">(13.7)</a> is calculated using the classical logistic transform. This also means that <span class="math inline">\(\mu_{a,t}\)</span> is equal to:
+where <span class="math inline">\(l_{a,t}\)</span> is the unobserved level component, <span class="math inline">\(\alpha_{a}\)</span> is the smoothing parameter, <span class="math inline">\(1+\epsilon_{a,t}\)</span> is the error term , which is positive, has mean of one and follows an unknown distribution, and <span class="math inline">\(\mu_{a,t}\)</span>is the conditional expectation for the unobservable shape variable <span class="math inline">\(a_t\)</span>. The measurement and transition equations in <a href="ADAMOccurrence.html#eq:oETSOddsMNN">(13.7)</a> can be substituted by any other ETS, ARIMA or regression model if it is reasonable to assume that the probability dynamics has some additional components, such as trend, seasonality or exogenous variables. This model is called the “odds ratio” because the probability of occurrence in <a href="ADAMOccurrence.html#eq:oETSOddsMNN">(13.7)</a> is calculated using the classical logistic transform. This also means that <span class="math inline">\(\mu_{a,t}\)</span> equals to:
 <span class="math display">\[\begin{equation} \label{eq:oETS_O_oddsRatio}
 \mu_{a,t} = \frac{p_t}{1 -p_t} .
 \end{equation}\]</span>
-When <span class="math inline">\(\mu_{a,t}\)</span> increases in the oETS model, the odds ratio increases as well, meaning that the probability of occurrence goes up. <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019a" role="doc-biblioref">2019</a>)</span> explain that this model is, in theory, appropriate for the demand for products becoming obsolescent. Still, given the updating mechanism, it should also work fine on other types of intermittent data.</p>
+When <span class="math inline">\(\mu_{a,t}\)</span> increases in the oETS model, the odds ratio increases as well, meaning that the probability of occurrence goes up. <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019a" role="doc-biblioref">2019</a>)</span> explain that this model is, in theory, appropriate for the demand for products becoming obsolescent, because the multiplicative error ETS models asymptotically almost surely converge to zero. Still, given the updating mechanism, it should also work fine on other types of intermittent data.</p>
 <p>When it comes to the application of the model to the data, its construction is done via the following set of equations (example with oETS<span class="math inline">\(_O\)</span>(M,N,N)):
 <span class="math display" id="eq:oETSOddsMNNEstimated">\[\begin{equation}
 \begin{aligned}
@@ -687,9 +687,9 @@ When <span class="math inline">\(\mu_{a,t}\)</span> increases in the oETS model,
 \end{aligned},
 \tag{13.8}
 \end{equation}\]</span>
-where <span class="math inline">\(e_{a,t}\)</span> is the proxy for the unobservable error term <span class="math inline">\(\epsilon_{a,t}\)</span> and <span class="math inline">\(\hat{\mu}_t\)</span> is the estimate of <span class="math inline">\(\mu_{a,t}\)</span>. If a multiple steps ahead forecast for the probability is needed from this model, then the formulae discussed in Section <a href="ETSTaxonomyMaths.html#ETSTaxonomyMaths">4.2</a> can be used to get <span class="math inline">\(\hat{\mu}_{a,t}\)</span>, which then can be inserted in the first equation of <a href="ADAMOccurrence.html#eq:oETSOddsMNNEstimated">(13.8)</a> to get the final conditional multiple steps ahead probability of occurrence.</p>
+where <span class="math inline">\(e_{a,t}\)</span> is the proxy for the unobservable error term <span class="math inline">\(\epsilon_{a,t}\)</span> and <span class="math inline">\(\hat{\mu}_t\)</span> is the estimate of <span class="math inline">\(\mu_{a,t}\)</span>. If a multiple steps ahead forecast for the probability is needed from this model, then the formulae discussed in Section <a href="ETSTaxonomyMaths.html#ETSTaxonomyMaths">4.2</a> can be used to get <span class="math inline">\(\hat{\mu}_{a,t+h}\)</span>, which then can be inserted in the first equation of <a href="ADAMOccurrence.html#eq:oETSOddsMNNEstimated">(13.8)</a> to get the final conditional multiple steps ahead probability of occurrence.</p>
 <p>Finally, to estimate the parameters of the model <a href="ADAMOccurrence.html#eq:oETSOddsMNNEstimated">(13.8)</a>, the likelihood <a href="ADAMOccurrence.html#eq:oETSLikelihood">(13.4)</a> can be used.</p>
-<p>The occurrence part of the model oETS<span class="math inline">\(_O\)</span> is constructed using the very same <code>oes()</code> function, but also allows specifying the ETS model to use. For example, here is the oETS<span class="math inline">\(_O\)</span>(M,M,N) model:</p>
+<p>The occurrence model oETS<span class="math inline">\(_O\)</span> is constructed using the very same <code>oes()</code> function, but also allows specifying the ETS model to use. For example, here is the oETS<span class="math inline">\(_O\)</span>(M,M,N) model:</p>
 <div class="sourceCode" id="cb229"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb229-1"><a href="ADAMOccurrence.html#cb229-1" aria-hidden="true" tabindex="-1"></a>oETSOModel <span class="ot">&lt;-</span> <span class="fu">oes</span>(y, <span class="at">model=</span><span class="st">&quot;MMN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb229-2"><a href="ADAMOccurrence.html#cb229-2" aria-hidden="true" tabindex="-1"></a>                  <span class="at">occurrence=</span><span class="st">&quot;odds-ratio&quot;</span>)</span>
 <span id="cb229-3"><a href="ADAMOccurrence.html#cb229-3" aria-hidden="true" tabindex="-1"></a>oETSOModel</span></code></pre></div>
@@ -716,11 +716,11 @@ where <span class="math inline">\(e_{a,t}\)</span> is the proxy for the unobserv
 Figure 13.3: Demand occurrence and probability of occurrence in the oETS(M,M,N)<span class="math inline">\(_O\)</span> model.
 </p>
 </div>
-<p>Figure <a href="ADAMOccurrence.html#fig:oETSOModel">13.3</a> shows that the model captures the changing probability of occurrence well, reflecting that it increases over time.</p>
+<p>Figure <a href="ADAMOccurrence.html#fig:oETSOModel">13.3</a> shows that the model captures the changing probability of occurrence well, reflecting that it increases over time. Also notice how the model reacts more to the zeroes, in the beginning of the zeroes rather than to ones at the end. This is the main distinguishing characteristic of the model.</p>
 </div>
 <div id="oETSI" class="section level3 hasAnchor" number="13.1.3">
 <h3><span class="header-section-number">13.1.3</span> Inverse odds ratio model, oETS<span class="math inline">\(_I\)</span><a href="ADAMOccurrence.html#oETSI" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>Using similar approach to the oETS<span class="math inline">\(_O\)</span> model, we can formulate the “inverse odds ration” model oETS<span class="math inline">\(_I\)</span>(M,N,N):
+<p>Using similar approach to the oETS<span class="math inline">\(_O\)</span> , we can formulate the “inverse odds ration” model oETS<span class="math inline">\(_I\)</span>(M,N,N):
 <span class="math display" id="eq:oETSInverseOddsMNN">\[\begin{equation}
 \begin{aligned}
 &amp; o_t \sim \text{Bernoulli} \left(p_t \right) \\
@@ -731,7 +731,7 @@ Figure 13.3: Demand occurrence and probability of occurrence in the oETS(M,M,N)<
 \end{aligned},
 \tag{13.9}
 \end{equation}\]</span>
-where similarly to <a href="ADAMOccurrence.html#eq:oETSOddsMNNEstimated">(13.8)</a>, <span class="math inline">\(l_{b,t}\)</span> is the unobserved level component, <span class="math inline">\(\alpha_{b}\)</span> is the smoothing parameter, <span class="math inline">\(1+\epsilon_{b,t}\)</span> is the positive error term with mean of one, and <span class="math inline">\(\mu_{b,t}\)</span> is the one step ahead conditional expectation for the unobservable shape parameters <span class="math inline">\(b_t\)</span>. The main difference of this model with the previous one is in the different mechanism of probability calculation, which focuses on the probability of “inoccurrence”, i.e. on zeroes of data rather than on ones. This type of model should be more appropriate for cases of demand building up <span class="citation">(<a href="#ref-Svetunkov2019a" role="doc-biblioref">Svetunkov and Boylan, 2019</a>)</span>. The probability calculation mechanism in <a href="ADAMOccurrence.html#eq:oETSInverseOddsMNN">(13.9)</a> implies that <span class="math inline">\(\mu_{b,t}\)</span> can be expressed as:
+where similarly to <a href="ADAMOccurrence.html#eq:oETSOddsMNNEstimated">(13.8)</a>, <span class="math inline">\(l_{b,t}\)</span> is the unobserved level component, <span class="math inline">\(\alpha_{b}\)</span> is the smoothing parameter, <span class="math inline">\(1+\epsilon_{b,t}\)</span> is the positive error term with mean of one, and <span class="math inline">\(\mu_{b,t}\)</span> is the one step ahead conditional expectation for the unobservable shape parameters <span class="math inline">\(b_t\)</span>. The main difference of this model with the previous one is in the mechanism of probability calculation, which relies on the probability of “inoccurrence”, i.e. on zeroes of data rather than on ones. This type of model should be more appropriate for cases of demand building up <span class="citation">(<a href="#ref-Svetunkov2019a" role="doc-biblioref">Svetunkov and Boylan, 2019</a>)</span>. The probability calculation mechanism in <a href="ADAMOccurrence.html#eq:oETSInverseOddsMNN">(13.9)</a> implies that <span class="math inline">\(\mu_{b,t}\)</span> can be expressed as:
 <span class="math display">\[\begin{equation}
 \mu_{b,t} = \frac{1-p_t}{p_t} .
 \end{equation}\]</span></p>
@@ -774,11 +774,11 @@ where <span class="math inline">\(e_{b,t}\)</span> is the proxy for the unobserv
 Figure 13.4: Demand occurrence and probability of occurrence in the oETS(M,M,N)<span class="math inline">\(_I\)</span> model.
 </p>
 </div>
-<p>Figure <a href="ADAMOccurrence.html#fig:oETSIModel">13.4</a> shows that similarly to the oETS<span class="math inline">\(_O\)</span>, the model captures the trend in the probability of occurrence but has a higher smoothing parameter <span class="math inline">\(\alpha_b\)</span>.</p>
+<p>Figure <a href="ADAMOccurrence.html#fig:oETSIModel">13.4</a> shows that similarly to the oETS<span class="math inline">\(_O\)</span>, the model captures the trend in the probability of occurrence but has a higher smoothing parameter <span class="math inline">\(\alpha_b\)</span>. Also notice how the update of states happens more often towards the second part of the data, when demand is building up and more ones appear in the data. The model is much more inert, when it has many zeroes. This behaviour can be contrasted to the behaviour of oETS<span class="math inline">\(_O\)</span>, which updated the states more frequently in the beginning of the series in our example.</p>
 </div>
 <div id="oETSG" class="section level3 hasAnchor" number="13.1.4">
 <h3><span class="header-section-number">13.1.4</span> General oETS model, oETS<span class="math inline">\(_G\)</span><a href="ADAMOccurrence.html#oETSG" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>Uniting the models oETS<span class="math inline">\(_O\)</span> with oETS<span class="math inline">\(_I\)</span>, we can obtain the “general” model, which in the most general case can be summarised in the following set of state space equations:
+<p>Uniting the oETS<span class="math inline">\(_O\)</span> with oETS<span class="math inline">\(_I\)</span>, we can obtain the “general” model, which in the most general case can be summarised in the following set of state space equations:
 <span class="math display" id="eq:oETSG">\[\begin{equation}
 \begin{aligned}
 &amp; p_t = f_p(\mu_{a,t}, \mu_{b,t}) \\
@@ -789,7 +789,7 @@ Figure 13.4: Demand occurrence and probability of occurrence in the oETS(M,M,N)<
 \end{aligned} ,
 \tag{13.11}
 \end{equation}\]</span>
-where <span class="math inline">\(\epsilon_{a,t}\)</span>, <span class="math inline">\(\epsilon_{b,t}\)</span>, <span class="math inline">\(\mu_{a,t}\)</span> and <span class="math inline">\(\mu_{b,t}\)</span> have been defined in previous subsectionsa and the other elements correspond to the ADAM discussed in Section <a href="ADAMETSIntroduction.html#ADAMETSIntroduction">5</a>. Note that in this case two ETS models similar to the one discussed in Section <a href="ADAMETSIntroduction.html#ADAMETSIntroduction">5</a> are used for modelling of <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span>.</p>
+where <span class="math inline">\(\epsilon_{a,t}\)</span>, <span class="math inline">\(\epsilon_{b,t}\)</span>, <span class="math inline">\(\mu_{a,t}\)</span> and <span class="math inline">\(\mu_{b,t}\)</span> have been defined in previous subsections and the other elements correspond to the ADAM discussed in Chapter <a href="ADAMETSIntroduction.html#ADAMETSIntroduction">5</a>. Note that in this case two state space models similar to the one discussed in Section <a href="ADAMETSGeneral.html#ADAMETSGeneral">7.1</a> are used for modelling of <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span>. These can be either ETS, or ARIMA, or regression, or any combination of those.</p>
 <p>The general formula for the probability in case of the multiplicative error model is:
 <span class="math display" id="eq:oETSMZZ">\[\begin{equation}
 p_t = \frac{\mu_{a,t}}{\mu_{a,t}+\mu_{b,t}} ,
@@ -800,7 +800,7 @@ while for the additive one, it is:
 p_t = \frac{\exp(\mu_{a,t})}{\exp(\mu_{a,t})+\exp(\mu_{b,t})} .
 \tag{13.13}
 \end{equation}\]</span>
-This is because both <span class="math inline">\(\mu_{a,t}\)</span> and <span class="math inline">\(\mu_{b,t}\)</span> need to be strictly positive, while the additive error models support the real plane. The canonical oETS model assumes that the pure multiplicative model is used for <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span>. This model type is positively defined for any values of error, trend and seasonality, which is essential for the values of <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span> and their expectations. If a combination of additive and multiplicative error models is used, then the additive part should be exponentiated before using the formulae to calculate the probability. So, <span class="math inline">\(f_p(\cdot)\)</span> function from <a href="ADAMOccurrence.html#eq:oETSG">(13.11)</a> maps the expectations from models A and B to the probability of occurrence, depending on the error type of the respective models:
+This is because both <span class="math inline">\(\mu_{a,t}\)</span> and <span class="math inline">\(\mu_{b,t}\)</span> need to be strictly positive, while the additive error models support negative, positive values and zero. The canonical oETS model assumes that the pure multiplicative model is used for <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span>. This model type is positively defined for any values of error, trend and seasonality, which is essential for the values of <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span> and their expectations. If a combination of additive and multiplicative error models is used, then the additive part should be exponentiated before using the formulae to calculate the probability. So, <span class="math inline">\(f_p(\cdot)\)</span> function from <a href="ADAMOccurrence.html#eq:oETSG">(13.11)</a> maps the expectations from models A and B to the probability of occurrence, depending on the error type of the respective models:
 <span class="math display" id="eq:probabilityFunction">\[\begin{equation}
 p_t = f_p(\mu_{a,t}, \mu_{b,t}) = \left \lbrace
 \begin{aligned}
@@ -812,7 +812,7 @@ p_t = f_p(\mu_{a,t}, \mu_{b,t}) = \left \lbrace
 \right.
 \tag{13.14}
 \end{equation}\]</span></p>
-<p>An example of the oETS model is the one based on two local level models (see discussion in Subsection <a href="SES.html#SES">3.4</a>), oETS<span class="math inline">\(_G\)</span>(M,N,N)(M,N,N):
+<p>An example of the oETS model is the one based on two local level models (see discussion in Subsection <a href="SESandETS.html#SESandETS">4.3</a>), oETS<span class="math inline">\(_G\)</span>(M,N,N)(M,N,N):
 <span class="math display" id="eq:oETSGExample">\[\begin{equation}
 \begin{aligned}
 &amp; o_t \sim \text{Bernoulli} \left(p_t \right) \\
@@ -828,8 +828,8 @@ p_t = f_p(\mu_{a,t}, \mu_{b,t}) = \left \lbrace
 \end{aligned},
 \tag{13.15}
 \end{equation}\]</span>
-where all the parameters have already been defined in subsections <a href="ADAMOccurrence.html#oETSO">13.1.2</a> and <a href="ADAMOccurrence.html#oETSI">13.1.3</a>. More advanced models can be constructing for <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span> by specifying the ETS models for each part and / or adding explanatory variables.</p>
-<p>The construction of the model <a href="ADAMOccurrence.html#eq:oETSGExample">(13.15)</a> is done via the following set of equations:
+where all the parameters have already been defined in Subsections <a href="ADAMOccurrence.html#oETSO">13.1.2</a> and <a href="ADAMOccurrence.html#oETSI">13.1.3</a>. More advanced models can be constructed for <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span> by specifying the ETS models for each part and/or adding explanatory variables.</p>
+<p>The construction of the model <a href="ADAMOccurrence.html#eq:oETSGExample">(13.15)</a> is done via the following set of recursive equations:
 <span class="math display" id="eq:oETSGExampleEstimated">\[\begin{equation}
 \begin{aligned}
 &amp; e_{a,t} = \frac{u_t}{1-u_t} -1 \\
@@ -842,7 +842,7 @@ where all the parameters have already been defined in subsections <a href="ADAMO
 \tag{13.16}
 \end{equation}\]</span>
 <!-- The initialisation of the parameters of the oETS$_G$ model is done separately for the variables $a_t$ and $b_t$, based on the principles, described above for the oETS$_O$ and oETS$_I$. --></p>
-<p>In R, there is a separate function for the oETS<span class="math inline">\(_G\)</span> model, called <code>oesg()</code>. It has twice more parameters than <code>oes()</code>, because it allows fine tuning of the models for the both variables <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span>. This gives an additional flexibility. For example, here is how we can use ETS(M,N,N) for the <span class="math inline">\(a_t\)</span> and ETS(A,A,N) for the <span class="math inline">\(b_t\)</span>, resulting in oETS<span class="math inline">\(_G\)</span>(M,N,N)(A,A,N):</p>
+<p>In R, there is a separate function for the oETS<span class="math inline">\(_G\)</span> model, called <code>oesg()</code>. It has twice more parameters than <code>oes()</code>, because it allows fine tuning of the models for the both parts <span class="math inline">\(a_t\)</span> and <span class="math inline">\(b_t\)</span>. This gives an additional flexibility. For example, here is how we can use ETS(M,N,N) for the <span class="math inline">\(a_t\)</span> and ETS(A,A,N) for the <span class="math inline">\(b_t\)</span>, resulting in oETS<span class="math inline">\(_G\)</span>(M,N,N)(A,A,N):</p>
 <div class="sourceCode" id="cb233"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb233-1"><a href="ADAMOccurrence.html#cb233-1" aria-hidden="true" tabindex="-1"></a>oETSGModel <span class="ot">&lt;-</span> <span class="fu">oesg</span>(y, <span class="at">modelA=</span><span class="st">&quot;MNN&quot;</span>, <span class="at">modelB=</span><span class="st">&quot;AAN&quot;</span>,</span>
 <span id="cb233-2"><a href="ADAMOccurrence.html#cb233-2" aria-hidden="true" tabindex="-1"></a>                   <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb233-3"><a href="ADAMOccurrence.html#cb233-3" aria-hidden="true" tabindex="-1"></a>oETSGModel</span></code></pre></div>
@@ -961,8 +961,8 @@ which is directly related to TSB method. Note that equation <a href="ADAMOccurre
 Figure 13.6: Demand occurrence and probability of occurrence in the oETS(M,M,N)<span class="math inline">\(_D\)</span> model.
 </p>
 </div>
-<p>From Figure <a href="ADAMOccurrence.html#fig:oETSDModel">13.6</a>, we can see that the probability of occurrence increases rapidly and reaches the bound of one after 90 observations.</p>
-<p>The empirical analysis I have done on different datasets shows that the oETS<span class="math inline">\(_D\)</span> model works effectively in many cases and produces accurate forecasts. So, if you are unsure which oETS model to choose for your intermittent data, I recommend starting with oETS<span class="math inline">\(_D\)</span>.</p>
+<p>From Figure <a href="ADAMOccurrence.html#fig:oETSDModel">13.6</a>, we can see that the probability of occurrence increases rapidly and reaches the bound of one around the 90th observation.</p>
+<p>Practically speaking, using oETS<span class="math inline">\(_D\)</span> makes sense, when you expect the demand on your product either to disappear completely or to become regular. In other cases, oETS<span class="math inline">\(_I\)</span> and oETS<span class="math inline">\(_O\)</span> could be used efficiently. On M5 data, I found the latter two models to perform very well in the majority of cases.</p>
 </div>
 <div id="oETSModelSelection" class="section level3 hasAnchor" number="13.1.6">
 <h3><span class="header-section-number">13.1.6</span> Model selection in oETS<a href="ADAMOccurrence.html#oETSModelSelection" class="anchor-section" aria-label="Anchor link to header"></a></h3>
@@ -977,14 +977,14 @@ Figure 13.6: Demand occurrence and probability of occurrence in the oETS(M,M,N)<
 <li>oETS<span class="math inline">\(_O\)</span>, oETS<span class="math inline">\(_I\)</span> and oETS<span class="math inline">\(_D\)</span>: initial values, smoothing and dampening parameters;</li>
 <li>oETS<span class="math inline">\(_G\)</span>: initial values, smoothing and dampening parameters for models A and B;</li>
 </ol>
-<p>For example, if the oETS(M,N,N) model is constructed, the overall number of parameters for the models will be:</p>
+<p>For example, if the oETS(M,N,N) model is constructed, the overall number of estimated parameters for the models will be:</p>
 <ol style="list-style-type: decimal">
 <li>oETS(M,N,N)<span class="math inline">\(_F\)</span> – 1 parameter: the probability of occurrence <span class="math inline">\(\hat{p}\)</span>;</li>
-<li>oETS(M,N,N)<span class="math inline">\(_O\)</span>, oETS(M,N,N)<span class="math inline">\(_I\)</span> and oETS(M,N,N)<span class="math inline">\(_D\)</span> – 2: the initial value of level and the smoothing parameter;</li>
+<li>oETS(M,N,N)<span class="math inline">\(_O\)</span>, oETS(M,N,N)<span class="math inline">\(_I\)</span> and oETS(M,N,N)<span class="math inline">\(_D\)</span> – 2 each: the initial value of level and the smoothing parameter;</li>
 <li>oETS(M,N,N)<span class="math inline">\(_G\)</span> – 4: the initial values of <span class="math inline">\(\hat{l}_{a,0}\)</span> and <span class="math inline">\(\hat{l}_{b,0}\)</span> and the smoothing parameters <span class="math inline">\(\hat{\alpha}_a\)</span> and <span class="math inline">\(\hat{\alpha}_b\)</span>.</li>
 </ol>
 <p>This implies that the selection between models in (2) will come to the best fit to the demand occurrence data, while oETS(M,N,N)<span class="math inline">\(_G\)</span> will only be selected if it provides a much better fit to the data. Given that intermittent demand typically does not have many observations, the selection of oETS(M,N,N)<span class="math inline">\(_G\)</span> becomes highly improbable.</p>
-<p>When it comes to selecting the most appropriate demand occurrence model (e.g. between the local level and local trend models), the approach would be similar: estimate the pool of models via likelihood, calculate their number of parameters, select the model with the lowest IC. Given that the likelihood part of the demand occurrence comes to probabilities, the selection in the occurrence part can be made based on the likelihood <a href="ADAMOccurrence.html#eq:oETSLikelihood">(13.4)</a> independently of the demand sizes part of the model.</p>
+<p>When it comes to selecting the most appropriate demand occurrence model (e.g. selecting ETS components or ARIMA orders), the approach would be similar: estimate the pool of models via likelihood, calculate numbers of parameters, select the model with the lowest information criterion. Given that we assume that the demand occurrence is independent of the demand sizes, the selection of models in the occurrence part can be do based on the likelihood <a href="ADAMOccurrence.html#eq:oETSLikelihood">(13.4)</a> independently of the demand sizes part of the model, which significantly simplifies the estimation and model selection process for the whole iETS model.</p>
 </div>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
