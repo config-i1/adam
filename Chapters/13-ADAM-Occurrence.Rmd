@@ -450,51 +450,68 @@ Similar notations and principles can be used for models based on ARIMA. Note tha
 
 Furthermore, in some cases, we might have explanatory variables, such as promotions, prices, weather etc. They would impact both demand occurrence and demand sizes. In ADAM, they are implemented in respective `oes()` and `adam()` functions. Remember that when you include explanatory variables in the occurrence part, you are modelling the probability of occurrence, not the occurrence itself. So, for example, a promotional effect in this situation would mean a higher chance of having sales. In some other situations, we might not need dynamic models, such as ETS and ARIMA, and can focus on static regression. While `adam()` supports this, the `alm()` function from the `greybox` might be more suitable in this situation. It supports similar parameters, but its `occurrence` parameter accepts either the type of transform (`plogis` for logit model and `pnorm` for the probit one) or a previously estimated occurrence model (either from `alm()` or from `oes()`).
 
+In addition, there might be some cases, when the demand itself happens at random, but the demand sizes are at the same time not random. This means that when someone buys a product, they buy a fixed amount of $z$. Typically, in these situations $z=1$, but there might be some cases with other values. An example of such demand process is shown in Figure \@ref(fig:fixedDemandSizes).
+
+```{r fixedDemandSizes, fig.cap="Example of intermittent time series with fixed demand sizes.", echo=FALSE}
+plot(rbinom(100, 1, 0.3), type="h",
+     xlab="Time", ylab="Sales")
+```
+
+In this case, the model \@ref(eq:iETSG) simplifies to:
+\begin{equation}
+    \begin{aligned}
+        & y_t = o_t z , \\
+        & o_t \sim \text{Bernoulli} \left(p_t \right)
+    \end{aligned} ,
+    (\#eq:iETSFixedDemand)
+\end{equation}
+where $p_t$ can be captured via one of the demand occurrence models discussed in previous sections. Given that $z$ is not random anymore, it does not require estimation and the likelihood simplifies to the one for the demand occurrence (from Section \@ref(ADAMOccurrence)). The forecast from this model comes to producing conditional expectation for the probability and then multiplying it by the value of $z$.
+
 Finally, in some situations the occurrence might be not random, i.e. we deal with not an intermittent demand, but with a demand, where we can predict perfectly when sales will happen. An example of such situation is demand on watermelons, which becomes equal to zero in specific periods of time in Winter. If we know when the demand occurs, we can use the respective values of zeroes and ones in the variable $o_t$, simplifying the model and derivations from it. This is implemented in both `adam()` and `alm()` functions, where the user needs to provide the vector of zeroes and ones in the `occurrence` parameter.
 
 
 ### Maximum Likelihood Estimation {#iETSMLE}
 While there are different ways of estimating the parameters of the ADAM \@ref(eq:iETSG), it is worth focusing on likelihood estimation (Section \@ref(ADAMETSEstimationLikelihood)) for consistency with other ADAMs. The likelihood of the model will consist of several parts:
 
-1. The PDF of demand sizes part of the model when demand occurs;
+1. The probability density function (PDF) of demand sizes when demand occurs;
 2. The probability of occurrence;
 3. The probability of inoccurrence.
 
 When demand occurs the likelihood is:
 \begin{equation}
-\mathcal{L}(\boldsymbol{\theta} | y_t, o_t=1) = p_t f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}) ,
-(\#eq:LogLikelihoodOccurs)
+    \mathcal{L}(\boldsymbol{\theta} | y_t, o_t=1) = p_t f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}) ,
+    (\#eq:LogLikelihoodOccurs)
 \end{equation}
 while in the opposite case it is:
 \begin{equation}
-\mathcal{L}(\boldsymbol{\theta} | y_t, o_t=0) = (1-p_t) f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}),
-(\#eq:LogLikelihoodOccursNot)
+    \mathcal{L}(\boldsymbol{\theta} | y_t, o_t=0) = (1-p_t) f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}),
+    (\#eq:LogLikelihoodOccursNot)
 \end{equation}
-where $\boldsymbol{\theta}$ includes all the estimated parameters of the model and parameters of assumed distribution (i.e. scale). Note that because the model assumes that the demand evolves over time even when it is not observed ($o_t=0$), we have a probability density function of demand sizes, $f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}})$ in \@ref(eq:LogLikelihoodOccursNot). Based on the equations \@ref(eq:LogLikelihoodOccurs) and \@ref(eq:LogLikelihoodOccursNot), we can summarise the likelihood for the whole sample of $T$ observations:
+where $\boldsymbol{\theta}$ includes all the estimated parameters of the model (for demand sizes and demand occurrence, including parameters of distribution, such as scale). Note that because the model assumes that the demand evolves over time even when it is not observed ($o_t=0$), we have a probability density function of demand sizes, $f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}})$ in \@ref(eq:LogLikelihoodOccursNot). Based on the equations \@ref(eq:LogLikelihoodOccurs) and \@ref(eq:LogLikelihoodOccursNot), we can summarise the likelihood for the whole sample of $T$ observations:
 \begin{equation}
-\mathcal{L}(\boldsymbol{\theta} | \textbf{y}) = \prod_{o_t=1} p_t \prod_{o_t=0} (1-p_t) \prod_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}) ,
-(\#eq:LikelihoodForDGP)
+    \mathcal{L}(\boldsymbol{\theta} | \textbf{y}) = \prod_{o_t=1} p_t \prod_{o_t=0} (1-p_t) \prod_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}) ,
+    (\#eq:LikelihoodForDGP)
 \end{equation}
 or in logarithms:
 \begin{equation}
-\ell(\boldsymbol{\theta} | \textbf{y}) = \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1-p_t) + \sum_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}),
-(\#eq:LogLikelihoodForDGP)
+    \ell(\boldsymbol{\theta} | \textbf{y}) = \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1-p_t) + \sum_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}),
+    (\#eq:LogLikelihoodForDGP)
 \end{equation}
-where $\textbf{y}$ is the vector of all actual values and $f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}})$ can be substituted by a likelihood of the assumed distribution from the list of candidates in Section \@ref(ADAMETSEstimationLikelihood). The main issue in calculating the likelihood \@ref(eq:LogLikelihoodForDGP) is that the demand sizes are not observable when $o_t=0$. This means that we cannot calculate the likelihood using the conventional approach. We need to use something else. @Svetunkov2019a proposed using the Expectation Maximisation (EM) algorithm for this purpose, which is typically done in the following stages:
+where $\textbf{y}$ is the vector of all actual values and $f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}})$ can be substituted by a PDF of the assumed distribution from the list of candidates in Section \@ref(ADAMETSEstimationLikelihood). The main issue in calculating the likelihood \@ref(eq:LogLikelihoodForDGP) is that the demand sizes are not observable when $o_t=0$. This means that we cannot calculate the likelihood using the conventional approach. We need to use something else. @Svetunkov2019a proposed using the Expectation Maximisation (EM) algorithm for this purpose, which is typically done in the following stages:
 
 1. Take *Expectation* of the likelihood;
 2. *Maximise* it with the obtained parameters;
 3. Go to (1) with the new set of parameters if the likelihood has not converged to the maximum.
 
-A classic example with EM is when several samples have different parameters, and we need to split them. Still, we do not know where specific observations belong and what the probability that each observation belongs to one of the groups is. In our context, it is a slightly different idea: we know probabilities, but we do not observe some of the demand sizes. If we take the expectation of \@ref(eq:LogLikelihoodForDGP) with respect to the unobserved demand sizes, we will get:
+A classic example with EM is when several samples have different parameters, and we need to split them (e.g. do clustering). In that case, we do not know what cluster specific observations belong to and what the probability that each observation belongs to one of the groups is. In our context, the problem is slightly different: we know probabilities, but we do not observe some of the values. As a result the application of EM gives a different result. If we take the expectation of \@ref(eq:LogLikelihoodForDGP) with respect to the unobserved demand sizes, we will get:
 \begin{equation}
-\begin{aligned}
-\mathrm{E}\left(\ell(\boldsymbol{\theta} | \textbf{y})\right) & = \sum_{o_t=1} \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) + \sum_{o_t=0} \text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) \right) \\
-& + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1- p_t)
-\end{aligned}.
-(\#eq:LogLikelihoodForDGPExpectation)
+    \begin{aligned}
+        \mathrm{E}\left(\ell(\boldsymbol{\theta} | \textbf{y})\right) & = \sum_{o_t=1} \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) + \sum_{o_t=0} \text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) \right) \\
+        & + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1- p_t)
+    \end{aligned}.
+    (\#eq:LogLikelihoodForDGPExpectation)
 \end{equation}
-The expectation in \@ref(eq:LogLikelihoodForDGPExpectation) is known in statistics as "Differential Entropy" (it is the negative differential entropy in the formula above). It will differ from one case to another, depending on the assumed demand sizes distribution. Table \@ref(tab:differentialEntropy) summarises differential entropies for the distributions used in ADAM.
+The first term in \@ref(eq:LogLikelihoodForDGPExpectation) is known because the $z_t$ are observed when $o_t=1$. The expectation in second term of \@ref(eq:LogLikelihoodForDGPExpectation) is known in statistics as "Differential Entropy" (in the formula above, we have the negative differential entropy). It will differ from one distribution to another. Table \@ref(tab:differentialEntropy) summarises differential entropies for the distributions used in ADAM.
 
 ```{r echo=FALSE}
 # Assumption | Differential Entropy
@@ -534,27 +551,29 @@ kableTable <- kableExtra::kable(entropiesTable, escape=FALSE, caption="Different
 kableExtra::kable_styling(kableTable, font_size=12, protect_latex=TRUE, latex_options="scale_down")
 ```
 
-The majority of formulae for differential entropy in Table \@ref(tab:differentialEntropy) are taken from @WikipediaDifferentialEntropy2021 with the exclusion of the one for $\mathcal{IG}$, which was derived by @Mudholkar2002. These values can be inserted instead of the $\text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) \right)$ in the formula \@ref(eq:LogLikelihoodForDGPExpectation), leading to the expected likelihood for respective distributions. For example, for Inverse Gaussian distribution (using the pdf from the Table \@ref(tab:multiplicativeErrorLikelihoods)), we get:
+The majority of formulae for differential entropy in Table \@ref(tab:differentialEntropy) are taken from @Lazo1978a with the exclusion of the one for $\mathcal{IG}$, which was derived by @Mudholkar2002. These values can be inserted instead of the $\text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) \right)$ in the formula \@ref(eq:LogLikelihoodForDGPExpectation), leading to the expected likelihood for respective distributions, which can then be maximised. For example, for Inverse Gaussian distribution (using the pdf from the Table \@ref(tab:multiplicativeErrorLikelihoods) and the entropy from Table \@ref(tab:differentialEntropy)), we get:
 \begin{equation}
-\begin{aligned}
-\mathrm{E}\left(\ell(\boldsymbol{\theta} | \textbf{y})\right) & =
--\frac{T_1}{2} \log \left(2 \pi \sigma^2 \right) -\frac{1}{2}\sum_{o_t=1} \left(1+\epsilon_{t}\right)^3 -\frac{3}{2} \sum_{o_t=1} \log y_t -\frac{1}{2 \sigma^2} \sum_{o_t=1} \frac{\epsilon_t^2}{1+\epsilon_t} \\
-& -\frac{T_0}{2}\left(\log \pi e \sigma^2 -\log(2) \right) \\
-& + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1- p_t)
-\end{aligned} ,
+    \begin{aligned}
+        \mathrm{E}\left(\ell(\boldsymbol{\theta} | \textbf{y})\right) & =
+        -\frac{T_1}{2} \log \left(2 \pi \sigma^2 \right) -\frac{1}{2}\sum_{o_t=1} \left(1+\epsilon_{t}\right)^3 -\frac{3}{2} \sum_{o_t=1} \log y_t -\frac{1}{2 \sigma^2} \sum_{o_t=1} \frac{\epsilon_t^2}{1+\epsilon_t} \\
+        & -\frac{T_0}{2}\left(\log \pi e \sigma^2 -\log(2) \right) \\
+        & + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1- p_t)
+    \end{aligned} ,
 (\#eq:LogLikelihoodForDGPExpectationIG)
 \end{equation}
-where $T_0$ is the number of zeroes in the data and $T_1$ is the number of non-zeroe values. Luckily, the EM process in our specific situation does not need to be iterative -- the obtained likelihood can then be maximised directly by changing the values of parameters $\boldsymbol{\theta}$. It is also possible to derive analytical formulae for parameters of some of distributions based on \@ref(eq:LogLikelihoodForDGPExpectation) and the values from Table \@ref(tab:differentialEntropy). For example, in case of $\mathcal{IG}$ the estimate of scale parameter is:
+where $T_0$ is the number of zeroes in the data and $T_1$ is the number of non-zero values. Luckily, the EM process in our specific situation does not need to be iterative -- the obtained likelihood can then be maximised directly by changing the values of parameters $\boldsymbol{\theta}$. It is also possible to derive analytical formulae for parameters of some of distributions based on \@ref(eq:LogLikelihoodForDGPExpectation) and the values from Table \@ref(tab:differentialEntropy). For example, in case of $\mathcal{IG}$ the estimate of scale parameter is:
 \begin{equation}
 \hat{\sigma}^2 = \frac{1}{T} \sum_{o_t=1}\frac{e_t^2}{1+e_t}.
 (\#eq:IGLogLikelihoodScale)
 \end{equation}
-It can be shown that the likelihood estimates of scales for different distributions correspond to the conventional formulae from Section \@ref(ADAMETSEstimationLikelihood), but with the summation over $o_t=1$ instead of all the observations. Note, however, that the division in \@ref(eq:IGLogLikelihoodScale) is done by the whole sample $T$. This implies that the scale estimate will be biased, similarly to the classical bias of the sample variance (see Section 6.3 of @SvetunkovSBA). @Svetunkov2019a show that in the full ADAM, the estimate of scale is biased not only in-sample but also asymptotically, implying that with the increase of the sample size, it will be consistently lower than needed. This is because the summation is done over the non-zero values, while the division is done over the whole sample. This proportion of non-zeroes impacts the scale in \@ref(eq:IGLogLikelihoodScale), deflating its value. The only situation when the bias will be reduced is when the probability of occurrence reaches 1 (product demand becomes regular). Still, the value \@ref(eq:IGLogLikelihoodScale) will maximise the expected likelihood \@ref(eq:LogLikelihoodForDGPExpectation) and is useful for inference. However, if one needs to construct prediction intervals, this bias needs to be addressed, which can be done using the conventional correction:
+This is obtained by taking the derivative of \@ref(eq:LogLikelihoodForDGPExpectationIG) with respect to $\sigma^2$ and equating it to zero. It can be shown that the likelihood estimates of scales for different distributions correspond to the conventional formulae from Section \@ref(ADAMETSEstimationLikelihood), but with the summation over $o_t=1$ instead of all the observations. Note, however, that the division in \@ref(eq:IGLogLikelihoodScale) is done by the whole sample $T$. This implies that the scale estimate will be biased, similarly to the classical bias of the sample variance. @Svetunkov2019a show that in the full ADAM, the estimate of scale is biased not only in-sample but also asymptotically, implying that with the increase of the sample size, it will be consistently lower than needed. This is because the summation is done over the non-zero values, while the division is done over the whole sample. This proportion of non-zeroes impacts the scale in \@ref(eq:IGLogLikelihoodScale), deflating its value. The only situation when the bias will be reduced is when the probability of occurrence reaches 1 (demand becomes regular). Still, the value \@ref(eq:IGLogLikelihoodScale) will maximise the expected likelihood \@ref(eq:LogLikelihoodForDGPExpectation) and is useful for inference. However, if one needs to construct prediction intervals, this bias needs to be addressed, which can be done using the conventional correction:
 \begin{equation}
 \hat{\sigma}^2{^{\prime}} = \frac{T}{T_1-k} \hat{\sigma}^2,
 (\#eq:scaleFixed)
 \end{equation}
 where $k$ is the number of all estimated parameters.
+
+Finally, for the two exotic cases with known demand occurrence and known demand sizes, the likelihood \@ref(eq:LogLikelihoodForDGPExpectation) simplifies to the first two and the last two terms in the formula respectively.
 
 
 ### Conditional expectation and variance
@@ -562,27 +581,49 @@ Now that we have discussed how the model is formulated and how it can be estimat
 
 The conditional $h$ steps ahead expectation of the model can be obtained easily based on the assumption of independence of demand occurrence and demand sizes discussed earlier in Section \@ref(ADAMIntermittentFull):
 \begin{equation}
-\mu_{y,t+h|t} = \mu_{o,t+h|t} \mu_{z,t+h|t},
-(\#eq:iETSConditionalExpectation)
+    \mathrm{E}(y_{t+h}|t) = \mu_{y,t+h|t} = \mathrm{E}(o_{t+h}|t) \mathrm{E}(z_{t+h}|t) = \mu_{o,t+h|t} \mu_{z,t+h|t},
+    (\#eq:iETSConditionalExpectation)
 \end{equation}
-where $\mu_{o,t+h|t}$ is the conditional expectation of the occurrence variable (the conditional $h$ steps ahead probability of occurrence) and $\mu_{z,t+h|t}$ is the conditional expectation of the demand sizes variable $z_t$. So, the forecast from the model \@ref(eq:iETSG) relies on the probability of occurrence of the variable and will reflect an average demand per period of time. As a result, it might be less than one in some cases, implying that the product is not sold every day. Consequentially, @Kourentzes2014a argues that the term "demand rate" should be used in this context instead of the conditional expectation. However, any forecasting model will produce "demand per period" forecasts. They just typically assume that the probability of occurrence is equal to one ($p_t=1$) for all observations. So, there is no conceptual difference between the forecasts produced by regular and intermittent demand models, and I do not see the point in using the "demand rate" term.
+where $\mu_{o,t+h|t}$ is the conditional expectation of the occurrence variable (the conditional $h$ steps ahead probability of occurrence) and $\mu_{z,t+h|t}$ is the conditional expectation of the demand sizes variable $z_t$. So, the forecast from the complete ADAM relies on the probability of occurrence of the variable and will reflect an average demand per period of time. As a result, it might be less than one in some cases, implying that the product is not sold every day. Consequentially, @Kourentzes2014a argued that the term "demand rate" should be used in this context instead of the conditional expectation. However, any forecasting model produces "demand per period" forecasts. They just typically assume that the probability of occurrence is equal to one ($p_t=1$) for all observations. So, there is no conceptual difference between the point forecasts produced by regular and intermittent demand models, and I do not see the point in using the "demand rate" term.
 
 As for the conditional variance, it is slightly trickier than the conditional expectation, because the variance of a product involves not only variances, but expectations as well (assuming that two variables are independent):
 \begin{equation}
-\mathrm{V}(y_{t+h}) = \mathrm{V}(o_{t+h|t}) \mathrm{V}(z_{t+h|t}) + \mathrm{E}(o_{t+h|t})^2 \mathrm{V}(z_{t+h|t}) + \mathrm{V}(o_{t+h|t}) \mathrm{E}(z_{t+h|t})^2 .
-(\#eq:VarianceOfProduct)
+    \mathrm{V}(y_{t+h}|t) = \mathrm{V}(o_{t+h}|t) \mathrm{V}(z_{t+h|t}) + \mathrm{E}(o_{t+h}|t)^2 \mathrm{V}(z_{t+h}|t) + \mathrm{V}(o_{t+h}|t) \mathrm{E}(z_{t+h}|t)^2 .
+    (\#eq:VarianceOfProduct)
 \end{equation}
-Given that we use Bernoulli distribution for the variable $o_t$, its variance is equal to $\mu_{o,t+h|t} (1-\mu_{o,t+h|t})$. In our context this implies that the conditional $h$ steps ahead variance for the full model (from Section \@ref(ADAMIntermittentFull)) is:
+Given that we use Bernoulli distribution for the variable $o_t$, its variance is equal to $\mu_{o,t+h|t} (1-\mu_{o,t+h|t})$. In our context this implies that the conditional $h$ steps ahead variance for the complete ADAM is:
 \begin{equation}
-\sigma^2_h = \mu_{o,t+h|t} (1-\mu_{o,t+h|t}) \sigma^2_{z,h} + \mu_{o,t+h|t}^2 \sigma^2_{z,h} + \mu_{o,t+h|t} (1-\mu_{o,t+h|t}) \mu_{z,t+h|t}^2 ,
-(\#eq:iETSConditionalVariance01)
+    \sigma^2_h = \mu_{o,t+h|t} (1-\mu_{o,t+h|t}) \sigma^2_{z,h} + \mu_{o,t+h|t}^2 \sigma^2_{z,h} + \mu_{o,t+h|t} (1-\mu_{o,t+h|t}) \mu_{z,t+h|t}^2 ,
+    (\#eq:iETSConditionalVariance01)
 \end{equation}
 or after some manipulations:
 \begin{equation}
-\sigma^2_h = \mu_{o,t+h|t} \left(\sigma^2_{z,h} + (1 -\mu_{o,t+h|t}) \mu_{z,t+h|t}^2 \right).
-(\#eq:iETSConditionalVariance)
+    \sigma^2_h = \mu_{o,t+h|t} \left(\sigma^2_{z,h} + (1 -\mu_{o,t+h|t}) \mu_{z,t+h|t}^2 \right).
+    (\#eq:iETSConditionalVariance)
 \end{equation}
 All the elements of the formula \@ref(eq:iETSConditionalVariance) are available and have been discussed in Sections \@ref(pureAdditiveExpectationAndVariance), \@ref(pureMultiplicativeExpectationAndVariance) and \@ref(ADAMOccurrence).
+
+When it comes to the two exotic cases, discussed in the beginning of this Section, we have the following conditional expectation and variance:
+
+1. When demand sizes are fixed and known, i.e. $z_t=z$:
+\begin{equation}
+    \begin{aligned}
+        \mu_{y,t+h|t} = & \mu_{o,t+h|t} z, \\
+        \sigma^2_h = \mu_{o,t+h|t} (1 -\mu_{o,t+h|t}) z^2.
+    \end{aligned}
+    (\#eq:iETSConditionalMomentsFixedSizes)
+\end{equation}
+
+2. When demand occurrence is known:
+\begin{equation}
+    \begin{aligned}
+        \mu_{y,t+h|t} = & o_{t+h} \mu_{z,t+h|t}, \\
+        \sigma^2_h = o_{t+h} \left(\sigma^2_{z,h} + (1 -o_{t+h}) \mu_{z,t+h|t}^2 \right).
+    \end{aligned}
+    (\#eq:iETSConditionalMomentsFixedOccurrence)
+\end{equation}
+
+These two cases might not arise often, but it is important to understand how they change the moments of the model.
 
 
 ## Examples of application {#IntermittentExample}
