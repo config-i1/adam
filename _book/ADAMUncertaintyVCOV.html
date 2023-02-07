@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-02-06" />
+<meta name="date" content="2023-02-07" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -454,8 +454,9 @@ div.csl-indent {
 <ul>
 <li class="chapter" data-level="13.2.1" data-path="ADAMDemandSizes.html"><a href="ADAMDemandSizes.html#additive-vs-multiplicative-ets-for-demand-sizes"><i class="fa fa-check"></i><b>13.2.1</b> Additive vs multiplicative ETS for demand sizes</a></li>
 <li class="chapter" data-level="13.2.2" data-path="ADAMDemandSizes.html"><a href="ADAMDemandSizes.html#using-arima-for-demand-sizes"><i class="fa fa-check"></i><b>13.2.2</b> Using ARIMA for demand sizes</a></li>
+<li class="chapter" data-level="13.2.3" data-path="ADAMDemandSizes.html"><a href="ADAMDemandSizes.html#rounding-up-forecasts"><i class="fa fa-check"></i><b>13.2.3</b> Rounding up forecasts</a></li>
 </ul></li>
-<li class="chapter" data-level="13.3" data-path="ADAMIntermittentFull.html"><a href="ADAMIntermittentFull.html"><i class="fa fa-check"></i><b>13.3</b> The full ADAM</a>
+<li class="chapter" data-level="13.3" data-path="ADAMIntermittentFull.html"><a href="ADAMIntermittentFull.html"><i class="fa fa-check"></i><b>13.3</b> The complete ADAM</a>
 <ul>
 <li class="chapter" data-level="13.3.1" data-path="ADAMIntermittentFull.html"><a href="ADAMIntermittentFull.html#iETSMLE"><i class="fa fa-check"></i><b>13.3.1</b> Maximum Likelihood Estimation</a></li>
 <li class="chapter" data-level="13.3.2" data-path="ADAMIntermittentFull.html"><a href="ADAMIntermittentFull.html#conditional-expectation-and-variance"><i class="fa fa-check"></i><b>13.3.2</b> Conditional expectation and variance</a></li>
@@ -589,7 +590,7 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ADAMUncertaintyVCOV" class="section level2 hasAnchor" number="16.1">
 <h2><span class="header-section-number">16.1</span> Covariance matrix of parameters<a href="ADAMUncertaintyVCOV.html#ADAMUncertaintyVCOV" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of the covariance matrix of parameters. The covariance matrix that is typically calculated in regression context is based on the assumption of normality and can be derived based on the maximum likelihood estimate of parameters. It relies on the “Fisher Information”, which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of the likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point to understand what impact each of the parameters has on it. If we calculate the Hessian matrix and have Fisher Information, then using Cramer-Rao bound <span class="citation">(<a href="#ref-WikipediaCramerRaoBound" role="doc-biblioref">Wikipedia, 2021n</a>)</span>, the true variance of parameters will be greater or equal to the inverse of Fisher Information:
+<p>One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of the covariance matrix of parameters. The covariance matrix that is typically calculated in regression context is based on the assumption of normality and can be derived based on the maximum likelihood estimate of parameters. It relies on the “Fisher Information”, which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of the likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point to understand what impact each of the parameters has on it. If we calculate the Hessian matrix and have Fisher Information, then using Cramer-Rao bound <span class="citation">(<a href="#ref-WikipediaCramerRaoBound" role="doc-biblioref">Wikipedia, 2021m</a>)</span>, the true variance of parameters will be greater or equal to the inverse of Fisher Information:
 <span class="math display" id="eq:FICovariance">\[\begin{equation}
     \mathrm{V}(\hat{\theta_j}) \geq \frac{1}{\mathrm{FI}(\hat{\theta_j})} ,
     \tag{16.1}
@@ -625,21 +626,21 @@ where <span class="math inline">\(\theta_j\)</span> is the parameter under consi
 <div class="sourceCode" id="cb354"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb354-1"><a href="ADAMUncertaintyVCOV.html#cb354-1" aria-hidden="true" tabindex="-1"></a>adamETSBJBoot <span class="ot">&lt;-</span> <span class="fu">coefbootstrap</span>(adamETSBJ, <span class="at">parallel=</span><span class="cn">TRUE</span>)</span>
 <span id="cb354-2"><a href="ADAMUncertaintyVCOV.html#cb354-2" aria-hidden="true" tabindex="-1"></a>adamETSBJBoot</span></code></pre></div>
 <pre><code>## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.52 seconds</code></pre>
+## Time elapsed: 0.84 seconds</code></pre>
 <p>The covariance matrix can then be extracted from the result via <code>adamETSBJBoot$vcov</code>. The same procedure is used in <code>vcov()</code> method if <code>bootstrap=TRUE</code>:</p>
 <div class="sourceCode" id="cb356"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb356-1"><a href="ADAMUncertaintyVCOV.html#cb356-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">vcov</span>(adamETSBJ, <span class="at">bootstrap=</span><span class="cn">TRUE</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>), <span class="dv">3</span>)</span></code></pre></div>
-<pre><code>##        alpha  beta    phi  level  trend
-## alpha  0.041 0.010  0.006  0.036 -0.038
-## beta   0.010 0.009  0.002  0.001  0.011
-## phi    0.006 0.002  0.013  0.066 -0.068
-## level  0.036 0.001  0.066  0.569 -0.745
-## trend -0.038 0.011 -0.068 -0.745  1.068</code></pre>
+<pre><code>##        alpha   beta    phi  level  trend
+## alpha  0.033  0.009  0.006  0.030 -0.030
+## beta   0.009  0.008  0.000 -0.006  0.013
+## phi    0.006  0.000  0.014  0.066 -0.069
+## level  0.030 -0.006  0.066  0.543 -0.705
+## trend -0.030  0.013 -0.069 -0.705  1.006</code></pre>
 </div>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-WikipediaCramerRaoBound" class="csl-entry">
-• Wikipedia, 2021n. <span class="nocase">Cramér–Rao bound</span>. <a href="https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound">https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound</a> (version: 2021-07-18)
+• Wikipedia, 2021m. <span class="nocase">Cramér–Rao bound</span>. <a href="https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound">https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound</a> (version: 2021-07-18)
 </div>
 </div>
 
