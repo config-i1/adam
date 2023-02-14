@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-02-13" />
+<meta name="date" content="2023-02-14" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -632,7 +632,16 @@ Figure 13.7: Example of intermittent time series with fixed demand sizes.
     \tag{13.27}
 \end{equation}\]</span>
 where <span class="math inline">\(p_t\)</span> can be captured via one of the demand occurrence models discussed in previous sections. Given that <span class="math inline">\(z\)</span> is not random anymore, it does not require estimation and the likelihood simplifies to the one for the demand occurrence (from Section <a href="ADAMOccurrence.html#ADAMOccurrence">13.1</a>). The forecast from this model comes to producing conditional expectation for the probability and then multiplying it by the value of <span class="math inline">\(z\)</span>.</p>
-<p>Finally, in some situations the occurrence might be not random, i.e. we deal with not an intermittent demand, but with a demand, where we can predict perfectly when sales will happen. An example of such situation is demand on watermelons, which becomes equal to zero in specific periods of time in Winter. If we know when the demand occurs, we can use the respective values of zeroes and ones in the variable <span class="math inline">\(o_t\)</span>, simplifying the model and derivations from it. This is implemented in both <code>adam()</code> and <code>alm()</code> functions, where the user needs to provide the vector of zeroes and ones in the <code>occurrence</code> parameter.</p>
+<p>Finally, in some situations the occurrence might be not random, i.e. we deal with not an intermittent demand, but with a demand, where sales sometimes do not happen (i.e. <span class="math inline">\(o_t=0\)</span>), but we can predict perfectly when they happen. If we know when the demand occurs, we can use the respective values of zeroes and ones in the variable <span class="math inline">\(o_t\)</span>, simplifying the model <a href="ADAMIntermittentFull.html#eq:iETSG">(13.26)</a> to:
+<span class="math display" id="eq:iETSFixedOccurrence">\[\begin{equation}
+    \begin{aligned}
+        &amp; y_t = o_t z_t , \\
+        &amp; {z}_{t} = w_z(\mathbf{v}_{z,t-\boldsymbol{l}}) + r_z(\mathbf{v}_{z,t-\boldsymbol{l}}) \epsilon_{z,t} \\
+        &amp; \mathbf{v}_{z,t} = f_z(\mathbf{v}_{z,t-\boldsymbol{l}}) + g_z(\mathbf{v}_{z,t-\boldsymbol{l}}) \epsilon_{z,t}
+    \end{aligned} ,
+    \tag{13.28}
+\end{equation}\]</span>
+where the values of <span class="math inline">\(o_t\)</span> are known in advance. An example of such situation is demand on watermelons, which reaches zero in specific periods of time in Winter (at least in the UK). This special type of model is implemented in both <code>adam()</code> and <code>alm()</code> functions, where the user needs to provide the vector of zeroes and ones in the <code>occurrence</code> parameter.</p>
 <div id="iETSMLE" class="section level3 hasAnchor" number="13.3.1">
 <h3><span class="header-section-number">13.3.1</span> Maximum Likelihood Estimation<a href="ADAMIntermittentFull.html#iETSMLE" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>While there are different ways of estimating the parameters of the ADAM <a href="ADAMIntermittentFull.html#eq:iETSG">(13.26)</a>, it is worth focusing on likelihood estimation (Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>) for consistency with other ADAMs. The likelihood of the model will consist of several parts:</p>
@@ -644,38 +653,38 @@ where <span class="math inline">\(p_t\)</span> can be captured via one of the de
 <p>When demand occurs the likelihood is:
 <span class="math display" id="eq:LogLikelihoodOccurs">\[\begin{equation}
     \mathcal{L}(\boldsymbol{\theta} | y_t, o_t=1) = p_t f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}) ,
-    \tag{13.28}
+    \tag{13.29}
 \end{equation}\]</span>
 while in the opposite case it is:
 <span class="math display" id="eq:LogLikelihoodOccursNot">\[\begin{equation}
     \mathcal{L}(\boldsymbol{\theta} | y_t, o_t=0) = (1-p_t) f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}),
-    \tag{13.29}
+    \tag{13.30}
 \end{equation}\]</span>
-where <span class="math inline">\(\boldsymbol{\theta}\)</span> includes all the estimated parameters of the model (for demand sizes and demand occurrence, including parameters of distribution, such as scale). Note that because the model assumes that the demand evolves over time even when it is not observed (<span class="math inline">\(o_t=0\)</span>), we have a probability density function of demand sizes, <span class="math inline">\(f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}})\)</span> in <a href="ADAMIntermittentFull.html#eq:LogLikelihoodOccursNot">(13.29)</a>. Based on the equations <a href="ADAMIntermittentFull.html#eq:LogLikelihoodOccurs">(13.28)</a> and <a href="ADAMIntermittentFull.html#eq:LogLikelihoodOccursNot">(13.29)</a>, we can summarise the likelihood for the whole sample of <span class="math inline">\(T\)</span> observations:
+where <span class="math inline">\(\boldsymbol{\theta}\)</span> includes all the estimated parameters of the model (for demand sizes and demand occurrence, including parameters of distribution, such as scale). Note that because the model assumes that the demand evolves over time even when it is not observed (<span class="math inline">\(o_t=0\)</span>), we have a probability density function of demand sizes, <span class="math inline">\(f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}})\)</span> in <a href="ADAMIntermittentFull.html#eq:LogLikelihoodOccursNot">(13.30)</a>. Based on the equations <a href="ADAMIntermittentFull.html#eq:LogLikelihoodOccurs">(13.29)</a> and <a href="ADAMIntermittentFull.html#eq:LogLikelihoodOccursNot">(13.30)</a>, we can summarise the likelihood for the whole sample of <span class="math inline">\(T\)</span> observations:
 <span class="math display" id="eq:LikelihoodForDGP">\[\begin{equation}
     \mathcal{L}(\boldsymbol{\theta} | \textbf{y}) = \prod_{o_t=1} p_t \prod_{o_t=0} (1-p_t) \prod_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}) ,
-    \tag{13.30}
+    \tag{13.31}
 \end{equation}\]</span>
 or in logarithms:
 <span class="math display" id="eq:LogLikelihoodForDGP">\[\begin{equation}
     \ell(\boldsymbol{\theta} | \textbf{y}) = \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1-p_t) + \sum_{t=1}^T f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}}),
-    \tag{13.31}
+    \tag{13.32}
 \end{equation}\]</span>
-where <span class="math inline">\(\textbf{y}\)</span> is the vector of all actual values and <span class="math inline">\(f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}})\)</span> can be substituted by a PDF of the assumed distribution from the list of candidates in Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>. The main issue in calculating the likelihood <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGP">(13.31)</a> is that the demand sizes are not observable when <span class="math inline">\(o_t=0\)</span>. This means that we cannot calculate the likelihood using the conventional approach. We need to use something else. <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019a" role="doc-biblioref">2019</a>)</span> proposed using the Expectation Maximisation (EM) algorithm for this purpose, which is typically done in the following stages:</p>
+where <span class="math inline">\(\textbf{y}\)</span> is the vector of all actual values and <span class="math inline">\(f_z(z_t | \mathbf{v}_{z,t-\boldsymbol{l}})\)</span> can be substituted by a PDF of the assumed distribution from the list of candidates in Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>. The main issue in calculating the likelihood <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGP">(13.32)</a> is that the demand sizes are not observable when <span class="math inline">\(o_t=0\)</span>. This means that we cannot calculate the likelihood using the conventional approach. We need to use something else. <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019a" role="doc-biblioref">2019</a>)</span> proposed using the Expectation Maximisation (EM) algorithm for this purpose, which is typically done in the following stages:</p>
 <ol style="list-style-type: decimal">
 <li>Take <em>Expectation</em> of the likelihood;</li>
 <li><em>Maximise</em> it with the obtained parameters;</li>
 <li>Go to (1) with the new set of parameters if the likelihood has not converged to the maximum.</li>
 </ol>
-<p>A classic example with EM is when several samples have different parameters, and we need to split them (e.g. do clustering). In that case, we do not know what cluster specific observations belong to and what the probability that each observation belongs to one of the groups is. In our context, the problem is slightly different: we know probabilities, but we do not observe some of the values. As a result the application of EM gives a different result. If we take the expectation of <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGP">(13.31)</a> with respect to the unobserved demand sizes, we will get:
+<p>A classic example with EM is when several samples have different parameters, and we need to split them (e.g. do clustering). In that case, we do not know what cluster specific observations belong to and what the probability that each observation belongs to one of the groups is. In our context, the problem is slightly different: we know probabilities, but we do not observe some of the values. As a result the application of EM gives a different result. If we take the expectation of <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGP">(13.32)</a> with respect to the unobserved demand sizes, we will get:
 <span class="math display" id="eq:LogLikelihoodForDGPExpectation">\[\begin{equation}
     \begin{aligned}
         \mathrm{E}\left(\ell(\boldsymbol{\theta} | \textbf{y})\right) &amp; = \sum_{o_t=1} \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) + \sum_{o_t=0} \text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) \right) \\
         &amp; + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1- p_t)
     \end{aligned}.
-    \tag{13.32}
+    \tag{13.33}
 \end{equation}\]</span>
-The first term in <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.32)</a> is known because the <span class="math inline">\(z_t\)</span> are observed when <span class="math inline">\(o_t=1\)</span>. The expectation in second term of <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.32)</a> is known in statistics as “Differential Entropy” (in the formula above, we have the negative differential entropy). It will differ from one distribution to another. Table <a href="ADAMIntermittentFull.html#tab:differentialEntropy">13.1</a> summarises differential entropies for the distributions used in ADAM.</p>
+The first term in <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.33)</a> is known because the <span class="math inline">\(z_t\)</span> are observed when <span class="math inline">\(o_t=1\)</span>. The expectation in second term of <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.33)</a> is known in statistics as “Differential Entropy” (in the formula above, we have the negative differential entropy). It will differ from one distribution to another. Table <a href="ADAMIntermittentFull.html#tab:differentialEntropy">13.1</a> summarises differential entropies for the distributions used in ADAM.</p>
 <table class="table" style="font-size: 12px; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
 <span id="tab:differentialEntropy">Table 13.1: </span>Differential entropies for different distributions. <span class="math inline">\(\Gamma(\cdot)\)</span> is the Gamma function, while <span class="math inline">\(\psi(\cdot)\)</span> is the digamma function.
@@ -772,7 +781,7 @@ Differential Entropy
 </tr>
 </tbody>
 </table>
-<p>The majority of formulae for differential entropy in Table <a href="ADAMIntermittentFull.html#tab:differentialEntropy">13.1</a> are taken from <span class="citation">Lazo and Rathie (<a href="#ref-Lazo1978a" role="doc-biblioref">1978</a>)</span> with the exclusion of the one for <span class="math inline">\(\mathcal{IG}\)</span>, which was derived by <span class="citation">Mudholkar and Tian (<a href="#ref-Mudholkar2002" role="doc-biblioref">2002</a>)</span>. These values can be inserted instead of the <span class="math inline">\(\text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) \right)\)</span> in the formula <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.32)</a>, leading to the expected likelihood for respective distributions, which can then be maximised. For example, for Inverse Gaussian distribution (using the pdf from the Table <a href="ADAMETSEstimationLikelihood.html#tab:multiplicativeErrorLikelihoods">11.2</a> and the entropy from Table <a href="ADAMIntermittentFull.html#tab:differentialEntropy">13.1</a>), we get:
+<p>The majority of formulae for differential entropy in Table <a href="ADAMIntermittentFull.html#tab:differentialEntropy">13.1</a> are taken from <span class="citation">Lazo and Rathie (<a href="#ref-Lazo1978a" role="doc-biblioref">1978</a>)</span> with the exclusion of the one for <span class="math inline">\(\mathcal{IG}\)</span>, which was derived by <span class="citation">Mudholkar and Tian (<a href="#ref-Mudholkar2002" role="doc-biblioref">2002</a>)</span>. These values can be inserted instead of the <span class="math inline">\(\text{E} \left( \log f_z \left(z_{t} | \mathbf{v}_{z,t-\boldsymbol{l}} \right) \right)\)</span> in the formula <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.33)</a>, leading to the expected likelihood for respective distributions, which can then be maximised. For example, for Inverse Gaussian distribution (using the pdf from the Table <a href="ADAMETSEstimationLikelihood.html#tab:multiplicativeErrorLikelihoods">11.2</a> and the entropy from Table <a href="ADAMIntermittentFull.html#tab:differentialEntropy">13.1</a>), we get:
 <span class="math display" id="eq:LogLikelihoodForDGPExpectationIG">\[\begin{equation}
     \begin{aligned}
         \mathrm{E}\left(\ell(\boldsymbol{\theta} | \textbf{y})\right) &amp; =
@@ -780,20 +789,20 @@ Differential Entropy
         &amp; -\frac{T_0}{2}\left(\log \pi e \sigma^2 -\log(2) \right) \\
         &amp; + \sum_{o_t=1} \log(p_t) + \sum_{o_t=0} \log(1- p_t)
     \end{aligned} ,
-\tag{13.33}
-\end{equation}\]</span>
-where <span class="math inline">\(T_0\)</span> is the number of zeroes in the data and <span class="math inline">\(T_1\)</span> is the number of non-zero values. Luckily, the EM process in our specific situation does not need to be iterative – the obtained likelihood can then be maximised directly by changing the values of parameters <span class="math inline">\(\boldsymbol{\theta}\)</span>. It is also possible to derive analytical formulae for parameters of some of distributions based on <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.32)</a> and the values from Table <a href="ADAMIntermittentFull.html#tab:differentialEntropy">13.1</a>. For example, in case of <span class="math inline">\(\mathcal{IG}\)</span> the estimate of scale parameter is:
-<span class="math display" id="eq:IGLogLikelihoodScale">\[\begin{equation}
-\hat{\sigma}^2 = \frac{1}{T} \sum_{o_t=1}\frac{e_t^2}{1+e_t}.
 \tag{13.34}
 \end{equation}\]</span>
-This is obtained by taking the derivative of <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectationIG">(13.33)</a> with respect to <span class="math inline">\(\sigma^2\)</span> and equating it to zero. It can be shown that the likelihood estimates of scales for different distributions correspond to the conventional formulae from Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>, but with the summation over <span class="math inline">\(o_t=1\)</span> instead of all the observations. Note, however, that the division in <a href="ADAMIntermittentFull.html#eq:IGLogLikelihoodScale">(13.34)</a> is done by the whole sample <span class="math inline">\(T\)</span>. This implies that the scale estimate will be biased, similarly to the classical bias of the sample variance. <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019a" role="doc-biblioref">2019</a>)</span> show that in the full ADAM, the estimate of scale is biased not only in-sample but also asymptotically, implying that with the increase of the sample size, it will be consistently lower than needed. This is because the summation is done over the non-zero values, while the division is done over the whole sample. This proportion of non-zeroes impacts the scale in <a href="ADAMIntermittentFull.html#eq:IGLogLikelihoodScale">(13.34)</a>, deflating its value. The only situation when the bias will be reduced is when the probability of occurrence reaches 1 (demand becomes regular). Still, the value <a href="ADAMIntermittentFull.html#eq:IGLogLikelihoodScale">(13.34)</a> will maximise the expected likelihood <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.32)</a> and is useful for inference. However, if one needs to construct prediction intervals, this bias needs to be addressed, which can be done using the conventional correction:
-<span class="math display" id="eq:scaleFixed">\[\begin{equation}
-\hat{\sigma}^2{^{\prime}} = \frac{T}{T_1-k} \hat{\sigma}^2,
+where <span class="math inline">\(T_0\)</span> is the number of zeroes in the data and <span class="math inline">\(T_1\)</span> is the number of non-zero values. Luckily, the EM process in our specific situation does not need to be iterative – the obtained likelihood can then be maximised directly by changing the values of parameters <span class="math inline">\(\boldsymbol{\theta}\)</span>. It is also possible to derive analytical formulae for parameters of some of distributions based on <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.33)</a> and the values from Table <a href="ADAMIntermittentFull.html#tab:differentialEntropy">13.1</a>. For example, in case of <span class="math inline">\(\mathcal{IG}\)</span> the estimate of scale parameter is:
+<span class="math display" id="eq:IGLogLikelihoodScale">\[\begin{equation}
+\hat{\sigma}^2 = \frac{1}{T} \sum_{o_t=1}\frac{e_t^2}{1+e_t}.
 \tag{13.35}
 \end{equation}\]</span>
+This is obtained by taking the derivative of <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectationIG">(13.34)</a> with respect to <span class="math inline">\(\sigma^2\)</span> and equating it to zero. It can be shown that the likelihood estimates of scales for different distributions correspond to the conventional formulae from Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>, but with the summation over <span class="math inline">\(o_t=1\)</span> instead of all the observations. Note, however, that the division in <a href="ADAMIntermittentFull.html#eq:IGLogLikelihoodScale">(13.35)</a> is done by the whole sample <span class="math inline">\(T\)</span>. This implies that the scale estimate will be biased, similarly to the classical bias of the sample variance. <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019a" role="doc-biblioref">2019</a>)</span> show that in the full ADAM, the estimate of scale is biased not only in-sample but also asymptotically, implying that with the increase of the sample size, it will be consistently lower than needed. This is because the summation is done over the non-zero values, while the division is done over the whole sample. This proportion of non-zeroes impacts the scale in <a href="ADAMIntermittentFull.html#eq:IGLogLikelihoodScale">(13.35)</a>, deflating its value. The only situation when the bias will be reduced is when the probability of occurrence reaches 1 (demand becomes regular). Still, the value <a href="ADAMIntermittentFull.html#eq:IGLogLikelihoodScale">(13.35)</a> will maximise the expected likelihood <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.33)</a> and is useful for inference. However, if one needs to construct prediction intervals, this bias needs to be addressed, which can be done using the conventional correction:
+<span class="math display" id="eq:scaleFixed">\[\begin{equation}
+\hat{\sigma}^2{^{\prime}} = \frac{T}{T_1-k} \hat{\sigma}^2,
+\tag{13.36}
+\end{equation}\]</span>
 where <span class="math inline">\(k\)</span> is the number of all estimated parameters.</p>
-<p>Finally, for the two exotic cases with known demand occurrence and known demand sizes, the likelihood <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.32)</a> simplifies to the first two and the last two terms in the formula respectively.</p>
+<p>Finally, for the two exotic cases with known demand occurrence and known demand sizes, the likelihood <a href="ADAMIntermittentFull.html#eq:LogLikelihoodForDGPExpectation">(13.33)</a> simplifies to the first two and the last two terms in the formula respectively.</p>
 </div>
 <div id="conditional-expectation-and-variance" class="section level3 hasAnchor" number="13.3.2">
 <h3><span class="header-section-number">13.3.2</span> Conditional expectation and variance<a href="ADAMIntermittentFull.html#conditional-expectation-and-variance" class="anchor-section" aria-label="Anchor link to header"></a></h3>
@@ -801,42 +810,42 @@ where <span class="math inline">\(k\)</span> is the number of all estimated para
 <p>The conditional <span class="math inline">\(h\)</span> steps ahead expectation of the model can be obtained easily based on the assumption of independence of demand occurrence and demand sizes discussed earlier in Section <a href="ADAMIntermittentFull.html#ADAMIntermittentFull">13.3</a>:
 <span class="math display" id="eq:iETSConditionalExpectation">\[\begin{equation}
     \mathrm{E}(y_{t+h}|t) = \mu_{y,t+h|t} = \mathrm{E}(o_{t+h}|t) \mathrm{E}(z_{t+h}|t) = \mu_{o,t+h|t} \mu_{z,t+h|t},
-    \tag{13.36}
+    \tag{13.37}
 \end{equation}\]</span>
 where <span class="math inline">\(\mu_{o,t+h|t}\)</span> is the conditional expectation of the occurrence variable (the conditional <span class="math inline">\(h\)</span> steps ahead probability of occurrence) and <span class="math inline">\(\mu_{z,t+h|t}\)</span> is the conditional expectation of the demand sizes variable <span class="math inline">\(z_t\)</span>. So, the forecast from the complete ADAM relies on the probability of occurrence of the variable and will reflect an average demand per period of time. As a result, it might be less than one in some cases, implying that the product is not sold every day. Consequentially, <span class="citation">Kourentzes (<a href="#ref-Kourentzes2014a" role="doc-biblioref">2014</a>)</span> argued that the term “demand rate” should be used in this context instead of the conditional expectation. However, any forecasting model produces “demand per period” forecasts. They just typically assume that the probability of occurrence is equal to one (<span class="math inline">\(p_t=1\)</span>) for all observations. So, there is no conceptual difference between the point forecasts produced by regular and intermittent demand models, and I do not see the point in using the “demand rate” term.</p>
 <p>As for the conditional variance, it is slightly trickier than the conditional expectation, because the variance of a product involves not only variances, but expectations as well (assuming that two variables are independent):
 <span class="math display" id="eq:VarianceOfProduct">\[\begin{equation}
     \mathrm{V}(y_{t+h}|t) = \mathrm{V}(o_{t+h}|t) \mathrm{V}(z_{t+h|t}) + \mathrm{E}(o_{t+h}|t)^2 \mathrm{V}(z_{t+h}|t) + \mathrm{V}(o_{t+h}|t) \mathrm{E}(z_{t+h}|t)^2 .
-    \tag{13.37}
+    \tag{13.38}
 \end{equation}\]</span>
 Given that we use Bernoulli distribution for the variable <span class="math inline">\(o_t\)</span>, its variance is equal to <span class="math inline">\(\mu_{o,t+h|t} (1-\mu_{o,t+h|t})\)</span>. In our context this implies that the conditional <span class="math inline">\(h\)</span> steps ahead variance for the complete ADAM is:
 <span class="math display" id="eq:iETSConditionalVariance01">\[\begin{equation}
     \sigma^2_h = \mu_{o,t+h|t} (1-\mu_{o,t+h|t}) \sigma^2_{z,h} + \mu_{o,t+h|t}^2 \sigma^2_{z,h} + \mu_{o,t+h|t} (1-\mu_{o,t+h|t}) \mu_{z,t+h|t}^2 ,
-    \tag{13.38}
+    \tag{13.39}
 \end{equation}\]</span>
 or after some manipulations:
 <span class="math display" id="eq:iETSConditionalVariance">\[\begin{equation}
     \sigma^2_h = \mu_{o,t+h|t} \left(\sigma^2_{z,h} + (1 -\mu_{o,t+h|t}) \mu_{z,t+h|t}^2 \right).
-    \tag{13.39}
+    \tag{13.40}
 \end{equation}\]</span>
-All the elements of the formula <a href="ADAMIntermittentFull.html#eq:iETSConditionalVariance">(13.39)</a> are available and have been discussed in Sections <a href="pureAdditiveExpectationAndVariance.html#pureAdditiveExpectationAndVariance">5.3</a>, <a href="pureMultiplicativeExpectationAndVariance.html#pureMultiplicativeExpectationAndVariance">6.3</a> and <a href="ADAMOccurrence.html#ADAMOccurrence">13.1</a>.</p>
+All the elements of the formula <a href="ADAMIntermittentFull.html#eq:iETSConditionalVariance">(13.40)</a> are available and have been discussed in Sections <a href="pureAdditiveExpectationAndVariance.html#pureAdditiveExpectationAndVariance">5.3</a>, <a href="pureMultiplicativeExpectationAndVariance.html#pureMultiplicativeExpectationAndVariance">6.3</a> and <a href="ADAMOccurrence.html#ADAMOccurrence">13.1</a>.</p>
 <p>When it comes to the two exotic cases, discussed in the beginning of this Section, we have the following conditional expectation and variance:</p>
 <ol style="list-style-type: decimal">
 <li><p>When demand sizes are fixed and known, i.e. <span class="math inline">\(z_t=z\)</span>:
 <span class="math display" id="eq:iETSConditionalMomentsFixedSizes">\[\begin{equation}
 \begin{aligned}
-     \mu_{y,t+h|t} = &amp; \mu_{o,t+h|t} z, \\
-     \sigma^2_h = \mu_{o,t+h|t} (1 -\mu_{o,t+h|t}) z^2.
+     &amp; \mu_{y,t+h|t} = \mu_{o,t+h|t} z, \\
+     &amp; \sigma^2_h = \mu_{o,t+h|t} (1 -\mu_{o,t+h|t}) z^2.
 \end{aligned}
-\tag{13.40}
+\tag{13.41}
 \end{equation}\]</span></p></li>
 <li><p>When demand occurrence is known:
 <span class="math display" id="eq:iETSConditionalMomentsFixedOccurrence">\[\begin{equation}
 \begin{aligned}
-     \mu_{y,t+h|t} = &amp; o_{t+h} \mu_{z,t+h|t}, \\
-     \sigma^2_h = o_{t+h} \left(\sigma^2_{z,h} + (1 -o_{t+h}) \mu_{z,t+h|t}^2 \right).
+     &amp; \mu_{y,t+h|t} = o_{t+h} \mu_{z,t+h|t}, \\
+     &amp; \sigma^2_h = o_{t+h} \left(\sigma^2_{z,h} + (1 -o_{t+h}) \mu_{z,t+h|t}^2 \right).
 \end{aligned}
-\tag{13.41}
+\tag{13.42}
 \end{equation}\]</span></p></li>
 </ol>
 <p>These two cases might not arise often, but it is important to understand how they change the moments of the model.</p>
