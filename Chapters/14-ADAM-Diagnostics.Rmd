@@ -36,13 +36,15 @@ This model has several issues, and in this chapter, we will discuss how to diagn
 
 
 ## Model specification: Omitted variables {#diagnosticsOmitted}
-We start with one of the most critical assumptions for models: the model has not omitted important variables. If it has then the point forecasts might be not as accurate as we would expect and in some serious cases exhibit substantial bias.
+We start with one of the most critical assumptions for models: the model does not omit important variables. If it does then the point forecasts might be not as accurate as we would expect and in some serious cases exhibit substantial bias. For example, if the model omits seasonal component, it will not be able to produce accurate forecasts for specific observations (e.g. months of year).
 
-This issue is difficult to diagnose because it is typically challenging to identify what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of the variables are missing, the next step would be to collect the variables themselves or use their proxies. The proxies are variables that are expected to be correlated with the missing variables and can partially substitute them. We would need to add the missing information in the model one way or another.
+In general, this issue is difficult to diagnose because it is typically challenging to identify what is missing if we do not have it in front of us. The best thing one can do is a mental experiment, trying to comprise a list of all theoretically possible components and variables that would impact the variable of interest. If you manage to come up with such a list and realise that some of them are missing, the next step would be to collect the variables themselves or use their proxies. The proxies are variables that are expected to be correlated with the missing variables and can partially substitute them. We would need to add the missing information in the model one way or another.
 
-In some cases, we might be able to diagnose this. For example, with our regression model estimated in the previous section, we have a set of variables not included in the model. A simple thing to do is to see if the residuals of our model are correlated with any of the omitted variables. We can either produce scatterplots or calculate measures of association [see Section 5.2 and Chapter 9 of @SvetunkovSBA] to see if there are relations in the residuals. I will use `assoc()` and `spread()` functions from `greybox` for this:
+In case of ETS components, the diagnostics of this issue is possible, because the pool of components is restricted and we know how the data with different components should look like (see Section \@ref(ETSTaxonomy)). In case of ARIMA, the diagnostics comes to analysing ACF/PACF (Section \@ref(diagnosticsResidualsIIDAuto)). But in case of regression, it might be difficult to say what specifically is missing.
 
-```{r carSeatsSpread, fig.cap="Spread plot for the residuals of model vs not included variables."}
+However, in some cases, we might be able to diagnose this even for the regression model. For example, with the model that we estimated in the previous section, we have a set of variables not included in it. A simple thing to do is to see if the residuals of our model are correlated with any of the omitted variables. We can either produce scatterplots or calculate measures of association [see Chapter 9 of @SvetunkovSBA] to see if there are relations in the residuals. I will use `assoc()` and `spread()` functions from `greybox` for this:
+
+```{r carSeatsSpread, fig.cap="Spread plot for the residuals of model vs omitted variables."}
 # Create a new matrix, removing the variables that are already
 # in the model
 SeatbeltsWithResiduals <-
@@ -53,11 +55,13 @@ colnames(SeatbeltsWithResiduals)[1] <- "residuals"
 greybox::spread(SeatbeltsWithResiduals)
 ```
 
-`spread()` function automatically detects the type of variable and produces based on that scatterplot / `boxplot()` / `tableplot()` between them, making the final plot more readable. The plot above tells us that residuals are correlated with `DriversKilled`, `front`, `rear` and `law`, so some of these variables can be added to the model to improve it. `VanKilled` might have a weak relation with `drivers`, but judging by description does not make sense in the model (this is a part of the `drivers` variable). Also, I would not add `DriversKilled`, as it seems not to drive the number of deaths and injuries (based on our understanding of the problem), but is just correlated with it for obvious reasons (`DriversKilled` is included in `drivers`). The variables `front` and `rear` should not be included in the model, because they do not explain injuries and deaths of drivers, they are impacted by similar factors and can be considered as output variables. So, only `law` can be safely added to the model, because it makes sense. We can also calculate measures of association between variables:
+`spread()` function automatically detects the type of variable and based on that produces scatterplot / `boxplot()` / `tableplot()` between them, making the final plot more readable. The plot above tells us that residuals are correlated with `DriversKilled`, `front`, `rear` and `law`, so some of these variables can be added to the model to improve it. However, not all of them make sense in our model. For example, `VanKilled` might have a weak relation with `drivers`, but judging by description should not be included in the model (this is a part of the `drivers` variable). Also, I would not add `DriversKilled`, as it seems not to drive the number of deaths and injuries (based on our understanding of the problem), but is just correlated with it for obvious reasons (`DriversKilled` is included in `drivers`). The variables `front` and `rear` should not be included in the model either, because they do not explain injuries and deaths of drivers, they are impacted by similar factors and can be considered as output variables. So, only `law` can be safely added to the model, because it makes sense: the introduction of law should hopefully impact the number of casualties amongst drivers.
+
+We can also calculate measures of association between these variables to get an idea of the strength of linear relations bewteen them:
 ```{r}
 greybox::assoc(SeatbeltsWithResiduals)
 ```
-Technically speaking, the output of this function tells us that all variables are correlated with residuals and can be considered in the model. This is because p-values are lower than my favourite significance level of 1%, so we can reject the null hypothesis for each of the tests (which is that the respective parameters are equal to zero in the population). I would still prefer not to add `DriversKilled`, `VanKilled`, `front` and `rear` variables in the model for the reasons explained earlier. We can construct a new model in the following way:
+Technically speaking, the output of this function tells us that all variables are correlated with residuals and can be considered in the model. This is because p-values are lower than my favourite significance level of 1%, so we can reject the null hypothesis for each of the tests (which is that the respective parameter is equal to zero in the population). I would still prefer not to add `DriversKilled`, `VanKilled`, `front` and `rear` variables in the model for the reasons explained earlier, but I would add `law`:
 ```{r}
 adamSeat02 <- adam(Seatbelts, "NNN",
                    formula=drivers~PetrolPrice+kms+law)
@@ -81,14 +85,14 @@ adamSeat03 <- adam(Seatbelts, "ANA",
                    formula=drivers~PetrolPrice+kms+law)
 ```
 
-We can produce similar plots to do model diagnostics (Figue \@ref(fig:adamSeat03)):
+We can then produce additional plots to do model diagnostics (Figue \@ref(fig:adamSeat03)):
 
 ```{r adamSeat03, fig.cap="Diagnostic plots for Model 3."}
-par(mfcol=c(1,2), mar=c(4,4,2,1))
+par(mfcol=c(2,1), mar=c(2,4,2,1))
 plot(adamSeat03,7:8)
 ```
 
-In Figure \@ref(fig:adamSeat03), we do not see any apparent missing structure in the data and any obvious omitted variables. We can now move to the next steps of diagnostics.
+In Figure \@ref(fig:adamSeat03), we do not see any apparent missing structure in the data and we do not have any additional variables to add. So, we can now move to the next step of diagnostics.
 
 
 ## Model specification: Redundant variables {#diagnosticsRedundant}
