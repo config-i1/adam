@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-02-17" />
+<meta name="date" content="2023-02-18" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -220,10 +220,11 @@ div.csl-indent {
 <li class="chapter" data-level="3.1" data-path="tsComponents.html"><a href="tsComponents.html"><i class="fa fa-check"></i><b>3.1</b> Time series components</a></li>
 <li class="chapter" data-level="3.2" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html"><i class="fa fa-check"></i><b>3.2</b> Classical Seasonal Decomposition</a>
 <ul>
-<li class="chapter" data-level="3.2.1" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html#how-to-do"><i class="fa fa-check"></i><b>3.2.1</b> How to do?</a></li>
+<li class="chapter" data-level="3.2.1" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html#ClassicalDecompositionHow"><i class="fa fa-check"></i><b>3.2.1</b> How to do?</a></li>
 <li class="chapter" data-level="3.2.2" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html#a-couple-of-examples"><i class="fa fa-check"></i><b>3.2.2</b> A couple of examples</a></li>
-<li class="chapter" data-level="3.2.3" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html#other-decomposition-techniques"><i class="fa fa-check"></i><b>3.2.3</b> Other decomposition techniques</a></li>
-<li class="chapter" data-level="3.2.4" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html#why-bother"><i class="fa fa-check"></i><b>3.2.4</b> “Why bother?”</a></li>
+<li class="chapter" data-level="3.2.3" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html#ClassicalDecompositionMS"><i class="fa fa-check"></i><b>3.2.3</b> Multiple seasonal decomposition</a></li>
+<li class="chapter" data-level="3.2.4" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html#other-decomposition-techniques"><i class="fa fa-check"></i><b>3.2.4</b> Other decomposition techniques</a></li>
+<li class="chapter" data-level="3.2.5" data-path="ClassicalDecomposition.html"><a href="ClassicalDecomposition.html#why-bother"><i class="fa fa-check"></i><b>3.2.5</b> “Why bother?”</a></li>
 </ul></li>
 <li class="chapter" data-level="3.3" data-path="simpleForecastingMethods.html"><a href="simpleForecastingMethods.html"><i class="fa fa-check"></i><b>3.3</b> Simple forecasting methods</a>
 <ul>
@@ -590,8 +591,8 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ClassicalDecomposition" class="section level2 hasAnchor" number="3.2">
 <h2><span class="header-section-number">3.2</span> Classical Seasonal Decomposition<a href="ClassicalDecomposition.html#ClassicalDecomposition" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<div id="how-to-do" class="section level3 hasAnchor" number="3.2.1">
-<h3><span class="header-section-number">3.2.1</span> How to do?<a href="ClassicalDecomposition.html#how-to-do" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<div id="ClassicalDecompositionHow" class="section level3 hasAnchor" number="3.2.1">
+<h3><span class="header-section-number">3.2.1</span> How to do?<a href="ClassicalDecomposition.html#ClassicalDecompositionHow" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>One of the classical textbook methods for decomposing the time series into unobservable components is “Classical Seasonal Decomposition” <span class="citation">(<a href="#ref-Persons1919" role="doc-biblioref">Warren M. Persons, 1919</a>)</span>. It assumes either a pure additive or pure multiplicative model, is done using centred moving averages and is focused on splitting the data into components, not on forecasting. The idea of the method can be summarised in the following steps:</p>
 <ol style="list-style-type: decimal">
 <li>Decide which of the models to use based on the type of seasonality in the data: additive <a href="tsComponents.html#eq:PureAdditive">(3.1)</a> or multiplicative <a href="tsComponents.html#eq:PureMultiplicative">(3.2)</a></li>
@@ -656,8 +657,38 @@ Figure 3.6: Decomposition of AirPassengers time series according to additive mod
 </div>
 <p>As we can see from Figure <a href="ClassicalDecomposition.html#fig:decomposeRandomNoise">3.6</a>, the original data is not seasonal, but the decomposition assumes that it is and proceeds with the default approach returning a seasonal component. You get what you ask for.</p>
 </div>
-<div id="other-decomposition-techniques" class="section level3 hasAnchor" number="3.2.3">
-<h3><span class="header-section-number">3.2.3</span> Other decomposition techniques<a href="ClassicalDecomposition.html#other-decomposition-techniques" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<div id="ClassicalDecompositionMS" class="section level3 hasAnchor" number="3.2.3">
+<h3><span class="header-section-number">3.2.3</span> Multiple seasonal decomposition<a href="ClassicalDecomposition.html#ClassicalDecompositionMS" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<p>A simple extension to the classical decomposition explained in the Subsection <a href="ClassicalDecomposition.html#ClassicalDecompositionHow">3.2.1</a> is the decomposition of data with multiple seasonal frequencies. In that case we need to use several CMAs and apply them sequentially to get rid of seasonaliities starting from the lower value and moving to the higher ones. This is better explained on example of half-hourly data with two seasonal patterns: 48 half-hours per day and 336 (<span class="math inline">\(48 \times 7\)</span>) half-hours per week. Assuming the pure multiplicative model, the decomposition procedure can be summarised as:</p>
+<ol style="list-style-type: decimal">
+<li>Smooth the data:
+1.a. Use with CMA(48). This way we get rid of the lower level frequency and obtain the smooth pattern for the higher seasonal frequency of 336, <span class="math inline">\(d_{1,t}\)</span>;
+1.b. Smooth the same actual values with CMA(336). This way we get rid of both seasonal patterns and extract the trend, <span class="math inline">\(d_{2,t}\)</span>;</li>
+<li>Extract seasonal patterns:
+2.a. Divide the actual values by <span class="math inline">\(d_{1,t}\)</span> to get seasonal indices for half-hours of day: <span class="math inline">\(y^\prime_{1,t}=\frac{y_t}{d_{1,t}}\)</span>;
+2.b. Divide <span class="math inline">\(d_{1,t}\)</span> by <span class="math inline">\(d_{2,t}\)</span> to get seasonal indices for half-hours of week: <span class="math inline">\(y^\prime_{2,t}=\frac{d_{1,t}}{d_{2,t}}\)</span>;</li>
+<li>Get seasonal indices:
+3.a. Average out the values of <span class="math inline">\(y^\prime_{1,t}\)</span> for each period to get seasonal indices for half-hours of day <span class="math inline">\(s_{1,t}\)</span>;
+3.b. Do the same as (3.a) for each period of <span class="math inline">\(y^\prime_{2,t}\)</span> to get half-hours of week <span class="math inline">\(s_{2,t}\)</span>;</li>
+<li>Finally, extract the residuals via: <span class="math inline">\(e_t = \frac{y_t}{d_{2,t} s_{1,t} s_{2,t}}\)</span> and obtain the components of decomposed series.</li>
+</ol>
+<p>This procedure can be automated for data with more than two frequencies, the logic would be the same, we would just need to introduce more sub-steps (c, d, e) for each of the steps above (1, 2, 3). The procedure described above is implemented in <code>msdecompose()</code> function from <code>smooth</code> package. Here how it works on the half-hourly data <code>taylor</code> from <code>forecast</code> package (Figure <a href="#decomposeTaylor"><strong>??</strong></a>):</p>
+<div class="sourceCode" id="cb50"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb50-1"><a href="ClassicalDecomposition.html#cb50-1" aria-hidden="true" tabindex="-1"></a><span class="fu">msdecompose</span>(forecast<span class="sc">::</span>taylor, <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">48</span>,<span class="dv">336</span>),</span>
+<span id="cb50-2"><a href="ClassicalDecomposition.html#cb50-2" aria-hidden="true" tabindex="-1"></a>            <span class="at">type=</span><span class="st">&quot;multiplicative&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb50-3"><a href="ClassicalDecomposition.html#cb50-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>(<span class="at">which=</span><span class="dv">12</span>)</span></code></pre></div>
+<pre><code>## Registered S3 method overwritten by &#39;quantmod&#39;:
+##   method            from
+##   as.zoo.data.frame zoo</code></pre>
+<div class="figure"><span style="display:block;" id="fig:decomposeTaylor"></span>
+<img src="Svetunkov--2022----ADAM_files/figure-html/decomposeTaylor-1.png" alt="Decomposition of half-hourly electricity demand series according to multiple seasonal classical decomposition." width="672" />
+<p class="caption">
+Figure 3.7: Decomposition of half-hourly electricity demand series according to multiple seasonal classical decomposition.
+</p>
+</div>
+<p>The main limitation of this approach (similar to the conventional decomposition) is that it assumes that the seasonality does not evolve over time. This is a serious limitation if the seasonality needs to be used in forecasting. However, the procedure is simple and fast approach, and can be used as a starting point for estimation of more complicated models (see, for example, Section <a href="ADAMMultipleFrequenciesModel.html#ADAMMultipleFrequenciesModel">12.1</a>).</p>
+</div>
+<div id="other-decomposition-techniques" class="section level3 hasAnchor" number="3.2.4">
+<h3><span class="header-section-number">3.2.4</span> Other decomposition techniques<a href="ClassicalDecomposition.html#other-decomposition-techniques" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>There are other techniques that decompose series into error, trend and seasonal components but make different assumptions about each component. The general procedure, however, always remains the same:</p>
 <ol style="list-style-type: decimal">
 <li>smooth the original series,</li>
@@ -669,12 +700,11 @@ Figure 3.6: Decomposition of AirPassengers time series according to additive mod
 <ul>
 <li><code>decomp()</code> from the <code>tsutils</code> package does classical decomposition and fills in the tail and head of the smoothed trend with forecasts from exponential smoothing;</li>
 <li><code>stl()</code> from the <code>stats</code> package uses a different approach – seasonal decomposition via LOESS. It is an iterative algorithm that smoothes the states and allows them to evolve over time. So, for example, the seasonal component in STL can change;</li>
-<li><code>mstl()</code> from the <code>forecast</code> package does the STL for data with several seasonalities;</li>
-<li><code>msdecompose()</code> from the <code>smooth</code> package does a classical decomposition for multiple seasonal series.</li>
+<li><code>mstl()</code> from the <code>forecast</code> package does the STL for data with several seasonalities.</li>
 </ul>
 </div>
-<div id="why-bother" class="section level3 hasAnchor" number="3.2.4">
-<h3><span class="header-section-number">3.2.4</span> “Why bother?”<a href="ClassicalDecomposition.html#why-bother" class="anchor-section" aria-label="Anchor link to header"></a></h3>
+<div id="why-bother" class="section level3 hasAnchor" number="3.2.5">
+<h3><span class="header-section-number">3.2.5</span> “Why bother?”<a href="ClassicalDecomposition.html#why-bother" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>“Why to decompose?” you may wonder at this point. Understanding the idea behind decomposition and how to perform it, helps understanding ETS, which relies on it. From a practical point of view, it can be helpful if you want to see if there is a trend in the data and whether the residuals contain outliers or not. It will <em>not</em> show you whether the data is seasonal or not as the seasonality is <em>assumed</em> in the decomposition (I stress this because many students think otherwise). Additionally, when seasonality cannot be added to a particular model under consideration, decomposing the series, predicting the trend and then reseasonalising can be a viable solution. Finally, the values from the decomposition can be used as starting points for the estimation of components in ETS or other dynamic models relying on the error-trend-seasonality.</p>
 </div>
 </div>
