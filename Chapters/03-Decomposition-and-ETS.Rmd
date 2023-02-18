@@ -92,7 +92,7 @@ where $a_j$ is a $j$-th parameter for an explanatory variable $x_{j,t}$. One of 
 
 
 ## Classical Seasonal Decomposition {#ClassicalDecomposition}
-### How to do?
+### How to do? {#ClassicalDecompositionHow}
 One of the classical textbook methods for decomposing the time series into unobservable components is "Classical Seasonal Decomposition" [@Persons1919]. It assumes either a pure additive or pure multiplicative model, is done using centred moving averages and is focused on splitting the data into components, not on forecasting. The idea of the method can be summarised in the following steps:
 
 1. Decide which of the models to use based on the type of seasonality in the data: additive \@ref(eq:PureAdditive) or multiplicative \@ref(eq:PureMultiplicative)
@@ -152,6 +152,32 @@ ts(c(1:100)+rnorm(100,0,10),frequency=12) |>
 
 As we can see from Figure \@ref(fig:decomposeRandomNoise), the original data is not seasonal, but the decomposition assumes that it is and proceeds with the default approach returning a seasonal component. You get what you ask for.
 
+
+### Multiple seasonal decomposition {#ClassicalDecompositionMS}
+A simple extension to the classical decomposition explained in the Subsection \@ref(ClassicalDecompositionHow) is the decomposition of data with multiple seasonal frequencies. In that case we need to use several CMAs and apply them sequentially to get rid of seasonaliities starting from the lower value and moving to the higher ones. This is better explained on example of half-hourly data with two seasonal patterns: 48 half-hours per day and 336 ($48 \times 7$) half-hours per week. Assuming the pure multiplicative model, the decomposition procedure can be summarised as:
+
+1. Smooth the data:
+1.a. Use with CMA(48). This way we get rid of the lower level frequency and obtain the smooth pattern for the higher seasonal frequency of 336, $d_{1,t}$;
+1.b. Smooth the same actual values with CMA(336). This way we get rid of both seasonal patterns and extract the trend, $d_{2,t}$;
+2. Extract seasonal patterns:
+2.a. Divide the actual values by $d_{1,t}$ to get seasonal indices for half-hours of day: $y^\prime_{1,t}=\frac{y_t}{d_{1,t}}$;
+2.b. Divide $d_{1,t}$ by $d_{2,t}$ to get seasonal indices for half-hours of week: $y^\prime_{2,t}=\frac{d_{1,t}}{d_{2,t}}$;
+3. Get seasonal indices:
+3.a. Average out the values of $y^\prime_{1,t}$ for each period to get seasonal indices for half-hours of day $s_{1,t}$;
+3.b. Do the same as (3.a) for each period of $y^\prime_{2,t}$ to get half-hours of week $s_{2,t}$;
+4. Finally, extract the residuals via: $e_t = \frac{y_t}{d_{2,t} s_{1,t} s_{2,t}}$ and obtain the components of decomposed series.
+
+This procedure can be automated for data with more than two frequencies, the logic would be the same, we would just need to introduce more sub-steps (c, d, e) for each of the steps above (1, 2, 3). The procedure described above is implemented in `msdecompose()` function from `smooth` package. Here how it works on the half-hourly data `taylor` from `forecast` package (Figure \@ref(decomposeTaylor)):
+
+```{r decomposeTaylor, fig.cap="Decomposition of half-hourly electricity demand series according to multiple seasonal classical decomposition."}
+msdecompose(forecast::taylor, lags=c(48,336),
+            type="multiplicative") |>
+    plot(which=12)
+```
+
+The main limitation of this approach (similar to the conventional decomposition) is that it assumes that the seasonality does not evolve over time. This is a serious limitation if the seasonality needs to be used in forecasting. However, the procedure is simple and fast approach, and can be used as a starting point for estimation of more complicated models (see, for example, Section \@ref(ADAMMultipleFrequenciesModel)).
+
+
 ### Other decomposition techniques
 There are other techniques that decompose series into error, trend and seasonal components but make different assumptions about each component. The general procedure, however, always remains the same:
 
@@ -165,8 +191,7 @@ There are many functions in R that implement seasonal decomposition. Here is a s
 
 - `decomp()` from the `tsutils` package does classical decomposition and fills in the tail and head of the smoothed trend with forecasts from exponential smoothing;
 - `stl()` from the `stats` package uses a different approach -- seasonal decomposition via LOESS. It is an iterative algorithm that smoothes the states and allows them to evolve over time. So, for example, the seasonal component in STL can change;
-- `mstl()` from the `forecast` package does the STL for data with several seasonalities;
-- `msdecompose()` from the `smooth` package does a classical decomposition for multiple seasonal series.
+- `mstl()` from the `forecast` package does the STL for data with several seasonalities.
 
 ### "Why bother?"
 "Why to decompose?" you may wonder at this point. Understanding the idea behind decomposition and how to perform it, helps understanding ETS, which relies on it. From a practical point of view, it can be helpful if you want to see if there is a trend in the data and whether the residuals contain outliers or not. It will _not_ show you whether the data is seasonal or not as the seasonality is _assumed_ in the decomposition (I stress this because many students think otherwise). Additionally, when seasonality cannot be added to a particular model under consideration, decomposing the series, predicting the trend and then reseasonalising can be a viable solution. Finally, the values from the decomposition can be used as starting points for the estimation of components in ETS or other dynamic models relying on the error-trend-seasonality.
