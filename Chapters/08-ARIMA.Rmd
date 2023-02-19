@@ -674,6 +674,7 @@ If we construct and estimate the regression \@ref(eq:PACFRegression) for any lag
 
 When it comes to seasonal ARIMA models, the behaviour of PACF would resemble one of the non-seasonal ones, but with lags, multiple to the seasonality $m$. e.g., for the SAR(1) process with $m=4$, the $\varrho(4)=\phi_{4,1}$, while $\varrho(8)=0$.
 
+
 ### Summary {#BJApproachSummary}
 Summarising the discussions in this section, we can conclude that:
 
@@ -698,6 +699,65 @@ knitr::include_graphics("./images/09-Sarah.jpeg")
 ```
 
 This slight discrepancy led to issues in ARIMA identification over the years. We now understand that we should not rely entirely on the Box-Jenkins approach when identifying ARIMA orders. There are more appropriate methods for order selection, which can be used in the context of ARIMA [see, for example, @Hyndman2008Forecast], and we will discuss some of them in the Chapter \@ref(ADAMSelection). Still, ACF and PACF could be helpful in diagnostics. They might show you whether anything important is missing in the model. But they should not be used on their own. They are helpful together with other additional instruments (see discussion in Section \@ref(diagnosticsResidualsIIDAuto)).
+
+
+### Examples of ACF/PACF for several ARMA processes {#BJApproachExample}
+Building upon the behaviours of ACF/PACF for AR and MA processes, we consider several examples of data generated from AR/MA. This might provide some guidelines of how the orders of ARMA can be identified in practice and show how challenging this is in some situations.
+
+Figure \@ref(fig:acfpacfExampleAR1) shows the plot of the data and ACF/PACF for AR(1) process with $\phi_1=0.9$. As discussed earlier, the ACF in this case declines exponentially, starting from lag 1, while the PACF drops right after the lag 1. The plot also shows how the fitted values and the forecast would look like if the order of the model was correctly selected and the parameters were known.
+
+```{r acfpacfExampleAR1, fig.cap="AR(1) process with $\\phi_1=0.9$, echo=FALSE}
+load("data/armaExamples.Rdata")
+# xAR1 <- sim.ssarima(list(ar=1,i=0,ma=0),obs=120,AR=0.9,initial=10)$data
+layout(matrix(c(1,2,1,3),2,2))
+ssarima(xAR1, orders=c(1,0,0), AR=0.9, h=20, holdout=TRUE) |>
+    forecast(interval="parametric") |>
+    plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
+forecast::Acf(xAR1, main="")
+pacf(xAR1, main="")
+```
+
+::: remark
+You might notice that there are some values of PACF lying outside the standard 95% confidence bounds in the plots above. This does not mean that we need to include the respective AR elements (AR(6) and AR(18)), because, by the definition of confidence interval, we can expect 5% of coefficients of correlation to lie outside the bounds, so we can ignore them.
+:::
+
+Similar idea is shown in Figure \@ref(fig:acfpacfExampleAR2) for AR(2) process with $\phi_1=0.9$ and $\phi_2=-0.4$. In the Figure, the ACF oscillates slightly around the origin, while the PACF drops to zero right after the lag 2. These are the characteristics that we have discussed earlier in this Section.
+
+```{r acfpacfExampleAR2, fig.cap="AR(2) process with $\\phi_1=0.9$ and $\\phi_2=-0.4$, echo=FALSE}
+# xAR2 <- sim.ssarima(list(ar=2,i=0,ma=0),obs=120,AR=c(0.9,-0.4),initial=c(10,-5))$data
+layout(matrix(c(1,2,1,3),2,2))
+ssarima(xAR2, orders=c(2,0,0), AR=c(0.9,-0.4), h=20, holdout=TRUE) |>
+    forecast(interval="parametric") |>
+    plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
+forecast::Acf(xAR2, main="")
+pacf(xAR2, main="")
+```
+
+Similar plots but with different behaviours of ACF and PACF can be shown for MA(1) and MA(2) processes. Figure \@ref(fig:acfpacfExampleMA2) shows how the MA(2) process looks like with $\theta_1=-0.9$ and $\theta_2=0.8$. As we can see, the correct diagnostics of the MA order in this case is already challenging: while the ACF drops to zero after lag 2, the PACF seems to contain some values outside of the interval on lags 3 and 4. So, using the @Box1976 approach, we would be choosing between MA(2) and AR(1) / AR(4) models.
+
+```{r acfpacfExampleMA2, fig.cap="MA(2) process with $\\theta_1=-0.9$ and $\\theta_2=0.8$, echo=FALSE}
+# xMA2 <- sim.ssarima(list(ar=0,i=0,ma=2),obs=120,MA=maValues,initial=c(10,-5))$data
+layout(matrix(c(1,2,1,3),2,2))
+ssarima(xMA2, orders=c(0,0,2), MA=c(-0.9,0.8), h=20, holdout=TRUE) |>
+    forecast(interval="parametric") |>
+    plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
+forecast::Acf(xMA2, main="")
+pacf(xMA2, main="")
+```
+
+To make things even more complicated, we present similar plots for ARMA(2,2) model in Figure \@ref(fig:acfpacfExampleARMA22).
+
+```{r acfpacfExampleARMA22, fig.cap="ARMA(2,2) process with $\\phi_1=0.9, \\phi_2=-0.4$, $\\theta_1=-0.9$ and $\\theta_2=0.8$, echo=FALSE}
+# xARMA22 <- sim.ssarima(list(ar=2,i=0,ma=2),obs=120,MA=maValues,AR=c(0.9,-0.4),initial=c(10,-5))$data
+layout(matrix(c(1,2,1,3),2,2))
+ssarima(xARMA22, orders=c(2,0,2), AR=c(0.9,-0.4), MA=c(-0.9,0.8), h=20, holdout=TRUE) |>
+    forecast(interval="parametric") |>
+    plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
+forecast::Acf(xARMA22, main="")
+pacf(xARMA22, main="")
+```
+
+Based on ACF/PACF in Figure \@ref(fig:acfpacfExampleARMA22), we can conclude that the process is not fundamentally distinguishable from AR(2) and/or MA(2). In order to correctly identify the order in this situation, @Box1976 recommend doing the identification sequentially, by fitting an AR model, then analysing the residuals and selecting an appropriate MA order. Still, even this iterative process is challenging and does not guarantee that the correct order will be selected. This is one of the reasons why modern ARIMA order selection methods do not fully rely on the Box-Jenkins approach and involve selection based on information criteria [@Hyndman2008Forecast, @Svetunkov2019].
 
 
 ## ARIMA and ETS {#ARIMAandETS}
