@@ -123,28 +123,26 @@ The question of appropriate transformations for variables in the model is challe
     y_t = a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + \epsilon_t,
     (\#eq:additiveModel)
 \end{equation}
-and
+with
 \begin{equation}
     y_t = \exp\left(a_0 + a_1 x_{1,t} + \dots + a_n x_{n,t} + \epsilon_t\right) .
     (\#eq:multiplicativeModel)
 \end{equation}
-\@ref(eq:multiplicativeModel) is equivalent to the so called "log-linear" model, but can also include logarithms of explanatory variables instead of the variables themselves if needed.
+\@ref(eq:multiplicativeModel) is equivalent to the so called "log-linear" model, but can also include logarithms of explanatory variables instead of the variables themselves to become "log-log" model. Fundamentally, the transformations of variables should be done based on understanding of the problem rather than on technicalities.
 
-There are different ways to diagnose the problem with wrong transformations. The first one is the actuals vs fitted plot (Figure \@ref(fig:adamSeat03ActualsFitted)):
+There are different ways of diagnosing the problem with wrong transformations. The first one is the actuals vs fitted plot (Figure \@ref(fig:adamSeat03ActualsFitted)):
 
 ```{r adamSeat03ActualsFitted, fig.cap="Actuals vs Fitted for Model 3."}
-plot(adamSeat03, 1, main="")
+plot(adamSeat03, which=1, main="")
 ```
 
 The grey dashed line on the plot in Figure \@ref(fig:adamSeat03ActualsFitted) corresponds to the situation when actuals and fitted coincide (100% fit). The red line on the plot is the LOWESS line [@Cleveland1979], produced by the `lowess()` function in R, smoothing the scatterplot to reflect the potential tendencies in the data. This red line should coincide with the grey line in the ideal situation. In addition, the variability around the line should not change with the increase of fitted values. In our case, there is a slight U-shape in the red line and a slight rise in variability around the middle of the data. This could either be due to pure randomness and thus should be ignored or indicate a slight non-linearity in the data. After all, we have constructed a pure additive model on the data that exhibits seasonality with multiplicative characteristics, which becomes especially apparent at the end of the series, where the drop in level is accompanied by the decrease of the variability of the data (Figure \@ref(fig:adamSeat03LinearPlot)):
 
 ```{r adamSeat03LinearPlot, fig.cap="Actuals and Fitted values for Model 3."}
-plot(adamSeat03, 7, main="")
+plot(adamSeat03, which=7, main="")
 ```
 
-To diagnose this properly, we might use other instruments. One of these is the analysis of standardised residuals.
-
-The formula for the standardised residuals $u_t$ will differ depending on the assumed distribution and for some of them comes to the value inside the "$\exp$" part of the probability density function:
+To diagnose this properly, we might use other instruments. One of these is the analysis of standardised residuals. The formula for the standardised residuals $u_t$ will differ depending on the assumed distribution and for some of them comes to the value inside the "$\exp$" part of the Probability Density Function:
 
 1. Normal, $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$: $u_t = \frac{e_t -\bar{e}}{\hat{\sigma}}$;
 2. Laplace, $\epsilon_t \sim \mathcal{Laplace}(0, s)$: $u_t = \frac{e_t -\bar{e}}{\hat{s}}$;
@@ -154,23 +152,23 @@ The formula for the standardised residuals $u_t$ will differ depending on the as
 6. Gamma, $1+\epsilon_t \sim \mathcal{\Gamma}(\sigma^{-2}, \sigma^2)$: $u_t = \frac{1+e_t}{\bar{e}}$;
 7. Log Normal, $1+\epsilon_t \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$: $u_t = \frac{e_t -\bar{e} +\frac{\hat{\sigma}^2}{2}}{\hat{\sigma}}$.
 
-Here $\bar{e}$ is the mean of residuals, which is typically assumed to be zero, and $u_t$ is the value of standardised residuals. Note that the scales in the formulae above should be calculated via the formula with the bias correction, i.e. with the division by degrees of freedom, not the number of observations. Also, note that in the case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$ and additive error models, the formulae for the standardised residuals will be the same, only the assumptions will change (see Section \@ref(ADAMETSAdditiveDistributions)).
+Here $\bar{e}$ is the mean of residuals, which is typically assumed to be zero, and $u_t$ is the value of standardised residuals. Note that the scales in the formulae above should be calculated via the formula with the bias correction, i.e. with the division by degrees of freedom, not the number of observations, otherwise the bias of scale might impact the standardised residuals. Also, note that in the cases of the Inverse Gaussian, Gamma and Log-Normal distributions and the additive error, the formulae for the standardised residuals will be the same as shown above.
 
-Here is an example of a plot of fitted vs standardised residuals in R (Figure \@ref(fig:adamSeat03Resid)):
+The standardised residuals can then be plotted against something else to do diagnostics of the model. Here is an example of a plot of fitted vs standardised residuals in R (Figure \@ref(fig:adamSeat03Resid)):
 
 ```{r adamSeat03Resid, fig.cap="Standardised residuals vs Fitted for pure additive ETSX model."}
-plot(adamSeat03, 2, main="")
+plot(adamSeat03, which=2, main="")
 ```
 
-Given that the scale of the original variable is now removed in the standardised residuals, it might be easier to spot the non-linearity. In our case, in Figure \@ref(fig:adamSeat03Resid), it is still not apparent, but there is a slight curvature in the LOWESS line and a slight change in the variance. Another plot that we have already used before is standardised residuals over time (Figure \@ref(fig:adamSeat03ResidTime)):
+Given that the scale of the original variable is now removed in the standardised residuals, it might be easier to spot the non-linearity. In our case, in Figure \@ref(fig:adamSeat03Resid), it is still not apparent, but there is a slight curvature in the LOWESS line and a slight change in the variance: the variability in the beginning of the plot seems to be lower than the variability in the middle. Another plot that might be helpful (we have already used it before) is standardised residuals over time (Figure \@ref(fig:adamSeat03ResidTime)):
 
 ```{r adamSeat03ResidTime, fig.cap="Standardised residuals vs Time for pure additive ETSX model."}
-plot(adamSeat03, 8, main="")
+plot(adamSeat03, which=8, main="")
 ```
 
 The plot in Figure \@ref(fig:adamSeat03ResidTime) does not show any apparent non-linearity in the residuals, so it is not clear whether any transformations are needed or not.
 
-However, based on my judgment and understanding of the problem, I would expect the number of injuries and deaths to change proportionally to the change of the level of the data. If, after some external interventions, the overall level of injuries and deaths would decrease, we would expect a percentage decline, not a unit decline with a change of already existing variables in the model. This is why I will try a multiplicative model next (transforming explanatory variables as well):
+However, based on my judgment and understanding of the problem, I would expect the number of injuries and deaths to change proportionally to the change of the level of the data. If, after some external interventions, the overall level of injuries and deaths would decrease, then with a change of already existing variables in the model, we would expect a percentage decline, not a unit decline. This is why I will try a multiplicative model next (transforming explanatory variables as well):
 
 ```{r adamSeat05Resid, fig.cap="Standardised residuals vs Fitted for pure multiplicative ETSX model."}
 adamSeat05 <- adam(Seatbelts, "MNM",
@@ -178,7 +176,7 @@ adamSeat05 <- adam(Seatbelts, "MNM",
 plot(adamSeat05, 2, main="")
 ```
 
-The plot in Figure \@ref(fig:adamSeat05Resid) shows that the variability is now slightly more uniform across all fitted values, but the difference between Figures \@ref(fig:adamSeat03Resid) and \@ref(fig:adamSeat05Resid) is not very prominent. One of the potential solutions in this situation is to compare the models in terms of information criteria:
+The plot in Figure \@ref(fig:adamSeat05Resid) shows that the variability is now slightly more uniform across all fitted values, but the difference between Figures \@ref(fig:adamSeat03Resid) and \@ref(fig:adamSeat05Resid) is not very prominent. One of the potential ways of deciding what to choose in this situation is to compare the models using information criteria:
 ```{r}
 setNames(c(AICc(adamSeat03), AICc(adamSeat05)),
          c("Additive model", "Multiplicative model"))
