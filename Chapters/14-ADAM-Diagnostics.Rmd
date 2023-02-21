@@ -189,49 +189,55 @@ Finally, the non-linear transformations are not limited with logarithm only, the
 
 
 ## Model specification: Outliers {#diagnosticsOutliers}
-One of the important assumptions in forecasting and analytics is the correct specification of the model, which implies that there are no outliers in the model. They might appear for several reasons:
+In statistics, it is assumed that if the model is correctly specified then it does not have influential outliers. This means that there are no observations that cannot be explained by the model and the variability around it. If they happen then this might mean that:
 
 1. We missed some important information (e.g. promotion) and did not include a respective variable in the model;
-2. There was an error in recordings of the data, i.e. a value of 2000 was recorded as 200;
-3. We did not miss anything predictable, we just dealt with a distribution with fat tails.
+2. There was an error in recordings of the data, e.g. a value of 2000 was recorded as 200;
+3. We did not miss anything predictable, we just face a distribution with fat tails (i.e. we assumed a wrong distribution).
 
-In any of these cases, outliers might impact estimates of parameters of our models. With ETS, this will lead to higher than needed smoothing parameters, which leads to wider prediction intervals and potentially biased forecasts. In the case of ARIMA, the mechanism is more complicated, leading to widened intervals and biased forecasts. Finally, in regression, they might lead to biased estimates of parameters. So, it is important to identify outliers and deal with them.
+In any of these cases, outliers might impact estimates of parameters of our model. With ETS, this might lead to higher than needed smoothing parameters, which in turn results in wider than needed prediction intervals and potentially biased forecasts. In case of ARIMA, the mechanism is more complicated, still usually leading to widened intervals and biased forecasts. Finally, in regression, they might lead to biased estimates of parameters. So, it is important to identify outliers and deal with them.
 
 ### Outliers detection
-One of the simplest ways of identifying outliers is based on distributional assumptions. For example, if we assume that our data follows the Normal distribution, we would expect 95% of observations to lie inside the bounds with approximately $\pm 1.96\sigma$ and 99.8% of them to lie inside the $\pm 3.09 \sigma$. Sometimes these values are substituted by heuristics "values lying inside 2 / 3 sigmas", which is not precise and works only for Normal distribution. Still, based on this, we could flag the values outside these bounds and investigate them to see if any of them are indeed outliers.
+While it is possible to do preliminary analysis of the data and analyse distribution of the variable of interest, this does not allow identifying the outliers. This is because the simple univariate analysis (e.g. using boxplots) assumes that the variable has a fixed mean and a fixed distribution. This is violated by any model which has either dynamic element or explanatory variables in it. So, the detection should be done based on residuals of an applied model.
 
-Given that the ADAM framework supports different distributions, the heuristics mentioned above is inappropriate. We need to get proper quantiles for each of the assumed distributions. Luckily, this is not difficult because the quantile functions for all the distributions supported by ADAM either have analytical forms or can be obtained numerically.
+One of the simplest ways of identifying outliers relies on distributional assumptions about the residuals and/or the response variable. For example, if we assume that our data follows the Normal distribution, we would expect 95% of observations to lie inside the bounds with approximately $\pm 1.96\sigma$ and 99.8% of them to lie inside the $\pm 3.09 \sigma$. Sometimes these values are substituted by heuristics "values lying inside 2/3 sigmas", which is not precise and works only for Normal distribution. Still, based on this, we could flag the values outside these bounds and investigate them to see if any of them are indeed outliers.
+
+::: remark
+If some observations lie outside these bounds, they are not necessarily outliers: building 95% confidence interval always implies that approximately 5% of observations will lie outside the bounds.
+:::
+
+Given that the ADAM supports different distributions, the heuristics mentioned above in general is inappropriate. We need to get proper quantiles for each of the assumed distributions. Luckily, this is not difficult because the quantile functions for all the distributions supported by ADAM either have analytical forms or can be obtained numerically.
 
 Here is an example in R with the same multiplicative ETSX model and the standardised residuals vs fitted values with the 95% bounds (Figure \@ref(fig:adamSeat05ResidFitted)):
 
 ```{r adamSeat05ResidFitted, fig.cap="Standardised residuals vs Fitted for the pure multiplicative ETSX model."}
-plot(adamSeat05, 2, level=0.95, main="")
+plot(adamSeat05, which=2, level=0.95, main="")
 ```
 
 ::: remark
-In the case of $\mathcal{IG}$, $\Gamma$ and $\mathrm{log}\mathcal{N}$, the function will plot $\log u_t$ to make the plot more readable.
+In the case of Inverse Gaussian, Gamma and Log-Normal distributions, the function will produce the residuals in logarithms to make the plot more readable.
 :::
 
-The plot in Figure \@ref(fig:adamSeat05ResidFitted) demonstrates that there are outliers, some of which are further away from the bounds. Although the amount of outliers is not large, it would make sense to investigate why they happened.
+The plot in Figure \@ref(fig:adamSeat05ResidFitted) demonstrates that there are outliers, some of which are further away from the bounds. Although the amount of outliers is not large (it is roughly 5% of our sample), it would make sense to investigate why they happened.
 
 Given that we deal with time series, plotting residuals vs time is also sometimes helpful (Figure \@ref(fig:adamSeat05ResidTime)):
 
 ```{r adamSeat05ResidTime, fig.cap="Standardised residuals vs Time for the pure multiplicative ETSX model."}
-plot(adamSeat05, 8, main="")
+plot(adamSeat05, which=8, main="")
 ```
 
-We see in Figure \@ref(fig:adamSeat05ResidTime) that there is no specific pattern in the outliers, they happen randomly, so they appear not because of the omitted variables or wrong transformations. We have nine observations lying outside the bounds, which given that the sample size of 192 observations, means that the 95% interval contains $\frac{192-9}{192} \times 100 \% \approx 95.3 \%$ of observations, which is close to the nominal value.
+We see in Figure \@ref(fig:adamSeat05ResidTime) that there is no specific pattern in the outliers, they happen randomly, so they appear not because of the omitted variables or wrong transformations. We have nine observations lying outside the bounds, which means that the 95% interval contains $\frac{192-9}{192} \times 100 \% \approx 95.3 \%$ of observations (192 is the sample size). This is close to the nominal value.
 
-In some cases, the outliers might impact the scale of distribution and will lead to wrong standardised residuals, distorting the picture. This is where studentised residuals come into play. They are calculated similarly to the standardised ones, but the scale of distribution is recalculated for each observation by considering errors on all but the current observation. So, in a general case, this is an iterative procedure that involves looking through $t=\{1,\dots,T\}$ and that should, in theory, guarantee that the real outliers do not impact the scale of distribution. This procedure is simplified for the Normal distribution and has an analytical solution. We do not discuss it in the context of ADAM. Here is how they can be analysed in R:
+In some cases, the outliers might impact the scale of distribution and will lead to wrong standardised residuals, distorting the picture. This is where **studentised residuals** come into play. They are calculated similarly to the standardised ones, but the scale of distribution is recalculated for each observation by considering errors on all but the current observation. So, in a general case, this is an iterative procedure that involves looking through $t=\{1,\dots,T\}$ and that should, in theory, guarantee that the real outliers do not impact the scale of distribution. This procedure is simplified for the Normal distribution and has an analytical solution. We do not discuss it in the context of ADAM. Here is how they can be analysed in R:
 
 ```{r adamSeat05Student, fig.cap="Studentised residuals analysis for the pure multiplicative ETSX model."}
 par(mfcol=c(2,1), mar=c(4,4,2,0))
-plot(adamSeat05, c(3,9))
+plot(adamSeat05, which=c(3,9))
 ```
 
-In many cases (ours included), the standardised and studentised residuals will look very alike, having a similar amount of outliers. But in some cases of extreme outliers, they might differ, and the latter might show outliers better than the former.
+In many cases (ours included), the standardised and studentised residuals will look very simila. But in some cases of extreme outliers, they might differ, and the latter might show outliers better than the former.
 
-Given the situation with outliers in our case, we could investigate when they happen in the original data to understand better whether they need to be taken care of. But instead of manually recording which of the observations lie beyond the bounds, we can get their ids via the `outlierdummy` method from the package `greybox`, which extracts either standardised or studentised residuals and flags those observations that lie outside the constructed interval, automatically creating dummy variables for these observations. Here is how it works:
+Given the situation with outliers in our case, we could investigate when they happen in the original data to understand better whether they need to be taken care of. But instead of manually recording which of the observations lie beyond the bounds, we can get their ids via the `outlierdummy()` method from the `greybox` package, which extracts either standardised or studentised residuals (depending on what we want) and flags those observations that lie outside the constructed interval, automatically creating dummy variables for these observations. Here is how it works:
 ```{r}
 adamSeat05Outliers <-
   outlierdummy(adamSeat05,
@@ -247,14 +253,15 @@ These ids can be used to produce additional plots. For example:
 
 ```{r adamSeat05Outliers, fig.cap="Actuals over time with points corresponding to outliers of the pure multiplicative ETSX model."}
 # Plot actuals
-plot(actuals(adamSeat05))
+plot(actuals(adamSeat05), main="Drivers injured")
+# Add fitted
 lines(fitted(adamSeat05),col="grey")
 # Add points for the outliers
-points(time(Seatbelts[,"drivers"])[adamSeat05Outliers$id],
+points(time(Seatbelts)[adamSeat05Outliers$id],
        Seatbelts[adamSeat05Outliers$id,"drivers"],
        col="red", pch=16)
 # Add the text with ids of outliers
-text(time(Seatbelts[,"drivers"])[adamSeat05Outliers$id],
+text(time(Seatbelts)[adamSeat05Outliers$id],
      Seatbelts[adamSeat05Outliers$id,"drivers"],
      adamSeat05Outliers$id, col="red", pos=2)
 ```
@@ -265,7 +272,7 @@ We cannot see any peculiarities in the appearance of outliers in Figure \@ref(fi
 ::: remark
 As a side note, in R, there are several methods for extracting residuals:
 
-- `resid()` or `residuals()` will extract either $e_t$ or $1+e_t$, depending on the distributional assumptions of the model;
+- `resid()` or `residuals()` will extract either $e_t$ or $1+e_t$, depending on the error type in the model;
 - `rstandard()` will extract the standardised residuals $u_t$;
 - `rstudent()` will do the same for the studentised ones.
 
