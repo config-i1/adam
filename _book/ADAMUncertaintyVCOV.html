@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-02-23" />
+<meta name="date" content="2023-02-25" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -592,16 +592,16 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ADAMUncertaintyVCOV" class="section level2 hasAnchor" number="16.1">
 <h2><span class="header-section-number">16.1</span> Covariance matrix of parameters<a href="ADAMUncertaintyVCOV.html#ADAMUncertaintyVCOV" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of the covariance matrix of parameters. The covariance matrix that is typically calculated in regression context is based on the assumption of normality and can be derived based on the maximum likelihood estimate of parameters. It relies on the “Fisher Information”, which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of the likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point to understand what impact each of the parameters has on it. If we calculate the Hessian matrix and have Fisher Information, then using Cramer-Rao bound <span class="citation">(<a href="#ref-WikipediaCramerRaoBound" role="doc-biblioref">Wikipedia, 2021j</a>)</span>, the true variance of parameters will be greater or equal to the inverse of Fisher Information:
+<p>One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of the covariance matrix of parameters. The covariance matrix that is typically calculated in regression context is based on the assumption of normality and can be derived based on the maximum likelihood estimate of parameters. It relies on the “Fisher Information”, which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of the likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point to understand what impact each of the parameters has on it. If we calculate the Hessian matrix and have Fisher Information, then using Cramer-Rao bound <span class="citation">(<a href="#ref-WikipediaCramerRaoBound" role="doc-biblioref">Wikipedia, 2021g</a>)</span>, the true variance of parameters will be greater or equal to the inverse of Fisher Information:
 <span class="math display" id="eq:FICovariance">\[\begin{equation}
     \mathrm{V}(\hat{\theta_j}) \geq \frac{1}{\mathrm{FI}(\hat{\theta_j})} ,
     \tag{16.1}
 \end{equation}\]</span>
 where <span class="math inline">\(\theta_j\)</span> is the parameter under consideration. The property <a href="ADAMUncertaintyVCOV.html#eq:FICovariance">(16.1)</a> can then be used for the calculation of the covariance matrix of parameters. While in case of regression this calculation has an analytical solution, in case of ETS and ARIMA, this can only be done via numeric methods, because the models rely on recursive relations.</p>
 <p>In R, an efficient calculation of Hessian can be done via the <code>hessian()</code> function from the <code>pracma</code> package. In <code>smooth</code> there is a method <code>vcov()</code> that does all the calculations, estimating the negative Hessian inside the <code>adam()</code> and then inverts the result. Here is an example of how this works:</p>
-<div class="sourceCode" id="cb350"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb350-1"><a href="ADAMUncertaintyVCOV.html#cb350-1" aria-hidden="true" tabindex="-1"></a>adamETSBJ <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb350-2"><a href="ADAMUncertaintyVCOV.html#cb350-2" aria-hidden="true" tabindex="-1"></a>adamETSBJVcov <span class="ot">&lt;-</span> <span class="fu">vcov</span>(adamETSBJ)</span>
-<span id="cb350-3"><a href="ADAMUncertaintyVCOV.html#cb350-3" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamETSBJVcov, <span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb349"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb349-1"><a href="ADAMUncertaintyVCOV.html#cb349-1" aria-hidden="true" tabindex="-1"></a>adamETSBJ <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
+<span id="cb349-2"><a href="ADAMUncertaintyVCOV.html#cb349-2" aria-hidden="true" tabindex="-1"></a>adamETSBJVcov <span class="ot">&lt;-</span> <span class="fu">vcov</span>(adamETSBJ)</span>
+<span id="cb349-3"><a href="ADAMUncertaintyVCOV.html#cb349-3" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamETSBJVcov, <span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##        alpha   beta    phi   level   trend
 ## alpha  0.013 -0.010  0.007  -0.206   0.167
 ## beta  -0.010  0.019 -0.014   0.470  -0.376
@@ -609,7 +609,7 @@ where <span class="math inline">\(\theta_j\)</span> is the parameter under consi
 ## level -0.206  0.470 -0.482  22.287 -16.158
 ## trend  0.167 -0.376  0.389 -16.158  12.704</code></pre>
 <p>The precision of the estimate will depend on the closeness of the likelihood function to its maximum in the estimated parameters. If the likelihood was not properly maximised and the function stopped prematurely, then the covariance matrix might be incorrect and contain errors. Out of curiosity, we could calculate the correlation matrix of the estimated parameters:</p>
-<div class="sourceCode" id="cb352"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb352-1"><a href="ADAMUncertaintyVCOV.html#cb352-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cov2cor</span>(adamETSBJVcov), <span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb351"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb351-1"><a href="ADAMUncertaintyVCOV.html#cb351-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cov2cor</span>(adamETSBJVcov), <span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##        alpha   beta    phi  level  trend
 ## alpha  1.000 -0.657  0.467 -0.381  0.410
 ## beta  -0.657  1.000 -0.803  0.714 -0.757
@@ -625,24 +625,24 @@ where <span class="math inline">\(\theta_j\)</span> is the parameter under consi
 <h3><span class="header-section-number">16.1.1</span> Bootstrapped covariance matrix<a href="ADAMUncertaintyVCOV.html#bootstrapped-covariance-matrix" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>An alternative way of constructing the matrix is via the bootstrap. The one implemented in <code>smooth</code> is based on the <code>coefbootstrap()</code> method from the <code>greybox</code> package, which implements the modified case resampling. It is less efficient than the Fisher Information method in terms of computational time and works only for larger samples. The algorithm implemented in the function uses a continuous sub-sample of the original data, starting from the initial point <span class="math inline">\(t=1\)</span> (if backcasting is used, as discussed in Section <a href="ADAMInitialisation.html#ADAMInitialisationOptAndBack">11.4.1</a>, then the starting point will be allowed to vary). This sub-sample is then used to re-estimate <code>adam()</code> to get the empirical estimates of parameters. The procedure is repeated <code>nsim</code> times, which for <code>adam()</code> is by default equal to 100. This approach is far from ideal and will typically lead to the underestimated variance of initials because of the sample size restrictions. Still, it does not break the data structure and allows obtaining results relatively fast without imposing any additional assumptions on the model and the data. I recommend using it in case of the initialisation via backcasting.</p>
 <p>Here is an example of how the function works on the data above – it is possible to speed up the process by doing parallel calculations:</p>
-<div class="sourceCode" id="cb354"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb354-1"><a href="ADAMUncertaintyVCOV.html#cb354-1" aria-hidden="true" tabindex="-1"></a>adamETSBJBoot <span class="ot">&lt;-</span> <span class="fu">coefbootstrap</span>(adamETSBJ, <span class="at">parallel=</span><span class="cn">TRUE</span>)</span>
-<span id="cb354-2"><a href="ADAMUncertaintyVCOV.html#cb354-2" aria-hidden="true" tabindex="-1"></a>adamETSBJBoot</span></code></pre></div>
+<div class="sourceCode" id="cb353"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb353-1"><a href="ADAMUncertaintyVCOV.html#cb353-1" aria-hidden="true" tabindex="-1"></a>adamETSBJBoot <span class="ot">&lt;-</span> <span class="fu">coefbootstrap</span>(adamETSBJ, <span class="at">parallel=</span><span class="cn">TRUE</span>)</span>
+<span id="cb353-2"><a href="ADAMUncertaintyVCOV.html#cb353-2" aria-hidden="true" tabindex="-1"></a>adamETSBJBoot</span></code></pre></div>
 <pre><code>## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.66 seconds</code></pre>
+## Time elapsed: 0.57 seconds</code></pre>
 <p>The covariance matrix can then be extracted from the result via <code>adamETSBJBoot$vcov</code>. The same procedure is used in <code>vcov()</code> method if <code>bootstrap=TRUE</code>:</p>
-<div class="sourceCode" id="cb356"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb356-1"><a href="ADAMUncertaintyVCOV.html#cb356-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">vcov</span>(adamETSBJ, <span class="at">bootstrap=</span><span class="cn">TRUE</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>), <span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb355"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb355-1"><a href="ADAMUncertaintyVCOV.html#cb355-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">vcov</span>(adamETSBJ, <span class="at">bootstrap=</span><span class="cn">TRUE</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>), <span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##        alpha   beta    phi  level  trend
-## alpha  0.027  0.003  0.004  0.029 -0.036
-## beta   0.003  0.011 -0.001 -0.013  0.026
-## phi    0.004 -0.001  0.013  0.056 -0.061
-## level  0.029 -0.013  0.056  0.523 -0.700
-## trend -0.036  0.026 -0.061 -0.700  1.016</code></pre>
+## alpha  0.027  0.003  0.003  0.017 -0.025
+## beta   0.003  0.005 -0.001 -0.008  0.017
+## phi    0.003 -0.001  0.012  0.061 -0.066
+## level  0.017 -0.008  0.061  0.548 -0.723
+## trend -0.025  0.017 -0.066 -0.723  1.029</code></pre>
 </div>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
 <div id="ref-WikipediaCramerRaoBound" class="csl-entry">
-• Wikipedia, 2021j. <span class="nocase">Cramér–Rao bound</span>. <a href="https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound">https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound</a> (version: 2021-07-18)
+• Wikipedia, 2021g. <span class="nocase">Cramér–Rao bound</span>. <a href="https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound">https://en.wikipedia.org/wiki/Cram%C3%A9r%E2%80%93Rao_bound</a> (version: 2021-07-18)
 </div>
 </div>
 
