@@ -497,13 +497,13 @@ div.csl-indent {
 </ul></li>
 <li class="chapter" data-level="15" data-path="ADAMSelection.html"><a href="ADAMSelection.html"><i class="fa fa-check"></i><b>15</b> Model selection and combinations in ADAM</a>
 <ul>
-<li class="chapter" data-level="15.1" data-path="ETSSelection.html"><a href="ETSSelection.html"><i class="fa fa-check"></i><b>15.1</b> ADAM ETS components selection</a></li>
-<li class="chapter" data-level="15.2" data-path="ARIMASelection.html"><a href="ARIMASelection.html"><i class="fa fa-check"></i><b>15.2</b> ADAM ARIMA order selection</a>
+<li class="chapter" data-level="15.1" data-path="ETSSelection.html"><a href="ETSSelection.html"><i class="fa fa-check"></i><b>15.1</b> ETS components selection</a></li>
+<li class="chapter" data-level="15.2" data-path="ARIMASelection.html"><a href="ARIMASelection.html"><i class="fa fa-check"></i><b>15.2</b> ARIMA order selection</a>
 <ul>
 <li class="chapter" data-level="15.2.1" data-path="ARIMASelection.html"><a href="ARIMASelection.html#ets-arima-restrictions"><i class="fa fa-check"></i><b>15.2.1</b> ETS + ARIMA restrictions</a></li>
 </ul></li>
 <li class="chapter" data-level="15.3" data-path="ETSXSelection.html"><a href="ETSXSelection.html"><i class="fa fa-check"></i><b>15.3</b> Explanatory variables selection</a></li>
-<li class="chapter" data-level="15.4" data-path="ADAMCombinations.html"><a href="ADAMCombinations.html"><i class="fa fa-check"></i><b>15.4</b> Forecasts combinations in ADAM</a>
+<li class="chapter" data-level="15.4" data-path="ADAMCombinations.html"><a href="ADAMCombinations.html"><i class="fa fa-check"></i><b>15.4</b> Forecasts combinations</a>
 <ul>
 <li class="chapter" data-level="15.4.1" data-path="ADAMCombinations.html"><a href="ADAMCombinations.html#other-combination-approaches"><i class="fa fa-check"></i><b>15.4.1</b> Other combination approaches</a></li>
 </ul></li>
@@ -597,20 +597,19 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ADAMSelection" class="section level1 hasAnchor" number="15">
 <h1><span class="header-section-number">Chapter 15</span> Model selection and combinations in ADAM<a href="ADAMSelection.html#ADAMSelection" class="anchor-section" aria-label="Anchor link to header"></a></h1>
-<p>So far, we have managed to avoid discussing the topic of model selection and combinations. However, it is important to understand how to select the most appropriate model and capture the uncertainty around the selection <span class="citation">(see discussion of sources of uncertainty in Section 1.4 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022</a>)</span>. There are several ways to decide which model to use, and there are several dimensions in which a decision needs to be made:</p>
+<p>So far, we have managed to avoid discussing the topic of model selection and combinations. However, it is important to understand how the most appropriate model can be selected and how to capture the uncertainty around the model form <span class="citation">(this comes to one of the fundamental sources of uncertainty discussed by <a href="#ref-Chatfield1996" role="doc-biblioref">Chatfield, 1996</a>)</span>. There are several ways to decide which model to use, and there are several dimensions in which a decision needs to be made:</p>
 <ol style="list-style-type: decimal">
-<li>Which of the models to use: ETS / ARIMA / ETS+ARIMA / Regression / ETSX / ARIMAX / ETSX+ARIMA?</li>
+<li>Which of the base models to use: ETS / ARIMA / ETS+ARIMA / Regression / ETSX / ARIMAX / ETSX+ARIMA?</li>
 <li>What components of the ETS model to select?</li>
 <li>What order of ARIMA model to select?</li>
 <li>Which of the explanatory variables to use?</li>
 <li>What distribution to use?</li>
-<li>Should we select the model or combine forecasts from different ones?</li>
+<li>Should we select the best model or combine forecasts from different ones?</li>
 <li>Do we need all models in the pool?</li>
-<li>How should we do all the above?</li>
 <li>What about the demand occurrence part of the model? (luckily, this question has already been answered in Subsection <a href="ADAMOccurrence.html#oETSModelSelection">13.1.6</a>).</li>
 </ol>
-<p>In this chapter, we discuss these questions. We start with principles based on information criteria <span class="citation">(addressed in Chapter 16 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022</a>)</span> for ETS and ARIMA. We then move to selecting explanatory variables and finish with topics related to the combination of models.</p>
-<p>Before we do that, we need to recall the distributional assumptions in ADAM, which play an essential role if the model is estimated via the maximisation of the likelihood function (Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>). In this case, an information criterion (IC) can be calculated and used for the selection of the most appropriate model. Based on this, we can fit several ADAMs with different distributions and then select the one that leads to the lowest IC. Here is the list of the supported distributions in ADAM:</p>
+<p>In this chapter, we discuss these questions. We start with principles based on information criteria <span class="citation">(see discussion in Chapter 16 of <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022</a>)</span> for ETS and ARIMA. We then move to selecting explanatory variables and finish with topics related to the combination of models.</p>
+<p>Before we do that, we need to recall the distributional assumptions in ADAM, which play an essential role in estimation and selection if the maximum likelihood is used (Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>). In that case, an information criterion (IC) can be calculated and used for the selection of the most appropriate model across the eight dimensions mentioned above. Typically, this is done by fitting all the candidate models and then selecting the one that has the lowest IC. For example, when a best fitting distribution needs to be selected, we could fit ADAMs with all the supported distributions and then select the one that gives the lowest AIC. Here is the list of the supported distributions in ADAM:</p>
 <ul>
 <li>Normal;</li>
 <li>Laplace;</li>
@@ -620,11 +619,9 @@ div.csl-indent {
 <li>Inverse Gaussian;</li>
 <li>Gamma.</li>
 </ul>
-<p>The function <code>auto.adam()</code> implements this automatic selection of distribution based on IC for the provided vector of <code>distribution</code> by a user. This selection procedure can be combined with other selection techniques for different elements of the ADAM discussed in the following sections of the monograph.</p>
-<p>Here is an example of selection of distribution for a specific model, ETS(M,M,N) on Box-Jenkins data using <code>auto.adam()</code>:</p>
-<div class="sourceCode" id="cb326"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb326-1"><a href="ADAMSelection.html#cb326-1" aria-hidden="true" tabindex="-1"></a>adamAutoETSBJ <span class="ot">&lt;-</span> <span class="fu">auto.adam</span>(BJsales, <span class="at">model=</span><span class="st">&quot;MMN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb326-2"><a href="ADAMSelection.html#cb326-2" aria-hidden="true" tabindex="-1"></a>adamAutoETSBJ</span></code></pre></div>
-<pre><code>## Time elapsed: 0.23 seconds
+<p>The function <code>auto.adam()</code> implements this automatic selection of distribution based on IC for the provided vector of <code>distribution</code> by a user. This selection procedure can be combined with other selection techniques for different elements of the ADAM discussed in the following sections of this chapter. Here is an example of selection of distribution for a specific model, ETS(M,M,N) on Box-Jenkins data using <code>auto.adam()</code>:</p>
+<div class="sourceCode" id="cb326"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb326-1"><a href="ADAMSelection.html#cb326-1" aria-hidden="true" tabindex="-1"></a><span class="fu">auto.adam</span>(BJsales, <span class="at">model=</span><span class="st">&quot;MMN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<pre><code>## Time elapsed: 0.24 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 245.3716
@@ -643,10 +640,13 @@ div.csl-indent {
 ## ME: 3.219; MAE: 3.332; RMSE: 3.786
 ## sCE: 14.133%; Asymmetry: 91.6%; sMAE: 1.463%; sMSE: 0.028%
 ## MASE: 2.819; RMSSE: 2.484; rMAE: 0.925; rRMSE: 0.922</code></pre>
-<p>In this case, the function has applied one and the same model but with different distributions, estimated it using likelihood and selected the one that has the lowest AICc value. It looks like Log-Normal is the most appropriate distribution for ETS(M,M,N) on this data.</p>
+<p>In this case, the function has applied one and the same model but with different distributions, estimated each one of them using likelihood and selected the one that has the lowest AICc value. It looks like Log-Normal is the most appropriate distribution for ETS(M,M,N) on this data.</p>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-Chatfield1996" class="csl-entry">
+• Chatfield, C., 1996. <span class="nocase">Model uncertainty and forecast accuracy</span>. Journal of Forecasting. 15, 495–508. <a href="https://doi.org/10.1002/(SICI)1099-131X(199612)15:7&lt;495::AID-FOR640&gt;3.3.CO;2-F">https://doi.org/10.1002/(SICI)1099-131X(199612)15:7&lt;495::AID-FOR640&gt;3.3.CO;2-F</a>
+</div>
 <div id="ref-SvetunkovSBA" class="csl-entry">
 • Svetunkov, I., 2022. Statistics for business analytics. <a href="https://openforecast.org/sba/">https://openforecast.org/sba/</a> (version: 31.10.2022)
 </div>
