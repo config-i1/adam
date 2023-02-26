@@ -575,12 +575,14 @@ As the plot in Figure \@ref(fig:adamSeat05Multistep) demonstrates, the mean of t
 
 
 ## Residuals are i.i.d.: distributional assumptions {#diagnosticsResidualsIIDDistribution}
-Finally, we come to the distributional assumptions of ADAM. As discussed earlier (for example, in Section \@ref(ADAMETSEstimationLikelihood)), the ADAM framework supports several distributions. The specific parts of assumptions will change depending on the type of error term in the model. Given that, it is relatively straightforward to see if the residuals of the model follow the assumed distribution or not. There exist several tools for that.
+Finally, we come to the distributional assumptions of ADAM. If we use a wrong distribution than we might get incorrect estimates of parameters and we might end up with miscallibrated prediction intervals (i.e. quantiles from model will differ from the theoretical ones substantially).
+
+As discussed earlier (for example, in Section \@ref(ADAMETSEstimationLikelihood)), the ADAM framework supports several distributions. The specific parts of assumptions will change depending on the type of error term in the model. Given that, it is relatively straightforward to see if the residuals of the model follow the assumed distribution or not, there exist several tools for that.
 
 The simplest one is called Quantile-Quantile (QQ) plot. It produces a figure with theoretical vs actual quantiles and shows whether they are close to each other or not. Here is, for example, how the QQ plot will look for one of the previous models, assuming Normal distribution (Figure \@ref(fig:adamSeat03QQ)):
 
 ```{r adamSeat03QQ, fig.cap="QQ plot of residuals extracted from model 3."}
-plot(adamSeat03, 6)
+plot(adamSeat03, which=6)
 ```
 
 If the residuals do not contradict the assumed distribution, all the points should lie either very close to or on the line. In our case, in Figure \@ref(fig:adamSeat03QQ), most points are close to the line, but the tails (especially the right one) are slightly off. This might mean that we should either use a different error type or a different distribution. Just for the sake of argument, we can try ETSX(M,N,M) model, with the same set of explanatory variables as in the model `adamSeat03`, and with the same Normal distribution:
@@ -589,27 +591,27 @@ If the residuals do not contradict the assumed distribution, all the points shou
 adamSeat16 <- adam(Seatbelts, "MNM",
                    formula=drivers~log(PetrolPrice)+log(kms)+law,
                    distribution="dnorm")
-plot(adamSeat16, 6)
+plot(adamSeat05, which=6)
 ```
 
-According to the QQ plot in Figure \@ref(fig:adamSeat16QQ), the residuals of the new model are much closer to the theoretical ones. Only the right tail has a slight deviation from normality -- the actual values are a bit further away than expected. This can be addressed by using a skewed distribution, for example, Gamma:
+According to the QQ plot in Figure \@ref(fig:adamSeat16QQ), the residuals of the new model are still not very close to the theoretical ones. The tails have a slight deviation from normality: both of them are slightly shorter than expected. If our aim is to capture the distribution correctly then this can be addressed by using a Generalised Normal distribution with a higher `shape` parameter, which will have lighter tails. Hopefully, ADAM can estimate the shape parameters correctly in our case:
 
 ```{r adamSeat17QQ, fig.cap="QQ plot of residuals extracted from the multiplicative model with Gamma distribution."}
 adamSeat17 <- adam(Seatbelts, "MNM",
                    formula=drivers~log(PetrolPrice)+log(kms)+law,
-                   distribution="dinvgauss")
+                   distribution="dgnorm")
 plot(adamSeat17, 6)
 ```
 
-The QQ plot in Figure \@ref(fig:adamSeat17QQ) does not demonstrate any significant improvement in comparison with the previous model. We could use AICc to select between the two models if we are not sure, which of them to prefer:
+The QQ plot in Figure \@ref(fig:adamSeat17QQ) shows that the residuals of the model 17 are closer to the parametric distribution than in cases of the two previous models. We could use AICc to select between the two models if we are not sure, which of them to prefer:
 
 ```{r}
 AICc(adamSeat16)
 AICc(adamSeat17)
 ```
-Based on these results, we can conclude that the Normal distribution is more suitable for this situation than the Inverse Gaussian one.
+Based on these results, we can conclude that the model with the Generalised Normal distribution is more suitable for this situation than the one assuming Normality.
 
-Another way to analyse the distribution of residuals is to plot histogram together with the theoretical density function. Here is an example:
+Another way to analyse the distribution of residuals is to plot histogram together with the theoretical probability density function (PDF). Here is an example for the model 3:
 
 ```{r adamSeat3Density, fig.cap="Histogram and density line for the residuals from model 3 (assumed to follow Normal distribution)."}
 # Plot histogram of residuals
@@ -617,13 +619,26 @@ hist(residuals(adamSeat03), probability=TRUE,
      xlab="Residuals", main="", ylim=c(0,0.0035))
 # Add density line of the theoretical distribution
 lines(seq(-400,400,1),
-      dnorm(seq(-400,400,1), 0, sd(residuals(adamSeat03))),
+      dnorm(seq(-400,400,1), mean(residuals(adamSeat03)), adamSeat03$scale),
       col="red")
 ```
 
-However, the plot in Figure \@ref(fig:adamSeat3Density) is much more challenging to analyse than the QQ plot -- it is not clear whether the distribution is close to the theoretical one or not. So, in general, I would recommend using QQ plots instead.
+However, the plot in Figure \@ref(fig:adamSeat3Density) is arguably more challenging to analyse than the QQ plot -- it is not clear whether the distribution is close to the theoretical one or not. For example, Figure \@ref(fig:adamSeat17Density) shows how the histogram and the PDF curve would look like for the model 17 that had the best distributional fit (assuming Generalised Normal distribution).
 
-There are also formal tests for the distribution of residuals, such as Shapiro-Wilk [@WikipediaShapiroWilk2021] and Kolmogorov-Smirnov [@WikipediaKolmogorovSmirnov2021]. The former tests the hypothesis that residuals follow Normal distribution. The latter is much more flexible and allows comparing the empirical distribution with any other one (theoretical or empirical). However, I prefer to use visual inspection when possible instead of these tests because, as discussed in Section 15.2 of @SvetunkovSBA, the null hypothesis is always wrong. It will inevitably be rejected with the increase of the sample size, which does not mean that it is either correct or wrong. Besides, if you fail to reject H$_0$, it does not mean that your variable follows the assumed distribution. It only means that you have not found enough evidence to reject the null hypothesis.
+```{r adamSeat17Density, fig.cap="Histogram and density line for the residuals from model 17 (assumed to follow Generalised Normal distribution)."}
+# Plot histogram of residuals
+hist(residuals(adamSeat17), probability=TRUE,
+     xlab="Residuals", main="")
+# Add density line of the theoretical distribution
+lines(seq(-0.2,0.2,0.01),
+      dgnorm(seq(-0.2,0.2,0.01), mean(residuals(adamSeat17)),
+             adamSeat17$scale, adamSeat17$other$shape),
+      col="red")
+```
+
+Comparing the plots in Figures \@ref(fig:adamSeat3Density) and \@ref(fig:adamSeat17Density) is a challenging task. This is why in general, I would recommend using QQ plots instead of histograms.
+
+There are also formal tests for the distribution of residuals, such as Shapiro-Wilk [@Shapiro1965], Anderson-Darling [@Anderson1952] and others. However, I prefer to use visual inspection when possible instead of these tests because, as discussed in Section 7.1 of @SvetunkovSBA, the null hypothesis is always wrong whatever the test you use. In practice, it will inevitably be rejected with the increase of the sample size, which does not mean that it is either correct or wrong. Besides, if you fail to reject H$_0$, it does not mean that your variable follows the assumed distribution. It only means that you have not found enough evidence to reject the null hypothesis.
 
 
 ## Multicollinearity {#diagnosticsMulticollinearity}
