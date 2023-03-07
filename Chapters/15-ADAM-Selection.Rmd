@@ -61,6 +61,10 @@ Furthermore, in some situations, you might not need to go through all models in 
 3. Apply ETS(M,N,M) model and calculate IC. If it is lower than the previous one, then the data exhibits multiplicative seasonality. Go to (4);
 4. Fit the model with the additive trend component and the seasonal component selected from the previous steps, which can be either "N", "A", or "M". Calculate IC for the new model and compare it with the best IC so far. If it is lower than any of criteria before, there is some trend component in the data. If it is not, then the trend component is not needed.
 
+::: remark
+In case of multiple seasonal ETS (e.g. day of week and day of year seasonality), all the seasonal components should have the same type (see discussion in Section \@ref(ADAMMultipleFrequenciesModel)), so there is no need to test mixed ones (e.g. one seasonal component being additive, while the other one being multiplicative). Also, while it is possible to test whether each of the seasonal components is needed (e.g. day of week is needed, while day of year is unnecessary), this is not yet implemented in `adam()`. The simple solution here would be fitting models with and without some of seasonal components and then selecting the one that has the lower IC.
+:::
+
 Based on these four steps, we can kick off the unnecessary components and reduce the pool of models to check. For example, if the algorithm shows that seasonality is not needed, but there is a trend, then we only have 10 models to check overall instead of 30: ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N), ETS(M,N,N), ETS(M,M,N), ETS(M,Md,N), ETS(A,M,N), ETS(A,Md,N), ETS(M,A,N), ETS(M,Ad,N). In steps (2) and (3), if there is a trend in the seasonal data, the model will have a higher than needed smoothing parameter $\alpha$. While it will not approximate the data perfectly, the seasonality will play a more important role than the trend in reducing the value of IC, which will help in correctly selecting the component. This is why the algorithm is, in general efficient. It might not guarantee that the optimal model is selected all the time, but it substantially reduces the computational time.
 
 The branch-and-bound algorithm can be combined with different types of model pools and is also supported in `model="XXX"` and `model="YYY"`, where the pool of models for steps (1) -- (4) is restricted by the pure ones only. This would also work in the combinations of the style `model="XYZ"`, where the function would form the pool of the following models: ETS(A,N,N), ETS(A,M,N), ETS(A,Md,N), ETS(A,N,A), ETS(A,M,A), ETS(A,Md,A), ETS(A,N,M), ETS(A,M,M) and ETS(A,Md,M).
@@ -69,30 +73,30 @@ Finally, while the branch-and-bound algorithm is efficient, it might end up prov
 
 Here is an example with automatically selected ETS model using the branch-and-bound algorithm described above:
 ```{r}
-adamETSModel <- adam(AirPassengers, model="ZZZ", h=12, holdout=TRUE)
-adamETSModel
+adam(AirPassengers, model="ZZZ", h=12, holdout=TRUE)
 ```
 
 In this specific example, the optimal model will coincide with the one selected via `model="FFF"` and `model="ZXZ"` (the reader is encouraged to try these pools on their own), although this does not necessarily hold universally.
 
 
 ## ARIMA order selection {#ARIMASelection}
-While ETS has 30 models to choose from, ARIMA has many more options. For example, selecting the non-seasonal ARIMA with / without constant restricting the orders with $p \leq 3$, $d \leq 2$ and $q \leq 3$ leads to the combination of $3 \times 2 \times 3 \times 2 = 36$ possible ARIMA models. If we increase the possible orders to 5 or even more, we will need to go through hundreds of models. Adding the seasonal part increases this number by order of magnitude. This means that we cannot just test all possible ARIMA models and select the most appropriate one. We need to be smart in the selection process.
+While ETS has 30 models to choose from, ARIMA has thousands if not more. For example, selecting the non-seasonal ARIMA with / without constant restricting the orders with $p \leq 3$, $d \leq 2$ and $q \leq 3$ leads to the combination of $3 \times 2 \times 3 \times 2 = 36$ possible models. If we increase the possible orders to 5 or even more, we will need to go through hundreds of models. Adding the seasonal part increases this number by order of magnitude. Having several seasonal cycles, increases it further. This means that we cannot just test all possible ARIMA models and select the most appropriate one. We need to be smart in the selection process.
 
-@Hyndman2008Forecast developed an efficient mechanism of ARIMA order selection based on statistical tests (for stationarity and seasonality), reducing the number of models to test to a reasonable amount. @Svetunkov2019 developed an alternative mechanism, relying purely on information criteria, which works well on seasonal data, but potentially may lead to models that overfit the data (this is implemented in `auto.ssarima()` and `auto.msarima()` functions in `smooth` package). We also have the Box-Jenkins approach discussed in Section \@ref(BJApproach) for ARIMA orders selection, which relies on the analysis of ACF (Subsection \@ref(ACF)) and PACF (Subsection \@ref(PACF)). Still, we should not forget the limitations of that approach (Subsection \@ref(BJApproachSummary)). Finally, @Sagaert2021 proposed the stepwise trace forward approach (discussed briefly in Section \@ref(ETSXSelection)), which relies on partial correlations and uses the information criteria to test the model on each iteration. Building upon all of that, I have developed the following algorithm for order selection of ADAM ARIMA:
+@Hyndman2008Forecast developed an efficient mechanism of ARIMA order selection based on statistical tests (for stationarity and seasonality), reducing the number of models to test to a reasonable amount. @Svetunkov2019 developed an alternative mechanism, relying purely on information criteria, which works well on seasonal data, but potentially may lead to models overfitting the data (this is implemented in `auto.ssarima()` and `auto.msarima()` functions in `smooth` package). We also have the Box-Jenkins approach discussed in Section \@ref(BJApproach) for ARIMA orders selection, which relies on the analysis of ACF (Subsection \@ref(ACF)) and PACF (Subsection \@ref(PACF)). Still, we should not forget the limitations of that approach (Subsection \@ref(BJApproachSummary)). Finally, @Sagaert2021 proposed the stepwise trace forward approach (discussed briefly in Section \@ref(ETSXSelection)), which relies on partial correlations and uses the information criteria to test the model on each iteration. Building upon all of that, I have developed the following algorithm for order selection of ADAM ARIMA:
 
 1. Determine the order of differences by fitting all possible combinations of ARIMA models with $P_j=0$ and $Q_j=0$ for all lags $j$. This includes trying the models with and without the constant term. The order $D_j$ is then determined via the model with the lowest IC;
 2. Then iteratively, starting from the highest seasonal lag and moving to the lag of 1 do for every lag $m_j$:
 a. Calculate ACF of residuals of the model;
 b. Find the highest value of autocorrelation coefficient that corresponds to the multiple of the respective seasonal lag $m_j$;
 c. Define what should be the order of MA based on the lag of the autocorrelation coefficient on the previous step and include it in the ARIMA model;
-d. Calculate IC, and if it is lower than for the previous best model, keep the new MA order;
+d. Estimate the model and calculate IC. If it is lower than for the previous best model, keep the new MA order;
 e. Repeat (a) -- (d) while there is an improvement in IC;
 f. Do steps (a) -- (e) for AR order, substituting ACF with PACF of the residuals of the best model;
 g. Move to the next seasonal lag and go to step (a);
-3. Try out several restricted ARIMA models of the order $q=d$ (this is based on (1) and the restrictions provided by the user). The motivation for this comes from the idea of the relation between ARIMA and ETS (Section \@ref(ARIMAandETS)).
+3. Try out several restricted ARIMA models of the order $q=d$ (this is based on (1) and the restrictions provided by the user). The motivation for this comes from the idea of the relation between ARIMA and ETS (Section \@ref(ARIMAandETS));
+4. Select the model with the lowest IC.
 
-As you can see, this algorithm relies on the Box-Jenkins methodology but takes it with a pinch of salt, checking every time if the proposed order is improving the model or not. The motivation for doing MA orders before AR is based on understanding what the AR model implies for forecasting (Section \@ref(AR)). In a way, it is safer to have ARIMA(0,d,q) model than ARIMA(p,d,0) because the former is less prone to overfitting than the latter. Finally, the proposed algorithm is faster than the algorithm of @Svetunkov2019 and is more modest in the number of selected orders of the model.
+As you can see, this algorithm relies on the Box-Jenkins methodology but takes it with a pinch of salt, checking every time whether the proposed order is improving the model or not. The motivation for doing MA orders before AR is based on understanding what the AR model implies for forecasting (Section \@ref(AR)). In a way, it is safer to have ARIMA(0,d,q) model than ARIMA(p,d,0) because the former is less prone to overfitting than the latter. Finally, the proposed algorithm is faster than the algorithm of @Svetunkov2019 and is more modest in the number of selected orders of the model.
 
 In R, in order to start the algorithm, you would need to provide a parameter `select=TRUE` in the `orders`. Here is an example with Box-Jenkins sales data:
 ```{r}
@@ -106,18 +110,16 @@ In this example, `orders=list(ar=3,i=2,ma=3,select=TRUE)` tells function that th
 plot(adamARIMAModel,7)
 ```
 
-The resulting model will be parsimonious when optimal initials are used. If we want to have a more flexible model, we can use a different initialisation, and in some cases, the algorithm will select a model with higher orders of AR, I and MA.
+The resulting model will be parsimonious when optimal initials are used. If we want to have a more flexible model, we can use a different initialisation (e.g. backcasting as discussed in Section \@ref(ADAMInitialisation)), and in some cases, the algorithm will select a model with higher orders of AR, I and MA.
 
 
 ### ETS + ARIMA restrictions
-Based on the relation between ARIMA and ETS (see Section \@ref(ARIMAandETS)), we do not need to test some of the combinations of models when selecting ARIMA orders. For example, if we already consider ETS(A,N,N), we do not need to check the ARIMA(0,1,1) model. The recommendations for what to skip in different circumstances have been discussed in Section \@ref(ETSAndARIMA). Still, there are various ways to construct an ETS + ARIMA model, with different sequences between ETS selection / ARIMA selection. We suggest starting with ETS, then going to the selection of ARIMA orders. This way, we are building upon the robust forecasting model and see if it can be improved further by introducing elements that are not there. Note that given the complexity of the task of estimating all parameters for ETS and ARIMA, it is advised to use backcasting (see Section \@ref(ADAMInitialisationOptAndBack)) for the initialisation of such model. Here is an example in R:
+Based on the relation between ARIMA and ETS (see Section \@ref(ARIMAandETS)), we do not need to test some of the combinations of models when selecting ARIMA orders. For example, if we already consider ETS(A,N,N), we do not need to check the ARIMA(0,1,1) model. The recommendations for what to skip in different circumstances have been discussed in Section \@ref(ETSAndARIMA). Still, there are various ways to construct an ETS + ARIMA model, with different sequences between ETS/ARIMA selection. We suggest starting with ETS components, then moving to the selection of ARIMA orders. This way, we are building upon the robust forecasting model and see if it can be improved further by introducing elements that are not there. Note that given the complexity of the task of estimating all parameters for ETS and ARIMA, it is advised to use backcasting (see Section \@ref(ADAMInitialisationOptAndBack)) for the initialisation of such model. Here is an example in R:
 
 ```{r}
-adamETSARIMAModel <-
-    adam(AirPassengers, model="PPP",
-         orders=list(ar=c(3,3),i=c(2,1),ma=c(3,3),select=TRUE),
-         h=10, holdout=TRUE, initial="back")
-adamETSARIMAModel
+adam(AirPassengers, model="PPP",
+     orders=list(ar=c(3,3),i=c(2,1),ma=c(3,3),select=TRUE),
+     h=10, holdout=TRUE, initial="back")
 ```
 
 The resulting model is ETS(M,M,M) with AR elements: three non-seasonal and one seasonal AR, which improve the fit of the model and hopefully result in more accurate forecasts.
