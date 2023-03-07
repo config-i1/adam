@@ -35,37 +35,37 @@ In this case, the function has applied one and the same model but with different
 The model selection mechanism explained in this section is also used in the `es()` function from the `smooth` package. So, all the options for ADAM discussed here can be used in case of `es()` as well.
 :::
 
-Having 30 ETS models to choose from, selecting the most appropriate one becomes challenging. @Petropoulos2018a show that human experts can do this task successfully if they need to decide which components to include in the time series. However, when you face the problem of fitting ETS to thousands of time series, the judgmental selection becomes infeasible. Using some automatic selection becomes critically important.
+Having 30 ETS models to choose from, selecting the most appropriate one becomes challenging. @Petropoulos2018a showed that human experts can do this task successfully if they need to decide which components to include in the time series. However, when you face the problem of fitting ETS to thousands of time series, the judgmental selection becomes infeasible. Using some sort of automation becomes critically important.
 
-The basic idea underlying the components selection in ETS is based on information criteria [Section 16.4 of @SvetunkovSBA]. The general procedure consists of the following three steps:
+The components selection in ETS is based on information criteria [Section 16.4 of @SvetunkovSBA]. The general procedure consists of the following three main steps [in the ETS context, this approach was first proposed by @Hyndman2002]:
 
-1. we define a pool of models,
-2. we fit those models,
-3. and we select the one that has the lowest information criterion.
+1. Define a pool of models;
+2. Fit all models in the pool;
+3. Select the one that has the lowest information criterion.
 
-Using this approach in the ETS context was first proposed by @Hyndman2002. Based on this, we can prepare a pool of models (e.g. based on our understanding of the problem) and then select the most appropriate one for our data. The `adam()` function in the `smooth` package supports the following options for the pools:
+Depending on what is included in step (1), we will get different results. So, the pool needs to be selected carefully based on our understanding of the problem. The `adam()` function in the `smooth` package supports the following options:
 
 1. Pool of all 30 models (Section \@ref(ETSTaxonomy)), `model="FFF"`;
-2. Pool of pure additive models (Section \@ref(ADAMETSPureAdditive)), `model="XXX"`. As an option, "X" can also be used to tell function to only try additive component on the selected place. e.g. `model="MXM"` will tell function to only test ETS(M,N,M), ETS(M,A,M) and ETS(M,Ad,M) models;
-3. Pool of pure multiplicative models (Section \@ref(ADAMETSPureMultiplicative)), `model="YYY"`. Similarly to (2), we can tell `adam()` to only consider multiplicative component in a specific place. e.g. `model="YNY"` will consider only ETS(M,N,N) and ETS(M,N,M);
-4. Pool of pure models only, `model="PPP"` -- this is a shortcut for doing (2) and (3) and then selecting the best between the two pools;
-5. Manual pool of models, which can be provided as a vector of models, for example: `model=c("ANN","MNN","ANA","AAN")`;
-6. `model="ZZZ"`, which triggers the selection among all possible models based on a branch-and-bound algorithm (see below).
+2. `model="ZZZ"`, which triggers the selection among all possible models based on a branch-and-bound algorithm (see below);
+3. Pool of pure additive models (Section \@ref(ADAMETSPureAdditive)), `model="XXX"`. As an option, "X" can also be used to tell function to only try additive component on the selected place. e.g. `model="MXM"` will tell function to only test ETS(M,N,M), ETS(M,A,M) and ETS(M,Ad,M) models. Branch-and-bound is used in this case as well;
+4. Pool of pure multiplicative models (Section \@ref(ADAMETSPureMultiplicative)), `model="YYY"`. Similarly to (3), we can tell `adam()` to only consider multiplicative component in a specific place. e.g. `model="YNY"` will consider only ETS(M,N,N) and ETS(M,N,M). Similarly to (2) amd (3), in this case `adam()` will use branch-and-bound algorithm in the components selection;
+5. Pool of pure models only, `model="PPP"` -- this is a shortcut for doing (2) and (3) and then selecting the best between the two pools;
+6. Manual pool of models, which can be provided as a vector of models, for example: `model=c("ANN","MNN","ANA","AAN")`.
 
-In the cases above, `adam()` will try different models and select the most appropriate one from the predefined pool. There is a trade-off when deciding which pool to use: if you provide the bigger one, it will take more time to find the appropriate model, and there is a risk of overfitting the data; if you provide the smaller pool, then the optimal model might be outside of it, giving you the sub-optimal one.
+There is a trade-off when deciding which pool to use: if you provide the large one, it will take more time to find the appropriate model, and there is a risk of overfitting the data; if you provide the small pool, then the optimal model might be outside of it, giving you the sub-optimal one.
 
-Furthermore, in some situations, you might not need to go through all 30 models because, for example, the seasonal component is not required for the data. Trying out all the models would be just a waste of time. So, to address this issue, I have developed a branch-and-bound algorithm for the selection of the most appropriate ETS model, which is triggered via `model="ZZZ"` (the same mechanism is used in the `es()` function). The idea of the algorithm is to drop the components that do not improve the model. Here is how it works:
+Furthermore, in some situations, you might not need to go through all models in the pool because, for example, the seasonal component is not required for the data. Trying out all the models would be just a waste of time. So, to address this issue, I have developed a branch-and-bound algorithm for the selection of the most appropriate ETS model, which is triggered via `model="ZZZ"`. The idea of the algorithm is to drop the components that do not improve the model. It allows forming a much smaller pool of models after identifying what components improve the fit. Here is how it works:
 
 1. Apply ETS(A,N,N) to the data, calculate an information criterion (IC);
 2. Apply ETS(A,N,A) to the data, calculate IC. If it is lower than (1), then this means that there is some seasonal component in the data, move to step (3). Otherwise, go to (4);
 3. Apply ETS(M,N,M) model and calculate IC. If it is lower than the previous one, then the data exhibits multiplicative seasonality. Go to (4);
-4. Fit the model with the additive trend component and the seasonal component selected from previous steps, which can be either "N", "A", or "M". Calculate IC for the new model and compare it with the best IC so far. If it is lower than any of criteria before, there is some trend component in the data. If it is not, then the trend component is not needed.
+4. Fit the model with the additive trend component and the seasonal component selected from the previous steps, which can be either "N", "A", or "M". Calculate IC for the new model and compare it with the best IC so far. If it is lower than any of criteria before, there is some trend component in the data. If it is not, then the trend component is not needed.
 
-Based on these four steps, we can kick off the unneeded components and reduce the pool of models to check. For example, if the algorithm shows that seasonality is not needed, but there is a trend, then we only have 10 models to check overall instead of 30: ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N), ETS(M,N,N), ETS(M,M,N), ETS(M,Md,N), ETS(A,M,N), ETS(A,Md,N), ETS(M,A,N), ETS(M,Ad,N). In steps (2) and (3), if there is a trend in the data, the model will have a higher than needed smoothing parameter $\alpha$, but the seasonality will play an important role in reducing the value of IC. This is why the algorithm is, in general efficient. It might not guarantee that the optimal model will be selected all the time, but it substantially reduces the computational time.
+Based on these four steps, we can kick off the unnecessary components and reduce the pool of models to check. For example, if the algorithm shows that seasonality is not needed, but there is a trend, then we only have 10 models to check overall instead of 30: ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N), ETS(M,N,N), ETS(M,M,N), ETS(M,Md,N), ETS(A,M,N), ETS(A,Md,N), ETS(M,A,N), ETS(M,Ad,N). In steps (2) and (3), if there is a trend in the seasonal data, the model will have a higher than needed smoothing parameter $\alpha$. While it will not approximate the data perfectly, the seasonality will play a more important role than the trend in reducing the value of IC, which will help in correctly selecting the component. This is why the algorithm is, in general efficient. It might not guarantee that the optimal model is selected all the time, but it substantially reduces the computational time.
 
 The branch-and-bound algorithm can be combined with different types of model pools and is also supported in `model="XXX"` and `model="YYY"`, where the pool of models for steps (1) -- (4) is restricted by the pure ones only. This would also work in the combinations of the style `model="XYZ"`, where the function would form the pool of the following models: ETS(A,N,N), ETS(A,M,N), ETS(A,Md,N), ETS(A,N,A), ETS(A,M,A), ETS(A,Md,A), ETS(A,N,M), ETS(A,M,M) and ETS(A,Md,M).
 
-Finally, while the branch-and-bound algorithm is efficient, it might end up providing a mixed model, which might not be very suitable for the data. So, it is recommended to think of the possible pool of models before applying it to the data. For example, in some cases, you might realise that additive seasonality is unnecessary and that the data can be either non-seasonal or with multiplicative seasonality. In this case, you can explore the `model="YZY"` option, aligning the error term with the seasonal component.
+Finally, while the branch-and-bound algorithm is efficient, it might end up providing a mixed model, which might not be suitable for your data. So, it is recommended to think of the possible pool of models before applying it to the data. For example, in some cases, you might realise that additive seasonality is unnecessary and that the data can be either non-seasonal or with multiplicative seasonality. In this case, you can explore the `model="YZY"` option, aligning the error term with the seasonal component.
 
 Here is an example with automatically selected ETS model using the branch-and-bound algorithm described above:
 ```{r}
@@ -73,7 +73,7 @@ adamETSModel <- adam(AirPassengers, model="ZZZ", h=12, holdout=TRUE)
 adamETSModel
 ```
 
-In this specific example, the optimal model will coincide with the one selected via `model="FFF"` and `model="ZXZ"` (the reader is encouraged to try these selection mechanisms on their own), although this does not necessarily hold universally.
+In this specific example, the optimal model will coincide with the one selected via `model="FFF"` and `model="ZXZ"` (the reader is encouraged to try these pools on their own), although this does not necessarily hold universally.
 
 
 ## ARIMA order selection {#ARIMASelection}
