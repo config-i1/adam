@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-03-07" />
+<meta name="date" content="2023-03-08" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -597,62 +597,37 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ADAMCombinations" class="section level2 hasAnchor" number="15.4">
 <h2><span class="header-section-number">15.4</span> Forecasts combinations<a href="ADAMCombinations.html#ADAMCombinations" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>When it comes to achieving as accurate forecasts as possible in practice, the best and the most robust (in terms of not failing) approach is producing combined forecasts. The primary motivation for combining is that there is no one best forecasting method for everything – methods might perform very well in some conditions and fail in others. It is typically not possible to say which of the cases you face in practice. Furthermore, the model selected on one sample might differ from the model chosen for the same sample but with one more observation. Thus there is a model uncertainty <span class="citation">(as defined by <a href="#ref-Chatfield1996" role="doc-biblioref">Chatfield, 1996</a>)</span>, and the safer option is to produce forecasts from several models and then combine them to get the final forecast. This way, the potential damage from an inaccurate forecast hopefully will be reduced.</p>
+<p>When it comes to achieving as accurate forecasts as possible in practice, the most robust (in terms of not failing) approach is producing combined forecasts. The primary motivation for combining is that there is no one best forecasting method for everything – methods might perform very well in some conditions and fail in others. It is typically not possible to say which of the cases you face in practice. Furthermore, the model selected on one sample might differ from the model chosen for the same sample but with one more observation. Thus there is a model uncertainty <span class="citation">(as defined by <a href="#ref-Chatfield1996" role="doc-biblioref">Chatfield, 1996</a>)</span>, which can be mitigated by producing forecasts from several models and then combining them to get the final forecast. This way, the potential damage from an inaccurate forecast is typically reduced.</p>
 <p>There are many different techniques for combining forecasts. The non-exhaustive list includes:</p>
 <ol style="list-style-type: decimal">
 <li><strong>Simple average</strong>, which works fine as long as you do not have exceptionally poorly performing methods;</li>
 <li><strong>Median</strong>, which produces good combinations when the pool of models is relatively small and might contain those that produce very different forecasts from the others (e.g. explosive trajectories). However, when a big pool of models is considered, the median might ignore vital information and decrease accuracy, as noted by <span class="citation">Jose and Winkler (<a href="#ref-Jose2008" role="doc-biblioref">2008</a>)</span>. <span class="citation">Stock and Watson (<a href="#ref-Stock2004" role="doc-biblioref">2004</a>)</span> conducted an experiment on macroeconomic data, and medians performed poorer than the other approaches (probably because of the high number of forecasting methods), while median-based combination worked well for <span class="citation">Petropoulos and Svetunkov (<a href="#ref-Petropoulos2020" role="doc-biblioref">2020</a>)</span>, who considered only four forecasting approaches;</li>
 <li><strong>Trimmed and/or Winsorized mean</strong>, which drop extreme forecasts, when calculating the mean and, as was shown by <span class="citation">Jose and Winkler (<a href="#ref-Jose2008" role="doc-biblioref">2008</a>)</span>, work well in case of big pools of models, outperforming medians and simple average;</li>
-<li><strong>Weighted mean</strong>, which assigns weights to each forecast and produces a combined forecast based on them. While this approach sounds more reasonable than the others, there is no guarantee that it will work better because the weights need to be estimated and might change with the sample size change or a pool of models. <span class="citation">Claeskens et al. (<a href="#ref-Claeskens2016" role="doc-biblioref">2016</a>)</span> explain why the simple average approach outperforms weighted averages in many cases: it does not require estimation of weights and thus does not introduce as much uncertainty. However, when done smartly, combinations can be beneficial in terms of accuracy, as shown, for example, in <span class="citation">Kolassa (<a href="#ref-Kolassa2011" role="doc-biblioref">2011</a>)</span> and <span class="citation">Kourentzes et al. (<a href="#ref-Kourentzes2019c" role="doc-biblioref">2019a</a>)</span>.</li>
+<li><strong>Weighted mean</strong>, which assigns weights to each forecast and produces a combined forecast based on them. While this approach sounds more reasonable than the others, there is no guarantee that it will work better because the weights need to be estimated and might change with the change of sample size or a pool of models. <span class="citation">Claeskens et al. (<a href="#ref-Claeskens2016" role="doc-biblioref">2016</a>)</span> explain why the simple average approach outperforms weighted averages in many cases: it does not require estimation of weights and thus does not introduce as much uncertainty. However, when done smartly, combinations can be beneficial in terms of accuracy, as shown, for example, by <span class="citation">Kolassa (<a href="#ref-Kolassa2011" role="doc-biblioref">2011</a>)</span> and <span class="citation">Kourentzes et al. (<a href="#ref-Kourentzes2019c" role="doc-biblioref">2019a</a>)</span>.</li>
 </ol>
-<p>The forecast combination approach implemented in ADAM is the weighted mean, based on <span class="citation">Kolassa (<a href="#ref-Kolassa2011" role="doc-biblioref">2011</a>)</span>, who used AIC weights as proposed by <span class="citation">Burnham and Anderson (<a href="#ref-Burnham2004" role="doc-biblioref">2004</a>)</span>. This approach aims to estimate all models in the pool, calculate information criteria (IC) for each of them <span class="citation">(see discussion in Section 16.4 in <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022</a>)</span> and then calculate weights for each model. Those models with lower ICs will have higher weights, while the poorly performing ones will have higher ones. The only requirement of the approach is for the parameters of models to be estimated via likelihood maximisation (see Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>). It is not important what model is used or what distribution is assumed, as long as the models are initialised (see discussion in Section <a href="ADAMInitialisation.html#ADAMInitialisation">11.4</a>) and constructed in the same way and the likelihood is used in the estimation.</p>
-<p>When it comes to prediction intervals, the correct way of calculating them for the combination is to consider the joint distribution of all forecasting models in the pool and take quantiles based on that. However, <span class="citation">Lichtendahl et al. (<a href="#ref-Lichtendahl2013" role="doc-biblioref">2013</a>)</span> showed that a simpler approach of averaging the quantiles works well in practice. This approach implies producing prediction intervals for all the models in the pool and then averaging the obtained values. It is fast and efficient in terms of getting well-calibrated intervals.</p>
+<p>The forecast combination approach implemented in ADAM is the weighted mean, based on <span class="citation">Kolassa (<a href="#ref-Kolassa2011" role="doc-biblioref">2011</a>)</span>, who used AIC weights as proposed by <span class="citation">Burnham and Anderson (<a href="#ref-Burnham2004" role="doc-biblioref">2004</a>)</span>. This approach aims to estimate all models in the pool, calculate information criteria (IC) for each of them <span class="citation">(see discussion in Section 16.4 in <a href="#ref-SvetunkovSBA" role="doc-biblioref">Svetunkov, 2022</a>)</span> and then calculate weights for each model. Those models with lower ICs will have higher weights, while the poorly performing ones will have the lower ones. The only requirement of the approach is for the parameters of models to be estimated via likelihood maximisation (see Section <a href="ADAMETSEstimationLikelihood.html#ADAMETSEstimationLikelihood">11.1</a>). Furthermore, it is not important what model is used or what distribution is assumed, as long as the models are initialised (see discussion in Section <a href="ADAMInitialisation.html#ADAMInitialisation">11.4</a>) and constructed in the same way and the likelihood is used in the estimation.</p>
+<p>When it comes to prediction intervals, the correct way of calculating them for the combination is to consider the joint distribution of all forecasting models in the pool and take quantiles based on that. However, <span class="citation">Lichtendahl et al. (<a href="#ref-Lichtendahl2013" role="doc-biblioref">2013</a>)</span> showed that a simpler approach of averaging the quantiles works well in practice. This approach implies producing prediction intervals for all the models in the pool and then averaging the obtained values. It is fast and efficient in terms of getting prediction interval from a combined model.</p>
 <p>In R, <code>adam()</code> function supports the combination of ETS models via <code>model="CCC"</code> or any other combination of letters, as long as the model contains “C” in its name. For example, the function will combine all non-seasonal models if <code>model="CCN"</code> is provided. Consider the following example on Box-Jenkins sales series:</p>
-<div class="sourceCode" id="cb340"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb340-1"><a href="ADAMCombinations.html#cb340-1" aria-hidden="true" tabindex="-1"></a>adamETSCCN <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;CCN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">ic=</span><span class="st">&quot;AICc&quot;</span>)</span></code></pre></div>
-<p>In the code above, the function will estimate all non-seasonal models, extract AICc for each of them and then calculate weights, which we can extract for further analysis:</p>
-<div class="sourceCode" id="cb341"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb341-1"><a href="ADAMCombinations.html#cb341-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamETSCCN<span class="sc">$</span>ICw,<span class="dv">3</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb341"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb341-1"><a href="ADAMCombinations.html#cb341-1" aria-hidden="true" tabindex="-1"></a>adamETSCCN <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;CCN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">ic=</span><span class="st">&quot;AICc&quot;</span>)</span></code></pre></div>
+<p>In the code above, the function will estimate all non-seasonal models, extract AICc for each of them and then calculate weights, which we can be extracted for further analysis:</p>
+<div class="sourceCode" id="cb342"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb342-1"><a href="ADAMCombinations.html#cb342-1" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamETSCCN<span class="sc">$</span>ICw, <span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##   ANN   MAN  AAdN   MMN  AMdN   MNN   AAN  MAdN   AMN  MMdN 
 ## 0.000 0.014 0.252 0.010 0.511 0.000 0.073 0.031 0.050 0.059</code></pre>
 <p>As can be seen from the output of weights, the level models ETS(A,N,N) and ETS(M,N,N) were further away from the best model and, as a result, got weights very close to zero.</p>
-<p>The fitted values are combined from all models, the residuals are equal to <span class="math inline">\(e_t = y_t -\hat{y}_t\)</span>, where <span class="math inline">\(\hat{y}_t\)</span> is the combined value. The final forecast together with the prediction interval can be generated via the <code>forecast()</code> function (Figure <a href="ADAMCombinations.html#fig:adamETSCCN">15.2</a>):</p>
-<div class="sourceCode" id="cb343"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb343-1"><a href="ADAMCombinations.html#cb343-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamETSCCN,<span class="at">h=</span><span class="dv">10</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
-<pre><code>## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length
-
-## Warning in adamForecasts[] &lt;- forecast.adam(object$models[[i]], h = h, newdata =
-## newdata, : number of items to replace is not a multiple of replacement length</code></pre>
+<p>In the ADAM combination, the fitted values are combined from all models, while the residuals are calculated as <span class="math inline">\(e_t = y_t -\hat{y}_t\)</span>, where <span class="math inline">\(\hat{y}_t\)</span> is the combined value. The final forecast together with the prediction interval can be generated via the <code>forecast()</code> function (Figure <a href="ADAMCombinations.html#fig:adamETSCCN">15.2</a>):</p>
+<div class="sourceCode" id="cb344"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb344-1"><a href="ADAMCombinations.html#cb344-1" aria-hidden="true" tabindex="-1"></a>adamETSCCN <span class="sc">|&gt;</span></span>
+<span id="cb344-2"><a href="ADAMCombinations.html#cb344-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">forecast</span>(<span class="at">h=</span><span class="dv">10</span>, <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb344-3"><a href="ADAMCombinations.html#cb344-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamETSCCN"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/adamETSCCN-1.png" alt="An example of combination of ETS non-seasonal models on Box-Jenkins sale time series." width="672" />
 <p class="caption">
 Figure 15.2: An example of combination of ETS non-seasonal models on Box-Jenkins sale time series.
 </p>
 </div>
-<p>What the function does, in this case, is produces forecasts and prediction intervals from each model and then uses original weights to combine them. Each model can be extracted and used separately if needed. Here is an example with ETS(A,Ad,N) model from the estimated pool:</p>
-<div class="sourceCode" id="cb345"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb345-1"><a href="ADAMCombinations.html#cb345-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">forecast</span>(adamETSCCN<span class="sc">$</span>models<span class="sc">$</span>AAdN,<span class="at">h=</span><span class="dv">10</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>))</span></code></pre></div>
+<p>What the function above does, in this case, is produces forecasts and prediction intervals from each model and then uses original weights to combine them. Each model can be extracted and used separately if needed. Here is an example with ETS(A,Ad,N) model from the estimated pool:</p>
+<div class="sourceCode" id="cb345"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb345-1"><a href="ADAMCombinations.html#cb345-1" aria-hidden="true" tabindex="-1"></a>adamETSCCN<span class="sc">$</span>models<span class="sc">$</span>AAdN <span class="sc">|&gt;</span></span>
+<span id="cb345-2"><a href="ADAMCombinations.html#cb345-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">forecast</span>(<span class="at">h=</span><span class="dv">10</span>,<span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>) <span class="sc">|&gt;</span></span>
+<span id="cb345-3"><a href="ADAMCombinations.html#cb345-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamETSCCNAAdN"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/adamETSCCNAAdN-1.png" alt="An example of the combination of ETS non-seasonal models on Box-Jenkins sale time series." width="672" />
 <p class="caption">
@@ -665,7 +640,7 @@ Figure 15.3: An example of the combination of ETS non-seasonal models on Box-Jen
 <span id="cb346-2"><a href="ADAMCombinations.html#cb346-2" aria-hidden="true" tabindex="-1"></a>                               <span class="fu">c</span>(<span class="st">&quot;CCN&quot;</span>,<span class="st">&quot;ANN&quot;</span>,<span class="st">&quot;AAN&quot;</span>,<span class="st">&quot;AAdN&quot;</span>), </span>
 <span id="cb346-3"><a href="ADAMCombinations.html#cb346-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb346-4"><a href="ADAMCombinations.html#cb346-4" aria-hidden="true" tabindex="-1"></a>                               <span class="at">ic=</span><span class="st">&quot;AICc&quot;</span>)</span></code></pre></div>
-<p>The main issue with the combined ETS approach is that it is computationally expensive due to the estimation of all models in the pool and can also result in high memory usage. As a result, it is recommended to be smart in deciding which models to include in the pool.</p>
+<p>The main issue with the combined ETS approach is that it is computationally expensive due to the estimation of all models in the pool and can also result in high memory usage (because it saves all the estimated models). As a result, it is recommended to be smart in deciding which models to include in the pool.</p>
 <div id="other-combination-approaches" class="section level3 hasAnchor" number="15.4.1">
 <h3><span class="header-section-number">15.4.1</span> Other combination approaches<a href="ADAMCombinations.html#other-combination-approaches" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>While <code>adam()</code> supports IC weights combination of ETS models only, it is also possible to combine ARIMA, regression models and models with different distributions in the framework. Given that all models are initialised in the same way and that the likelihoods are calculated using similar principles, the weights can be calculated manually using the formula from <span class="citation">Burnham and Anderson (<a href="#ref-Burnham2004" role="doc-biblioref">2004</a>)</span>:
@@ -693,52 +668,51 @@ where <span class="math inline">\(\Delta_i=\mathrm{IC}_i -\min_{i=1}^n \left(\ma
 <span id="cb347-17"><a href="ADAMCombinations.html#cb347-17" aria-hidden="true" tabindex="-1"></a>                        <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
 <span id="cb347-18"><a href="ADAMCombinations.html#cb347-18" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb347-19"><a href="ADAMCombinations.html#cb347-19" aria-hidden="true" tabindex="-1"></a><span class="co"># Extract BICc values</span></span>
-<span id="cb347-20"><a href="ADAMCombinations.html#cb347-20" aria-hidden="true" tabindex="-1"></a>adamsICs <span class="ot">&lt;-</span> <span class="fu">sapply</span>(adamPoolBJ,BICc)</span>
+<span id="cb347-20"><a href="ADAMCombinations.html#cb347-20" aria-hidden="true" tabindex="-1"></a>adamsICs <span class="ot">&lt;-</span> <span class="fu">sapply</span>(adamPoolBJ, BICc)</span>
 <span id="cb347-21"><a href="ADAMCombinations.html#cb347-21" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb347-22"><a href="ADAMCombinations.html#cb347-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate weights</span></span>
 <span id="cb347-23"><a href="ADAMCombinations.html#cb347-23" aria-hidden="true" tabindex="-1"></a>adamsICWeights <span class="ot">&lt;-</span> adamsICs <span class="sc">-</span> <span class="fu">min</span>(adamsICs)</span>
 <span id="cb347-24"><a href="ADAMCombinations.html#cb347-24" aria-hidden="true" tabindex="-1"></a>adamsICWeights[] <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="sc">-</span><span class="fl">0.5</span><span class="sc">*</span>adamsICWeights) <span class="sc">/</span></span>
 <span id="cb347-25"><a href="ADAMCombinations.html#cb347-25" aria-hidden="true" tabindex="-1"></a>                    <span class="fu">sum</span>(<span class="fu">exp</span>(<span class="sc">-</span><span class="fl">0.5</span><span class="sc">*</span>adamsICWeights))</span>
 <span id="cb347-26"><a href="ADAMCombinations.html#cb347-26" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(adamsICWeights) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;ETS&quot;</span>,<span class="st">&quot;ARIMA&quot;</span>,<span class="st">&quot;ETSX&quot;</span>)</span>
-<span id="cb347-27"><a href="ADAMCombinations.html#cb347-27" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamsICWeights,<span class="dv">3</span>)</span></code></pre></div>
+<span id="cb347-27"><a href="ADAMCombinations.html#cb347-27" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamsICWeights, <span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##   ETS ARIMA  ETSX 
 ## 0.524 0.424 0.052</code></pre>
 <p>These weights can then be used for the combination of the fitted values, forecasts and prediction intervals:</p>
-<div class="sourceCode" id="cb349"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb349-1"><a href="ADAMCombinations.html#cb349-1" aria-hidden="true" tabindex="-1"></a>adamPoolBJForecasts <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">3</span>)</span>
-<span id="cb349-2"><a href="ADAMCombinations.html#cb349-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Produce forecasts from the three models</span></span>
-<span id="cb349-3"><a href="ADAMCombinations.html#cb349-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>){</span>
-<span id="cb349-4"><a href="ADAMCombinations.html#cb349-4" aria-hidden="true" tabindex="-1"></a>  adamPoolBJForecasts[[i]] <span class="ot">&lt;-</span> <span class="fu">forecast</span>(adamPoolBJ[[i]],</span>
-<span id="cb349-5"><a href="ADAMCombinations.html#cb349-5" aria-hidden="true" tabindex="-1"></a>                                       <span class="at">h=</span><span class="dv">10</span>, <span class="at">interval=</span><span class="st">&quot;pred&quot;</span>)</span>
-<span id="cb349-6"><a href="ADAMCombinations.html#cb349-6" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb349-7"><a href="ADAMCombinations.html#cb349-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Produce combined conditional means and prediction intervals</span></span>
-<span id="cb349-8"><a href="ADAMCombinations.html#cb349-8" aria-hidden="true" tabindex="-1"></a>finalForecast <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fu">sapply</span>(adamPoolBJForecasts,</span>
-<span id="cb349-9"><a href="ADAMCombinations.html#cb349-9" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;mean&quot;</span>) <span class="sc">%*%</span> adamsICWeights,</span>
+<div class="sourceCode" id="cb349"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb349-1"><a href="ADAMCombinations.html#cb349-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Produce forecasts from the three models</span></span>
+<span id="cb349-2"><a href="ADAMCombinations.html#cb349-2" aria-hidden="true" tabindex="-1"></a>adamPoolBJForecasts <span class="ot">&lt;-</span> <span class="fu">lapply</span>(adamPoolBJ, forecast,</span>
+<span id="cb349-3"><a href="ADAMCombinations.html#cb349-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">h=</span><span class="dv">10</span>, <span class="at">interval=</span><span class="st">&quot;pred&quot;</span>)</span>
+<span id="cb349-4"><a href="ADAMCombinations.html#cb349-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb349-5"><a href="ADAMCombinations.html#cb349-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Produce combined conditional means and prediction intervals</span></span>
+<span id="cb349-6"><a href="ADAMCombinations.html#cb349-6" aria-hidden="true" tabindex="-1"></a>finalForecast <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="fu">sapply</span>(adamPoolBJForecasts,</span>
+<span id="cb349-7"><a href="ADAMCombinations.html#cb349-7" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;mean&quot;</span>) <span class="sc">%*%</span> adamsICWeights,</span>
+<span id="cb349-8"><a href="ADAMCombinations.html#cb349-8" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">sapply</span>(adamPoolBJForecasts,</span>
+<span id="cb349-9"><a href="ADAMCombinations.html#cb349-9" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;lower&quot;</span>) <span class="sc">%*%</span> adamsICWeights,</span>
 <span id="cb349-10"><a href="ADAMCombinations.html#cb349-10" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">sapply</span>(adamPoolBJForecasts,</span>
-<span id="cb349-11"><a href="ADAMCombinations.html#cb349-11" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;lower&quot;</span>) <span class="sc">%*%</span> adamsICWeights,</span>
-<span id="cb349-12"><a href="ADAMCombinations.html#cb349-12" aria-hidden="true" tabindex="-1"></a>                       <span class="fu">sapply</span>(adamPoolBJForecasts,</span>
-<span id="cb349-13"><a href="ADAMCombinations.html#cb349-13" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;upper&quot;</span>) <span class="sc">%*%</span> adamsICWeights)</span>
-<span id="cb349-14"><a href="ADAMCombinations.html#cb349-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Give the appropriate names</span></span>
-<span id="cb349-15"><a href="ADAMCombinations.html#cb349-15" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(finalForecast) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Mean&quot;</span>, <span class="st">&quot;Lower bound (2.5%)&quot;</span>,</span>
-<span id="cb349-16"><a href="ADAMCombinations.html#cb349-16" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;Upper bound (97.5%)&quot;</span>)</span>
-<span id="cb349-17"><a href="ADAMCombinations.html#cb349-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Transform the table in the ts format (for convenience)</span></span>
-<span id="cb349-18"><a href="ADAMCombinations.html#cb349-18" aria-hidden="true" tabindex="-1"></a>finalForecast <span class="ot">&lt;-</span> <span class="fu">ts</span>(finalForecast,</span>
-<span id="cb349-19"><a href="ADAMCombinations.html#cb349-19" aria-hidden="true" tabindex="-1"></a>                    <span class="at">start=</span><span class="fu">start</span>(adamPoolBJForecasts[[i]]<span class="sc">$</span>mean))</span>
-<span id="cb349-20"><a href="ADAMCombinations.html#cb349-20" aria-hidden="true" tabindex="-1"></a>finalForecast</span></code></pre></div>
+<span id="cb349-11"><a href="ADAMCombinations.html#cb349-11" aria-hidden="true" tabindex="-1"></a>                              <span class="st">&quot;[[&quot;</span>,<span class="st">&quot;upper&quot;</span>) <span class="sc">%*%</span> adamsICWeights)</span>
+<span id="cb349-12"><a href="ADAMCombinations.html#cb349-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Give the appropriate names</span></span>
+<span id="cb349-13"><a href="ADAMCombinations.html#cb349-13" aria-hidden="true" tabindex="-1"></a><span class="fu">colnames</span>(finalForecast) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;Mean&quot;</span>,</span>
+<span id="cb349-14"><a href="ADAMCombinations.html#cb349-14" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;Lower bound (2.5%)&quot;</span>,</span>
+<span id="cb349-15"><a href="ADAMCombinations.html#cb349-15" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;Upper bound (97.5%)&quot;</span>)</span>
+<span id="cb349-16"><a href="ADAMCombinations.html#cb349-16" aria-hidden="true" tabindex="-1"></a><span class="co"># Transform the table in the ts format (for convenience)</span></span>
+<span id="cb349-17"><a href="ADAMCombinations.html#cb349-17" aria-hidden="true" tabindex="-1"></a>finalForecast <span class="ot">&lt;-</span> <span class="fu">ts</span>(finalForecast,</span>
+<span id="cb349-18"><a href="ADAMCombinations.html#cb349-18" aria-hidden="true" tabindex="-1"></a>                    <span class="at">start=</span><span class="fu">start</span>(adamPoolBJForecasts[[<span class="dv">1</span>]]<span class="sc">$</span>mean))</span>
+<span id="cb349-19"><a href="ADAMCombinations.html#cb349-19" aria-hidden="true" tabindex="-1"></a>finalForecast</span></code></pre></div>
 <pre><code>## Time Series:
 ## Start = 141 
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6607           254.8992            260.4010
-## 142 257.7233           253.3015            262.1205
-## 143 257.7981           251.8814            263.6994
-## 144 257.8511           250.3979            265.3737
-## 145 257.9107           248.8279            267.0019
-## 146 257.9659           247.2952            268.6035
-## 147 258.0242           245.7077            270.2641
-## 148 258.0691           244.1517            271.9706
-## 149 258.1126           242.5472            273.7107
-## 150 258.1628           240.8667            275.5712</code></pre>
+## 141 257.6593           254.9164            260.4351
+## 142 257.7102           253.3522            262.1216
+## 143 257.7642           251.8568            263.7240
+## 144 257.8157           250.3420            265.3482
+## 145 257.8772           248.9092            267.0083
+## 146 257.9329           247.3498            268.6944
+## 147 257.9746           245.8169            270.3292
+## 148 258.0202           244.1375            271.9351
+## 149 258.0580           242.5027            273.6494
+## 150 258.1013           240.9270            275.4243</code></pre>
 <p>In order to see how the forecast looks like, we can plot it via <code>graphmaker()</code> function from <code>greybox</code>:</p>
 <div class="sourceCode" id="cb351"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb351-1"><a href="ADAMCombinations.html#cb351-1" aria-hidden="true" tabindex="-1"></a><span class="fu">graphmaker</span>(BJsales, finalForecast[,<span class="dv">1</span>],</span>
 <span id="cb351-2"><a href="ADAMCombinations.html#cb351-2" aria-hidden="true" tabindex="-1"></a>           <span class="at">lower=</span>finalForecast[,<span class="dv">2</span>], <span class="at">upper=</span>finalForecast[,<span class="dv">3</span>],</span>
@@ -749,7 +723,7 @@ where <span class="math inline">\(\Delta_i=\mathrm{IC}_i -\min_{i=1}^n \left(\ma
 Figure 15.4: Final forecast from the combination of ETS, ARIMA and ETSX models.
 </p>
 </div>
-<p>Figure <a href="ADAMCombinations.html#fig:adamCombinedfinalForecast">15.4</a> demonstrates the slightly increasing trajectory with expanding prediction interval. The point forecast (conditional mean) corresponds to the trajectory observed on the last several observations, just before the forecast origin. The future values are inside the prediction interval, so overall, this can be considered as a reasonable forecast.</p>
+<p>Figure <a href="ADAMCombinations.html#fig:adamCombinedfinalForecast">15.4</a> demonstrates the slightly increasing trajectory with expanding prediction interval. The point forecast (conditional mean) continues the trajectory observed on the last several observations, just before the forecast origin. The future values are inside the prediction interval, so overall, this can be considered as a reasonable forecast.</p>
 <!-- ## Pooling -->
 <!-- ## Rolling origin selection {#ROSelection} -->
 

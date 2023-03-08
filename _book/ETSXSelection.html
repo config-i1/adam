@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-03-07" />
+<meta name="date" content="2023-03-08" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -597,13 +597,13 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ETSXSelection" class="section level2 hasAnchor" number="15.3">
 <h2><span class="header-section-number">15.3</span> Explanatory variables selection<a href="ETSXSelection.html#ETSXSelection" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>There are different approaches for automatic variable selection, but not all of them are efficient in the context of dynamic models. For example, backward stepwise might be either not feasible in the case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This is because the ADAMX model needs to be refitted and reestimated repeatedly using recursive relations based on the state space model <a href="ADAMXFormulation.html#eq:ETSXADAMStateSpacePureAdditiveFull">(10.4)</a>. The classical stepwise forward might also be too slow because it has polynomial computational time as well. So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.</p>
-<p>To make the mechanism efficient in a limited time, we rely on the <span class="citation">Sagaert and Svetunkov (<a href="#ref-Sagaert2021" role="doc-biblioref">2022</a>)</span> approach of stepwise trace forward selection of variables. It is the approach that uses partial correlations between variables to identify which variables to include in each iteration. It has linear computational time instead of the polynomial. Still, doing that in the proper ADAMX would take more time than needed because of the fitting of the dynamic model. So one of the possible solutions is to make variables selection in ADAMX in the following steps:</p>
+<p>There are different approaches for automatic variable selection, but not all of them are efficient in the context of dynamic models. For example, conventional stepwise approaches might be either not feasible in the case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This well known problem in regression context is magnified in the context of dynamic models, because each model fit takes much more time than in case of regression. This is because the ADAMX needs to be refitted and re-estimated repeatedly using recursive relations based on the state space model <a href="ADAMXFormulation.html#eq:ETSXADAMStateSpacePureAdditiveFull">(10.4)</a>. So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.</p>
+<p>To make the mechanism efficient in a limited time, I propose using the <span class="citation">Sagaert and Svetunkov (<a href="#ref-Sagaert2021" role="doc-biblioref">2022</a>)</span> approach of stepwise trace forward selection of variables. It uses partial correlations between variables to identify which of them to include in each iteration. While it has linear computational time instead of the polynomial, doing that in the proper ADAMX would still take a lot of time, because of the fitting of the dynamic model. So one of the possible solutions is to do variables selection in ADAMX based on models residuals, in the following steps:</p>
 <ol style="list-style-type: decimal">
 <li>Estimate and fit the ADAM;</li>
 <li>Extract the residuals of the ADAM;</li>
 <li>Select the most suitable variables, explaining the residuals, based on the trace forward stepwise approach and the selected information criterion;</li>
-<li>Estimate the ADAMX model with the selected explanatory variables.</li>
+<li>Re-estimate the ADAMX with the selected explanatory variables.</li>
 </ol>
 <p>The residuals in step (2) might vary from model to model, depending on the type of the error term and the selected distribution:</p>
 <ul>
@@ -611,16 +611,16 @@ div.csl-indent {
 <li>Additive error and Log-Normal, Inverse Gaussian or Gamma: <span class="math inline">\(\left(1+\frac{e_t}{\hat{y}_t} \right)\)</span>;</li>
 <li>Multiplicative error and Log-Normal, Inverse Gaussian or Gamma: <span class="math inline">\(1+e_t\)</span>.</li>
 </ul>
-<p>So, the extracted residuals should be formulated based on the distributional assumptions of each model.</p>
-<p>In R, step (3) is done using the <code>stepwise()</code> function from the <code>greybox</code> package, supporting all the distributions discussed in the previous chapters. The only thing that needs to be modified is the number of degrees of freedom: the function should consider all estimated parameters. This is done internally via the <code>df</code> parameter in <code>stepwise()</code>.</p>
+<p>So, the extracted residuals should be aligned with the distributional assumptions of each model.</p>
+<p>In R, step (3) is done using the <code>stepwise()</code> function from the <code>greybox</code> package, supporting all the distributions implemented in ADAM. The only thing that needs to be modified is the number of degrees of freedom: the function should consider all estimated parameters (including the number of parameter of the dynamic part). This is done internally via the <code>df</code> parameter in <code>stepwise()</code>.</p>
 <p>While the suggested approach has obvious limitations (e.g. smoothing parameters can be higher than needed, explaining the variability otherwise explained by variables), it is efficient in terms of computational time.</p>
 <p>To see how it works, we use SeatBelt data:</p>
-<div class="sourceCode" id="cb333"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb333-1"><a href="ETSXSelection.html#cb333-1" aria-hidden="true" tabindex="-1"></a>SeatbeltsData <span class="ot">&lt;-</span> Seatbelts[,<span class="fu">c</span>(<span class="st">&quot;drivers&quot;</span>,<span class="st">&quot;kms&quot;</span>,<span class="st">&quot;PetrolPrice&quot;</span>,<span class="st">&quot;law&quot;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb334"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb334-1"><a href="ETSXSelection.html#cb334-1" aria-hidden="true" tabindex="-1"></a>SeatbeltsData <span class="ot">&lt;-</span> Seatbelts[,<span class="fu">c</span>(<span class="st">&quot;drivers&quot;</span>,<span class="st">&quot;kms&quot;</span>,<span class="st">&quot;PetrolPrice&quot;</span>,<span class="st">&quot;law&quot;</span>)]</span></code></pre></div>
 <p>We have already had a look at this data earlier in Section <a href="ETSXRExample.html#ETSXRExample">10.6</a>, so we can move directly to the selection part:</p>
-<div class="sourceCode" id="cb334"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb334-1"><a href="ETSXSelection.html#cb334-1" aria-hidden="true" tabindex="-1"></a>adamETSXMNMSelectSeat <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
-<span id="cb334-2"><a href="ETSXSelection.html#cb334-2" aria-hidden="true" tabindex="-1"></a>                               <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb334-3"><a href="ETSXSelection.html#cb334-3" aria-hidden="true" tabindex="-1"></a>                               <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
-<span id="cb334-4"><a href="ETSXSelection.html#cb334-4" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamETSXMNMSelectSeat)</span></code></pre></div>
+<div class="sourceCode" id="cb335"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb335-1"><a href="ETSXSelection.html#cb335-1" aria-hidden="true" tabindex="-1"></a>adamETSXMNMSelectSeat <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
+<span id="cb335-2"><a href="ETSXSelection.html#cb335-2" aria-hidden="true" tabindex="-1"></a>                              <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb335-3"><a href="ETSXSelection.html#cb335-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
+<span id="cb335-4"><a href="ETSXSelection.html#cb335-4" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamETSXMNMSelectSeat)</span></code></pre></div>
 <pre><code>## Warning: Observed Fisher Information is not positive semi-definite, which means
 ## that the likelihood was not maximised properly. Consider reestimating the model,
 ## tuning the optimiser or using bootstrap via bootstrap=TRUE.</code></pre>
@@ -655,12 +655,12 @@ div.csl-indent {
 ##      AIC     AICc      BIC     BICc 
 ## 2266.378 2269.715 2317.465 2326.131</code></pre>
 <div class="remark">
-<p><span id="unlabeled-div-46" class="remark"><em>Remark</em>. </span>The function might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality. This is discussed in Section <a href="ADAMUncertaintyVCOV.html#ADAMUncertaintyVCOV">16.1</a>.</p>
+<p><span id="unlabeled-div-46" class="remark"><em>Remark</em>. </span>The <code>summary()</code> method might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality. This is discussed in Section <a href="ADAMUncertaintyVCOV.html#ADAMUncertaintyVCOV">16.1</a>.</p>
 </div>
 <p>Based on the summary from the model, we can see that neither <code>kms</code> nor <code>PetrolPrice</code> improve the model in terms of AICc (they were not included in the model). We could check them manually to see if the selection worked out well in our case (construct sink regression as a benchmark):</p>
-<div class="sourceCode" id="cb337"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb337-1"><a href="ETSXSelection.html#cb337-1" aria-hidden="true" tabindex="-1"></a>adamETSXMNMSinkSeat <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
-<span id="cb337-2"><a href="ETSXSelection.html#cb337-2" aria-hidden="true" tabindex="-1"></a>                             <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb337-3"><a href="ETSXSelection.html#cb337-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamETSXMNMSinkSeat)</span></code></pre></div>
+<div class="sourceCode" id="cb338"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb338-1"><a href="ETSXSelection.html#cb338-1" aria-hidden="true" tabindex="-1"></a>adamETSXMNMSinkSeat <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
+<span id="cb338-2"><a href="ETSXSelection.html#cb338-2" aria-hidden="true" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
+<span id="cb338-3"><a href="ETSXSelection.html#cb338-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(adamETSXMNMSinkSeat)</span></code></pre></div>
 <pre><code>## Warning: Observed Fisher Information is not positive semi-definite, which means
 ## that the likelihood was not maximised properly. Consider reestimating the model,
 ## tuning the optimiser or using bootstrap via bootstrap=TRUE.</code></pre>
@@ -696,7 +696,7 @@ div.csl-indent {
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
 ## 2504.556 2508.804 2562.029 2573.060</code></pre>
-<p>We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the “true model”. While <code>adamETSXMNMSelectSeat</code> might not be the best possible model in terms of information criteria, it is still a reasonable one and can be used for further inference. The choice of the best model should rest upon the minimum of the information criterion and the understanding of the problem. Note that the two aspects need to be considered simultaneously to avoid overfitting.</p>
+<p>We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the “true model”. While <code>adamETSXMNMSelectSeat</code> might not be the best possible model in terms of information criteria, it is still a reasonable one and can be used for further inference.</p>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
