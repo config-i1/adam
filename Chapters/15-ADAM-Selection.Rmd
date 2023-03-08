@@ -106,8 +106,8 @@ adamARIMAModel <- adam(BJsales, model="NNN",
 ```
 In this example, `orders=list(ar=3,i=2,ma=3,select=TRUE)` tells function that the maximum orders to check are $p\leq 3$, $d\leq 2$ $q\leq 3$. The resulting model is `r adamARIMAModel$model`, which has the fit shown in Figure \@ref(fig:adamARIMAModelFitExample).
 
-```{r adamARIMAModelFitExample, fig.cap="Actuals, fitted and forecast for the Box-Jenkins Sales data.", echo=FALSE}
-plot(adamARIMAModel,7)
+```{r adamARIMAModelFitExample, fig.cap="Actuals, fitted and forecast for the Box-Jenkins Sales data."}
+plot(adamARIMAModel, which=7)
 ```
 
 The resulting model will be parsimonious when optimal initials are used. If we want to have a more flexible model, we can use a different initialisation (e.g. backcasting as discussed in Section \@ref(ADAMInitialisation)), and in some cases, the algorithm will select a model with higher orders of AR, I and MA.
@@ -126,14 +126,14 @@ The resulting model is ETS(M,M,M) with AR elements: three non-seasonal and one s
 
 
 ## Explanatory variables selection {#ETSXSelection}
-There are different approaches for automatic variable selection, but not all of them are efficient in the context of dynamic models. For example, backward stepwise might be either not feasible in the case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This is because the ADAMX model needs to be refitted and reestimated repeatedly using recursive relations based on the state space model \@ref(eq:ETSXADAMStateSpacePureAdditiveFull). The classical stepwise forward might also be too slow because it has polynomial computational time as well. So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.
+There are different approaches for automatic variable selection, but not all of them are efficient in the context of dynamic models. For example, conventional stepwise approaches might be either not feasible in the case of small samples or may take too much time to converge to an optimal solution (it has polynomial computational time). This well known problem in regression context is magnified in the context of dynamic models, because each model fit takes much more time than in case of regression. This is because the ADAMX needs to be refitted and re-estimated repeatedly using recursive relations based on the state space model \@ref(eq:ETSXADAMStateSpacePureAdditiveFull). So, there need to be some simplifications, which will make variables selection in ADAMX doable in a reasonable time.
 
-To make the mechanism efficient in a limited time, we rely on the @Sagaert2021 approach of stepwise trace forward selection of variables. It is the approach that uses partial correlations between variables to identify which variables to include in each iteration. It has linear computational time instead of the polynomial. Still, doing that in the proper ADAMX would take more time than needed because of the fitting of the dynamic model. So one of the possible solutions is to make variables selection in ADAMX in the following steps:
+To make the mechanism efficient in a limited time, I propose using the @Sagaert2021 approach of stepwise trace forward selection of variables. It uses partial correlations between variables to identify which of them to include in each iteration. While it has linear computational time instead of the polynomial, doing that in the proper ADAMX would still take a lot of time, because of the fitting of the dynamic model. So one of the possible solutions is to do variables selection in ADAMX based on models residuals, in the following steps:
 
 1. Estimate and fit the ADAM;
 2. Extract the residuals of the ADAM;
 3. Select the most suitable variables, explaining the residuals, based on the trace forward stepwise approach and the selected information criterion;
-4. Estimate the ADAMX model with the selected explanatory variables.
+4. Re-estimate the ADAMX with the selected explanatory variables.
 
 The residuals in step (2) might vary from model to model, depending on the type of the error term and the selected distribution:
 
@@ -141,9 +141,9 @@ The residuals in step (2) might vary from model to model, depending on the type 
 - Additive error and Log-Normal, Inverse Gaussian or Gamma: $\left(1+\frac{e_t}{\hat{y}_t} \right)$;
 - Multiplicative error and Log-Normal, Inverse Gaussian or Gamma: $1+e_t$.
 
-So, the extracted residuals should be formulated based on the distributional assumptions of each model.
+So, the extracted residuals should be aligned with the distributional assumptions of each model.
 
-In R, step (3) is done using the `stepwise()` function from the `greybox` package, supporting all the distributions discussed in the previous chapters. The only thing that needs to be modified is the number of degrees of freedom: the function should consider all estimated parameters. This is done internally via the `df` parameter in `stepwise()`.
+In R, step (3) is done using the `stepwise()` function from the `greybox` package, supporting all the distributions implemented in ADAM. The only thing that needs to be modified is the number of degrees of freedom: the function should consider all estimated parameters (including the number of parameter of the dynamic part). This is done internally via the `df` parameter in `stepwise()`.
 
 While the suggested approach has obvious limitations (e.g. smoothing parameters can be higher than needed, explaining the variability otherwise explained by variables), it is efficient in terms of computational time.
 
@@ -155,24 +155,24 @@ We have already had a look at this data earlier in Section \@ref(ETSXRExample), 
 
 ```{r}
 adamETSXMNMSelectSeat <- adam(SeatbeltsData, "MNM",
-                               h=12, holdout=TRUE,
-                               regressors="select")
+                              h=12, holdout=TRUE,
+                              regressors="select")
 summary(adamETSXMNMSelectSeat)
 ```
 
 ::: remark
-The function might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality. This is discussed in Section \@ref(ADAMUncertaintyVCOV).
+The `summary()` method might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality. This is discussed in Section \@ref(ADAMUncertaintyVCOV).
 :::
 
 Based on the summary from the model, we can see that neither `kms` nor `PetrolPrice` improve the model in terms of AICc (they were not included in the model). We could check them manually to see if the selection worked out well in our case (construct sink regression as a benchmark):
 
 ```{r}
 adamETSXMNMSinkSeat <- adam(SeatbeltsData, "MNM",
-                             h=12, holdout=TRUE)
+                            h=12, holdout=TRUE)
 summary(adamETSXMNMSinkSeat)
 ```
 
-We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the "true model". While `adamETSXMNMSelectSeat` might not be the best possible model in terms of information criteria, it is still a reasonable one and can be used for further inference. The choice of the best model should rest upon the minimum of the information criterion and the understanding of the problem. Note that the two aspects need to be considered simultaneously to avoid overfitting.
+We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the "true model". While `adamETSXMNMSelectSeat` might not be the best possible model in terms of information criteria, it is still a reasonable one and can be used for further inference.
 
 
 ## Forecasts combinations {#ADAMCombinations}
