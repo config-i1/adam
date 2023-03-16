@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-03-08" />
+<meta name="date" content="2023-03-16" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -31,7 +31,7 @@
   
   
 <link rel="prev" href="ADAMCombinations.html"/>
-<link rel="next" href="ADAMUncertaintyVCOV.html"/>
+<link rel="next" href="simulating-data-from-adam-adamuncertaintysimulation.html"/>
 <script src="libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.4.6/dist/fuse.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
@@ -510,17 +510,18 @@ div.csl-indent {
 </ul></li>
 <li class="chapter" data-level="16" data-path="ADAMUncertainty.html"><a href="ADAMUncertainty.html"><i class="fa fa-check"></i><b>16</b> Handling uncertainty in ADAM</a>
 <ul>
-<li class="chapter" data-level="16.1" data-path="ADAMUncertaintyVCOV.html"><a href="ADAMUncertaintyVCOV.html"><i class="fa fa-check"></i><b>16.1</b> Covariance matrix of parameters</a>
+<li class="chapter" data-level="16.1" data-path="simulating-data-from-adam-adamuncertaintysimulation.html"><a href="simulating-data-from-adam-adamuncertaintysimulation.html"><i class="fa fa-check"></i><b>16.1</b> Simulating data from ADAM {ADAMUncertaintySimulation}</a></li>
+<li class="chapter" data-level="16.2" data-path="ADAMUncertaintyVCOV.html"><a href="ADAMUncertaintyVCOV.html"><i class="fa fa-check"></i><b>16.2</b> Covariance matrix of parameters</a>
 <ul>
-<li class="chapter" data-level="16.1.1" data-path="ADAMUncertaintyVCOV.html"><a href="ADAMUncertaintyVCOV.html#bootstrapped-covariance-matrix"><i class="fa fa-check"></i><b>16.1.1</b> Bootstrapped covariance matrix</a></li>
+<li class="chapter" data-level="16.2.1" data-path="ADAMUncertaintyVCOV.html"><a href="ADAMUncertaintyVCOV.html#bootstrapped-covariance-matrix"><i class="fa fa-check"></i><b>16.2.1</b> Bootstrapped covariance matrix</a></li>
 </ul></li>
-<li class="chapter" data-level="16.2" data-path="confidence-intervals-for-parameters.html"><a href="confidence-intervals-for-parameters.html"><i class="fa fa-check"></i><b>16.2</b> Confidence intervals for parameters</a></li>
-<li class="chapter" data-level="16.3" data-path="conditionalVarianceUncertainty.html"><a href="conditionalVarianceUncertainty.html"><i class="fa fa-check"></i><b>16.3</b> Conditional variance with uncertain parameters</a>
+<li class="chapter" data-level="16.3" data-path="confidence-intervals-for-parameters.html"><a href="confidence-intervals-for-parameters.html"><i class="fa fa-check"></i><b>16.3</b> Confidence intervals for parameters</a></li>
+<li class="chapter" data-level="16.4" data-path="conditionalVarianceUncertainty.html"><a href="conditionalVarianceUncertainty.html"><i class="fa fa-check"></i><b>16.4</b> Conditional variance with uncertain parameters</a>
 <ul>
-<li class="chapter" data-level="16.3.1" data-path="conditionalVarianceUncertainty.html"><a href="conditionalVarianceUncertainty.html#estimated-initial-state"><i class="fa fa-check"></i><b>16.3.1</b> Estimated initial state</a></li>
-<li class="chapter" data-level="16.3.2" data-path="conditionalVarianceUncertainty.html"><a href="conditionalVarianceUncertainty.html#estimated-parameters-of-adam"><i class="fa fa-check"></i><b>16.3.2</b> Estimated parameters of ADAM</a></li>
+<li class="chapter" data-level="16.4.1" data-path="conditionalVarianceUncertainty.html"><a href="conditionalVarianceUncertainty.html#estimated-initial-state"><i class="fa fa-check"></i><b>16.4.1</b> Estimated initial state</a></li>
+<li class="chapter" data-level="16.4.2" data-path="conditionalVarianceUncertainty.html"><a href="conditionalVarianceUncertainty.html#estimated-parameters-of-adam"><i class="fa fa-check"></i><b>16.4.2</b> Estimated parameters of ADAM</a></li>
 </ul></li>
-<li class="chapter" data-level="16.4" data-path="adamRefitted.html"><a href="adamRefitted.html"><i class="fa fa-check"></i><b>16.4</b> Multi-scenarios for ADAM states</a></li>
+<li class="chapter" data-level="16.5" data-path="adamRefitted.html"><a href="adamRefitted.html"><i class="fa fa-check"></i><b>16.5</b> Multi-scenarios for ADAM states</a></li>
 </ul></li>
 <li class="chapter" data-level="17" data-path="ADAMscaleModel.html"><a href="ADAMscaleModel.html"><i class="fa fa-check"></i><b>17</b> Scale model for ADAM</a>
 <ul>
@@ -597,8 +598,8 @@ div.csl-indent {
             <section class="normal" id="section-">
 <div id="ADAMUncertainty" class="section level1 hasAnchor" number="16">
 <h1><span class="header-section-number">Chapter 16</span> Handling uncertainty in ADAM<a href="ADAMUncertainty.html#ADAMUncertainty" class="anchor-section" aria-label="Anchor link to header"></a></h1>
-<p>So far, when we discussed forecasts from ADAM, we have assumed that the smoothing parameters and initial values are known, even though we have acknowledged in Chapter <a href="ADAMETSEstimation.html#ADAMETSEstimation">11</a> that they are estimated. This is the conventional assumption of ETS models from <span class="citation">Hyndman et al. (<a href="#ref-Hyndman2008b" role="doc-biblioref">2008</a>)</span> (it also applies to ARIMA models). However, in reality, the parameters are never known and are always estimated in-sample. This means that the estimates of parameters will inevitably change with the change of sample size. This uncertainty will impact the model fit, the point forecasts and prediction intervals. To overcome this issue, <span class="citation">Bergmeir et al. (<a href="#ref-Bergmeir2016" role="doc-biblioref">2016</a>)</span> proposed bagging – the procedure that decomposes time series using STL <span class="citation">(<a href="#ref-Cleveland1990" role="doc-biblioref">Cleveland et al., 1990</a>)</span>, then recreates many time series by bootstrapping the remainder then fits best ETS models to each of the newly created time series and combines the forecasts from the models. This way <span class="citation">(as was explained by <a href="#ref-Petropoulos2018" role="doc-biblioref">Petropoulos et al., 2018a</a>)</span>, the parameters of models will differ from one generated time series to another. Thus the final forecasts will handle the uncertainty about the parameters. In addition, this approach also covers the model uncertainty element, which was discussed in Section <a href="ADAMCombinations.html#ADAMCombinations">15.4</a>. The main issue with the approach is that it is computationally expensive and assumes that STL decomposition is appropriate for time series and that the residuals from this decomposition are independent.</p>
-<p>In this chapter, we focus on a discussion of uncertainty about the estimates of parameters of ADAM, starting from dealing with confidence intervals for them and ending with propagating the parameters uncertainty to the states and fitted values of the model. We also discuss a method that allows capturing this uncertainty and use it for fitted values and forecasts of the model.</p>
+<p>So far, when we discussed forecasts from ADAM, we have assumed that the smoothing parameters and initial values are known, even though we have acknowledged in Chapter <a href="ADAMETSEstimation.html#ADAMETSEstimation">11</a> that they are estimated. This is the conventional assumption of ETS models from <span class="citation">Hyndman et al. (<a href="#ref-Hyndman2008b" role="doc-biblioref">2008</a>)</span>, which also applies to ARIMA models. However, in reality, the parameters are never known and are always estimated in-sample. This means that the estimates of parameters will inevitably change with the change of sample size. This uncertainty will impact the model fit, the point forecasts and prediction intervals. To overcome this issue, <span class="citation">Bergmeir et al. (<a href="#ref-Bergmeir2016" role="doc-biblioref">2016</a>)</span> proposed bagging ETS – the procedure that decomposes time series using STL <span class="citation">(<a href="#ref-Cleveland1990" role="doc-biblioref">Cleveland et al., 1990</a>)</span> then recreates many time series by bootstrapping the remainder then fits best ETS model to each of the newly created time series and combines the forecasts from the models. This way <span class="citation">(as was explained by <a href="#ref-Petropoulos2018" role="doc-biblioref">Petropoulos et al., 2018a</a>)</span>, the parameters of models will differ from one generated time series to another. Thus the final forecasts will handle the uncertainty about the parameters. In addition, this approach also mitigates to some extent the model uncertainty, which was discussed in Section <a href="ADAMCombinations.html#ADAMCombinations">15.4</a>, because models are selected automatically on each bootstrapped series. The main issue with the approach is that it is computationally expensive and assumes that STL decomposition is appropriate for time series. Furthermore, it assumes that the residuals from this decomposition do not contain any information and are independent.</p>
+<p>In this chapter, we focus on a discussion of uncertainty in ADAM, specifically about the estimates of parameters. We start with a discussion of how the data can be simulated from an estimated ADAM, then move to how to deal with confidence intervals for the parameters and after that – how the parameters uncertainty can be propagated to the states and fitted values of the model.</p>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
@@ -622,7 +623,7 @@ div.csl-indent {
         </div>
       </div>
 <a href="ADAMCombinations.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
-<a href="ADAMUncertaintyVCOV.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="simulating-data-from-adam-adamuncertaintysimulation.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
