@@ -97,33 +97,41 @@ adamETSBJ |>
 
 
 ## Confidence intervals for parameters {#ADAMUncertaintyConfidenceInterval}
-As discussed in Section 6.4 of @SvetunkovSBA, if several vital assumptions (discussed in Section \@ref(diagnostics)) are satisfied and CLT holds, then the distribution of estimates of parameters will follow the Normal one, which will allow us to construct confidence intervals for them. In the case of ETS and ARIMA models in the ADAM framework, the estimated parameters include smoothing, dampening and ARMA parameters together with the initial states' values. In the case of explanatory variables, the pool of parameters is increased by the coefficients for those variables and their smoothing parameters (if the dynamic model from Section \@ref(ADAMXDynamic) is used). And in the case of the intermittent state space model, the parameters will also include the elements of the occurrence part of the model. The CLT should work if:
+As it is well known in statistics [e.g. see Section 6.4 of @SvetunkovSBA], if several vital model assumptions (discussed in Section \@ref(diagnostics)) are satisfied and CLT holds, then the distribution of estimates of parameters will follow the Normal one, which will allow us to construct confidence intervals to capture the uncertainty around the parameters. In case of ETS and ARIMA models in the ADAM framework, the estimated parameters include smoothing, dampening and ARMA parameters together with the initial states. In the case of explanatory variables, the pool of parameters is increased by the coefficients for those variables and their smoothing parameters (if the dynamic model from Section \@ref(ADAMXDynamic) is used). Furthermore, in case of the intermittent state space model, the parameters will also include the elements of the occurrence part of the model. The CLT should hold for all of them if:
 
-1. Estimates of parameters are consistent (e.g. MSE or Likelihood is used in estimation, see Section \@ref(ADAMETSEstimation)),
-2. the parameters do not lie near the bounds,
-3. the model is correctly specified and
-4. moments of the distribution of error term are finite.
+1. Estimates of parameters are consistent (e.g. MSE or Likelihood is used in estimation, see Section \@ref(ADAMETSEstimation));
+2. The parameters do not lie near the bounds;
+3. The model is correctly specified;
+4. Moments of the distribution of error term are finite.
 
-In the case of ETS and ARIMA, the parameters are bounded, and the estimates might lie near the bounds. This means that the distribution of estimates might not be Normal. However, given that the bounds of the parameters are typically fixed and are forced by the optimiser, the estimates of parameters will follow Rectified Normal distribution [@WikipediaRectifiedNormal]. This is important because knowing the distribution, we can derive the confidence intervals for the parameters. We would need to use t-statistics because we estimate the standard errors of parameters. The confidence intervals will be constructed in a conventional way in this case, using the formula [see Section 6.4 of @SvetunkovSBA]:
+In case of ETS and ARIMA, some of parameters are bounded (e.g. to satisfy stability condition from Section \@ref(stabilityConditionAdditiveError)), and the estimates might lie near the bounds. This means that the distribution of estimates of parameters might not be Normal. However, given that the bounds of the parameters are typically fixed, and all estimates that exceed them are set to the boundary values in the optimisation routine, the estimates of parameters will follow Rectified Normal distribution [@Socci1997]. This is important because knowing the distribution, we can derive the confidence intervals for the parameters. However, given that we estimate the standard errors of parameters in sample, we need to use t-statistics to correctly capture the uncertainty. The confidence intervals will be constructed in a conventional way in this case, using the formula [see Section 6.4 of @SvetunkovSBA]:
 \begin{equation}
     \theta_j \in (\hat{\theta_j} + t_{\alpha/2}(df) s_{\theta_j}, \hat{\theta_j} + t_{1-\alpha/2}(df) s_{\theta_j}), 
     (\#eq:confidenceInterval)
 \end{equation}
-where $t_{\alpha/2}(df)$ is Student's t-statistics for $df=T-k$ degrees of freedom ($T$ is the sample size and $k$ is the number of estimated parameters) and $\alpha$ is the significance level. Then, after constructing the intervals, we can cut their values with the bounds of parameters, thus imposing rectified distribution (t distribution in this case). An example would be the ETS(A,N,N) model, for which the smoothing parameter is typically restricted by (0, 1) region and thus the confidence interval should not go beyond these bounds as well.
+where $t_{\alpha/2}(df)$ is Student's t-statistics for $df=T-k$ degrees of freedom ($T$ is the sample size and $k$ is the number of all estimated parameters) and $\alpha$ is the significance level. Then, after constructing the intervals, we can cut their values with the bounds of parameters, thus rectifying the distribution.
+<!-- An example would be the ETS(A,N,N) model, for which the smoothing parameter is typically restricted by (0, 1) region and thus the confidence interval should not go beyond these bounds as well. -->
 
 To construct the interval, we need to know the standard errors of parameters. Luckily, they can be calculated as square roots of the diagonal of the covariance matrix of parameters (discussed in Section \@ref(ADAMUncertaintyVCOV)):
 ```{r}
-sqrt(diag(adamETSBJVcov))
+diag(adamETSBJVcov) |>
+    sqrt()
 ```
-Based on these values and the formula \@ref(eq:confidenceInterval), we can produce confidence intervals for parameters of any ADAM, which is done in R using the `confint()` method. For example, here are the intervals for the significance level of 1%:
+Based on these values and the formula \@ref(eq:confidenceInterval), we can produce confidence intervals for parameters of any ADAM, which is done in R using the `confint()` method. For example, here are the intervals for the model estimated before with the significance level of 1% (confidence level of 99%):
 ```{r}
 confint(adamETSBJ, level=0.99)
 ```
-In the output above, the distributions for $\alpha$, $\beta$ and $\phi$ are rectified: $\alpha$ and $\phi$ are restricted with one from above, while $\beta$ is restricted with zero from below. To have the bigger picture, we can produce the summary of the model, which will include the table above:
+In the output above, the distributions for $\alpha$, $\beta$ and $\phi$ are rectified: $\alpha$ and $\phi$ are restricted with the region (0, 1) and thus are rectified from above, while $\beta \in (0, \alpha)$ and as a result is rectified from below.
+
+::: remark
+We do not rectify the distribution of $\beta$ from above, because $\hat{\alpha} \approx$`r round(adamETSBJ$persistence[1],4)`.
+:::
+
+To have the bigger picture, we can produce the summary of the model, which will include the table above:
 ```{r}
 summary(adamETSBJ, level=0.99)
 ```
-The output above shows the estimates of parameters and their 99% confidence intervals. For example, based on this output, we can conclude that the uncertainty about the initial trend estimate is considerable, and in the "true model", it could be either positive or negative (or even close to zero). At the same time, the "true" parameter of the initial level will lie in 99% of the cases between 190.4172 and 215.0740. Just as a reminder, Figure \@ref(fig:adamModelBJAAdN) shows the model fit and point forecasts for the estimated ETS model on this data.
+The output above shows the estimates of parameters and their 99% confidence intervals. Based on this output, for example, we can conclude that the uncertainty about the initial trend estimate is large, and in the "true model", it could be either positive or negative (or even close to zero). At the same time, the "true" parameter of the initial level will lie in 99% of the cases between 190.4172 and 215.0740. Just as a reminder, Figure \@ref(fig:adamModelBJAAdN) shows the model fit and point forecasts for the estimated ETS model on this data.
 
 ```{r adamModelBJAAdN, fig.cap="Model fit and point forecasts of ETS(A,Ad,N) on Box-Jenkins Sales data.", echo=FALSE}
 plot(adamETSBJ,7)
@@ -132,14 +140,18 @@ plot(adamETSBJ,7)
 As another example, we can have a similar summary for ARIMA models in ADAM:
 
 ```{r}
-adamARIMABJ <- adam(BJsales, "NNN", h=10, holdout=TRUE,
-                    order=list(ar=3,i=2,ma=3,select=TRUE))
-summary(adamARIMABJ)
+adam(BJsales, "NNN", h=10, holdout=TRUE,
+     order=list(ar=3,i=2,ma=3,select=TRUE)) |>
+    summary()
 ```
 
 From the summary above, we can see that the parameter $\theta_2$ is close to zero, and the interval around it is wide. So, we can expect that it might change the sign if the sample size increases or become even closer to zero. Given that the model above was estimated with the optimisation of initial states, we also see the values for the ARIMA states and their confidence intervals in the summary above. If we used `initial="backcasting"`, the summary would not include them.
 
-This estimate of uncertainty via confidence intervals might also be helpful to see what can happen with the estimates of parameters if the sample size increases: will they change substantially or not. If they do, then the decisions made on Monday based on the available data might differ considerably from the decisions made on Tuesday. So, in the ideal world, we would want to have as narrow confidence intervals as possible.
+::: remark
+If we faced difficulties estimating the covariance matrix of parameters using the standard Hessian-based approach, we could try bootstrap via `summary(adamETSBJ, bootstrap=TRUE)`.
+:::
+
+This estimate of uncertainty via confidence intervals might also be helpful to see what can happen with the estimates of parameters if the sample size increases: will they change substantially or not. If they do, then the decisions made on Monday based on the available data might differ considerably from the decisions made on Tuesday. So, in the ideal world, we would want to have as narrow confidence intervals of parameters as possible.
 
 
 ## Conditional variance with uncertain parameters {#conditionalVarianceUncertainty}
