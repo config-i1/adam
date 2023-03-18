@@ -53,27 +53,27 @@ plot(x)
 
 
 ## Covariance matrix of parameters {#ADAMUncertaintyVCOV}
-One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of the covariance matrix of parameters. The covariance matrix that is typically calculated in regression context is based on the assumption of normality and can be derived based on the maximum likelihood estimate of parameters. It relies on the "Fisher Information", which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of the likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point to understand what impact each of the parameters has on it. If we calculate the Hessian matrix and have Fisher Information, then using Cramer-Rao bound [@Rao1945], the true variance of parameters will be greater or equal to the inverse of Fisher Information:
+One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of the covariance matrix of parameters. The covariance matrix that is typically calculated in regression context can be based either on OLS estimates of parameters, or on MLE assuming that the residuals of the model follow Normal distribution. In the latter case, it relies on the "Fisher Information", which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of the likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point to understand what impact each of the parameters has on the likelihood. If we calculate the Hessian matrix and have the Fisher Information, then using Cramer-Rao bound [@Rao1945], the true variance of parameters will be greater or equal to the inverse of the Fisher Information:
 \begin{equation}
     \mathrm{V}(\hat{\theta_j}) \geq \frac{1}{\mathrm{FI}(\hat{\theta_j})} ,
     (\#eq:FICovariance)
 \end{equation}
-where $\theta_j$ is the parameter under consideration. The property \@ref(eq:FICovariance) can then be used for the calculation of the covariance matrix of parameters. While in case of regression this calculation has an analytical solution, in case of ETS and ARIMA, this can only be done via numeric methods, because the models rely on recursive relations.
+where $\theta_j$ is the parameter under consideration. The property \@ref(eq:FICovariance) can then be used for the calculation of the covariance matrix of parameters. While in case of the linear regression this calculation has an analytical solution, in case of ETS and ARIMA, this can only be done via numeric methods, because the models rely on recursive relations and there is no closed analytical solution for the parameters of these models.
 
-In R, an efficient calculation of Hessian can be done via the `hessian()` function from the `pracma` package. In `smooth` there is a method `vcov()` that does all the calculations, estimating the negative Hessian inside the `adam()` and then inverts the result. Here is an example of how this works:
+In R, an efficient calculation of Hessian can be done via the `hessian()` function from the `pracma` package [@R-pracma]. In `smooth` there is a method `vcov()` that does all the calculations, estimating the negative Hessian inside the `adam()` and then inverting the result. Here is an example of how this works:
 ```{r}
 adamETSBJ <- adam(BJsales, h=10, holdout=TRUE)
 adamETSBJVcov <- vcov(adamETSBJ)
 round(adamETSBJVcov, 3)
 ```
-The precision of the estimate will depend on the closeness of the likelihood function to its maximum in the estimated parameters. If the likelihood was not properly maximised and the function stopped prematurely, then the covariance matrix might be incorrect and contain errors. Out of curiosity, we could calculate the correlation matrix of the estimated parameters:
+The precision of the estimate will depend on the closeness of the likelihood function to its maximum in the estimated parameters. If the likelihood was not properly maximised and the function stopped prematurely, then the covariance matrix might be incorrect and contain errors. In that case, `vcov()` will produce a warning, saying that the resulting matrix might not be estimated correctly. The covariance matrix itself shows the variability of each of the parameters and whether they have any relations between them or not. In order to get a clearer picture about the latter, we could calculate the correlation matrix of the estimated parameters:
 ```{r}
 cov2cor(adamETSBJVcov) |>
     round(3)
 ```
-This matrix does not provide helpful analytical information but demonstrates that the estimates of the initial level and trend of the `r adamETSBJ$model` model applied to this data are negatively correlated. The values from the covariance matrix can then be used for various purposes, including calculation of confidence intervals of parameters, construction of confidence interval for the fitted value and point forecasts and finally, the construction of more adequate prediction intervals.
+This matrix demonstrates that the estimates of the initial level and trend of the ETS(A,Ad,N) model applied to this data are strongly negatively correlated. This means that on average with the increase of the initial level, the initial trend tends to be lower, which makes sense as a starting point of a model. The values from the covariance matrix can also be used for example, for calculation of confidence intervals of parameters (Section \@ref(ADAMUncertaintyConfidenceInterval)), construction of confidence interval for the fitted values and point forecasts (Section \@ref(adamRefitted)), and for the construction of more adequate prediction intervals (i.e. taking the uncertainty of estimates of parameters into account, see Subsection \@ref(ADAMForecastingPIComplete)).
 
-In some cases, the `vcov()` method would complain that the Fisher Information cannot be inverted. This typically means that the `adam()` failed to reach the maximum of the likelihood function. Re-estimating the model might resolve the problem.
+In some cases, the `vcov()` method would complain that the Fisher Information cannot be inverted. This typically means that the `adam()` failed to reach the maximum of the likelihood function. Re-estimating the model with different initial values and/or optimiser settings might resolve the problem (see Section \@ref(ADAMInitialisation)).
 
 ::: remark
 This method only works when `loss="likelihood"` or when the loss is aligned with the assumed distribution (e.g. `loss="MSE"` and `distribution="dnorm"`). In all the other cases, other approaches (such as bootstrap) would need to be used to estimate the covariance matrix of parameters.
@@ -81,20 +81,22 @@ This method only works when `loss="likelihood"` or when the loss is aligned with
 
 
 ### Bootstrapped covariance matrix
-An alternative way of constructing the matrix is via the bootstrap. The one implemented in `smooth` is based on the `coefbootstrap()` method from the `greybox` package, which implements the modified case resampling. It is less efficient than the Fisher Information method in terms of computational time and works only for larger samples. The algorithm implemented in the function uses a continuous sub-sample of the original data, starting from the initial point $t=1$ (if backcasting is used, as discussed in Section \@ref(ADAMInitialisationOptAndBack), then the starting point will be allowed to vary). This sub-sample is then used to re-estimate `adam()` to get the empirical estimates of parameters. The procedure is repeated `nsim` times, which for `adam()` is by default equal to 100. This approach is far from ideal and will typically lead to the underestimated variance of initials because of the sample size restrictions. Still, it does not break the data structure and allows obtaining results relatively fast without imposing any additional assumptions on the model and the data. I recommend using it in case of the initialisation via backcasting.
+An alternative way of constructing the matrix is via the bootstrap. The one implemented in `smooth` is based on the `coefbootstrap()` method from the `greybox` package, which implements the modified case resampling. It is less efficient than the Fisher Information method in terms of computational time and works only for larger samples. The algorithm implemented in the function creates continuous sub-samples of the original data, starting from the initial point $t=1$ (if backcasting is used, as discussed in Section \@ref(ADAMInitialisationOptAndBack), then the starting point will be allowed to vary). These sub-samples are then used for re-estimation of `adam()` to get the empirical estimates of parameters. The procedure is repeated `nsim` times, which for `adam()` is by default equal to 100. This approach is far from ideal and will typically lead to the underestimated variance of initials because of the sample size restrictions. Still, it does not break the data structure and allows obtaining results relatively fast without imposing any additional assumptions on the model and the data. I personally recommend using it in case of the initialisation via backcasting.
 
 Here is an example of how the function works on the data above -- it is possible to speed up the process by doing parallel calculations:
 ```{r}
 adamETSBJBoot <- coefbootstrap(adamETSBJ, parallel=TRUE)
 adamETSBJBoot
 ```
-The covariance matrix can then be extracted from the result via `adamETSBJBoot$vcov`. The same procedure is used in `vcov()` method if `bootstrap=TRUE`:
+The `size` in the output above refers to the sub-sample size, which by default is 75% of the original data length. The covariance matrix can then be extracted from the result via `adamETSBJBoot$vcov`. The same procedure is used in `vcov()` method if `bootstrap=TRUE`:
 ```{r}
-round(vcov(adamETSBJ, bootstrap=TRUE, parallel=TRUE), 3)
+adamETSBJ |>
+    vcov(bootstrap=TRUE, parallel=TRUE) |>
+    round(3)
 ```
 
 
-## Confidence intervals for parameters
+## Confidence intervals for parameters {#ADAMUncertaintyConfidenceInterval}
 As discussed in Section 6.4 of @SvetunkovSBA, if several vital assumptions (discussed in Section \@ref(diagnostics)) are satisfied and CLT holds, then the distribution of estimates of parameters will follow the Normal one, which will allow us to construct confidence intervals for them. In the case of ETS and ARIMA models in the ADAM framework, the estimated parameters include smoothing, dampening and ARMA parameters together with the initial states' values. In the case of explanatory variables, the pool of parameters is increased by the coefficients for those variables and their smoothing parameters (if the dynamic model from Section \@ref(ADAMXDynamic) is used). And in the case of the intermittent state space model, the parameters will also include the elements of the occurrence part of the model. The CLT should work if:
 
 1. Estimates of parameters are consistent (e.g. MSE or Likelihood is used in estimation, see Section \@ref(ADAMETSEstimation)),
