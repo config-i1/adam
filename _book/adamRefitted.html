@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-03-20" />
+<meta name="date" content="2023-03-21" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -626,12 +626,14 @@ Figure 16.3: Refitted ADAM ETS(M,M,M) model on AirPassengers data.
 <li><code>adamETSAirReapply$persistence</code> – the persistence matrix of the size <span class="math inline">\(k \times n\)</span>;</li>
 </ul>
 <p>The last three will contain the random parameters (smoothing, damping and AR/MA parameters), which is why they are provided together with the other values.</p>
-<p>As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on artificial, non-seasonal data (see Figure <a href="adamRefitted.html#fig:adamARIMARefitted">16.4</a>):</p>
-<div class="sourceCode" id="cb372"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb372-1"><a href="adamRefitted.html#cb372-1" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">rnorm</span>(<span class="dv">200</span>,<span class="dv">100</span>,<span class="dv">10</span>)</span>
-<span id="cb372-2"><a href="adamRefitted.html#cb372-2" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(y, <span class="st">&quot;NNN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb372-3"><a href="adamRefitted.html#cb372-3" aria-hidden="true" tabindex="-1"></a>     <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb372-4"><a href="adamRefitted.html#cb372-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">reapply</span>() <span class="sc">|&gt;</span></span>
-<span id="cb372-5"><a href="adamRefitted.html#cb372-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
+<p>As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on an artificial, non-seasonal data, generated from ARIMA(0,1,1) (see Figure <a href="adamRefitted.html#fig:adamARIMARefitted">16.4</a>):</p>
+<div class="sourceCode" id="cb372"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb372-1"><a href="adamRefitted.html#cb372-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate the data</span></span>
+<span id="cb372-2"><a href="adamRefitted.html#cb372-2" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">sim.ssarima</span>(<span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="dv">1</span>,<span class="at">ma=</span><span class="dv">1</span>), <span class="at">obs=</span><span class="dv">120</span>, <span class="at">MA=</span><span class="sc">-</span><span class="fl">0.7</span>)</span>
+<span id="cb372-3"><a href="adamRefitted.html#cb372-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply ADAM, then refit it and plot</span></span>
+<span id="cb372-4"><a href="adamRefitted.html#cb372-4" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(y<span class="sc">$</span>data, <span class="st">&quot;NNN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb372-5"><a href="adamRefitted.html#cb372-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb372-6"><a href="adamRefitted.html#cb372-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">reapply</span>() <span class="sc">|&gt;</span></span>
+<span id="cb372-7"><a href="adamRefitted.html#cb372-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamARIMARefitted"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/adamARIMARefitted-1.png" alt="Refitted ADAM ARIMA(0,1,1) model on artificial data." width="672" />
 <p class="caption">
@@ -639,11 +641,10 @@ Figure 16.4: Refitted ADAM ARIMA(0,1,1) model on artificial data.
 </p>
 </div>
 <p>Note that the more complicated the fitted model is, the more difficult it is to optimise, and thus the more difficult it is to get accurate estimates of the covariance matrix of parameters. This might result in highly uncertain states and thus fitted values. The safer approach, in this case, is using bootstrap for the estimation of the covariance matrix, but this is more computationally expensive and would only work on longer time series. Here how the bootstrap can be used for the multi-scenarios in R (and Figure <a href="adamRefitted.html#fig:adamARIMARefitted200">16.5</a>):</p>
-<div class="sourceCode" id="cb373"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb373-1"><a href="adamRefitted.html#cb373-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(y, <span class="st">&quot;NNN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<div class="sourceCode" id="cb373"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb373-1"><a href="adamRefitted.html#cb373-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(y<span class="sc">$</span>data, <span class="st">&quot;NNN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb373-2"><a href="adamRefitted.html#cb373-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb373-3"><a href="adamRefitted.html#cb373-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">reapply</span>(<span class="at">bootstrap=</span><span class="cn">TRUE</span>,</span>
-<span id="cb373-4"><a href="adamRefitted.html#cb373-4" aria-hidden="true" tabindex="-1"></a>            <span class="at">nsim=</span><span class="dv">1000</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb373-5"><a href="adamRefitted.html#cb373-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
+<span id="cb373-3"><a href="adamRefitted.html#cb373-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">reapply</span>(<span class="at">bootstrap=</span><span class="cn">TRUE</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb373-4"><a href="adamRefitted.html#cb373-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamARIMARefitted200"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/adamARIMARefitted200-1.png" alt="Refitted ADAM ARIMA(0,1,1) model on artificial data, bootstrapped covariance matrix." width="672" />
 <p class="caption">
