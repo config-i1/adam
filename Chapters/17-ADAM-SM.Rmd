@@ -188,51 +188,43 @@ To see if the scale model is needed in this case, we will produce several diagno
 
 ```{r adamModelETSXMNMDiagnostics48, fig.cap="Diagnostic plots for the ETSX(M,N,M) model."}
 par(mfcol=c(2,1))
-plot(adamLocationSeat,c(4,8))
+plot(adamLocationSeat, which=c(4,8))
 ```
 
-Figure \@ref(fig:adamModelETSXMNMDiagnostics48) shows how the residuals change with: (1) change of fitted values, (2) change of time. The first plot shows that there might be a slight change in the variability of residuals, but it is not apparent. The second plot does not demonstrate any significant changes in variance over time. This means that there might be some factors impacting the variance of residuals, but it does not exhibit GARCH-style dynamics. To investigate this further, we can plot explanatory variables vs the residuals (Figure \@ref(fig:adamModelETSXMNMDiagnosticsXreg)).
+Figure \@ref(fig:adamModelETSXMNMDiagnostics48) shows how the residuals change with: (1) change of fitted values, (2) change of time. The first plot shows that there might be a slight change in the variability of residuals, but it is not apparent. The second plot does not demonstrate any significant changes in variance over time. To check the latter point more formally, we can also produce ACF and PACF of the squared residuals, thus trying to see if GARCH model is required:
+
+```{r adamModelETSXMNMDiagnostics1516, fig.cap="Diagnostic plots for the ETSX(M,N,M) model, continued."}
+par(mfcol=c(2,1))
+plot(adamLocationSeat, which=c(15,16))
+```
+
+In the plot of Figure \@ref(fig:adamModelETSXMNMDiagnostics1516), lag 8 is significant on both ACF and PACF and lag 13 is significant on PACF. We could introduce the dynamic elements in the scale model to remove this autocorrelation, however the lags 8 and 13 do not have any meaning from the problem point of view: it is difficult to motivate how a variance 8 months ago might impact the variance this month. Furthermore, the bounds in the plot have the 95% confidence level, which means that these coefficients could have become significant by chance. So, based on this simple analysis, we can conclude that there might be some factors impacting the variance of residuals, but it does not exhibit any obvious and meaningful GARCH-style dynamics. To investigate this further, we can plot explanatory variables vs the squared residuals (Figure \@ref(fig:adamModelETSXMNMDiagnosticsXreg)).
 
 ```{r adamModelETSXMNMDiagnosticsXreg, fig.cap="Spread plot for the ETSX(M,N,M) model."}
-spread(cbind(resid=as.vector(resid(adamLocationSeat)),
-             as.data.frame(SeatbeltsData)[1:180,-1]))
+spread(cbind(residSq=as.vector(resid(adamLocationSeat)^2),
+             as.data.frame(SeatbeltsData)[1:180,-1]),
+       lowess=TRUE)
 ```
 
-The only slightly alarming element in the plot in Figure \@ref(fig:adamModelETSXMNMDiagnosticsXreg) is the slight change in variance for the variable `law`. Based on this, we will investigate the potential effect of the law on the scale of the model:
+One of the potentially alarming feature in the plot in Figure \@ref(fig:adamModelETSXMNMDiagnosticsXreg) is the slight change in variance for the variable `law`. The second one is a slight increase in the LOWESS line for squared residuals vs `PetrolPrice`. The `kms` variable does not demonstrate an apparent impact on the squared residuals. Based on this, we will investigate the potential effect of the law and petrol price on the scale of the model. We do that in an automated way, using the principles discussed in Section \@ref(ETSXSelection) via `regressors="select"` command:
 
 ```{r}
-adamScaleSeat <- sm(adamLocationSeat, model="NNN", formula=drivers~law)
+adamScaleSeat <- sm(adamLocationSeat, model="NNN",
+                    formula=drivers~law+PetrolPrice,
+                    regressors="select")
 ```
 
-In the code above, we fit a scale model to the already estimated location model ETSX(M,N,M). We switch off the ETS element in the scale model and introduce the explanatory variable `law`. The function provides a warning that it will create a model in logarithms, which is what we want anyway. After estimating the model, we get the following fit (Figure \@ref(fig:adamModelETSXMNMSMTime)).
-
-```{r adamModelETSXMNMSMTime, fig.cap="Scale model fit"}
-plot(adamScaleSeat,7)
-```
-
-Figure \@ref(fig:adamModelETSXMNMSMTime) demonstrates how the scale of the model changes over time. The part for the test set (after the vertical line) is not always informative, as the values there will depend on the performance of the location part of the model in the holdout. We can see that, when the law was introduced, the variance of the error term has increased slightly. To see if the change was substantial, we can analyse the summary of the model:
+In the code above, we fit a scale model to the already estimated location model ETSX(M,N,M). We switch off the ETS element in the scale model and introduce the explanatory variables `law` and `PetrolPrice`, asking the function to select the most appropriate one based on AICc. The function provides a warning that it will create a model in logarithms, which is what we want anyway. But looking at the output of the scale model, we notice that none of the variables have been selected by the function:
 
 ```{r}
 summary(adamScaleSeat)
 ```
 
-The output above shows that the uncertainty about the parameter `law` is high, covering negative, positive values and zero. This means that we cannot tell the difference between the value of the parameter for `law` and zero. So, the variable does not have a significant impact on the scale. We can also merge the location and scale models (implant the latter in the former) to see how the overall model would perform:
-
-```{r}
-adamMerged <- implant(adamLocationSeat, adamScaleSeat)
-```
-
-Having implanted the scale model in the initial one, we can now compare the information criteria to conclude, whether the introduction of additional complexity brings improvements:
-
-```{r}
-setNames(c(AICc(adamLocationSeat),AICc(adamMerged)),
-         c("Location","Implanted"))
-```
-As we see, the model with the implanted scale model has a higher AICc, which means that introducing the explanatory variable `law` in the scale model does not bring value and that the variable should not be used.
+This means that the explanatory variables do not add value to the fit and should not be included in the scale model. As we can see, selection of variables in the scale model for ADAM can be done automatically without any additional external steps.
 
 
 ### Example 2
-The example in the previous Subsection shows how the analysis can be done for the scale model. To see how the scale model can be used for forecasting, we will consider another example with dynamic elements. For this example, we will use `AirPassengers` and an automatically selected ETS model with Inverse Gaussian distribution (for demonstration purposes):
+The example in the previous Subsection shows how the analysis can be done for the scale model when explanatory variables are considered. To see how the scale model can be used in forecasting, we will consider another example, now with dynamic elements. For this example, I will use `AirPassengers` data and an automatically selected ETS model with Inverse Gaussian distribution (for demonstration purposes):
 
 ```{r}
 adamLocationAir <- adam(AirPassengers, h=10, holdout=TRUE,
@@ -242,10 +234,10 @@ adamLocationAir <- adam(AirPassengers, h=10, holdout=TRUE,
 The diagnostics of the model indicate that a time-varying scale might be required in this situation (see Figure \@ref(fig:adamModelAirLocationDiagnostics)) because the variance of the residuals seems to decrease in the period from 1954 -- 1958.
 
 ```{r adamModelAirLocationDiagnostics, fig.cap="Diagnostics of the location model"}
-plot(adamLocationAir,8)
+plot(adamLocationAir, which=8)
 ```
 
-In this situation, we will ask the function to select the best ETS model for the scale and will not use any other elements:
+To capture this change, we will ask the function to select the best ETS model for the scale and will not use any other elements:
 
 ```{r}
 adamScaleAir <- sm(adamLocationAir, model="YYY")
@@ -254,41 +246,53 @@ adamScaleAir <- sm(adamLocationAir, model="YYY")
 The `sm` function accepts roughly the same set of parameters as `adam()` when applied to the `adam` class objects. So, you can experiment with other types of ETS/ARIMA models if you want. Here is what the function has selected automatically for the scale model:
 
 ```{r}
-adamScaleAir
+summary(adamScaleAir)
 ```
 
-We see that the most suitable model for the location is ETS(M,N,N) with $\alpha=0.0704$, which can be considered as GARCH(1,1) with restricted parameters (as discussed in Subsection \@ref(ADAMscaleModelGARCH)):
-\begin{equation*}
-    \sigma_t^2 = 0.9296 \sigma_{t-1}^2 + 0.0704 \epsilon_{t-1}^2 .
-\end{equation*}
-The model fits the data in the following way (see Figure \@ref(fig:adamModelAirScaleLinear)):
-
-```{r adamModelAirScaleLinear, fig.cap="The fit of the scale model."}
-plot(adamScaleAir,7)
-```
-
-Note that the information criteria in the summary of the model do not include the number of estimated parameters in the location part of the model, so they are not directly comparable with the ones from the initial model. So, to understand whether there is an improvement in comparison with the model with a fixed scale, we can, again, implant the scale model in the location and compare the new model with the initial one:
+::: remark
+Information criteria in the summary of the scale model do not include the number of estimated parameters in the location part of the model, so they are not directly comparable with the ones from the initial model. So, to understand whether there is an improvement in comparison with the model with a fixed scale, we can implant the scale model in the location one and compare the new model with the initial one:
 
 ```{r}
 adamMerged <- implant(adamLocationAir, adamScaleAir)
-setNames(c(AICc(adamLocationAir),AICc(adamMerged)),
-         c("Location","Implanted"))
+c(AICc(adamLocationAir), AICc(adamMerged)) |>
+         setNames(c("Location", "Merged"))
 ```
 
-The output above shows that introducing the ETS(M,N,N) model for the scale has improved the model, reducing the AICc. After implanting the scale in the model, we can access it via `adamMerged$scale` and extract the predicted scale via `extractScale(adamMerged)` command in R. We can also do model diagnostics using the same principles as discussed in Chapter \@ref(diagnostics) (see Figure \@ref(fig:adamModelAirMergedDiagnostics)).
+The output above shows that introducing the ETS(M,N,N) model for the scale has improved the ADAM, reducing the AICc. 
+:::
+
+Judging by the output, we see that the most suitable model for the location is ETS(M,N,N) with $\alpha=0.0704$, which, as we discussed in Subsection \@ref(ADAMscaleModelGARCH), is equivalent to GARCH(1,1) with restricted parameters:
+\begin{equation*}
+    \sigma_t^2 = 0.9296 \sigma_{t-1}^2 + 0.0704 \epsilon_{t-1}^2 .
+\end{equation*}
+
+After implanting the scale in the model, we can access it via `adamMerged$scale` and extract the predicted scale via `extractScale(adamMerged)` command in R. The model fits the data in the following way (see Figure \@ref(fig:adamModelAirScaleLinear)):
+
+```{r adamModelAirScaleLinear, fig.cap="The fit of the scale model."}
+plot(adamMerged$scale, which=7)
+```
+
+As can be seen from Figure \@ref(fig:adamModelAirScaleLinear), the scale changes over time, indeed decreasing in the middle of series and going slightly up at the end. The actual values in the holdout part can in general be ignored because they show the forecast errors several steps ahead for the whole holdout and are not directly comparable with the in-sample ones.
+
+We can also do diagnostics of the merged model using the same principles as discussed in Chapter \@ref(diagnostics) -- the function will automatically use the fitted values of scale where needed (see Figure \@ref(fig:adamModelAirMergedDiagnostics)).
 
 ```{r adamModelAirMergedDiagnostics, fig.cap="Diagnostics of the merged ADAM"}
 par(mfcol=c(2,2))
-plot(adamMerged,c(2,6,8,7))
+plot(adamMerged, which=c(2,6,8,7))
 ```
 
-Note that in the case of a merged model, the plots that produce residuals will be done for the scale model rather than for the location (the plot function will produce a message on that), so plotting $\eta_t$ instead of $\epsilon_t$ (see discussion in Subsection \@ref(SMDistributions) for the assumptions about the residual in this case). Figure \@ref(fig:adamModelAirMergedDiagnostics) demonstrates the diagnostics for the constructed model. Given that we used the Inverse Gaussian distribution, the $\eta_t^2 \sim \chi^2(1)$, which is why the QQ-plot mentions the Chi-Squared distribution. We can see that the distribution has a shorter tail than expected, which means that the model might be missing some elements. However, the log(standardised Residuals) vs Fitted and Time do not demonstrate any obvious problems except for several potential outliers, which do not lie far away from the bounds. Those specific observations could be investigated to determine whether the model can be improved further. We leave this exercise to the readers.
+::: remark
+In the case of a merged model, the plots that produce residuals will be done for the scale model rather than for the location (the plot function will produce a message on that), so plotting $\eta_t$ instead of $\epsilon_t$ (see discussion in Subsection \@ref(SMDistributions) for the assumptions about the residual in this case).
+:::
 
-If we want to produce forecasts from the scale model, we can use the same methods previously used for the location model (Figure \@ref(fig:adamModelAirScaleForecast)).
+Figure \@ref(fig:adamModelAirMergedDiagnostics) demonstrates the diagnostics for the constructed model. Given that we used the Inverse Gaussian distribution, the $\eta_t^2 \sim \chi^2(1)$, which is why the QQ-plot mentions the Chi-Squared distribution. We can see that the distribution has a shorter tail than expected, which means that the model might be missing some elements. However, the log(standardised Residuals) vs Fitted and vs Time do not demonstrate any obvious problems except for several potential outliers, which do not lie far away from the bounds and do not exheed 5% of the sample size in quantity. Those specific observations could be investigated to determine whether the model can be improved further. I leave this exercise to the reader.
+
+Finally, if we want to produce forecasts from the scale model, we can use the same methods previously used for the location one (Figure \@ref(fig:adamModelAirScaleForecast)).
 
 ```{r adamModelAirScaleForecast, fig.cap="Forecast for the Scale model"}
-plot(forecast(adamMerged$scale,
-              h=10, interval="prediction"))
+forecast(adamMerged$scale,
+         h=10, interval="prediction") |>
+    plot()
 ```
 
-The point forecast of scale for the subsequent `h` observations can also be used to produce more appropriate prediction intervals for the merged model. This will be discussed in Chapter \@ref(ADAMForecasting).
+The point forecast of the scale for the subsequent `h` observations can also be used to produce more appropriate prediction intervals for the merged model. This will be discussed in Chapter \@ref(ADAMForecasting).
