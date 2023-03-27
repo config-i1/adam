@@ -318,29 +318,37 @@ There are other elements related to forecasting and taking uncertainty into acco
 ### Prediction interval for intermittent demand model
 When it comes to constructing prediction interval for the intermittent state space model (from Chapter \@ref(ADAMIntermittent)), then there is an important aspect that should be taken into account. Given that the model consists of two parts: demand sizes and demand occurrence, the prediction interval should take the uncertainty from both of them into account. In this case, we should first predict the probability of occurrence of demand for the h steps ahead and then decide what the width of the interval should be based on this probability. For example, if we estimate that the demand will occur with probability $\hat{p}_{t+h|t} = 0.8$, then this means that we expect that in 20% of the cases, we will observe zeroes. This should reduce the confidence level for the demand sizes. Formally speaking, this comes to the following equation:
 \begin{equation}
-    F_y(y_{t+h} \leq q) = \hat{p}_{t+h|t} F_z(z_{t+h} \leq q) +(1 -\hat{p}_{t+h|t}),
+    F_{y_{t+h}}(y_{t+h} \leq q) = \hat{p}_{t+h|t} F_{z_{t+h}}(z_{t+h} \leq q) +(1 -\hat{p}_{t+h|t}),
     (\#eq:statCDF)
 \end{equation}
-where $F_y(\cdot)$ is the cumulative distribution function of demand, $F_z(\cdot)$ is the cumulative distribution function of the demand sizes, $\hat{p}_{t+h|t}$ is the h steps ahead expected probability of occurrence and $q$ is the quantile of distribution. In the formula \@ref(eq:statCDF), we know the expected probability and we know the confidence level $F_y(y_{t+h} \leq q)$. The unknown element is the $1-\alpha = F_z(z_{t+h} \leq q)$. So after regrouping elements we get:
+where $F_{y_{t+h}}(\cdot)$ is the cumulative distribution function of demand, $F_{z_{t+h}}(\cdot)$ is the cumulative distribution function of the demand sizes, $\hat{p}_{t+h|t}$ is the h steps ahead expected probability of occurrence and $q$ is the quantile of distribution. In the formula \@ref(eq:statCDF), we know the expected probability and we know the confidence level $F_{y_{t+h}}(y_{t+h} \leq q)$. The unknown element is the $1-\alpha = F_{z_{t+h}}(z_{t+h} \leq q)$. So after regrouping elements we get:
 \begin{equation}
-    F_z(z_{t+h} \leq q) = \frac{F_y(y_{t+h} \leq q) -(1 -\hat{p}_{t+h|t})}{\hat{p}_{t+h|t}}.
+    F_{z_{t+h}}(z_{t+h} \leq q) = \frac{F_{y_{t+h}}(y_{t+h} \leq q) -(1 -\hat{p}_{t+h|t})}{\hat{p}_{t+h|t}},
     (\#eq:statCDFDemandSizes)
 \end{equation}
-For example, if the confidence level is 0.95 and the expected probability of occurrence is 0.8, then $F_z(z_{t+h} \leq q) = \frac{0.95 -0.2}{0.8} = 0.9375$. Assuming a distribution for the demand sizes, we can use formula \@ref(eq:predictionIntervalGeneral) to construct the parametric prediction interval. Alternatively, we can use any other approach discussed in Section \@ref(ADAMForecastingPI) to generate the intervals.
+which can be used for the calculation of the confidence level of a prediction interval. For example, if the confidence level is 0.95 and the expected probability of occurrence is 0.8, then $F_{z_{t+h}}(z_{t+h} \leq q) = \frac{0.95 -0.2}{0.8} = 0.9375$. Assuming that demand sizes follow some distribution (e.g. Gamma), we can use formula \@ref(eq:predictionIntervalGeneral) to construct a prediction interval of the width 93.75%, which will imply that 95% of demand is expected to be in the constructed bounds.
 
 
 ### One-sided prediction interval {#forecastingADAMOtherOneSided}
-In some cases, we might not need both bounds of the interval. For example, when we deal with intermittent demand, we know that the lower bound will be equal to zero in many cases. In fact, this will always happen when the significance level is lower than the probability of inoccurrence $1-p_{t+h|t}$: we will have the quantile equal to zero because the probability of having zeroes is higher than the significance level. Another example is the safety stock calculation: we only need the upper bound of the interval, and we need to make sure that the specific proportion of demand is satisfied (e.g. 95% of it). In these cases, we can just focus on the particular bound of the interval and drop the other one. Statistically speaking, this means that we cut only one tail of the assumed distribution. This has its implications and issues in several scenarios:
+In some cases, we might not need both bounds of the interval. For example, when we deal with intermittent demand, we know that the lower bound will be equal to zero in many cases. Another example is the safety stock calculation: we only need the upper bound of the interval, and we need to make sure that the specific proportion of demand is satisfied (e.g. 95% of it). In these cases, we can just focus on the particular bound of the interval and drop the other one. Statistically speaking, this means that we cut only one tail of the assumed distribution.
+
+::: remark
+In case of intermittent demand model, when the significance level is lower than the probability of inoccurrence $1-p_{t+h|t}$, we will have the quantile equal to zero because the probability of having zeroes is higher than the significance level. 
+:::
+
+The one sided interval has its implications and issues in several scenarios:
 
 - When we are interested in **upper bound** only and deal with **positive distribution** of demand (for example, Gamma, Log-Normal or Inverse Gaussian), we know that the demand will always lie between zero and the constructed bound. In cases of low volume (or even intermittent) data, this makes sense because the original data might contain zeroes or have values close to it. The upper bound in this case will be lower than in the case of the two-sided prediction interval because we would not be splitting the probability into two parts (for the left and the right tails);
-- The combination of **lower bound** and **positive distribution** implies that the demand will be greater than the specified bound in the pre-selected number of cases (defined by confidence level). There is no natural bound from above, so from a theoretical point of view, this implies that the demand can be infinite;
-- **Upper** or **lower** bound with **real-valued distribution** (such as Normal, Laplace, S or Generalised Normal) implies that the demand is either below or above the specified level, respectively, without any natural limit on the other side. If Normal distribution is used on positive low volume data, there is a natural lower bound, but the model itself will not be aware of it and will not restrict the space with the specific value.
+- The combination of **lower bound** and **positive distribution** implies that the demand will be greater than the specified value in the pre-selected number of cases (defined by confidence level). There is no natural bound from above, so from a theoretical point of view, this implies that the demand can be infinite;
+- **Upper** or **lower** bound with **real-valued distribution** (such as Normal, Laplace, S or Generalised Normal) implies that the demand is either below or above the specified level, respectively, without any natural limit on the other side. If Normal distribution is used on positive low volume data, there is a natural lower bound, but the model itself will not be aware of it and will not restrict the space with the specific value, implying that the demand can be anything between the $-\infty$ and the selected value.
+
+From the practical point of view, the case with the upper bound and a positively defined distribution makes more sense than the other two cases, because if we are interested in demand forecasting, having a non-negative demand makes more sense than having a real-valued one, while the upper bound aligns better with safety stock calculation.
 
 
 ### Cumulative over the horizon forecast {#forecastingADAMOtherCumulative}
 Another related thing to consider when producing forecasts in practice is that the point forecast is not needed in some contexts. Instead, the cumulative over the forecast horizon (or over the lead time) might be more suitable. The classic example is the safety stock calculation based on the lead time (time between the order of product and its delivery). In this situation, we need to make sure that while the product is being delivered, we do not run out of stock, thus still satisfying the selected level of demand (e.g. 95%), but now over the whole period of time rather than on every separate observation.
 
-In the case of **pure additive ADAM**, there are analytical formulae for the conditional expectations and conditional variance for this case that can be used in forecasting. These formulae come directly from the recursive relation \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) (for derivations in a simpler case, see for example, @Hyndman2008b and @Svetunkov2017):
+In the case of **pure additive ADAM**, there are analytical formulae for the conditional expectations and conditional variance for this case that can be used in forecasting. These formulae come directly from the recursive relation \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) (for derivations for a simpler case, see for example, @Hyndman2008b and @Svetunkov2017):
 ```{r echo=FALSE}
     knitr::asis_output('\\begin{equation}')
 if(knitr:::is_latex_output()){
@@ -384,26 +392,28 @@ adamiETSyForecast <- forecast(adamiETSy, h=7,
                               interval="prediction",
                               side="upper")
 ```
-Given that we deal with cumulative values, the basic plot will not be helpful, we should produce a different one (see Figure \@ref(fig:adamModeliETSCumulative)):
+Given that we deal with cumulative values, the basic plot will not be helpful, we should produce something different. One of the options is the following (see Figure \@ref(fig:adamModeliETSCumulative)):
 
 ```{r adamModeliETSCumulative, fig.cap="The actual cumulative demand (black dot), the expectation (the solid blue line) and the 95% quantile of the distribution of the cumulative demand (the dashed grey line) based on iETS model."}
+# Point for the actual cumulative demand over the lead time
 plot(sum(adamiETSy$holdout), ylab="Cumulative demand",
      xlab="", xaxt="n", pch=16,
-     ylim=range(c(0, sum(adamiETSy$holdout),
-                  adamiETSyForecast$upper)))
+     ylim=range(c(0, sum(adamiETSy$holdout), adamiETSyForecast$upper)))
+# Sum of expectations over the lead time
 abline(h=adamiETSyForecast$mean, col="blue",
        lwd=2)
+# Upper bound for the cumulative demand over the lead time
 abline(h=adamiETSyForecast$upper, col="grey",
        lwd=2, lty=2)
 ```
 
 What Figure \@ref(fig:adamModeliETSCumulative) demonstrates is that for the holdout period of 7 days, the cumulative demand was around `r sum(adamiETSy$holdout)` units, while the upper bound of the interval was approximately `r round(adamiETSyForecast$upper,0)`. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
-To see if the approach is suitable, we would need to apply it in either a rolling origin fashion (Section \@ref(rollingOrigin)) or to a set of products to collect the distribution of related error measures.
+This example is provided for demonstration purposes only. To see if the approach is suitable for a specific situation, we would need to apply it in either a rolling origin fashion (Section \@ref(rollingOrigin)) or to a set of products to collect the distribution of related error measures.
 
 
 ### Confidence interval
-Finally, we can construct a confidence interval for some statistics. As discussed in Section 6.4 of @SvetunkovSBA, it can be built for the mean, a parameter, fitted values, etc. In our context, we might be interested in the confidence interval for the conditional h steps ahead expectation. This implies that we are interested in the uncertainty of the line, not of the actual values, which can only be constructed for the model that takes the uncertainty of parameters into account (as discussed in Section \@ref(ADAMUncertainty)). The construction of confidence interval, in this case, relies on the Normal distribution, based on Central Limit Theorem, as long as the basic assumptions for the model and CLT are satisfied [see Section 6.2 and Chapter 15 of @SvetunkovSBA]. Technically speaking, the construction of confidence interval comes to capturing the model uncertainty discussed in Chapter \@ref(ADAMUncertainty).
+Finally, we can construct a confidence interval for some statistics. In general, it can be built for the mean, a parameter, fitted values, etc. In our context, we might be interested in the confidence interval for the conditional h steps ahead expectation. This implies that we are interested in the uncertainty of the line, not of the actual values, which can only be constructed for the model that takes the uncertainty of parameters into account (as discussed in Chapter \@ref(ADAMUncertainty)). The construction of confidence interval, in this case, relies on the Normal distribution (because of Central Limit Theorem), as long as the basic assumptions for the model and CLT are satisfied [see Section 6.2 and Chapter 15 of @SvetunkovSBA]. Technically speaking, the construction of confidence interval comes to capturing the model uncertainty discussed in Chapter \@ref(ADAMUncertainty).
 
 #### Example in R
 The only way how the confidence interval can be constructed for ADAM is via the `reforecast()` function. Consider the example with ADAM ETS(A,Ad,N) on `BJSales` data as in Section \@ref(ADAMForecastingPIExample):
@@ -413,12 +423,14 @@ adamETSBJ <- adam(BJsales, h=10, holdout=TRUE)
 The confidence interval for this model can be produced either directly via `reforecast()` or via `forecast()`, which will call it for you:
 
 ```{r eval=FALSE}
-adamETSBJConfidence <- forecast(adamETSBJ, h=10,
-                                interval="confidence", nsim=1000)
-plot(adamETSBJConfidence)
+forecast(adamETSBJ, h=10,
+         interval="confidence", nsim=1000) |>
+    plot()
 ```
 
-Note that I have increased the number of iterations for the simulation to get a more accurate confidence interval around the conditional expectation. This will consume more memory, as the operation involves creating 1000 sample paths for the fitted values and another 1000 for the holdout sample forecasts.
+::: remark
+I have increased the number of iterations for the simulation to get a more accurate confidence interval around the conditional expectation. This will consume more memory, as the operation involves creating 1000 sample paths for the fitted values and another 1000 for the holdout sample forecasts.
+:::
 
 ```{r adamModelConfidence, fig.cap="Confidence interval for the point forecast from ADAM ETS(A,Ad,N) model.", echo=FALSE}
 load("data/adamModelConfidence.Rdata")
