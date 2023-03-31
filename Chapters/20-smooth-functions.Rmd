@@ -1,8 +1,9 @@
 # Forecasting functions of the smooth package
 While ADAM is the main focus of this monograph, there are several functions in the `smooth` package that implement some special cases of it or some related models. In fact, all the models implemented in the `smooth` package are formulated in one and the same SSOE framework, discussed in this monograph. In this chapter, I briefly explain how the specific functions of the package are related to ADAM and how they are formulated. I conclude the chapter with `adam()` cheat sheet, listing the main commands that can be used to apply the model to a data in variety of scenarios.
 
-## Exponential Smoothing, es()
-The `es()` function from the `smooth` package implements the conventional ETS model with some modifications. The fundamental difference of the function from the `ets()` from the `forecast` package is that it is implemented in the SSOE framework discussed in Section \@ref(ADAMETSGeneral), i.e. with lagged values of the state vector and a smaller transition matrix. In fact, starting from the `smooth` v3.2.0, it is just a wrapper of the `adam()` function, restricting it to:
+## Exponential Smoothing
+### ETS, es()
+The `es()` function from the `smooth` package implements the conventional ETS model [from @Hyndman2008b] with some modifications. The fundamental difference of the function from the `ets()` from the `forecast` package is that it is implemented in the SSOE framework discussed in Section \@ref(ADAMETSGeneral), i.e. with lagged values of the state vector and a smaller transition matrix. In fact, starting from the `smooth` v3.2.0, it is just a wrapper of the `adam()` function, restricting it to:
 
 - the single seasonal ETS (multiple seasonal cycles are supported by `adam()`, as discussed in Chapter \@ref(ADAMMultipleFrequencies)),
 - the Normal distribution for the $\epsilon_t$ (Sections \@ref(ADAMETSAdditiveDistributions) and \@ref(ADAMETSMultiplicativeDistributions)),
@@ -15,16 +16,54 @@ Still, the function supports the main features of ETS and introduces those that 
 1. Explanatory variables in the ETSX model from Chapter \@ref(ADAMX);
 2. A variety of loss functions, including the custom one, as discussed in Chapter \@ref(ADAMETSEstimation);
 3. Different initialisation methods (see Section \@ref(ADAMInitialisation));
-3. Diagnostics plots from Chapter \@ref(diagnostics);
-4. Components and explanatory variables selection and combinations via approaches discussed in Chapter \@ref(ADAMSelection);
-5. Covariance matrix of parameters and related methods for reapplication of ETS model (\@ref(ADAMUncertainty));
-6. Data simulation as in Section \@ref(ADAMUncertaintySimulation);
-7. All types of prediction intervals and other related aspects discussed in Chapter \@ref(ADAMForecasting).
+4. Diagnostics plots from Chapter \@ref(diagnostics);
+5. Components and explanatory variables selection and combinations via approaches discussed in Chapter \@ref(ADAMSelection);
+6. Covariance matrix of parameters and related methods for reapplication of ETS model (\@ref(ADAMUncertainty));
+7. Data simulation as in Section \@ref(ADAMUncertaintySimulation);
+8. All types of prediction intervals and other related aspects discussed in Chapter \@ref(ADAMForecasting).
 
 Being a wrapper of the `adam()`, `es()` is agnostic of the input data, working with any object, including `ts`, `zoo`, `tibble` etc as long as the provided object has only one column. The seasonal lag can be regulated in the function using the `lags` variable, the same way it is done in `adam()`. The explanatory variables in `es()` are provided in a form of a matrix in the variable `xreg` (similarly to how it is done in `arima()` from the `stats` package).
 
 
-## Complex Exponential Smoothing, ces()
+### Complex Exponential Smoothing, ces()
+Complex Exponential Smoothing (CES) is a model lying outside of the conventional ETS taxonomy. It does not have explicit level/trend components, but instead it has a non-linear trend, which changes its shape depending on the value of the complex smoothing parameter. I developed this model in my PhD, and it is explained in detail in the @Svetunkov2015 paper. It is formulated as a set of the following equations:
+\begin{equation}
+	\begin{aligned}
+		& y_t = l_{t-1} + \epsilon_t \\
+		& l_t = l_{t-1} - (1 - \alpha_1) c_{t-1} + (\alpha_0 - \alpha_1) \epsilon_t \\
+		& c_t = l_{t-1} + (1 - \alpha_0) c_{t-1} + (\alpha_0 + \alpha_1) \epsilon_t
+	\end{aligned} ,
+  (\#eq:cesstatespace)
+\end{equation}
+where $\epsilon_t$ is the white noise error term, $l_t$ is the level component, $c_t$ is the non-linear trend component and $\alpha_0$ and $\alpha_1$ are the smoothing parameters. The model can also be formulated in the same SSOE framework \@ref(eq:ETSADAMStateSpacePureAdditive) discussed in Section \@ref(ADAMETSPureAdditive), which makes it easy to implement using the same code and to compare with ADAM ETS and/or ARIMA via information criteria. As for the term "complex", it arises because of how the model was originally formulated in its linear form, using complex variables:
+\begin{equation}
+	\hat y_{t} + i \hat e_{t} = (\alpha_0 + i\alpha_1)(y_{t-1} + i e_{t-1}) + (1 - \alpha_0 + i - i\alpha_1)(\hat y_{t-1} + i \hat e_{t-1}) ,
+  (\#eq:cesalgebraic)
+\end{equation}
+where $i^2=-1$ is the imaginary unit. The model itself allows distributing the weights over the actual observations in a harmonic or in an exponential way, capturing long-term non-linear patterns in the data. It works well in a median combination of models, together with ETS, ARIMA and Theta, as it was shown in @Petropoulos2020.
+
+In addition to the non-seasonal CES, there is a modification that allows capturing either additive or multiplicative seasonality via lagged components, similarly to \@ref(eq:cesstatespace), which is formulated as:
+\begin{equation}
+	\begin{aligned}
+		& y_t = l_{0,t-1} + l_{1,t-m} + \epsilon_t \\
+		& l_{0,t} = l_{0,t-1} - (1 - \alpha_1) c_{0,t-1} + (\alpha_0 - \alpha_1) \epsilon_t \\ 
+		& c_{0,t} = l_{0,t-1} + (1 - \alpha_0) c_{0,t-1} + (\alpha_0	+ \alpha_1) \epsilon_t \\
+		& l_{1,t} = l_{1,t-m} - (1 - \beta_1) c_{1,t-m} + (\beta_0 - \beta_1) \epsilon_t \\
+		& c_{1,t} = l_{1,t-m} + (1 - \beta_0) c_{1,t-m} + (\beta_0 + \beta_1) \epsilon_t
+	\end{aligned} .
+	(\#eq:cesseasonalfull)
+\end{equation}
+Similarly to the non-seasonal CES, \@ref(eq:cesseasonalfull) can be formulated in the SSOE framework discussed in Section \@ref(ADAMETSPureAdditive). Based on that, it is possible to select between the seasonal and the non-seasonal CES using information criteria. The model is also extendible to include other components or explanatory variables. Finally, while it is possible to formulate the model with a variety of distributions, the implementation so far only supports the Normal distribution.
+
+The function `ces()` in the `smooth` package supports many features discussed in this monograph:
+
+1. Explanatory variables, similar to ETSX model from Chapter \@ref(ADAMX), done via `xreg` variable;
+2. A variety of loss functions, as discussed in Chapter \@ref(ADAMETSEstimation), via `loss` variable;
+3. Different initialisation methods (see Section \@ref(ADAMInitialisation));
+4. Diagnostics plots (Chapter \@ref(diagnostics));
+5. Explanatory variables selection (Section \@ref(ETSXSelection));
+7. Data simulation (similar to the ADAM discussed in Section \@ref(ADAMUncertaintySimulation), done using `sim.ces()` function or `simulate()` method applied to an estimated `ces()` model);
+8. All types of prediction intervals and other related aspects discussed in Chapter \@ref(ADAMForecasting).
 
 
 ## State Space ARIMA, ssarima()
