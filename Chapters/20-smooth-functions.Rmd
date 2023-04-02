@@ -9,7 +9,7 @@ The `es()` function from the `smooth` package implements the conventional ETS mo
 
 - the single seasonal ETS (multiple seasonal cycles are supported by `adam()`, as discussed in Chapter \@ref(ADAMMultipleFrequencies)),
 - the Normal distribution for the $\epsilon_t$ (Sections \@ref(ADAMETSAdditiveDistributions) and \@ref(ADAMETSMultiplicativeDistributions)),
-- demand sizes only (no support for the occurrence model from Chapter \@ref(ADAMIntermittent)),
+- continuous data only (no support for the occurrence model from Chapter \@ref(ADAMIntermittent)),
 - ETS and regression (no ARIMA elements as in Chapter \@ref(ADAMARIMA)),
 - location model only (no scale model from Chapter \@ref(ADAMscaleModel)).
 
@@ -20,7 +20,7 @@ Still, the function supports the main features of ETS and introduces those that 
 3. Different initialisation methods (see Section \@ref(ADAMInitialisation));
 4. Diagnostics plots from Chapter \@ref(diagnostics);
 5. Components and explanatory variables selection and combinations via approaches discussed in Chapter \@ref(ADAMSelection);
-6. Covariance matrix of parameters and related methods for reapplication of ETS model (\@ref(ADAMUncertainty));
+6. Covariance matrix of parameters and related methods for reapplication of ETS model (Chapter \@ref(ADAMUncertainty));
 7. Data simulation as in Section \@ref(ADAMUncertaintySimulation);
 8. All types of prediction intervals and other related aspects discussed in Chapter \@ref(ADAMForecasting).
 
@@ -71,10 +71,44 @@ Finally, `auto.ces()` function does selection between the seasonal and non-seaso
 
 
 ## ARIMA
+The `smooth` package also includes two distinct ARIMA functions, which are implemented in the SSOE framework, and have slightly different purposes.
+
 ### Multiple Seasonal ARIMA, msarima()
+The `msarima()` function implements the multiple seasonal ARIMA model as discussed in Chapter \@ref(ADAMARIMA). In fact, starting from smooth v3.2.0, it is just a wrapper of `adam()`, similarly to how `es()` is its wrapper for the ETS counterpart. Being a wrapper, the function does not support all the features of ADAM, but still has the following functionality (similar to the `es()`):
+
+1. Explanatory variables in the ARIMAX model (Chapter \@ref(ADAMX));
+2. Different loss functions, including the custom one (Chapter \@ref(ADAMETSEstimation));
+3. Different initialisation methods (Section \@ref(ADAMInitialisation));
+4. Diagnostics plots (Chapter \@ref(diagnostics));
+5. Orders and explanatory variables selection (Chapter \@ref(ADAMSelection));
+6. Covariance matrix of parameters and related methods for reapplication of ARIMA model (Chapter \@ref(ADAMUncertainty));
+7. Data generation from an estimated model (Section \@ref(ADAMUncertaintySimulation));
+8. All types of prediction intervals and other related aspects (Chapter \@ref(ADAMForecasting)).
+
+Being a part of ADAM, the function is tailored for multiple seasonality and works efficiently in this case, especially when compared with other ARIMA implementations in R. It only supports the Normal distribution and focuses on the location model for continuous data (non-intermittent). Furthermore, similar to the `es()` function is agnostic of the provided data and will work with any type of univariate object (vector, ts, zoo, etc). Finally, the explanatory variables can be provided via the `xreg` parameter, similar to how it is done in the `arima()` function from the `stats` package.
+
+The selection of the ARIMA orders is implemented via the `auto.msarima()` function, which has a slightly different algorithm than the one explained in Section \@ref(ARIMASelection). It does selection based on an information criteria (IC), checking sequentially the orders of I, then MA and the AR for all the orders up until the ones provided by the user. So, for example, the following code:
+
+```{r eval=FALSE}
+auto.msarima(y, orders=list(ar=c(3,3),i=c(2,1),ma=c(3,3)), lags=c(1,12))
+```
+
+will test different orders of SARIMA up to SARIMA(3,2,3)(3,1,3)$_{12}$. If the parameter `fast` is `TRUE` then the function will skip orders that do not lead to the reduction of IC (e.g. if MA(3) does not improve the IC, it will not test MA(2) and MA(1)). As a final step, the function will compare the model with constant with the model without it and select the most appropriate one. Finally, the `auto.msarima()` also supports combination of forecasts from ARIMA models from the same pool as in the case of order selection described above.
 
 
 ### State Space ARIMA, ssarima()
+The `ssarima()` function implements ARIMA in a different form, the one explained in Chapter 11 of @Hyndman2008b and then discussed in @Svetunkov2019 It can be considered as a conventional SSOE State Space ARIMA. The main difference with MSARIMA is in its architecture, i.e. the measurement vector $\mathbf{w}$ and the transition matrix $\mathbf{F}$ differ between the two implementations. The measurement vector is always of the style:
+\begin{equation}
+	\mathbf{w} = \begin{pmatrix} 1 \\ 0 \\ \vdots \\ 0 \end{pmatrix} ,
+  (\#eq:SSARIMAMeasurement)
+\end{equation}
+while the size of the transition matrix is $K^2$, where $K$ is the maximum order of the ARI or MA polynomial. This contrasts with the ADAM ARIMA (and consequently `msarima()`), where the size of the matrix equals to the number of elements in the polynomial equation. So, for example, SARIMA(1,1,2)(0,1,0)$_12$ can be expanded into the following equation (based on a similar model discussed in Section \@ref(StateSpaceARIMA)):
+\begin{equation*}
+    {y}_{t} = (1+\phi_1) {y}_{t-1} -\phi_1 {y}_{t-2} + {y}_{t-12} -(1+\phi_1) {y}_{t-13} + \phi_1 {y}_{t-14} + \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \epsilon_t .
+\end{equation*}
+Based on this, in case of SSARIMA, the size of the transition matrix will be $14 \times 14$, while in case of MSARIMA, the matrix will be $5 \times 5$. This difference in complexity pays of for MSARIMA when multiple frequency model is needed, because the size of the transition matrix will impact the computational speed. Summarising all of this, `ssarima()` is not suitable for multiple frequencies, because it relies on the conventional State Space architecture. Still, it has an advantage: it is in general easier to initialise than the ADAM ARIMA, because the vector of initials equals to $K$, while in case of the latter it is up to $\frac{K(K+1)}{2}$.
+
+Finally, the `auto.ssarima()` function implements the order selection for State Space ARIMA based on the algorithm explained in @Svetunkov2019.
 
 
 ## Cheat sheet for adam() function {#cheatSheet}
