@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>9.5 Examples of application | Forecasting and Analytics with ADAM</title>
   <meta name="description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in smooth package for R." />
-  <meta name="generator" content="bookdown 0.29 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.33 and GitBook 2.6.7" />
 
   <meta property="og:title" content="9.5 Examples of application | Forecasting and Analytics with ADAM" />
   <meta property="og:type" content="book" />
@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-04-25" />
+<meta name="date" content="2023-05-07" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -49,6 +49,7 @@
 
 
 
+<script src="libs/accessible-code-block-0.0.1/empty-anchor.js"></script>
 <link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
 <link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
 <script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
@@ -71,7 +72,6 @@
 pre > code.sourceCode { white-space: pre; position: relative; }
 pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
-.sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
 pre.sourceCode { margin: 0; }
 @media screen {
@@ -105,7 +105,7 @@ code span.al { color: #ff0000; font-weight: bold; } /* Alert */
 code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
 code span.at { color: #7d9029; } /* Attribute */
 code span.bn { color: #40a070; } /* BaseN */
-code span.bu { color: #008000; } /* BuiltIn */
+code span.bu { } /* BuiltIn */
 code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
 code span.ch { color: #4070a0; } /* Char */
 code span.cn { color: #880000; } /* Constant */
@@ -118,7 +118,7 @@ code span.er { color: #ff0000; font-weight: bold; } /* Error */
 code span.ex { } /* Extension */
 code span.fl { color: #40a070; } /* Float */
 code span.fu { color: #06287e; } /* Function */
-code span.im { color: #008000; font-weight: bold; } /* Import */
+code span.im { } /* Import */
 code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
 code span.kw { color: #007020; font-weight: bold; } /* Keyword */
 code span.op { color: #666666; } /* Operator */
@@ -132,28 +132,6 @@ code span.vs { color: #4070a0; } /* VerbatimString */
 code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
 </style>
 
-<style type="text/css">
-/* Used with Pandoc 2.11+ new --citeproc when CSL is used */
-div.csl-bib-body { }
-div.csl-entry {
-  clear: both;
-}
-.hanging div.csl-entry {
-  margin-left:2em;
-  text-indent:-2em;
-}
-div.csl-left-margin {
-  min-width:2em;
-  float:left;
-}
-div.csl-right-inline {
-  margin-left:2em;
-  padding-left:1em;
-}
-div.csl-indent {
-  margin-left: 2em;
-}
-</style>
 
 <link rel="stylesheet" href="style.css" type="text/css" />
 </head>
@@ -612,37 +590,37 @@ div.csl-indent {
 <div id="ADAMARIMAExamples" class="section level2 hasAnchor" number="9.5">
 <h2><span class="header-section-number">9.5</span> Examples of application<a href="ADAMARIMAExamples.html#ADAMARIMAExamples" class="anchor-section" aria-label="Anchor link to header"></a></h2>
 <p>Building upon the example with <code>AirPassengers</code> data from Section <a href="ARIMAExampleInR.html#ARIMAExampleInRSeasonal">8.5.2</a>, we will construct several multiplicative ARIMA models and see which one is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(1,1,1)<span class="math inline">\(_{12}\)</span>, which had AICc of 1028.828. We will do something similar here, using Log-Normal distribution, thus working with logARIMA. To understand what model can be used in this case, we can take the logarithm of data and see what happens with the components of time series:</p>
-<div class="sourceCode" id="cb143"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb143-1"><a href="ADAMARIMAExamples.html#cb143-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(<span class="fu">log</span>(AirPassengers))</span></code></pre></div>
+<div class="sourceCode" id="cb143"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb143-1"><a href="ADAMARIMAExamples.html#cb143-1" aria-hidden="true"></a><span class="kw">plot</span>(<span class="kw">log</span>(AirPassengers))</span></code></pre></div>
 <p><img src="Svetunkov--2022----ADAM_files/figure-html/unnamed-chunk-54-1.png" width="672" /></p>
 <p>We still have the trend in the data, and the seasonality now corresponds to the additive rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking the first differences for the seasonal should suffice because the logarithmic transform will take care of the expanding seasonal pattern in the data. So we can test several models with different options for ARIMA orders:</p>
-<div class="sourceCode" id="cb144"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb144-1"><a href="ADAMARIMAExamples.html#cb144-1" aria-hidden="true" tabindex="-1"></a>adamLogSARIMAAir <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">3</span>)</span>
-<span id="cb144-2"><a href="ADAMARIMAExamples.html#cb144-2" aria-hidden="true" tabindex="-1"></a><span class="co"># logSARIMA(0,1,1)(0,1,1)[12]</span></span>
-<span id="cb144-3"><a href="ADAMARIMAExamples.html#cb144-3" aria-hidden="true" tabindex="-1"></a>adamLogSARIMAAir[[<span class="dv">1</span>]] <span class="ot">&lt;-</span></span>
-<span id="cb144-4"><a href="ADAMARIMAExamples.html#cb144-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;NNN&quot;</span>, <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">12</span>),</span>
-<span id="cb144-5"><a href="ADAMARIMAExamples.html#cb144-5" aria-hidden="true" tabindex="-1"></a>       <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">i=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="at">ma=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)),</span>
-<span id="cb144-6"><a href="ADAMARIMAExamples.html#cb144-6" aria-hidden="true" tabindex="-1"></a>       <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">distribution=</span><span class="st">&quot;dlnorm&quot;</span>)</span>
-<span id="cb144-7"><a href="ADAMARIMAExamples.html#cb144-7" aria-hidden="true" tabindex="-1"></a><span class="co"># logSARIMA(0,2,2)(0,1,1)[12]</span></span>
-<span id="cb144-8"><a href="ADAMARIMAExamples.html#cb144-8" aria-hidden="true" tabindex="-1"></a>adamLogSARIMAAir[[<span class="dv">2</span>]] <span class="ot">&lt;-</span></span>
-<span id="cb144-9"><a href="ADAMARIMAExamples.html#cb144-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;NNN&quot;</span>, <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">12</span>),</span>
-<span id="cb144-10"><a href="ADAMARIMAExamples.html#cb144-10" aria-hidden="true" tabindex="-1"></a>       <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="at">i=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">ma=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)),</span>
-<span id="cb144-11"><a href="ADAMARIMAExamples.html#cb144-11" aria-hidden="true" tabindex="-1"></a>       <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">distribution=</span><span class="st">&quot;dlnorm&quot;</span>)</span>
-<span id="cb144-12"><a href="ADAMARIMAExamples.html#cb144-12" aria-hidden="true" tabindex="-1"></a><span class="co"># logSARIMA(1,1,2)(0,1,1)[12]</span></span>
-<span id="cb144-13"><a href="ADAMARIMAExamples.html#cb144-13" aria-hidden="true" tabindex="-1"></a>adamLogSARIMAAir[[<span class="dv">3</span>]] <span class="ot">&lt;-</span></span>
-<span id="cb144-14"><a href="ADAMARIMAExamples.html#cb144-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;NNN&quot;</span>, <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">12</span>),</span>
-<span id="cb144-15"><a href="ADAMARIMAExamples.html#cb144-15" aria-hidden="true" tabindex="-1"></a>       <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">0</span>), <span class="at">i=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="at">ma=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)),</span>
-<span id="cb144-16"><a href="ADAMARIMAExamples.html#cb144-16" aria-hidden="true" tabindex="-1"></a>       <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">distribution=</span><span class="st">&quot;dlnorm&quot;</span>)</span>
-<span id="cb144-17"><a href="ADAMARIMAExamples.html#cb144-17" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(adamLogSARIMAAir) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">&quot;logSARIMA(0,1,1)(0,1,1)[12]&quot;</span>,</span>
-<span id="cb144-18"><a href="ADAMARIMAExamples.html#cb144-18" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;logSARIMA(0,2,2)(0,1,1)[12]&quot;</span>,</span>
-<span id="cb144-19"><a href="ADAMARIMAExamples.html#cb144-19" aria-hidden="true" tabindex="-1"></a>                             <span class="st">&quot;logSARIMA(1,1,2)(0,1,1)[12]&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb144"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb144-1"><a href="ADAMARIMAExamples.html#cb144-1" aria-hidden="true"></a>adamLogSARIMAAir &lt;-<span class="st"> </span><span class="kw">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">3</span>)</span>
+<span id="cb144-2"><a href="ADAMARIMAExamples.html#cb144-2" aria-hidden="true"></a><span class="co"># logSARIMA(0,1,1)(0,1,1)[12]</span></span>
+<span id="cb144-3"><a href="ADAMARIMAExamples.html#cb144-3" aria-hidden="true"></a>adamLogSARIMAAir[[<span class="dv">1</span>]] &lt;-</span>
+<span id="cb144-4"><a href="ADAMARIMAExamples.html#cb144-4" aria-hidden="true"></a><span class="st">  </span><span class="kw">adam</span>(AirPassengers, <span class="st">&quot;NNN&quot;</span>, <span class="dt">lags=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">12</span>),</span>
+<span id="cb144-5"><a href="ADAMARIMAExamples.html#cb144-5" aria-hidden="true"></a>       <span class="dt">orders=</span><span class="kw">list</span>(<span class="dt">ar=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="dt">i=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="dt">ma=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)),</span>
+<span id="cb144-6"><a href="ADAMARIMAExamples.html#cb144-6" aria-hidden="true"></a>       <span class="dt">h=</span><span class="dv">12</span>, <span class="dt">holdout=</span><span class="ot">TRUE</span>, <span class="dt">distribution=</span><span class="st">&quot;dlnorm&quot;</span>)</span>
+<span id="cb144-7"><a href="ADAMARIMAExamples.html#cb144-7" aria-hidden="true"></a><span class="co"># logSARIMA(0,2,2)(0,1,1)[12]</span></span>
+<span id="cb144-8"><a href="ADAMARIMAExamples.html#cb144-8" aria-hidden="true"></a>adamLogSARIMAAir[[<span class="dv">2</span>]] &lt;-</span>
+<span id="cb144-9"><a href="ADAMARIMAExamples.html#cb144-9" aria-hidden="true"></a><span class="st">  </span><span class="kw">adam</span>(AirPassengers, <span class="st">&quot;NNN&quot;</span>, <span class="dt">lags=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">12</span>),</span>
+<span id="cb144-10"><a href="ADAMARIMAExamples.html#cb144-10" aria-hidden="true"></a>       <span class="dt">orders=</span><span class="kw">list</span>(<span class="dt">ar=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">0</span>), <span class="dt">i=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">ma=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>)),</span>
+<span id="cb144-11"><a href="ADAMARIMAExamples.html#cb144-11" aria-hidden="true"></a>       <span class="dt">h=</span><span class="dv">12</span>, <span class="dt">holdout=</span><span class="ot">TRUE</span>, <span class="dt">distribution=</span><span class="st">&quot;dlnorm&quot;</span>)</span>
+<span id="cb144-12"><a href="ADAMARIMAExamples.html#cb144-12" aria-hidden="true"></a><span class="co"># logSARIMA(1,1,2)(0,1,1)[12]</span></span>
+<span id="cb144-13"><a href="ADAMARIMAExamples.html#cb144-13" aria-hidden="true"></a>adamLogSARIMAAir[[<span class="dv">3</span>]] &lt;-</span>
+<span id="cb144-14"><a href="ADAMARIMAExamples.html#cb144-14" aria-hidden="true"></a><span class="st">  </span><span class="kw">adam</span>(AirPassengers, <span class="st">&quot;NNN&quot;</span>, <span class="dt">lags=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">12</span>),</span>
+<span id="cb144-15"><a href="ADAMARIMAExamples.html#cb144-15" aria-hidden="true"></a>       <span class="dt">orders=</span><span class="kw">list</span>(<span class="dt">ar=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">0</span>), <span class="dt">i=</span><span class="kw">c</span>(<span class="dv">1</span>,<span class="dv">1</span>), <span class="dt">ma=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>)),</span>
+<span id="cb144-16"><a href="ADAMARIMAExamples.html#cb144-16" aria-hidden="true"></a>       <span class="dt">h=</span><span class="dv">12</span>, <span class="dt">holdout=</span><span class="ot">TRUE</span>, <span class="dt">distribution=</span><span class="st">&quot;dlnorm&quot;</span>)</span>
+<span id="cb144-17"><a href="ADAMARIMAExamples.html#cb144-17" aria-hidden="true"></a><span class="kw">names</span>(adamLogSARIMAAir) &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;logSARIMA(0,1,1)(0,1,1)[12]&quot;</span>,</span>
+<span id="cb144-18"><a href="ADAMARIMAExamples.html#cb144-18" aria-hidden="true"></a>                             <span class="st">&quot;logSARIMA(0,2,2)(0,1,1)[12]&quot;</span>,</span>
+<span id="cb144-19"><a href="ADAMARIMAExamples.html#cb144-19" aria-hidden="true"></a>                             <span class="st">&quot;logSARIMA(1,1,2)(0,1,1)[12]&quot;</span>)</span></code></pre></div>
 <p>The thing that is different between the models is the non-seasonal part. Using the connection with ETS (discussed in Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>), the first model should work on local level data, the second should be optimal for the local trend series, and the third one is placed somewhere in between the two. We can compare the models using AICc:</p>
-<div class="sourceCode" id="cb145"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb145-1"><a href="ADAMARIMAExamples.html#cb145-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sapply</span>(adamLogSARIMAAir, AICc)</span></code></pre></div>
+<div class="sourceCode" id="cb145"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb145-1"><a href="ADAMARIMAExamples.html#cb145-1" aria-hidden="true"></a><span class="kw">sapply</span>(adamLogSARIMAAir, AICc)</span></code></pre></div>
 <pre><code>## logSARIMA(0,1,1)(0,1,1)[12] logSARIMA(0,2,2)(0,1,1)[12] 
 ##                    982.5764                   1096.8616 
 ## logSARIMA(1,1,2)(0,1,1)[12] 
 ##                    993.0431</code></pre>
 <p>It looks like the logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{12}\)</span> is more appropriate for the data. In order to make sure that we did not miss anything, we analyse the residuals of this model (Figure <a href="ADAMARIMAExamples.html#fig:logSARIMAACF">9.1</a>):</p>
-<div class="sourceCode" id="cb147"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb147-1"><a href="ADAMARIMAExamples.html#cb147-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">1</span>))</span>
-<span id="cb147-2"><a href="ADAMARIMAExamples.html#cb147-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamLogSARIMAAir[[<span class="dv">1</span>]], <span class="at">which=</span><span class="dv">10</span><span class="sc">:</span><span class="dv">11</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb147"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb147-1"><a href="ADAMARIMAExamples.html#cb147-1" aria-hidden="true"></a><span class="kw">par</span>(<span class="dt">mfcol=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="dt">mar=</span><span class="kw">c</span>(<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">1</span>))</span>
+<span id="cb147-2"><a href="ADAMARIMAExamples.html#cb147-2" aria-hidden="true"></a><span class="kw">plot</span>(adamLogSARIMAAir[[<span class="dv">1</span>]], <span class="dt">which=</span><span class="dv">10</span><span class="op">:</span><span class="dv">11</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:logSARIMAACF"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/logSARIMAACF-1.png" alt="ACF and PACF of logSARIMA(0,1,1)(0,1,1)$_{12}$." width="672" />
 <p class="caption">
@@ -650,8 +628,8 @@ Figure 9.1: ACF and PACF of logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_
 </p>
 </div>
 <p>We can see that there are no significant coefficients on either ACF or PACF, so there is nothing else to improve in this model (we discuss this in more detail in Section <a href="diagnosticsResidualsIIDAuto.html#diagnosticsResidualsIIDAuto">14.5</a>). We can then produce forecast from the model and see how it performed on the holdout sample (Figure <a href="ADAMARIMAExamples.html#fig:logSARIMAForecast">9.2</a>):</p>
-<div class="sourceCode" id="cb148"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb148-1"><a href="ADAMARIMAExamples.html#cb148-1" aria-hidden="true" tabindex="-1"></a><span class="fu">forecast</span>(adamLogSARIMAAir[[<span class="dv">1</span>]], <span class="at">h=</span><span class="dv">12</span>, <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>) <span class="sc">|&gt;</span></span>
-<span id="cb148-2"><a href="ADAMARIMAExamples.html#cb148-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>(<span class="at">main=</span><span class="fu">paste0</span>(adamLogSARIMAAir[[<span class="dv">1</span>]]<span class="sc">$</span>model,<span class="st">&quot; with Log-Normal distribution&quot;</span>))</span></code></pre></div>
+<div class="sourceCode" id="cb148"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb148-1"><a href="ADAMARIMAExamples.html#cb148-1" aria-hidden="true"></a><span class="kw">forecast</span>(adamLogSARIMAAir[[<span class="dv">1</span>]], <span class="dt">h=</span><span class="dv">12</span>, <span class="dt">interval=</span><span class="st">&quot;prediction&quot;</span>) <span class="op">|</span><span class="er">&gt;</span></span>
+<span id="cb148-2"><a href="ADAMARIMAExamples.html#cb148-2" aria-hidden="true"></a><span class="st">    </span><span class="kw">plot</span>(<span class="dt">main=</span><span class="kw">paste0</span>(adamLogSARIMAAir[[<span class="dv">1</span>]]<span class="op">$</span>model,<span class="st">&quot; with Log-Normal distribution&quot;</span>))</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:logSARIMAForecast"></span>
 <img src="Svetunkov--2022----ADAM_files/figure-html/logSARIMAForecast-1.png" alt="Forecast from logSARIMA(0,1,1)(0,1,1)$_{12}$." width="672" />
 <p class="caption">
@@ -659,9 +637,9 @@ Figure 9.2: Forecast from logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{1
 </p>
 </div>
 <p>The ETS model closest to the logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{12}\)</span> would probably be ETS(M,M,M), because the former has both seasonal and non-seasonal differences (see discussion in Subsection <a href="ARIMAandETS.html#ARIMAETSOther">8.4.4</a>):</p>
-<div class="sourceCode" id="cb149"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb149-1"><a href="ADAMARIMAExamples.html#cb149-1" aria-hidden="true" tabindex="-1"></a>adamETSAir <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MMM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb149-2"><a href="ADAMARIMAExamples.html#cb149-2" aria-hidden="true" tabindex="-1"></a>adamETSAir</span></code></pre></div>
-<pre><code>## Time elapsed: 0.12 seconds
+<div class="sourceCode" id="cb149"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb149-1"><a href="ADAMARIMAExamples.html#cb149-1" aria-hidden="true"></a>adamETSAir &lt;-<span class="st"> </span><span class="kw">adam</span>(AirPassengers, <span class="st">&quot;MMM&quot;</span>, <span class="dt">h=</span><span class="dv">12</span>, <span class="dt">holdout=</span><span class="ot">TRUE</span>)</span>
+<span id="cb149-2"><a href="ADAMARIMAExamples.html#cb149-2" aria-hidden="true"></a>adamETSAir</span></code></pre></div>
+<pre><code>## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.5176
@@ -681,7 +659,7 @@ Figure 9.2: Forecast from logSARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{1
 ## sCE: -25.677%; Asymmetry: -23.1%; sMAE: 5.903%; sMSE: 0.698%
 ## MASE: 0.643; RMSSE: 0.7; rMAE: 0.204; rRMSE: 0.213</code></pre>
 <p>Comparing information criteria, ETS(M,M,M) should be preferred to logARIMA, but in terms of accuracy on the holdout, logARIMA is more accurate than ETS on this data:</p>
-<div class="sourceCode" id="cb151"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb151-1"><a href="ADAMARIMAExamples.html#cb151-1" aria-hidden="true" tabindex="-1"></a>adamLogSARIMAAir[[<span class="dv">1</span>]]</span></code></pre></div>
+<div class="sourceCode" id="cb151"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb151-1"><a href="ADAMARIMAExamples.html#cb151-1" aria-hidden="true"></a>adamLogSARIMAAir[[<span class="dv">1</span>]]</span></code></pre></div>
 <pre><code>## Time elapsed: 0.2 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[12]
 ## Distribution assumed in the model: Log-Normal
