@@ -1,9 +1,9 @@
 # Pure additive ADAM ETS {#ADAMETSIntroduction}
-Now that we are familiar with the conventional ETS, we can move to the discussion of ADAM implementation of ETS, which has several important differences from the classical one. This chapter focuses on technical details of the pure additive model, discussing general formulation in algebraic form, then moving to recursive relations, which are needed to understand how to produce forecasts from the model and how to estimate it correctly (i.e. impose restrictions on the parameters). Finally, we discuss the distributional assumptions for ADAM ETS, introducing not only the Normal distribution but also showing how to use Laplace, S, Generalised Normal, Log-Normal, Gamma and Inverse Gaussian distributions in the context.
+Now that we are familiar with the conventional ETS, we can move to the discussion of ADAM implementation of ETS, which has several important differences from the classical one. This chapter focuses on technical details of the pure additive model, discussing general formulation in algebraic form, then moving to recursive relations, which are needed to understand how to produce forecasts from the model and how to estimate it correctly (i.e. impose restrictions on the parameters). Finally, we discuss the distributional assumptions for ADAM ETS, introducing not only the Normal distribution but also showing how to use Laplace, S, Generalised Normal, Log-Normal, Gamma, and Inverse Gaussian distributions in the context.
 
 
 ## Model formulation {#ADAMETSPureAdditive}
-The pure additive case is interesting, because this is the group of models that have closed forms for conditional moments (mean and variance) and support parametric predictive distribution for several steps ahead values. In order to understand how we can get to the general model form, we consider an example of ETS(A,A,A) model, which, as discussed in Section \@ref(ETSTaxonomyMaths), is formulated as:
+The pure additive case is interesting, because this is the group of models that have closed forms for conditional moments (mean and variance) and support parametric predictive distribution for several steps ahead values. In order to understand how we can get to the general model form, we consider an example of an ETS(A,A,A) model, which, as discussed in Section \@ref(ETSTaxonomyMaths), is formulated as:
 \begin{equation}
 	\begin{aligned}
 		& y_t = l_{t-1} + b_{t-1} + s_{t-m} + \epsilon_{t} \\
@@ -20,10 +20,10 @@ This model can be formatted in the following way:
     l_t = & l_{t-1} & + & b_{t-1} & + & 0 & + & \alpha \epsilon_t \\
     b_t = & 0 & + & b_{t-1} & + & 0 & + & \beta \epsilon_t \\
     s_t = & 0 & + & 0 & + & s_{t-m} & + & \gamma \epsilon_t 
-  \end{aligned}
+  \end{aligned} .
   (\#eq:ETSADAMAAASimplified)
 \end{equation}
-to see how its elements can then be represented in the matrix form based on \@ref(eq:ETSADAMAAASimplified):
+To see how its elements can then be represented in the matrix form based on \@ref(eq:ETSADAMAAASimplified):
 \begin{equation}
   \begin{aligned}
     y_t & = \begin{pmatrix} 1 & 1 & 1 \end{pmatrix}
@@ -47,7 +47,7 @@ to see how its elements can then be represented in the matrix form based on \@re
   \end{aligned}.
   (\#eq:ETSADAMAAAMatrixForm)
 \end{equation}
-I use tabulation in equation \@ref(eq:ETSADAMAAASimplified) to show how the matrix form is related to the general one. The positions of $l_{t-1}$, $b_{t-1}$ and $s_{t-m}$ correspond to the non-zero values in the transition matrix in \@ref(eq:ETSADAMAAAMatrixForm). Now we can define each matrix and vector, for example:
+I use tabulation in \@ref(eq:ETSADAMAAASimplified) to show how the matrix form is related to the general one. The positions of $l_{t-1}$, $b_{t-1}$ and $s_{t-m}$ correspond to the non-zero values in the transition matrix in \@ref(eq:ETSADAMAAAMatrixForm). Now we can define each matrix and vector, for example:
 \begin{equation}
   \begin{aligned}
     \mathbf{w} = \begin{pmatrix} 1 \\ 1 \\ 1 \end{pmatrix}, & \mathbf{F} = \begin{pmatrix} 1 & 1 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{pmatrix}, & \mathbf{g} = \begin{pmatrix} \alpha \\ \beta \\ \gamma \end{pmatrix}, \\
@@ -63,12 +63,12 @@ Substituting \@ref(eq:ETSADAMAAAMatrices) into \@ref(eq:ETSADAMAAAMatrixForm), w
   \end{aligned},
   (\#eq:ETSADAMStateSpacePureAdditive)
 \end{equation}
-where $\mathbf{w}$ is the measurement vector, $\mathbf{F}$ is the transition matrix, $\mathbf{g}$ is the persistence vector, $\mathbf{v}_{t-\boldsymbol{l}}$ is the vector of lagged components and $\boldsymbol{l}$ is the vector of lags. The important thing to note is that the ADAM is based on the model discussed in Section \@ref(ETSConventionalModelAdditive), but it is formulated using lags of components rather than their transition over time. This comes to the elements of the vector $\boldsymbol{l}$. Just for the comparison, the conventional ETS(A,A,A), formulated according to \@ref(eq:ETSConventionalStateSpace) would have the following transition matrix (instead of \@ref(eq:ETSADAMAAAMatrices)):
+where $\mathbf{w}$ is the measurement vector, $\mathbf{F}$ is the transition matrix, $\mathbf{g}$ is the persistence vector, $\mathbf{v}_{t-\boldsymbol{l}}$ is the vector of lagged components, and $\boldsymbol{l}$ is the vector of lags. The important thing to note is that the ADAM is based on the model discussed in Section \@ref(ETSConventionalModelAdditive), but it is formulated using lags of components rather than their transition over time. This comes to the elements of the vector $\boldsymbol{l}$. Just for the comparison, the conventional ETS(A,A,A), formulated according to \@ref(eq:ETSConventionalStateSpace) would have the following transition matrix (instead of \@ref(eq:ETSADAMAAAMatrices)):
 \begin{equation}
   \mathbf{F} = \begin{pmatrix} 1 & 1 & \mathbf{0}^\prime_{m-1} & 0 \\ 0 & 1 & \mathbf{0}^\prime_{m-1} & 0 \\ 0 & 0 & \mathbf{0}^\prime_{m-1} & 1 \\ \mathbf{0}_{m-1} & \mathbf{0}_{m-1} & \mathbf{I}_{m-1} & \mathbf{0}_{m-1} \end{pmatrix},
   (\#eq:ETSADAMAAAMatricesTransition)
 \end{equation}
-where $\mathbf{I}_{m-1}$ is the identity matrix of the size $(m-1) \times (m-1)$ and $\mathbf{0}_{m-1}$ is the vector of zeroes of size $m-1$. The main benefit of using the vector of lags $\boldsymbol{l}$ instead of the conventional mechanism in the transition equation is in the reduction of dimensions of matrices (the transition matrix contains $3\times 3$ elements in case of \@ref(eq:ETSADAMStateSpacePureAdditive) instead of $(2+m)\times (2+m)$ as for the conventional ETS model). The model \@ref(eq:ETSADAMStateSpacePureAdditive) is more parsimonious than the conventional one and simplifies some of the calculations, making it realistic, for example, to apply models to data with large frequency $m$ (e.g. 24, 48, 52, 365). The main disadvantage of this approach is in the complications arising in the derivation of conditional expectation and variance, which still have closed forms, but are more cumbersome. They are discussed later in this chapter in Section \@ref(pureAdditiveExpectationAndVariance).
+where $\mathbf{I}_{m-1}$ is the identity matrix of the size $(m-1) \times (m-1)$ and $\mathbf{0}_{m-1}$ is the vector of zeroes of size $m-1$. The main benefit of using the vector of lags $\boldsymbol{l}$ instead of the conventional mechanism in the transition equation is in the reduction of dimensions of matrices (the transition matrix contains $3\times 3$ elements in the case of \@ref(eq:ETSADAMStateSpacePureAdditive) instead of $(2+m)\times (2+m)$ as in the conventional ETS model). The model \@ref(eq:ETSADAMStateSpacePureAdditive) is more parsimonious than the conventional one and simplifies some of the calculations, making it realistic, for example, to apply models to data with large frequency $m$ (e.g. 24, 48, 52, 365). The main disadvantage of this approach is in the complications arising in the derivation of conditional expectation and variance, which still have closed forms, but are more cumbersome. They are discussed later in this chapter in Section \@ref(pureAdditiveExpectationAndVariance).
 
 
 ## Recursive relation {#adamETSPureAdditiveRecursive}
@@ -90,7 +90,7 @@ where $\mathbf{v}_{t+h-\boldsymbol{l}}$ is the vector of previous states, given 
   \end{aligned},
   (\#eq:ETSADAMStateSpacePureAdditiveRecursion02)
 \end{equation}
-where $m_1, m_2, \dots, m_d$ are the distinct lags of the model. So, for example, in case of ETS(A,A,A) model on quarterly data (periodicity is equal to four), $m_1=1$, $m_2=4$, leading to $\mathbf{F}_{1} = \begin{pmatrix} 1 & 1 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 0 \end{pmatrix}$ and $\mathbf{F}_{4} = \begin{pmatrix} 0 & 0 & 0 \\ 0 & 0 & 0 \\ 0 & 0 & 1 \end{pmatrix}$, where the split of the transition matrix is done column-wise. This split of matrices and vectors into distinct sub matrices and subvectors is needed in order to get the correct recursion and obtain the correct conditional h-steps ahead expectation and variance.
+where $m_1, m_2, \dots, m_d$ are the distinct lags of the model. So, for example, in the case of an ETS(A,A,A) model on quarterly data (periodicity is equal to four), $m_1=1$, $m_2=4$, leading to $\mathbf{F}_{1} = \begin{pmatrix} 1 & 1 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 0 \end{pmatrix}$ and $\mathbf{F}_{4} = \begin{pmatrix} 0 & 0 & 0 \\ 0 & 0 & 0 \\ 0 & 0 & 1 \end{pmatrix}$, where the split of the transition matrix is done column-wise. This split of matrices and vectors into distinct sub matrices and subvectors is needed in order to get the correct recursion and obtain the correct conditional h-steps ahead expectation and variance.
 
 By substituting the values in the transition equation of \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion02) with their previous values until we reach $t$, we get:
 \begin{equation}
@@ -113,7 +113,7 @@ Inserting \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion03) in the measurement 
   \end{aligned}
   (\#eq:ETSADAMStateSpacePureAdditiveRecursion04)
 \end{equation}
-This recursion shows how the actual value appears based on the states on observation $t$, values of transition matrix and measurement and persistence vectors and on the error term for the holdout sample. The latter is typically not known but we can usually estimate its moments (e.g. $\mathrm{E}(\epsilon_t)=0$ and $\mathrm{V}(\epsilon_t)=\sigma^2$), which will help us in getting conditional moments for the actual value $y_{t+h}$.
+This recursion shows how the actual value appears based on the states on observation $t$, values of transition matrix and measurement and persistence vectors, and on the error term for the holdout sample. The latter is typically not known but we can usually estimate its moments (e.g. $\mathrm{E}(\epsilon_t)=0$ and $\mathrm{V}(\epsilon_t)=\sigma^2$), which will help us in getting conditional moments for the actual value $y_{t+h}$.
 
 Substituting the specific values of $m_1, m_2, \dots, m_d$ in \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) will simplify the equation and make it easier to understand. For example, for ETS(A,N,N), $m_1=1$ and all the other lags are equal to zero, so the recursion \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) simplifies to:
 \begin{equation}
@@ -124,7 +124,7 @@ which is the recursion obtained by @Hyndman2008b on page 103.
 
 
 ## Conditional expectation and variance {#pureAdditiveExpectationAndVariance}
-Now, why is the recursion \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) important? This is because we can take the expectation and variance of \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) conditional on the values of the state vector $\mathbf{v}_{t}$ on the observation $t$ and all the matrices and vectors ($\mathbf{F}$, $\mathbf{w}$ and $\mathbf{g}$), assuming that the basic model assumptions hold (error term is homoscedastic, uncorrelated and has the expectation of zero, Subsection \@ref(assumptions)), in order to get:
+Now, why is the recursion \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) important? This is because we can take the expectation and variance of \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04) conditional on the values of the state vector $\mathbf{v}_{t}$ on the observation $t$ and all the matrices and vectors ($\mathbf{F}$, $\mathbf{w}$, and $\mathbf{g}$), assuming that the basic model assumptions hold (error term is homoscedastic, uncorrelated, and has the expectation of zero, Subsection \@ref(assumptions)), in order to get:
 \begin{equation}
   \begin{aligned}
     \mu_{y,t+h} = \text{E}(y_{t+h}|t) = & \sum_{i=1}^d \left(\mathbf{w}_{m_i}^\prime \mathbf{F}_{m_i}^{\lceil\frac{h}{m_i}\rceil-1} \right) \mathbf{v}_{t} \\
@@ -137,7 +137,7 @@ where $\sigma^2$ is the variance of the error term. The formulae \@ref(eq:ETSADA
     y_{t+h} \in \left( \text{E}(y_{t+h}|t) + z_{\frac{\alpha}{2}} \sqrt{\text{V}(y_{t+h}|t)}, \text{E}(y_{t+h}|t) + z_{1-\frac{\alpha}{2}} \sqrt{\text{V}(y_{t+h}|t)} \right),
   (\#eq:ETSADAMStateSpacePureAdditivePredictionInterval)
 \end{equation}
-where $z_{\frac{\alpha}{2}}$ is the quantile of standardised Normal distribution for the level $\frac{\alpha}{2}$. When it comes to other distributions (see Section \@ref(ADAMETSAdditiveDistributions)), in order to get the conditional h steps ahead scale parameter, we can first calculate the variance using \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVariance) and then using the relation between the scale and the variance for the specific distribution to get the necessary value (this is discussed in Section \@ref(ADAMETSAdditiveDistributions)).
+where $z_{\frac{\alpha}{2}}$ is the quantile of standardised Normal distribution for the level $\frac{\alpha}{2}$. When it comes to other distributions (see Section \@ref(ADAMETSAdditiveDistributions)), in order to get the conditional $h$ steps ahead scale parameter, we can first calculate the variance use \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionMeanAndVariance) and then using the relation between the scale and the variance for the specific distribution to get the necessary value (this is discussed in Section \@ref(ADAMETSAdditiveDistributions)).
 
 
 ### Example with ETS(A,N,N)
@@ -172,21 +172,21 @@ In order to derive both conditions for the ADAM, we need to use a reduced form o
   \end{aligned}.
   (\#eq:ETSADAMStateSpacePureAdditiveBackRecursion01)
 \end{equation}
-The matrix $\mathbf{D}=\mathbf{F} -\mathbf{g}\mathbf{w}^\prime$ is called the discount matrix and it shows how the weights diminish over time. It is the main part of the model that determines, whether the model will be stable / forecastable or not.
+The matrix $\mathbf{D}=\mathbf{F} -\mathbf{g}\mathbf{w}^\prime$ is called the discount matrix and it shows how the weights diminish over time. It is the main part of the model that determines, whether the model will be stable/forecastable or not.
 
 
 ### Example with ETS(A,N,N)
-In order to better understand what we plan to discuss in this section, consider an example of ETS(A,N,N) model, for which $\mathbf{F}=1$, $\mathbf{w}=1$, $\mathbf{g}=\alpha$, $\mathbf{v}_t=l_t$ and $\boldsymbol{l}=1$. Inserting these values in \@ref(eq:ETSADAMStateSpacePureAdditiveBackRecursion01), we get:
+In order to better understand what we plan to discuss in this section, consider an example of an ETS(A,N,N) model, for which $\mathbf{F}=1$, $\mathbf{w}=1$, $\mathbf{g}=\alpha$, $\mathbf{v}_t=l_t$ and $\boldsymbol{l}=1$. Inserting these values in \@ref(eq:ETSADAMStateSpacePureAdditiveBackRecursion01), we get:
 \begin{equation}
   \begin{aligned}
     l_{t} = & \left(1 -\alpha \right) {l}_{t-1} + \alpha {y}_{t},
   \end{aligned}.
   (\#eq:ETSADAMStateSpaceANNBackRecursion01)
 \end{equation}
-which corresponds to the formula of Simple Exponential Smoothing from Section \@ref(SES). The discount matrix, in this case, is $\mathbf{D}=1-\alpha$. If we now substitute the values for the level on the right-hand side of the equation \@ref(eq:ETSADAMStateSpaceANNBackRecursion01) by the previous values of the level, we will obtain the recursion that we have already discussed in Section \@ref(whyExponential), but now in terms of the "true" components and parameters:
+which corresponds to the formula of SES from Section \@ref(SES). The discount matrix, in this case, is $\mathbf{D}=1-\alpha$. If we now substitute the values for the level on the right-hand side of the equation \@ref(eq:ETSADAMStateSpaceANNBackRecursion01) by the previous values of the level, we will obtain the recursion that we have already discussed in Section \@ref(whyExponential), but now in terms of the "true" components and parameters:
 \begin{equation}
   \begin{aligned}
-    l_{t} = & {\alpha} \sum_{j=0}^{t-1} (1 -{\alpha})^j {y}_{t-j} + (1 -{\alpha})^t l_0,
+    l_{t} = & {\alpha} \sum_{j=0}^{t-1} (1 -{\alpha})^j {y}_{t-j} + (1 -{\alpha})^t l_0
   \end{aligned}.
   (\#eq:ETSADAMStateSpaceANNBackRecursion02)
 \end{equation}
@@ -219,7 +219,7 @@ where $\mathbf{D}_{m_i} = \mathbf{F}_{m_i} -\mathbf{g}_{m_i} \mathbf{w}_{m_i}^\p
   \end{aligned},
   (\#eq:ETSADAMStateSpacePureAdditiveRecursionForecastability)
 \end{equation}
-In our case **forecastability** condition implies that:
+In our case the forecastability condition implies that:
 \begin{equation}
   \lim\limits_{t\rightarrow\infty}\left(\mathbf{w}_{m_i}^\prime\mathbf{D}_{m_i}^{\lceil\frac{t-1}{m_i}\rceil} \mathbf{v}_{0}\right) = \text{const for all } i=1, \dots, d.
   (\#eq:ETSADAMStateSpacePureAdditiveRecursionForecastabilityFinal)
@@ -233,28 +233,28 @@ While the conventional ETS assumes that the error term follows Normal distributi
 1. Normal: $\epsilon_t \sim \mathcal{N}(0, \sigma^2)$, meaning that $y_t = \mu_{y,t} + \epsilon_t \sim \mathcal{N}(\mu_{y,t}, \sigma^2)$;
 2. Laplace: $\epsilon_t \sim \mathcal{L}(0, s)$, so that $y_t = \mu_{y,t} + \epsilon_t \sim \mathcal{L}(\mu_{y,t}, s)$;
 3. Generalised Normal: $\epsilon_t \sim \mathcal{GN}(0, s, \beta)$, leading to $y_t = \mu_{y,t} + \epsilon_t \sim \mathcal{GN}(\mu_{y,t}, s, \beta)$;
-4. S (special case of $\mathcal{GN}$ with $\beta=0.5$): $\epsilon_t \sim \mathcal{S}(0, s)$, implying that $y_t = \mu_{y,t} + \epsilon_t \sim \mathcal{S}(\mu_{y,t}, s)$.
+4. S (special case of $\mathcal{GN}$ with $\beta=0.5$): $\epsilon_t \sim \mathcal{S}(0, s)$, implying that $y_t = \mu_{y,t} + \epsilon_t \sim \mathcal{S}(\mu_{y,t}, s)$,
 <!-- 5. Logistic: $\epsilon_t \sim \mathcal{Logis}(0, s)$; -->
 <!-- 6. Student's t: $\epsilon_t \sim \mathcal{t}(\nu)$; -->
 <!-- 5. Asymmetric Laplace: $\epsilon_t \sim \mathcal{ALaplace}(0, s, \alpha)$ -->
 
 where $\mu_{y,t} = \mathbf{w}^\prime \mathbf{v}_{t-\boldsymbol{l}}$ is the one step ahead point forecast.
 
-The conditional moments and stability/forecastability conditions do not change for the model with these assumptions. The main element that changes is the scale and the width of prediction intervals. Given that scales of these distributions are linearly related to the variance, one can calculate the conditional variance as discussed in Section \@ref(pureAdditiveExpectationAndVariance) and then use it in order to obtain the respective scales. Having the scales it becomes straightforward to calculate the needed quantiles for the prediction intervals. Here are the formulae for the scales of distributions mentioned above:
+The conditional moments and stability/forecastability conditions do not change for the model with these assumptions. The main element that changes is the scale and the width of prediction intervals. Given that the scales of these distributions are linearly related to the variance, one can calculate the conditional variance as discussed in Section \@ref(pureAdditiveExpectationAndVariance) and then use it in order to obtain the respective scales. Having the scales, it becomes straightforward to calculate the needed quantiles for the prediction intervals. Here are the formulae for the scales of distributions mentioned above:
 
 1. Normal: scale is $\sigma^2_h$;
 2. Laplace: $s_h = \sigma_h \sqrt{\frac{1}{2}}$;
 4. Generalised Normal: $s_h = \sigma_h \sqrt{\frac{\Gamma(1/\beta)}{\Gamma(3/\beta)}}$;
 3. S: $s_h = \sqrt{\sigma_h}\sqrt[4]{\frac{1}{120}}$.
 
-The estimation of pure additive ADAM can be done via the maximisation of the likelihood of the assumed distribution (see Section \@ref(ADAMETSEstimationLikelihood)), which in some cases coincide with the popular loss functions (e.g. Normal and MSE, or Laplace and MAE).
+The estimation of pure additive ADAM can be done via the maximisation of the likelihood of the assumed distribution (see Section \@ref(ADAMETSEstimationLikelihood)), which in some cases coincides with the popular loss functions (e.g. Normal and MSE, or Laplace and MAE).
 
 In addition, the following more exotic options for the additive error models are available in ADAM:
 
 1. Log-Normal: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \text{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)$, implying that $y_t = \mu_{y,t} \left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) = y_t = \mu_{y,t} + \epsilon_t \sim \text{log}\mathcal{N}\left(\log\mu_{y,t} -\frac{\sigma^2}{2}, \sigma^2\right)$.
-Here, $\sigma^2$ is the variance of the error term in logarithms and the $-\frac{\sigma^2}{2}$ appears due to the restriction $\text{E}(\epsilon_t)=0$.
+Here, $\sigma^2$ is the variance of the error term in logarithms and the $-\frac{\sigma^2}{2}$ appears due to the restriction $\text{E}(\epsilon_t)=0$;
 2. Inverse Gaussian: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \mathcal{IG}(1, \sigma^2)$ with $y_t=\mu_{y,t} \left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \mathcal{IG}\left(\mu_{y,t}, \frac{\sigma^2}{\mu_{y,t}}\right)$;
-3. Gamma: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \mathcal{\Gamma}(\sigma^{-2}, \sigma^2)$, so that $y_t = \mu_{y,t} \left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \mathcal{\Gamma}(\sigma^{-2}, \sigma^2 \mu_{y,t})$;
+3. Gamma: $\left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \mathcal{\Gamma}(\sigma^{-2}, \sigma^2)$, so that $y_t = \mu_{y,t} \left(1+\frac{\epsilon_t}{\mu_{y,t}} \right) \sim \mathcal{\Gamma}(\sigma^{-2}, \sigma^2 \mu_{y,t})$.
 
 The possibility of application of these distributions arises from the reformulation of the original pure additive model \@ref(eq:ETSADAMStateSpacePureAdditive) into:
 \begin{equation}
@@ -275,17 +275,17 @@ To see how the pure additive ADAM ETS works, we will try it out using the `adam(
 plot(BJsales)
 ```
 
-The series in Figure \@ref(fig:BJsalesDataPlot) seem to exhibit trend, so we will apply ETS(A,A,N) model:
+The series in Figure \@ref(fig:BJsalesDataPlot) seem to exhibit a trend, so we will apply an ETS(A,A,N) model:
 ```{r}
 adamETSBJ <- adam(BJsales, "AAN")
 adamETSBJ
 ```
 
-The model's output summarises which specific model was constructed, what distribution was assumed, how the model was estimated, and also provides the values of smoothing parameters. It also reports the sample size, the number of parameters, degrees of freedom and produces information criteria [see Section 16.4 of @SvetunkovSBA]. We can compare this model with the ETS(A,N,N) to see which of them performs better in terms of information criteria (e.g. in terms of AICc):
+The model's output summarises which specific model was constructed, what distribution was assumed, how the model was estimated, and also provides the values of smoothing parameters. It also reports the sample size, the number of parameters, degrees of freedom, and produces information criteria [see Section 16.4 of @SvetunkovSBA]. We can compare this model with the ETS(A,N,N) to see which of them performs better in terms of information criteria (e.g. in terms of AICc):
 ```{r}
 adam(BJsales, "ANN")
 ```
-In this situation the AICc for ETS(A,N,N) is higher than for ETS(A,A,N), so we should use the latter for forecasting purposes. We can produce point forecasts and prediction interval (in this example we will construct 90% and 95% ones) and plot them (Figure \@ref(fig:BJsalesAANForecast)):
+In this situation the AICc for ETS(A,N,N) is higher than for ETS(A,A,N), so we should use the latter for forecasting purposes. We can produce point forecasts and a prediction interval (in this example we will construct 90% and 95% ones) and plot them (Figure \@ref(fig:BJsalesAANForecast)):
 
 ```{r BJsalesAANForecast, fig.cap="Forecast for Box-Jenkins sales data from ETS(A,A,N) model."}
 forecast(adamETSBJ, h=10,
@@ -302,7 +302,7 @@ adamETSBJ
 
 Both smoothing parameters are now higher, which implies that the uncertainty about the future values of states is higher as well, which is then reflected in the slightly wider prediction interval (Figure \@ref(fig:BJsalesAANForecastAdmissible)):
 
-```{r BJsalesAANForecastAdmissible, fig.cap="Forecast for Box-Jenkins sales data from ETS(A,A,N) model with admissible bounds."}
+```{r BJsalesAANForecastAdmissible, fig.cap="Forecast for Box-Jenkins sales data from an ETS(A,A,N) model with admissible bounds."}
 forecast(adamETSBJ, h=10,
          interval="prediction", level=c(0.9,0.95)) |>
     plot(main="")
@@ -325,12 +325,12 @@ print(adamETSBJ, digits=3)
 
 Similar to the previous cases, we can plot the forecasts from the model:
 
-```{r BJsalesAANForecastGN, fig.cap="Forecast for Box-Jenkins sales data from ETS(A,A,N) model with Generalised Normal distribution."}
+```{r BJsalesAANForecastGN, fig.cap="Forecast for Box-Jenkins sales data from an ETS(A,A,N) model with Generalised Normal distribution."}
 forecast(adamETSBJ, h=10, interval="prediction") |>
     plot(main="")
 ```
 
-The prediction interval in this case is slightly wider than in the previous one, because $\mathcal{GN}$ distribution with $\beta=$ `r round(adamETSBJ$other$shape,2)` has fatter tails than the Normal one (Figure \@ref(fig:BJsalesAANForecastGN)).
+The prediction interval in this case is slightly wider than in the previous one, because the Generalised Normal distribution with $\beta=$ `r round(adamETSBJ$other$shape,2)` has fatter tails than the Normal one (Figure \@ref(fig:BJsalesAANForecastGN)).
 
 
 ### Seasonal data {#ADAMETSPureAdditiveExamplesETSAAA}
@@ -338,7 +338,7 @@ The prediction interval in this case is slightly wider than in the previous one,
 plot(AirPassengers)
 ```
 
-Now we will check what happens in the case of seasonal data. We use `AirPassengers` data, plotted in Figure \@ref(fig:AirPassengersPlot), which apparently has multiplicative seasonality. But for demonstration purposes, we will see what happens when we use the wrong model with additive seasonality. We will withhold last 12 observations to look closer at the performance of the ETS(A,A,A) model in this case:
+Now we will check what happens in the case of seasonal data. We use `AirPassengers` data, plotted in Figure \@ref(fig:AirPassengersPlot), which apparently has multiplicative seasonality. But for demonstration purposes, we will see what happens when we use the wrong model with additive seasonality. We will withhold the last 12 observations to look closer at the performance of the ETS(A,A,A) model in this case:
 
 ```{r}
 adamETSAir <- adam(AirPassengers, "AAA", lags=12,
@@ -350,7 +350,7 @@ In this specific case, the `lags` parameter is not necessary because the functio
 :::
 
 ::: remark
-In some cases, the optimiser might converge to the local minimum, so if you find the results unsatisfactory, it might make sense to reestimate the model tuning the parameters of the optimiser (see Section \@ref(ADAMInitialisation) for details). Here is an example (we increase the number of iterations in the optimisation and set new starting values for the smoothing parameters):
+In some cases, the optimiser might converge to the local minimum, so if you find the results unsatisfactory, it might make sense to reestimate the model, tuning the parameters of the optimiser (see Section \@ref(ADAMInitialisation) for details). Here is an example (we increase the number of iterations in the optimisation and set new starting values for the smoothing parameters):
 :::
 
 ```{r}
@@ -363,7 +363,7 @@ adamETSAir
 
 Notice that because we fit the seasonal additive model to the data with multiplicative seasonality, the smoothing parameter $\gamma$ has become large -- the seasonal component needs to be updated frequently to keep up with the changing seasonal profile. In addition, because we use the `holdout` parameter, the function also reports the error measures for the point forecasts on that part of the data. This can be useful when comparing the performance of several models on a time series. And here is how the forecast from ETS(A,A,A) looks on this data:
 
-```{r AirPassengersAAAForecast, fig.cap="Forecast for air passengers data using ETS(A,A,A) model.", echo=FALSE}
+```{r AirPassengersAAAForecast, fig.cap="Forecast for air passengers data using an ETS(A,A,A) model.", echo=FALSE}
 forecast(adamETSAir, h=12, interval="prediction") |>
     plot()
 ```
@@ -372,7 +372,7 @@ Figure \@ref(fig:AirPassengersAAAForecast) demonstrates that while the fit to th
 
 In order to see how the ADAM ETS decomposes the data into components, we can plot it via the `plot()` method with `which=12` parameter:
 
-```{r AirPassengersAAADecomposition, fig.cap="Decomposition of air passengers data using ETS(A,A,A) model.", echo=TRUE}
+```{r AirPassengersAAADecomposition, fig.cap="Decomposition of air passengers data using an ETS(A,A,A) model.", echo=TRUE}
 plot(adamETSAir, which=12)
 ```
 
