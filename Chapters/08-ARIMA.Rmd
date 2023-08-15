@@ -3,11 +3,11 @@ Another important dynamic element in ADAM is the ARIMA model [developed original
 
 The main idea of the model is that the data might have dynamic relations over time, where the new values depend on the values on the previous observations. This becomes more obvious in the case of engineering systems and modelling physical processes. For example, @Box1976 use an example of a series of CO$_2$ output of a furnace when the input gas rate changes. In this case, the elements of the ARIMA process are natural, as the CO$_2$ cannot just drop to zero when the gas is switched off -- it will leave the furnace in reducing quantity over time (i.e. leaving $\phi_1\times100\%$ of CO$_2$ in the next minute, where $\phi_1$ is a parameter in the model).
 
-Another example where AR processes are natural is modelling the temperature in the room, measured with 5 minutes intervals. In this case, the temperature at 5:30 pm will depend on the one at 5:25 pm: if the temperature outside the room is lower, then the one in the room will go down slightly due to the loss of heat. Every 5 minutes it will go down on average by some quantity $\phi_1$.
+Another example where AR processes are natural is modelling the temperature in the room, measured with five minute intervals. In this case, the temperature at 5:30 p.m. will depend on the one at 5:25 p.m.: if the temperature outside the room is lower, then the one in the room will go down slightly due to the loss of heat. Every five minutes it will go down on average by some quantity $\phi_1$.
 
-Both these examples describe the AR(1) process, and in both of them the ARIMA model can be considered a "true model" (see discussion in Section \@ref(modelsMethods)). Unfortunately, when it comes to time series in the social or business domains, it becomes very difficult to motivate ARIMA usage from the modelling point of view. For example, the demand for a product does not reproduce itself and in real life does not depend on the demand on previous observations. So, if we construct ARIMA for such a process, we turn a blind eye to the fact that the observed time series relations in the data are most probably spurious. At best, in this case, ARIMA can be considered a very crude approximation of a complex process (demand is typically influenced by price changes, consumer behaviour, and promotional activities, etc). Thus, whenever we work with ARIMA models in social or business domains, we should keep in mind that they are wrong even from the philosophical point of view. Nevertheless, they still can be useful (as was pointed out by one of the original authors, George Box), which is why we discuss them in this chapter. We focus our discussion on forecasting with ARIMA. A reader interested in time series analysis is directed to @Box1976 or to more modern editions of that textbook. ARIMA is also well explained in Chapter 6 of @Ord2017.
+Both these examples describe the AR(1) process, and in both of them the ARIMA model can be considered a "true model" (see discussion in Section \@ref(modelsMethods)). Unfortunately, when it comes to time series in the social or business domains, it becomes very difficult to motivate ARIMA usage from the modelling point of view. For example, the demand for a product does not reproduce itself and in real life does not depend on the demand on previous observations. So, if we construct an ARIMA for such a process, we turn a blind eye to the fact that the observed time series relations in the data are most probably spurious. At best, in this case, ARIMA can be considered a very crude approximation of a complex process (demand is typically influenced by price changes, consumer behaviour, and promotional activities, etc.). Thus, whenever we work with ARIMA models in social or business domains, we should keep in mind that they are wrong even from the philosophical point of view. Nevertheless, they still can be useful (as was pointed out by one of the original authors, George Box), which is why we discuss them in this chapter. We focus our discussion on forecasting with ARIMA. A reader interested in time series analysis is directed to @Box1976 or to more modern editions of that textbook. ARIMA is also well explained in Chapter 6 of @Ord2017.
 
-This chapter will discuss the main theoretical properties of ARIMA processes (i.e. what would happen if the data indeed followed the specified model), moving to more practical aspects in the next chapter. We start the discussion with the non-seasonal ARIMA models, explaining how the forecasts from those models would look like, then move to the seasonal and multi-seasonal ARIMA, then discuss the classical Box-Jenkins approach for ARIMA order selection and its limitations. Finally, we explain the connection between ARIMA and ETS models.
+This chapter will discuss the main theoretical properties of ARIMA processes (i.e. what would happen if the data indeed followed the specified model), moving to more practical aspects in the next chapter. We start the discussion with the non-seasonal ARIMA models, explaining what the forecasts from those models would look like, then move to the seasonal and multi-seasonal ARIMA, then discuss the classical Box-Jenkins approach for ARIMA order selection and its limitations. Finally, we explain the connection between ARIMA and ETS models.
 
 
 ## Introduction to ARIMA {#ARIMAIntro}
@@ -37,9 +37,9 @@ We start with a simple AR(1) model, which is written as:
   {y}_{t} = \phi_1 y_{t-1} + \epsilon_t ,
   (\#eq:ARIMA100Example)
 \end{equation}
-where $\phi_1$ is the parameter of the model. This formula tells us that the value on the previous observation is carried over to the new one in the proportion of $\phi_1$. Typically, the parameter $\phi_1$ is restricted with the region (-1, 1) to make the model stationary, but very often in real life, $\phi_1$ lies in the (0, 1) region. If the parameter is equal to 1, the model becomes equivalent to Random Walk (Section \@ref(Naive)).
+where $\phi_1$ is the parameter of the model. This formula tells us that the value on the previous observation is carried over to the new one in the proportion of $\phi_1$. Typically, the parameter $\phi_1$ is restricted with the region (-1, 1) to make the model stationary, but very often in real life, $\phi_1$ lies in the (0, 1) region. If the parameter is equal to one, the model becomes equivalent to Random Walk (Section \@ref(Naive)).
 
-The forecast trajectory (conditional expectation several steps ahead) of this model would typically correspond to the exponentially declining curve. This is because for the $y_{t+h}$ value AR(1) is:
+The forecast trajectory (conditional expectation several steps ahead) of this model would typically correspond to the exponentially declining curve. This is because for the $y_{t+h}$ value, AR(1) is:
 \begin{equation}
   {y}_{t+h} = \phi_1 y_{t+h-1} + \epsilon_{t+h} = \phi_1^2 y_{t+h-2} + \phi_1 \epsilon_{t+h-1} + \epsilon_{t+h} = \dots  \phi_1^h y_{t} + \sum_{j=0}^{h-1} \phi_1^{j} \epsilon_{t+h-j}.
   (\#eq:ARIMA100ExamplehSteps)
@@ -59,7 +59,7 @@ phi <- 0.9
 for(i in 2:length(y)){
     y[i] <- phi * y[i-1]
 }
-plot(y, type="l", xlab="horizon", ylab="Forecast")
+plot(y, type="l", xlab="Horizon", ylab="Forecast")
 ```
 
 If, for some reason, we get $\phi_1>1$, then the trajectory will exhibit an exponential increase, becoming explosive, implying non-stationary behaviour. The model, in this case, becomes very difficult to work with, even if the parameter is close to one. So it is typically advised to restrict the parameter with the stationarity region (we will discuss this in more detail later in this chapter).
@@ -69,7 +69,7 @@ In general, it is possible to imagine the situation, when the value at the momen
   {y}_{t} = \phi_1 y_{t-1} + \phi_2 y_{t-2} + \dots + \phi_p y_{t-p} + \epsilon_t ,
   (\#eq:ARIMAp00Example)
 \end{equation}
-where $\phi_i$ is the parameter for the $i$-th lag of the model. So, the model assumes that the data on the recent observation is influenced by the $p$ previous observations. The more lags we introduce in the model, the more complicated the forecasting trajectory becomes, potentially demonstrating harmonic behaviour. Here is an example of a point forecast from AR(3) model ${y}_{t} = 0.9 y_{t-1} -0.7 y_{t-2} + 0.6 y_{t-3} + \epsilon_t$ (Figure \@ref(fig:AR3Trajectory)):
+where $\phi_i$ is the parameter for the $i$-th lag of the model. So, the model assumes that the data on the recent observation is influenced by the $p$ previous observations. The more lags we introduce in the model, the more complicated the forecasting trajectory becomes, potentially demonstrating harmonic behaviour. Here is an example of a point forecast from an AR(3) model ${y}_{t} = 0.9 y_{t-1} -0.7 y_{t-2} + 0.6 y_{t-3} + \epsilon_t$ (Figure \@ref(fig:AR3Trajectory)):
 
 ```{r AR3Trajectory, fig.cap="Forecast trajectory for an AR(3) model."}
 y <- vector("numeric", 30)
@@ -78,14 +78,14 @@ phi <- c(0.9,-0.7,0.6)
 for(i in 4:30){
     y[i] <- phi[1] * y[i-1] + phi[2] * y[i-2] + phi[3] * y[i-3]
 }
-plot(y, type="l", xlab="horizon", ylab="Forecast")
+plot(y, type="l", xlab="Horizon", ylab="Forecast")
 ```
 
 No matter what the forecast trajectory of the AR model is, it will asymptotically converge to zero as long as the model is stationary.
 
-An example of AR(3) time series generated using `sim.ssarima()` function from the `smooth` package and forecast for it via `msarima()` is shown in Figure \@ref(fig:ARExample).
+An example of an AR(3) time series generated using the `sim.ssarima()` function from the `smooth` package and a forecast for it via `msarima()` is shown in Figure \@ref(fig:ARExample).
 
-```{r ARExample, fig.cap="An example of AR(3) series and forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
+```{r ARExample, fig.cap="An example of an AR(3) series and a forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
 sim.ssarima(orders=list(ar=3), lags=1, obs=120, AR=c(0.9, -0.7, 0.6), initial=c(10,15,20), mean=0, sd=10) |>
     msarima(orders=list(ar=3), constant=FALSE,
             h=10, holdout=TRUE) |>
@@ -93,7 +93,7 @@ sim.ssarima(orders=list(ar=3), lags=1, obs=120, AR=c(0.9, -0.7, 0.6), initial=c(
     plot(main="")
 ```
 
-As can be seen from Figure \@ref(fig:ARExample), the series does not exhibit any distinct characteristics so that it would be possible to identify the order of the model just by looking at it. The only thing that we can probably say is that there is some structure in it: it has some periodic fluctuations and some parts of series are consistently above zero, while the others are consistently below. The latter is an indicator of autocorrelation in data. We do not discuss how to identify order of AR in this Section, we will come back to it in Section \@ref(BJApproach).
+As can be seen from Figure \@ref(fig:ARExample), the series does not exhibit any distinct characteristics so that it would be possible to identify the order of the model just by looking at it. The only thing that we can probably say is that there is some structure in it: it has some periodic fluctuations and some parts of series are consistently above zero, while the others are consistently below. The latter is an indicator of autocorrelation in data. We do not discuss how to identify the order of AR in this section, but we will come back to it in Section \@ref(BJApproach).
 
 
 ### MA(q) {#MA}
@@ -112,18 +112,18 @@ Starting from $h=2$ there are no observable error terms $\epsilon_t$, so all the
   \mathrm{E}({y}_{t+2}|t) = \theta_1 \mathrm{E}(\epsilon_{t+1}|t) + \mathrm{E}(\epsilon_{t+2}|t) = 0.
   (\#eq:ARIMA001ExampleForecastInSample)
 \end{equation}
-So, the forecast trajectory for MA(1) model drops to zero, when $h>1$.
+So, the forecast trajectory for the MA(1) model drops to zero, when $h>1$.
 
-More generally, MA(q) model is written as:
+More generally, the MA(q) model is written as:
 \begin{equation}
   {y}_{t} = \theta_1 \epsilon_{t-1} + \theta_2 \epsilon_{t-2} + \dots + \theta_q \epsilon_{t-q} + \epsilon_t ,
   (\#eq:ARIMA00qExample)
 \end{equation}
 where $\theta_i$ is the parameters for the $i$-th lag of the error term, typically restricted with the so-called invertibility region (discussed in the next section). In this case, the model implies that the recent observation is influenced by several errors on previous observations (your mistakes in the past will haunt you in the future). The more lags we introduce, the more complicated the model becomes. As for the forecast trajectory, it will reach zero when $h>q$.
 
-An example of MA(3) time series and a forecast for it is shown in Figure \@ref(fig:MAExample).
+An example of an MA(3) time series and a forecast for it is shown in Figure \@ref(fig:MAExample).
 
-```{r MAExample, fig.cap="An example of MA(3) series and forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
+```{r MAExample, fig.cap="An example of an MA(3) series and forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
 sim.ssarima(orders=list(ma=3), lags=1, obs=120, MA=c(0.9, -0.3, -0.6), initial=c(10,10,5), mean=0, sd=10) |>
     msarima(orders=list(ma=3), constant=FALSE,
             h=10, holdout=TRUE) |>
@@ -131,7 +131,7 @@ sim.ssarima(orders=list(ma=3), lags=1, obs=120, MA=c(0.9, -0.3, -0.6), initial=c
     plot(main="")
 ```
 
-Similarly to how it was with AR(3), Figure \@ref(fig:MAExample) does not show anything specific that could tell us that this is MA(3) process. The proper identification of MA orders will be discussed in Section \@ref(BJApproach).
+Similarly to how it was with AR(3), Figure \@ref(fig:MAExample) does not show anything specific that could tell us that this is an MA(3) process. The proper identification of MA orders will be discussed in Section \@ref(BJApproach).
 
 
 ### ARMA(p,q) {#ARMA}
@@ -165,16 +165,16 @@ Finally, we can also introduce the AR and MA polynomial functions (corresponding
 \end{aligned}
   (\#eq:ARMAPolynomials)
 \end{equation}
-Inserting the functions \@ref(eq:ARMAPolynomials) in \@ref(eq:ARIMAp0qCompacter) leads to the compact presentation of ARMA model:
+Inserting the functions \@ref(eq:ARMAPolynomials) in \@ref(eq:ARIMAp0qCompacter) leads to the compact presentation of the ARMA model:
 \begin{equation}
   {y}_{t} \varphi^p(B) = \epsilon_t \vartheta^q(B) .
   (\#eq:ARIMAp0qCompact)
 \end{equation}
 The model \@ref(eq:ARIMAp0qCompact) can be considered a compact form of \@ref(eq:ARIMAp0q). It is more difficult to understand and interpret but easier to work with from a mathematical point of view. In addition, this form permits introducing additional elements, which will be discussed later in this chapter.
 
-Figure \@ref(fig:ARMAExample) shows an example of ARMA(3,3) series with a forecast from it.
+Figure \@ref(fig:ARMAExample) shows an example of an ARMA(3,3) series with a forecast from it.
 
-```{r ARMAExample, fig.cap="An example of ARMA(3,3) series and forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
+```{r ARMAExample, fig.cap="An example of an ARMA(3,3) series and a forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
 sim.ssarima(orders=list(ar=3, ma=3), lags=1, obs=120, AR=c(0.9, -0.7, 0.6),
             MA=c(0.9, -0.3, -0.6), initial=c(10,10,5), mean=0, sd=10) |>
     msarima(orders=list(ar=3, ma=3), constant=FALSE,
@@ -183,7 +183,7 @@ sim.ssarima(orders=list(ar=3, ma=3), lags=1, obs=120, AR=c(0.9, -0.7, 0.6),
     plot(main="")
 ```
 
-Similarly to AR(3) and MA(3) examples above, the process is not visually distinguishable from other ARMA process.
+Similarly to the AR(3) and MA(3) examples above, the process is not visually distinguishable from other ARMA processes.
 
 Coming back to the ARMA model \@ref(eq:ARIMAp0q), as discussed earlier, it assumes convergence of forecast trajectory to zero, the speed of which is regulated by its parameters. This implies that the data has the mean of zero, and ARMA should be applied to somehow pre-processed data so that it is stationary and varies around zero. This means that if you work with non-stationary and/or with non-zero mean data, the pure AR/MA or ARMA will be inappropriate -- some prior transformations will be required.
 
@@ -229,11 +229,11 @@ for(i in 2:length(y)){
 plot(y, type="l", xlab="horizon", ylab="Forecast")
 ```
 
-The more complicated ARMA(p,q) models with p>1 will have more complex trajectories with potential harmonics, but the idea of dampening in AR(p) part of the model stays.
+The more complicated ARMA(p,q) models with p>1 will have more complex trajectories with potential harmonics, but the idea of dampening in the AR(p) part of the model stays.
 
 An example of time series generated from ARMA(3,3) with constant is provided in Figure \@ref(fig:ARMAConstExample).
 
-```{r ARMAConstExample, fig.cap="An example of ARMA(3,3) with constant series and forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
+```{r ARMAConstExample, fig.cap="An example of an ARMA(3,3) with constant series and a forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
 x <- sim.ssarima(orders=list(ar=3, ma=3), lags=1, obs=120, AR=c(0.9, -0.8, 0.3),
                  MA=c(0.7, -0.3, 0.6), initial=c(300,-150,80), constant=200, mean=0, sd=10)
 msarima(x$data,orders=list(ar=3, ma=3), constant=TRUE,
@@ -251,7 +251,7 @@ Based on the previous discussion, we can conclude that ARMA cannot be efficientl
   \Delta y_t = y_t -y_{t-1} = y_t (1 -B),
   (\#eq:ARIMADifferencesFirst)
 \end{equation}
-if the first differences have constant mean. The simplest model with differences is I(1), which is also known as the **Random walk** (see Section \@ref(Naive)):
+if the first differences have a constant mean. The simplest model with differences is I(1), which is also known as the **Random Walk** (see Section \@ref(Naive)):
 \begin{equation}
   \Delta y_t = \epsilon_t.
   (\#eq:ARIMARandomWalk)
@@ -276,7 +276,7 @@ sim.sma(1, 120) |>
     plot(main="")
 ```
 
-Another simple model that relies on differences of the data is called **Random Walk with drift** (which was discussed in Section \@ref(RWWithDrift)) and is formulated by adding constant $a_0$ to the right hand side of equation \@ref(eq:ARIMARandomWalk):
+Another simple model that relies on differences of the data is called **Random Walk with drift** (which was discussed in Section \@ref(RWWithDrift)) and is formulated by adding constant $a_0$ to the right-hand side of equation \@ref(eq:ARIMARandomWalk):
 \begin{equation}
   \Delta y_t = a_0 + \epsilon_t.
   (\#eq:ARIMARandomWalkWithDrift)
@@ -287,10 +287,10 @@ This model has some similarities with the global level model, which is formulate
 \end{equation*}
 Using a similar regrouping as with the Random Walk, we can obtain a simpler form of \@ref(eq:ARIMARandomWalkWithDrift):
 \begin{equation}
-  y_t = a_0 + y_{t-1} + \epsilon_t.
+  y_t = a_0 + y_{t-1} + \epsilon_t ,
   (\#eq:ARIMARandomWalkWithDrift02)
 \end{equation}
-which is, again, equivalent to AR(1) model with $\phi_1=1$, but this time with a constant. The term "drift" appears because $a_0$ acts as an additional element, showing the tendency in the data: if it is positive, the model will exhibit a positive trend; if it is negative, the trend will be negative. This can be seen for the conditional mean, for example, for the case of $h=2$:
+which is, again, equivalent to the AR(1) model with $\phi_1=1$, but this time with a constant. The term "drift" appears because $a_0$ acts as an additional element, showing the tendency in the data: if it is positive, the model will exhibit a positive trend; if it is negative, the trend will be negative. This can be seen for the conditional mean, for example, for the case of $h=2$:
 \begin{equation}
   \mathrm{E}(y_{t+2}|t) = \mathrm{E}(a_0) + \mathrm{E}(y_{t+1}|t) + \mathrm{E}(\epsilon_{t+2}|t) = a_0 + \mathrm{E}(a_0 + y_t + \epsilon_t|t) = 2 a_0 + y_t ,
   (\#eq:ARIMARandomWalkWithDriftForecasth2)
@@ -344,13 +344,13 @@ or in a more general form \@ref(eq:ARIMAp0qCompacter) with \@ref(eq:ARIMADiffere
   y_t (1-B)^d (1 -\phi_1 B -\dots -\phi_p B^p) = \epsilon_t (1 + \theta_1 B + \dots + \theta_q B^q),
   (\#eq:ARIMApdq)
 \end{equation}
-which is ARIMA(p,d,q) model. This model allows producing trends with some values of differences and also inherits the trajectories from both AR(p) and MA(q). This implies that the point forecasts from the model can exhibit complicated trajectories, depending on the values of p, d, q and the model's parameters.
+which is an ARIMA(p,d,q) model. This model allows producing trends with some values of differences and also inherits the trajectories from both AR(p) and MA(q). This implies that the point forecasts from the model can exhibit complicated trajectories, depending on the values of p, d, q, and the model's parameters.
 
 The model \@ref(eq:ARIMApdq) is difficult to interpret in a general form, but opening the brackets and moving all elements but $y_t$ to the right-hand side helps understanding each specific model.
 
-Figure \@ref(fig:ARIMA112Example) demonstrates how data would look if it was generated from ARIMA(1,1,2) and how the forecasts would look if the same model ARIMA(1,1,2) was applied to the data. Because of the AR(1) term in the model, its forecast trajectory is dampening, similar to how it was done in ETS(A,Ad,N) model.
+Figure \@ref(fig:ARIMA112Example) demonstrates how data would look if it was generated from ARIMA(1,1,2) and how the forecasts would look if the same model ARIMA(1,1,2) was applied to the data. Because of the AR(1) term in the model, its forecast trajectory is dampening, similar to how it was done in the ETS(A,Ad,N) model.
 
-```{r ARIMA112Example, fig.cap="An example of ARIMA(1,1,2) data and forecasts for it.", fig.width=5, fig.height=4, echo=FALSE}
+```{r ARIMA112Example, fig.cap="An example of ARIMA(1,1,2) data and a forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
 sim.ssarima(orders=list(ar=1,i=1,ma=2), lags=1, obs=120, AR=0.7, initial=c(500, -350),
             mean=0, sd=10) |>
     msarima(orders=list(ar=1,i=1,ma=2), constant=FALSE,
@@ -360,13 +360,13 @@ sim.ssarima(orders=list(ar=1,i=1,ma=2), lags=1, obs=120, AR=0.7, initial=c(500, 
 ```
 
 
-### Parameters bounds {#ARIMABounds}
+### parameters' bounds {#ARIMABounds}
 ARMA models have two conditions that need to be satisfied for them to be useful and to work appropriately:
 
-1. Stationarity,
+1. Stationarity;
 2. Invertibility.
 
-Condition (1) has already been discussed in Section \@ref(ARIMAIntro). It is imposed on the model's AR parameters, ensuring that the forecast trajectories do not exhibit explosive behaviour (in terms of both mean and variance). (2) is equivalent to the stability condition in ETS (Section \@ref(stabilityConditionAdditiveError)) and refers to the MA parameters: it guarantees that the old observations do not have an increasing impact on the recent ones. The term "invertibility" comes from the idea that any MA process can be represented as an infinite AR process via the inversion of the parameters as long as the parameters lie in some specific bounds. For example, MA(1) model, which is written as:
+Condition (1) has already been discussed in Section \@ref(ARIMAIntro). It is imposed on the model's AR parameters, ensuring that the forecast trajectories do not exhibit explosive behaviour (in terms of both mean and variance). (2) is equivalent to the stability condition in ETS (Section \@ref(stabilityConditionAdditiveError)) and refers to the MA parameters: it guarantees that the old observations do not have an increasing impact on the recent ones. The term "invertibility" comes from the idea that any MA process can be represented as an infinite AR process via the inversion of the parameters as long as the parameters lie in some specific bounds. For example, an MA(1) model, which is written as:
 \begin{equation}
   y_t = \epsilon_t + \theta_1 \epsilon_{t-1} = \epsilon_t (1 + \theta_1 B) ,
   (\#eq:ARIMA100Example01)
@@ -381,9 +381,9 @@ or in a slightly easier to digest form (based on \@ref(eq:ARIMA100Example01) and
   y_t = \theta_1 y_{t-1} -\theta_1^2 \epsilon_{t-2} + \epsilon_t = \theta_1 y_{t-1} -\theta_1^2 y_{t-2} + \theta_1^3 \epsilon_{t-2} + \epsilon_t = \sum_{j=1}^\infty -1^{j-1} \theta_1^j y_{t-j} + \epsilon_t.
   (\#eq:ARIMA100Example03)
 \end{equation}
-The recursion in \@ref(eq:ARIMA100Example03) shows that the recent actual value $y_t$ depends on the previous infinite number of values of $y_{t-j}$ for $j=\{1,\dots,\infty\}$. The parameter $\theta_1$, in this case, is exponentiated to the power $j$ and leads to the exponential distribution of weights in this infinite series (reminds SES from Section \@ref(SES), doesn't it?). The *invertibility* condition makes sure that those weights decline over time with the increase of $j$ so that the older observations do not have an increasing impact on the most recent $y_t$.
+The recursion in \@ref(eq:ARIMA100Example03) shows that the recent actual value $y_t$ depends on the previous infinite number of values of $y_{t-j}$ for $j=\{1,\dots,\infty\}$. The parameter $\theta_1$, in this case, is exponentiated to the power $j$ and leads to the exponential distribution of weights in this infinite series (looks similar to SES from Section \@ref(SES), doesn't it?). The *invertibility* condition makes sure that those weights decline over time with the increase of $j$ so that the older observations do not have an increasing impact on the most recent $y_t$.
 
-There are different ways how to check both conditions, the conventional one is by calculating the roots of the polynomial equations:
+There are different ways to check both conditions, the conventional one is by calculating the roots of the polynomial equations:
 \begin{equation}
 \begin{aligned}
   & \varphi^p(B) = 0 \text{ for AR} \\
@@ -411,17 +411,17 @@ Calculating roots of polynomials is a difficult task, so there are simpler speci
 \end{equation}
 But note that the condition \@ref(eq:ARIMApdqConditionsSpecial) is rather restrictive and is not generally applicable for all ARIMA models. It can be used to skip the check of the more complicated condition \@ref(eq:ARIMApdqConditions) if it is satisfied by a set of estimated parameters.
 
-Finally, in a special case with AR(p) model with $0 < \phi_j < 1$ for all $j$ and $\sum_{j=1}^p \phi_j = 1$, we end up with the moving weighted average, which is a non-stationary model. This becomes apparent from the connection between Simple Moving Average and AR processes [@Svetunkov2017].
+Finally, in a special case with an AR(p) model with $0 < \phi_j < 1$ for all $j$ and $\sum_{j=1}^p \phi_j = 1$, we end up with the moving weighted average, which is a non-stationary model. This becomes apparent from the connection between Simple Moving Average and AR processes [@Svetunkov2017].
 
 
 ## Seasonal ARIMA
 ### Single seasonal ARIMA
 When it comes to the actual data, we typically have relations between consecutive observations and between observations happening with some fixed seasonal lags. In the ETS framework, the latter relations are taken care of by seasonal indices, repeating every $m$ observations. In the ARIMA framework, this is done by introducing lags in the model elements. For example, seasonal AR(P)$_m$ with lag $m$ can be written similar to AR(p), but with some minor modifications:
 \begin{equation}
-  {y}_{t} = \phi_{m,1} y_{t-m} + \dots + \phi_{m,P} y_{t-Pm} + \varepsilon_t ,
+  {y}_{t} = \phi_{m,1} y_{t-m} + \dots + \phi_{m,P} y_{t-p.m.} + \varepsilon_t ,
   (\#eq:SARIMAP00Example)
 \end{equation}
-where $\phi_{m,i}$ is the parameter for the lagged actual value in the model, and $\varepsilon_t$ is the error term of the seasonal AR model. We use the underscore "$m$" to show that the parameters here refer to the seasonal part of the model. The idea of the model \@ref(eq:SARIMAP00Example) on the example of monthly data is that the current observation is influenced by a similar value, the same month a year ago, then the same month two years ago etc. This is hard to justify from the theoretical point of view (demand two years ago impacts demand this year?), but this model allows capturing complex relations in the data.
+where $\phi_{m,i}$ is the parameter for the lagged actual value in the model, and $\varepsilon_t$ is the error term of the seasonal AR model. We use the underscore "$m$" to show that the parameters here refer to the seasonal part of the model. The idea of the model \@ref(eq:SARIMAP00Example) on the example of monthly data is that the current observation is influenced by a similar value, the same month a year ago, then the same month two years ago, etc. This is hard to justify from the theoretical point of view (demand two years ago impacts demand this year?), but this model allows capturing complex relations in the data.
 
 Similarly to seasonal AR(P), we can have seasonal MA(Q)$_m$:
 \begin{equation}
@@ -437,7 +437,7 @@ Finally, we have the seasonal differences, I(D)$_m$, which are easier to present
 \end{equation}
 The seasonal differences allow dealing with the seasonality that changes its amplitude from year to year, i.e. model the multiplicative seasonality via ARIMA by making the seasonality itself stationary.
 
-A special case of I(D) model is I(1)$_m$, which is a seasonal **Random Walk**, underlying Seasonal Naïve method from Section \@ref(NaiveSeasonal):
+A special case of an I(D) model is I(1)$_m$, which is a seasonal **Random Walk**, underlying the Seasonal Naïve method from Section \@ref(NaiveSeasonal):
 \begin{equation}
   y_t (1-B^m) = \varepsilon_t,
   (\#eq:SARIMA010Example1)
@@ -448,9 +448,9 @@ or equivalently:
   (\#eq:SARIMA010Example2)
 \end{equation}
 
-Combining \@ref(eq:SARIMAP00Example), \@ref(eq:SARIMA00QExample) and \@ref(eq:SARIMA0D0Example) we get pure seasonal ARIMA(P,D,Q)$_m$ model, similar to the ARIMA(p,d,q):
+Combining \@ref(eq:SARIMAP00Example), \@ref(eq:SARIMA00QExample), and \@ref(eq:SARIMA0D0Example) we get a pure seasonal ARIMA(P,D,Q)$_m$ model, similar to the ARIMA(p,d,q):
 \begin{equation}
-  y_t (1-B^m)^D (1 -\phi_{m,1} B^m -\dots -\phi_{m,P} B^{Pm}) = \varepsilon_t (1 + \theta_{m,1} B^m + \dots + \theta_{m,Q} B^{Qm}),
+  y_t (1-B^m)^D (1 -\phi_{m,1} B^m -\dots -\phi_{m,P} B^{p.m.}) = \varepsilon_t (1 + \theta_{m,1} B^m + \dots + \theta_{m,Q} B^{Qm}),
   (\#eq:SARIMAPDQ)
 \end{equation}
 or if we introduce the polynomial functions for seasonal AR and MA and use notations similar to \@ref(eq:ARIMADifferencesSecondBackshift):
@@ -462,7 +462,7 @@ where
 \begin{equation}
 \begin{aligned}
   & \Delta^D(B^m) = (1-B^m)^D \\
-  & \varphi^P(B^m) = 1 -\phi_{m,1} B^m -\dots -\phi_{m,P} B^{Pm} \\ 
+  & \varphi^P(B^m) = 1 -\phi_{m,1} B^m -\dots -\phi_{m,P} B^{p.m.} \\ 
   & \vartheta^Q(B^m) = 1 + \theta_{m,1} B^m + \dots + \theta_{m,Q} B^{Qm} .
 \end{aligned}
   (\#eq:SARIMAPolynomials)
@@ -487,7 +487,7 @@ The equation \@ref(eq:SARIMApdqPDQCompact) does not tell us much about what spec
   y_t \Delta^0(B^4) \varphi^1(B^4) \Delta^0(B) \varphi^1(B) = \epsilon_t \vartheta^1(B^4) \vartheta^1(B) .
   (\#eq:SARIMA101101Example01)
 \end{equation}
-Inserting the values of polynomials \@ref(eq:SARIMAPolynomials), \@ref(eq:ARIMADifferences) and \@ref(eq:ARMAPolynomials) in \@ref(eq:SARIMA101101Example01), we get:
+Inserting the values of polynomials \@ref(eq:SARIMAPolynomials), \@ref(eq:ARIMADifferences), and \@ref(eq:ARMAPolynomials) in \@ref(eq:SARIMA101101Example01), we get:
 \begin{equation}
   y_t (1 -\phi_{4,1} B^4)(1 -\phi_{1} B) = \epsilon_t (1 + \theta_{4,1} B^4) (1 + \theta_{1} B),
   (\#eq:SARIMA101101Example02)
@@ -497,11 +497,11 @@ which is slightly easier to understand but still does not explain how past value
   y_t = \phi_{1} y_{t-1} + \phi_{4,1} y_{t-4} -\phi_{1} \phi_{4,1} y_{t-5} + \theta_1 \epsilon_{t-1} + \theta_{4,1} \epsilon_{t-4} + \theta_{1} \theta_{4,1} \epsilon_{t-5} + \epsilon_t .
   (\#eq:SARIMA101101Example03)
 \end{equation}
-So, now we see that SARIMA(1,0,1)(1,0,1)$_4$ implies that the present value is impacted by the value in the previous quarter ($\phi_{1} y_{t-1} + \theta_1 \epsilon_{t-1}$), the value last year ($\phi_{4,1} y_{t-4} + \theta_{4,1} \epsilon_{t-4}$) on the same quarter and the value from last year on the previous quarter ($-\phi_{1} \phi_{4,1} y_{t-5} + \theta_{1} \theta_{4,1} \epsilon_{t-5}$), which introduces a much more complicated interaction than any ETS model can. However, this complexity is obtained with a minimum number of parameters: we have three lagged actual values and three lagged error terms, but we only have four parameters to estimate, not six. Thus the SARIMA model mentioned above can be considered as parsimonious for modelling this specific situation.
+So, now we see that SARIMA(1,0,1)(1,0,1)$_4$ implies that the present value is impacted by the value in the previous quarter ($\phi_{1} y_{t-1} + \theta_1 \epsilon_{t-1}$), the value last year ($\phi_{4,1} y_{t-4} + \theta_{4,1} \epsilon_{t-4}$) on the same quarter, and the value from last year on the previous quarter ($-\phi_{1} \phi_{4,1} y_{t-5} + \theta_{1} \theta_{4,1} \epsilon_{t-5}$), which introduces a much more complicated interaction than any ETS model can. However, this complexity is obtained with a minimum number of parameters: we have three lagged actual values and three lagged error terms, but we only have four parameters to estimate, not six. Thus the SARIMA model mentioned above can be considered as parsimonious for modelling this specific situation.
 
 The more complicated SARIMA models would have even more complicated interactions, making it more challenging to interpret, but all of that comes with a benefit of having a parsimonious model with just $p+q+P+Q$ parameters to estimate.
 
-When it comes to forecasting from such model as SARIMA(1,0,1)(1,0,1)$_4$, the trajectories would have elements of the classical ARMA model, discussed in Section \@ref(ARMA), converging to zero as long as there is no constant and the model is stationary. The main difference would be in having the seasonal element. Here is an R example of a prediction for such a model for $h>m+1$ (see Figure \@ref(fig:SARIMATrajectory); MA part is dropped because the expectation of the error term is assumed to be equal to zero):
+When it comes to forecasting from such models as SARIMA(1,0,1)(1,0,1)$_4$, the trajectories would have elements of the classical ARMA model, discussed in Section \@ref(ARMA), converging to zero as long as there is no constant and the model is stationary. The main difference would be in having the seasonal element. Here is an R example of a prediction for such a model for $h>m+1$ (see Figure \@ref(fig:SARIMATrajectory); the MA part is dropped because the expectation of the error term is assumed to be equal to zero):
 
 ```{r SARIMATrajectory, fig.cap="Forecast trajectory for a SARIMA(1,0,1)(1,0,1)$_4$."}
 y <- vector("numeric", 100)
@@ -517,7 +517,7 @@ plot(y, type="l", xlab="horizon", ylab="Forecast")
 As we see from Figure \@ref(fig:SARIMATrajectory), the values converge to zero due to $0<\phi_1<1$ and the seasonality disappears because $0<\phi_{4,1}<1$ as well. So, this is the forecast implied by the SARIMA without differences. If the differences are introduced, then the model would produce non-stationary and seasonally non-stationary trajectories.
 
 ### SARIMA with constant
-In addition, it is possible to add the constant term to the SARIMA model, and it will have a more complex effect on the forecast trajectory, depending on the order of the model. In case of zero differences, the effect will be similar to ARMA with constant (Section \@ref(ARMAConstant)), introducing the dampening trajectory. Here is an example (see Figure \@ref(fig:SARIMAConstantTrajectory)):
+In addition, it is possible to add the constant term to the SARIMA model, and it will have a more complex effect on the forecast trajectory, depending on the order of the model. In the case of zero differences, the effect will be similar to ARMA with constant (Section \@ref(ARMAConstant)), introducing the dampening trajectory. Here is an example (see Figure \@ref(fig:SARIMAConstantTrajectory)):
 
 ```{r SARIMAConstantTrajectory, fig.cap="Forecast trajectory for a SARIMA model with constant."}
 y <- vector("numeric", 100)
@@ -540,7 +540,7 @@ which can be reformulated as (after opening brackets and moving elements to the 
   y_t = \phi_{1} y_{t-1} + (1+\phi_{4,1}) y_{t-4} -(1+\phi_{4,1}) \phi_{1} y_{t-5} -\phi_{4,1} y_{t-8} + \phi_1 \phi_{4,1} y_{t-9} + a_0 + \epsilon_t .
   (\#eq:SARIMA101110Example02)
 \end{equation}
-This formula can then be used to see, how the trajectory from such model will look:
+This formula can then be used to see, how the trajectory from such a model will look:
 
 ```{r SARIMADiffConstantTrajectory, fig.cap="Forecast trajectory for a SARIMA model with differences and a constant."}
 y <- vector("numeric", 100)
@@ -556,21 +556,21 @@ plot(y, type="l", xlab="horizon", ylab="Forecast")
 
 As we see from Figure \@ref(fig:SARIMADiffConstantTrajectory), the trajectory exhibits a drift, coming from the non-seasonal part of the model and a stable seasonality (the amplitude of which does not converge to zero anymore). More complex behaviours for the future trajectories can be obtained with higher orders of seasonal and non-seasonal parts of the SARIMA model.
 
-### Multiple seasonal ARIMA {#MSARIMA}
-Using the same approach as the conventional SARIMA, we can introduce more terms [similar to how @Taylor2003a did it] with several seasonal frequencies. For example, we can have an hour of the day, a day of the week and a week of year frequencies in the data. Given that we work with the hourly data in this situation, we should introduce three seasonal ARIMA elements with seasonalities $m_1=24$, $m_2=24 \times 7=168$ and $m_3=24 \times 7 \times 365= 61,320$. In this example, we would have AR, I and MA polynomials for each seasonal part of the model, introducing a triple seasonal ARIMA, which is not even easy to formulate in the compact form. This type of model with multiple seasonal components can be called "Multiple Seasonal ARIMA", MSARIMA, which in general can be written as:
+### Multiple Seasonal ARIMA {#MSARIMA}
+Using the same approach as the conventional SARIMA, we can introduce more terms [similar to how @Taylor2003a did it] with several seasonal frequencies. For example, we can have an hour of the day, a day of the week, and a week of the year frequencies in the data. Given that we work with the hourly data in this situation, we should introduce three seasonal ARIMA elements with seasonalities $m_1=24$, $m_2=24 \times 7=168$, and $m_3=24 \times 7 \times 365= 61,320$. In this example, we would have AR, I, and MA polynomials for each seasonal part of the model, introducing a triple seasonal ARIMA, which is not even easy to formulate in the compact form. This type of model with multiple seasonal components can be called "Multiple Seasonal ARIMA", MSARIMA, which in general can be written as:
 \begin{equation}
   y_t \Delta^{D_n}(B^{m_n}) \varphi^{P_n}(B^{m_n}) \dots \Delta^{D_0}(B^{m_0}) \varphi^{P_0}(B^{m_0}) = \epsilon_t \vartheta^{Q_n}(B^{m_n}) \dots \vartheta^{Q_0}(B^{m_0}) ,
   (\#eq:MSARIMACompact)
 \end{equation}
-where $n$ is the number of seasonal cycles, and $D_0=d$, $P_0=p$, $Q_0=q$ and $m_0=1$ for convenience. The slightly more compact and even less comprehensible form of \@ref(eq:MSARIMACompact) is:
+where $n$ is the number of seasonal cycles, and $D_0=d$, $P_0=p$, $Q_0=q$, and $m_0=1$ for convenience. The slightly more compact and even less comprehensible form of \@ref(eq:MSARIMACompact) is:
 \begin{equation}
-  y_t \prod_{j=0}^n \Delta^{D_j} (B^{m_j}) \varphi^{P_j}(B^{m_j}) = \epsilon_t \prod_{j=0}^n \vartheta^{Q_j}(B^{m_j}) ,
+  y_t \prod_{j=0}^n \Delta^{D_j} (B^{m_j}) \varphi^{P_j}(B^{m_j}) = \epsilon_t \prod_{j=0}^n \vartheta^{Q_j}(B^{m_j}) .
   (\#eq:MSARIMACompactFinal)
 \end{equation}
-Conceptually, the model \@ref(eq:MSARIMACompactFinal) is neat, as it captures all the complex relations in the data, but it is not easy to understand and work with, not to mention the potential estimation and order selection problems. To understand what the forecast from such a model can be, we would need to take a special case, multiply the polynomials and move all the past elements on the right-hand side, leaving only $y_t$ on the left-hand side, as we did with SARIMA example above. It is worth noting that the `msarima()` function from the `smooth` package implements the model \@ref(eq:MSARIMACompactFinal), although not in this form, but in the state space form, discussed in Chapter \@ref(ADAMARIMA).
+Conceptually, the model \@ref(eq:MSARIMACompactFinal) is neat, as it captures all the complex relations in the data, but it is not easy to understand and work with, not to mention the potential estimation and order selection problems. To understand what the forecast from such a model can be, we would need to take a special case, multiply the polynomials, and move all the past elements on the right-hand side, leaving only $y_t$ on the left-hand side, as we did with the SARIMA example above. It is worth noting that the `msarima()` function from the `smooth` package implements the model \@ref(eq:MSARIMACompactFinal), although not in this form, but in the state space form, discussed in Chapter \@ref(ADAMARIMA).
 
-### Parameters bounds for MSARIMA {#MSARIMABounds}
-When it comes to parameters bounds of SARIMA, the logic stays similar to the process discussed for the case of non-seasonal model in Section \@ref(ARIMABounds), with the only difference being that instead of analysing the polynomials of a specific part of a model, we need to consider the product of all polynomials. So, the *stationarity* condition for the MSARIMA is for all the roots of the following polynomial to be greater than one by absolute value (lie outside the unit circle):
+### Parameters' bounds for MSARIMA {#MSARIMABounds}
+When it comes to parameters' bounds of SARIMA, the logic stays similar to the process discussed for the case of the non-seasonal model in Section \@ref(ARIMABounds), with the only difference being that instead of analysing the polynomials of a specific part of a model, we need to consider the product of all polynomials. So, the *stationarity* condition for the MSARIMA is for all the roots of the following polynomial to be greater than one by absolute value (lie outside the unit circle):
 \begin{equation}
   \prod_{j=0}^n \varphi^{P_j}(B^{m_j}) = 0,
   (\#eq:MSARIMABoundsStationarity)
@@ -580,7 +580,7 @@ while the invertibility condition is for all the roots of the following polynomi
   \prod_{j=0}^n \vartheta^{Q_j}(B^{m_j}) = 0.
   (\#eq:MSARIMABoundsInvertibility)
 \end{equation}
-Both of these conditions are difficult to check, especially for high frequencies $m_j$: the polynomial equation of order $n$ has $n$ complex roots, so if you fit a multiple seasonal ARIMA on hourly data, where the maximum frequency is $24\times 7\times 365 = 61,320$, then the equation will have at least 61,320 roots (this number will increase if there are lower frequencies or non-seasonal orders of the model). Finding all of them is not a trivial task even for modern computers (for example, the `polyroot()` function from the `base` package cannot handle this). So, when considering ARIMA on high-frequency data with high seasonal frequency values, it might make sense to find other ways of checking the stationarity and stability conditions. The `msarima()` and the `adam()` functions in the `smooth` package use the state space form of ARIMA (discussed in Chapter \@ref(StateSpaceARIMA)) and rely on slightly different principles of checking the same conditions. They do that more efficiently than in the case of the conventional approach of finding the roots of polynomials \@ref(eq:MSARIMABoundsStationarity) and \@ref(eq:MSARIMABoundsInvertibility).
+Both of these conditions are difficult to check, especially for high frequencies $m_j$: the polynomial equation of order $n$ has $n$ complex roots, so if you fit a Multiple Seasonal ARIMA on hourly data, where the maximum frequency is $24\times 7\times 365 = 61,320$, then the equation will have at least 61,320 roots (this number will increase if there are lower frequencies or non-seasonal orders of the model). Finding all of them is not a trivial task even for modern computers (for example, the `polyroot()` function from the `base` package cannot handle this). So, when considering ARIMA on high-frequency data with high seasonal frequency values, it might make sense to find other ways of checking the stationarity and stability conditions. The `msarima()` and the `adam()` functions in the `smooth` package use the state space form of ARIMA (discussed in Chapter \@ref(StateSpaceARIMA)) and rely on slightly different principles of checking the same conditions. They do that more efficiently than in the case of the conventional approach of finding the roots of polynomials \@ref(eq:MSARIMABoundsStationarity) and \@ref(eq:MSARIMABoundsInvertibility).
 
 
 ## Box-Jenkins approach {#BJApproach}
@@ -589,44 +589,47 @@ Now that we are more or less familiar with the idea of ARIMA models, we can move
 ### Identifying stationarity
 Before doing any time series analysis, we need to make the data stationary, which is done via the differences in the context of ARIMA (Section \@ref(Differences)). But before doing anything, we need to understand whether the data is stationary or not in the first place: over-differencing typically is harmful to the model and would lead to misspecification issues. At the same time, in the case of under-differencing, it might not be possible to identify the model correctly.
 
-There are different ways of understanding whether the data is stationary or not. The simplest of them is just looking at the data: in some cases, it becomes apparent that the mean of the data changes or that there is a trend in the data, so the conclusion would be relatively straight forward. If it is not stationary, then taking differences and analysing the differenced data again would be the next step to ensure that the second differences are not needed.
+There are different ways of understanding whether the data is stationary or not. The simplest of them is just looking at the data: in some cases, it becomes apparent that the mean of the data changes or that there is a trend in the data, so the conclusion would be relatively straightforward. If it is not stationary, then taking differences and analysing the differenced data again would be the next step to ensure that the second differences are not needed.
 
 The more formal approach would be to conduct statistical tests, such as ADF (the `adf.test()` from the `tseries` package) or KPSS (the `kpss.test()` from the `tseries` package). Note that they test different hypotheses:
 
 1. In the case of ADF, it is:
-* H$_0$: the data is **not** stationary;
-* H$_1$: the data is stationary;
+	* H$_0$: the data is **not** stationary;
+	* H$_1$: the data is stationary;
 
 2. In the case of KPSS:
-* H$_0$: the data is stationary;
-* H$_1$: the data is **not** stationary;
+	* H$_0$: the data is stationary;
+	* H$_1$: the data is **not** stationary.
 
-I do not intent to discuss how the tests are conducted and what they imply in detail, the interested reader is referred to original papers of @Dickey1979 and @Kwiatkowski1992. It should suffice to say that ADF is based on estimating parameters of the AR model and then testing the hypothesis for those parameters, while KPSS includes the component of Random Walk in a model (with potential trend) and checks whether the variance of that component is zero or not. Both tests have their advantages and disadvantages and sometimes might contradict each other. No matter what test you choose, do not forget what testing a statistical hypothesis means [see, for example, Section 8.1 of @SvetunkovSBA]: if you fail to reject H$_0$, it does not mean that it is true.
+I do not intent to discuss how the tests are conducted and what they imply in detail, and the interested reader is referred to the original papers of @Dickey1979 and @Kwiatkowski1992. It should suffice to say that ADF is based on estimating parameters of the AR model and then testing the hypothesis for those parameters, while KPSS includes the component of Random Walk in a model (with potential trend) and checks whether the variance of that component is zero or not. Both tests have their advantages and disadvantages and sometimes might contradict each other. No matter what test you choose, do not forget what testing a statistical hypothesis means [see, for example, Section 8.1 of @SvetunkovSBA]: if you fail to reject H$_0$, it does not mean that it is true.
 
 ::: remark
-Even if you select the test-based approach, the procedure should still be iterative: test the hypothesis, take differences if needed, test the hypothesis again etc. This way, we can determine the order of differences I(d).
+Even if you select the test-based approach, the procedure should still be iterative: test the hypothesis, take differences if needed, test the hypothesis again, etc. This way, we can determine the order of differences I(d).
 :::
 
-When you work with seasonal data, the situation becomes more complicated. Yes, you can probably spot seasonality by visualising the data, but it is not easy to conclude whether the seasonal differences are needed. In this case, the Canova-Hansen test (the `ch.test()` in the `uroot` package) can be used to formally test the hypothesis similar to the one in the KPSS test, but applicable to the seasonal differences.
+When you work with seasonal data, the situation becomes more complicated. Yes, you can probably spot seasonality by visualising the data, but it is not easy to conclude whether the seasonal differences are needed. In this case, the Canova-Hansen test (the `ch.test()` in the `uroot` package) can be used to formally test the hypothesis similar to the one in the KPSS test, but applied to the seasonal differences.
 
-Only after making sure that the data is stationary we can move to the identification of AR and MA orders.
+Only after making sure that the data is stationary can we move to the identification of AR and MA orders.
 
 ### Autocorrelation function (ACF) {#ACF}
-In the core of the Box-Jenkins approach, lies the idea of autocorrelation and partial autocorrelation functions. **Autocorrelation** is the correlation [see Section 9.3 of @SvetunkovSBA] of a variable with itself from a different period of time. Here is an example of autocorrelation coefficient for lag 1:
+At the core of the Box-Jenkins approach, lies the idea of autocorrelation and partial autocorrelation functions. **Autocorrelation** is the correlation [see Section 9.3 of @SvetunkovSBA] of a variable with itself from a different period of time. Here is an example of an autocorrelation coefficient for lag 1:
 \begin{equation}
   \rho(1) = \frac{\sigma_{y_t,y_{t-1}}}{\sigma_{y_t}\sigma_{y_{t-1}}} = \frac{\sigma_{y_t,y_{t-1}}}{\sigma_{y_t}^2},
   (\#eq:autoCorrelation)
 \end{equation}
 where $\rho(1)$ is the "true" autocorrelation coefficient, $\sigma_{y_t,y_{t-1}}$ is the covariance between $y_t$ and $y_{t-1}$, while $\sigma_{y_t}$ and $\sigma_{y_{t-1}}$ are the "true" standard deviations of $y_t$ and $y_{t-1}$. Note that $\sigma_{y_t}=\sigma_{y_{t-1}}$, because we are talking about one and the same variable. This is why we can simplify the formula to get the one on the right-hand side of \@ref(eq:autoCorrelation). The formula \@ref(eq:autoCorrelation) corresponds to the classical correlation coefficient, so this interpretation is the same as for the classical one: the value of $\rho(1)$ shows the closeness of the lagged relation to linear. If it is close to one, then this means that variable has a strong linear relation with itself on the previous observation. It obviously does not tell you anything about the causality, just shows a technical relation between variables, even if it is spurious in real life.
 
-Using the formula \@ref(eq:autoCorrelation), we can calculate the autocorrelation coefficients for other lags as well, just substituting $y_{t-1}$ with $y_{t-2}$, $y_{t-3}$, $\dots$, $y_{t-\tau}$ etc. In a way, $\rho(\tau)$ can be considered as a function of a lag $\tau$, which is called the "Autocorrelation function" (ACF). If we know the order of the ARIMA process we deal with, we can plot the values of ACF on the y-axis by changing the $\tau$ on the x-axis. @Box1976 discuss different theoretical functions for several special cases of ARIMA, which we do not plan to repeat here fully. But, for example, they show that if you deal with AR(1) process, then the $\rho(1)=\phi_1$, $\rho(2)=\phi_1^2$ etc. This can be seen on the example of $\rho(1)$ by calculating the covariance for AR(1):
+Using the formula \@ref(eq:autoCorrelation), we can calculate the autocorrelation coefficients for other lags as well, just substituting $y_{t-1}$ with $y_{t-2}$, $y_{t-3}$, $\dots$, $y_{t-\tau}$ etc. In a way, $\rho(\tau)$ can be considered a function of a lag $\tau$, which is called the "Autocorrelation function" (ACF). If we know the order of the ARIMA process we deal with, we can plot the values of ACF on the y-axis by changing the $\tau$ on the x-axis. @Box1976 discuss different theoretical functions for several special cases of ARIMA, which we do not plan to repeat here fully. But, for example, they show that if you deal with an AR(1) process, then the $\rho(1)=\phi_1$, $\rho(2)=\phi_1^2$, etc. This can be seen on the example of $\rho(1)$ by calculating the covariance for AR(1):
 \begin{equation}
-  \sigma_{y_t,y_{t-1}} = \mathrm{cov}(y_t,y_{t-1}) = \mathrm{cov}(\phi_1 y_{t-1} + \epsilon_t, y_{t-1}) = \mathrm{cov}(\phi_1 y_{t-1}, y_{t-1}) = \phi_1 \sigma_{y_t}^2 ,
+	\begin{aligned}
+		\sigma_{y_t,y_{t-1}} = & \mathrm{cov}(y_t,y_{t-1}) = \mathrm{cov}(\phi_1 y_{t-1} + \epsilon_t, y_{t-1}) = \\
+		& \mathrm{cov}(\phi_1 y_{t-1}, y_{t-1}) = \phi_1 \sigma_{y_t}^2 ,
+	\end{aligned}
   (\#eq:autoCovarianceAR1)
 \end{equation}
 which when inserted in \@ref(eq:autoCorrelation) leads to $\rho(1)=\phi_1$. The ACF for AR(1) with a positive $\phi_1$ will have the shape shown in Figure \@ref(fig:ACFExampleAR1) (on the example of $\phi_1=0.9$).
 
-```{r ACFExampleAR1, fig.cap="ACF for AR(1) model.", echo=FALSE}
+```{r ACFExampleAR1, fig.cap="ACF for an AR(1) model.", echo=FALSE}
 y <- vector("numeric",21)
 y[] <- 0.9^c(0:(length(y)-1))
 plot(0:(length(y)-1), y, type="l", xlab="Lag", ylab="ACF")
@@ -634,25 +637,28 @@ plot(0:(length(y)-1), y, type="l", xlab="Lag", ylab="ACF")
 
 Note that $\rho(0)=1$ just because the value is correlated with itself, so lag 0 is typically dropped as not being useful. The declining shape of the ACF tells us that if $y_t$ is correlated with $y_{t-1}$, then the correlation between $y_{t-1}$ and $y_{t-2}$ will be exactly the same, also implying that $y_{t}$ is somehow correlated with $y_{t-2}$, even if there is no true relation between them. It is difficult to say anything for the AR process based on ACF exactly because of this temporal relation of the variable with itself.
 
-On the other hand, ACF can be used to judge the order of MA(q) process. For example, if we consider MA(1) (Section \@ref(MA)), then the $\rho(1)$ will depend on the following covariance:
+On the other hand, ACF can be used to judge the order of an MA(q) process. For example, if we consider MA(1) (Section \@ref(MA)), then the $\rho(1)$ will depend on the following covariance:
 \begin{equation}
-  \sigma_{y_t,y_{t-1}} = \mathrm{cov}(y_t,y_{t-1}) = \mathrm{cov}(\theta_1 \epsilon_{t-1} + \epsilon_t, \theta_1 \epsilon_{t-2} + \epsilon_{t-1}) = \mathrm{cov}(\theta_1 \epsilon_{t-1}, \epsilon_{t-1}) = \theta_1 \sigma^2 ,
+	\begin{aligned}
+		\sigma_{y_t,y_{t-1}} = & \mathrm{cov}(y_t,y_{t-1}) = \mathrm{cov}(\theta_1 \epsilon_{t-1} + \epsilon_t, \theta_1 \epsilon_{t-2} + \epsilon_{t-1}) = \\
+		& \mathrm{cov}(\theta_1 \epsilon_{t-1}, \epsilon_{t-1}) = \theta_1 \sigma^2 ,
+	\end{aligned}
   (\#eq:autoCovarianceMA1)
 \end{equation}
 where $\sigma^2$ is the variance of the error term, which in case of MA(1) is equal to $\sigma^2_{y_t}$, because E$(y_t)=0$. However, the covariance between the higher lags will be equal to zero for the pure MA(1) (given that the usual assumptions from Section \@ref(assumptions) hold). @Box1976 showed that for the moving averages, ACF tells more about the order of the model than for the autoregressive one: **ACF will drop rapidly right after the specific lag q for the MA(q) process**.
 
-When it comes to seasonal models, in the case of seasonal AR(P), ACF will decrease exponentially from season to season (e.g. you would see a decrease on lags 4, 8, 12 etc. for SAR(1) and $m=4$), while in case of seasonal MA(Q), ACF would drop abruptly, starting from the lag $(Q+1)m$ (so, the subsequent seasonal lag from the one that the process has, e.g. on lag 8, if we deal with SMA(1) with $m=4$).
+When it comes to seasonal models, in the case of seasonal AR(P), ACF will decrease exponentially from season to season (e.g. you would see a decrease on lags 4, 8, 12, etc. for SAR(1) and $m=4$), while in case of seasonal MA(Q), ACF would drop abruptly, starting from the lag $(Q+1)m$ (so, the subsequent seasonal lag from the one that the process has, e.g. on lag 8, if we deal with SMA(1) with $m=4$).
 
 
 ### Partial autocorrelation function (PACF) {#PACF}
-The other instrument useful for time series analysis with respect to ARIMA is called "partial ACF". The idea of this follows from ACF directly. As we have spotted, if the process we deal with follows AR(1), then $\rho(2)=\phi_1^2$ just because of the temporal relation. In order to get rid of this temporal effect, when calculating the correlation between $y_t$ and $y_{t-2}$ we could remove the correlation $\rho(1)$ in order to get the clean effect of $y_{t-2}$ on $y_t$. This type of correlation is called "partial", denoting it as $\varrho(\tau)$. There are different ways how to do that. One of the simplest is to estimate the following regression model:
+The other instrument useful for time series analysis with respect to ARIMA is called "partial ACF". The idea of this follows from ACF directly. As we have spotted, if the process we deal with follows AR(1), then $\rho(2)=\phi_1^2$ just because of the temporal relation. In order to get rid of this temporal effect, when calculating the correlation between $y_t$ and $y_{t-2}$ we could remove the correlation $\rho(1)$ in order to get the clean effect of $y_{t-2}$ on $y_t$. This type of correlation is called "partial", denoting it as $\varrho(\tau)$. There are different ways to do that. One of the simplest is to estimate the following regression model:
 \begin{equation}
   y_t = a_1 y_{t-1} + a_2 y_{t-2} + \dots + a_\tau y_{t-\tau} + \epsilon_t,
   (\#eq:PACFRegression)
 \end{equation}
-where $a_i$ is the parameter for the $i$-th lag of the model. In this regression, all the relations between $y_t$ and $y_{t-\tau}$ are captured separately, so the last parameter $a_\tau$ is clean of all the temporal effects discussed above. We then can use the value $\varrho(\tau) = a_\tau$ as the coefficient, showing this relation. In order to obtain the PACF, we would need to construct and estimate regressions \@ref(eq:PACFRegression) for each lag $\tau=\{1, 2, \dots, p\}$ and get the respective parameters $a_1$, $a_2$, ..., $a_p$, which would correspond to $\varrho(1)$, $\varrho(2)$, ..., $\varrho(p)$.
+where $a_i$ is the parameter for the $i$-th lag of the model. In this regression, all the relations between $y_t$ and $y_{t-\tau}$ are captured separately, so the last parameter $a_\tau$ is clean of all the temporal effects discussed above. We then can use the value $\varrho(\tau) = a_\tau$ as the coefficient, showing this relation. In order to obtain the PACF, we would need to construct and estimate regressions \@ref(eq:PACFRegression) for each lag $\tau=\{1, 2, \dots, p\}$ and get the respective parameters $a_1$, $a_2$, $\dots$, $a_p$, which would correspond to $\varrho(1)$, $\varrho(2)$, $\dots$, $\varrho(p)$.
 
-Just to show what this implies, we consider calculating PACF for AR(1) process. In this case, the true model is:
+Just to show what this implies, we consider calculating PACF for an AR(1) process. In this case, the true model is:
 \begin{equation*}
   y_t = \phi_1 y_{t-1} + \epsilon_t.
 \end{equation*}
@@ -660,17 +666,17 @@ For the first lag we estimate exactly the same model, so that $\varrho(1)=\phi_1
 \begin{equation*}
   y_t = a_1 y_{t-1} + a_2 y_{t-2} + \epsilon_t.
 \end{equation*}
-But we know that for AR(1), $a_2=0$, so when estimated in population, this would result in $\varrho(2)=0$ (in case of a sample, this would be a value very close to zero). If we continue with other lags, we will come to the same conclusion: for all lags $\tau>1$ for the AR(1), we will have $\varrho(\tau)=0$. This is one of the properties of PACF: **if we deal with AR(p) process, then PACF drops rapidly to zero right after the lag $p$**.
+But we know that for AR(1), $a_2=0$, so when estimated in population, this would result in $\varrho(2)=0$ (in the case of a sample, this would be a value very close to zero). If we continue with other lags, we will come to the same conclusion: for all lags $\tau>1$ for the AR(1), we will have $\varrho(\tau)=0$. This is one of the properties of PACF: **if we deal with an AR(p) process, then PACF drops rapidly to zero right after the lag $p$**.
 
-When it comes to MA(q) process, PACF behaves differently. In order to understand how it would behave, we take an example of MA(1) model, which is formulated as:
+When it comes to the MA(q) process, PACF behaves differently. In order to understand how it would behave, we take an example of an MA(1) model, which is formulated as:
 \begin{equation*}
   y_t = \theta_1 \epsilon_{t-1} + \epsilon_t.
 \end{equation*}
-As it was discussed in Section \@ref(ARIMABounds), MA process can be also represented as an infinite AR (see \@ref(eq:ARIMA100Example03) for derivation):
+As it was discussed in Section \@ref(ARIMABounds), the MA process can be also represented as an infinite AR (see \@ref(eq:ARIMA100Example03) for derivation):
 \begin{equation*}
   y_t = \sum_{j=1}^\infty -1^{j-1} \theta_1^j y_{t-j} + \epsilon_t.
 \end{equation*}
-If we construct and estimate the regression \@ref(eq:PACFRegression) for any lag $\tau$ for such process we will get $\varrho(\tau)=-1^{\tau-1} \theta_1^\tau$. This would correspond to the exponentially decreasing curve (if the parameter $\theta_1$ is positive, this will be an alternating series of values), similar to the one we have seen for the AR(1) and ACF. More generally, PACF will decline exponentially for MA(q) process, starting from the $\varrho(q)=\theta_q$.
+If we construct and estimate the regression \@ref(eq:PACFRegression) for any lag $\tau$ for such a process we will get $\varrho(\tau)=-1^{\tau-1} \theta_1^\tau$. This would correspond to the exponentially decreasing curve (if the parameter $\theta_1$ is positive, this will be an alternating series of values), similar to the one we have seen for the AR(1) and ACF. More generally, PACF will decline exponentially for an MA(q) process, starting from the $\varrho(q)=\theta_q$.
 
 When it comes to seasonal ARIMA models, the behaviour of PACF would resemble one of the non-seasonal ones, but with lags, multiple to the seasonality $m$. e.g., for the SAR(1) process with $m=4$, the $\varrho(4)=\phi_{4,1}$, while $\varrho(8)=0$.
 
@@ -678,64 +684,66 @@ When it comes to seasonal ARIMA models, the behaviour of PACF would resemble one
 ### Summary {#BJApproachSummary}
 Summarising the discussions in this section, we can conclude that:
 
-1. For AR(p) process, ACF will decrease either exponentially or alternating (depending on the parameters' values), starting from the lag $p$;
-2. For AR(p) process, PACF will drop abruptly right after the lag $p$;
-3. For MA(q) process, ACF will drop abruptly right after the lag $q$;
-4. For MA(q) process, PACF will decline either exponentially or alternating (based on the specific values of parameters), starting from the lag $q$.
+1. For an AR(p) process, ACF will decrease either exponentially or alternatingly (depending on the parameters' values), starting from the lag $p$;
+2. For an AR(p) process, PACF will drop abruptly right after the lag $p$;
+3. For an MA(q) process, ACF will drop abruptly right after the lag $q$;
+4. For an MA(q) process, PACF will decline either exponentially or alternatingly (based on the specific values of parameters), starting from the lag $q$.
 
 These rules are tempting to use when determining the appropriate order of the ARMA model. This is what @Box1976 propose to do, but in an iterative way, analysing the ACF/PACF of residuals of models obtained on previous steps. The authors also recommend identifying the seasonal orders before moving to the non-seasonal ones.
 
-However, these rules are not necessarily bi-directional and might not work in practice. e.g. *if we deal with MA(q), ACF drops abruptly right after the lag q, but if ACF drops abruptly after the lag q, then this does not necessarily mean that we deal with MA(q)*. The former follows directly from the assumed "true" model, while the latter refers to the identification of the model on the data, and there can be different reasons for the ACF to behave in a way it does. The logic here is similar to the following:
+However, these rules are not necessarily bi-directional and might not work in practice, e.g. *if we deal with MA(q), ACF drops abruptly right after the lag q, but if ACF drops abruptly after the lag q, then this does not necessarily mean that we deal with MA(q)*. The former follows directly from the assumed "true" model, while the latter refers to the identification of the model on the data, and there can be different reasons for the ACF to behave in the way it does. The logic here is similar to the following:
 
 ```{example}
-All birds have wings. Sarah has wings. Thus Sarah is a bird.
+All birds have wings. Sarah has wings. Thus, Sarah is a bird.
 
 Here is Sarah:
 ```
 
-```{r SarahButterfly, out.width="75%", echo=FALSE, fig.cap="Sarah by Yegor Kamelev"}
+```{r SarahButterfly, out.width="75%", echo=FALSE, fig.cap="Sarah by Yegor Kamelev."}
 # All defaults
 knitr::include_graphics("./images/09-Sarah.jpeg")
 ```
 
-This slight discrepancy led to issues in ARIMA identification over the years. We now understand that we should not rely entirely on the Box-Jenkins approach when identifying ARIMA orders. There are more appropriate methods for order selection, which can be used in the context of ARIMA [see, for example, @Hyndman2008Forecast], and we will discuss some of them in the Chapter \@ref(ADAMSelection). Still, ACF and PACF could be helpful in diagnostics. They might show you whether anything important is missing in the model. But they should not be used on their own. They are helpful together with other additional instruments (see discussion in Section \@ref(diagnosticsResidualsIIDAuto)).
+This slight discrepancy led to issues in ARIMA identification over the years. We now understand that we should not rely entirely on the Box-Jenkins approach when identifying ARIMA orders. There are more appropriate methods for order selection, which can be used in the context of ARIMA [see, for example, @Hyndman2008Forecast], and we will discuss some of them in Chapter \@ref(ADAMSelection). Still, ACF and PACF could be helpful in diagnostics. They might show you whether anything important is missing in the model. But they should not be used on their own. They are helpful together with other additional instruments (see discussion in Section \@ref(diagnosticsResidualsIIDAuto)).
 
 
 ### Examples of ACF/PACF for several ARMA processes {#BJApproachExample}
 Building upon the behaviours of ACF/PACF for AR and MA processes, we consider several examples of data generated from AR/MA. This might provide some guidelines of how the orders of ARMA can be identified in practice and show how challenging this is in some situations.
 
-Figure \@ref(fig:acfpacfExampleAR1) shows the plot of the data and ACF/PACF for AR(1) process with $\phi_1=0.9$. As discussed earlier, the ACF in this case declines exponentially, starting from lag 1, while the PACF drops right after the lag 1. The plot also shows how the fitted values and the forecast would look like if the order of the model was correctly selected and the parameters were known.
+Figure \@ref(fig:acfpacfExampleAR1) shows the plot of the data and ACF/PACF for an AR(1) process with $\phi_1=0.9$. As discussed earlier, the ACF in this case declines exponentially, starting from lag 1, while the PACF drops right after the lag 1. The plot also shows how the fitted values and the forecast would look like if the order of the model was correctly selected and the parameters were known.
 
-```{r acfpacfExampleAR1, fig.cap="AR(1) process with $\\phi_1=0.9$", echo=FALSE}
+```{r acfpacfExampleAR1, fig.cap="AR(1) process with $\\phi_1=0.9$.", echo=FALSE}
 load("data/armaExamples.Rdata")
 # xAR1 <- sim.ssarima(list(ar=1,i=0,ma=0),obs=120,AR=0.9,initial=10)$data
 layout(matrix(c(1,2,1,3),2,2))
 ssarima(xAR1, orders=c(1,0,0), AR=0.9, h=20, holdout=TRUE) |>
     forecast(interval="parametric") |>
     plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
+par(mar=c(4,4,0,2))
 forecast::Acf(xAR1, main="")
 pacf(xAR1, main="")
 ```
 
 ::: remark
-You might notice that there are some values of PACF lying outside the standard 95% confidence bounds in the plots above. This does not mean that we need to include the respective AR elements (AR(6) and AR(18)), because, by the definition of confidence interval, we can expect 5% of coefficients of correlation to lie outside the bounds, so we can ignore them.
+You might notice that there are some values of the PACF lying outside the standard 95% confidence bounds in the plots above. This does not mean that we need to include the respective AR elements (AR(6) and AR(18)), because, by the definition of confidence interval, we can expect 5% of coefficients of correlation to lie outside the bounds, so we can ignore them.
 :::
 
-Similar idea is shown in Figure \@ref(fig:acfpacfExampleAR2) for AR(2) process with $\phi_1=0.9$ and $\phi_2=-0.4$. In the Figure, the ACF oscillates slightly around the origin, while the PACF drops to zero right after the lag 2. These are the characteristics that we have discussed earlier in this Section.
+A similar idea is shown in Figure \@ref(fig:acfpacfExampleAR2) for an AR(2) process with $\phi_1=0.9$ and $\phi_2=-0.4$. In the Figure, the ACF oscillates slightly around the origin, while the PACF drops to zero right after the lag 2. These are the characteristics that we have discussed earlier in this section.
 
-```{r acfpacfExampleAR2, fig.cap="AR(2) process with $\\phi_1=0.9$ and $\\phi_2=-0.4$", echo=FALSE}
+```{r acfpacfExampleAR2, fig.cap="AR(2) process with $\\phi_1=0.9$ and $\\phi_2=-0.4$.", echo=FALSE}
 # xAR2 <- sim.ssarima(list(ar=2,i=0,ma=0),obs=120,AR=c(0.9,-0.4),initial=c(10,-5))$data
 layout(matrix(c(1,2,1,3),2,2))
 ssarima(xAR2, orders=c(2,0,0), AR=c(0.9,-0.4), h=20, holdout=TRUE) |>
     forecast(interval="parametric") |>
     plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
+par(mar=c(4,4,0,2))
 forecast::Acf(xAR2, main="")
 pacf(xAR2, main="")
 ```
 
-Similar plots but with different behaviours of ACF and PACF can be shown for MA(1) and MA(2) processes. Figure \@ref(fig:acfpacfExampleMA2) shows how the MA(2) process looks like with $\theta_1=-0.9$ and $\theta_2=0.8$. As we can see, the correct diagnostics of the MA order in this case is already challenging: while the ACF drops to zero after lag 2, the PACF seems to contain some values outside of the interval on lags 3 and 4. So, using the @Box1976 approach, we would be choosing between MA(2) and AR(1) / AR(4) models.
+Similar plots but with different behaviours of ACF and PACF can be shown for MA(1) and MA(2) processes. Figure \@ref(fig:acfpacfExampleMA2) shows how the MA(2) process looks like with $\theta_1=-0.9$ and $\theta_2=0.8$. As we can see, the correct diagnostics of the MA order in this case is already challenging: while the ACF drops to zero after lag 2, the PACF seems to contain some values outside of the interval on lags 3 and 4. So, using the @Box1976 approach, we would be choosing between an MA(2) and AR(1)/AR(4) models.
 
-```{r acfpacfExampleMA2, fig.cap="MA(2) process with $\\theta_1=-0.9$ and $\\theta_2=0.8$", echo=FALSE}
+```{r acfpacfExampleMA2, fig.cap="MA(2) process with $\\theta_1=-0.9$ and $\\theta_2=0.8$.", echo=FALSE}
 # xMA2 <- sim.ssarima(list(ar=0,i=0,ma=2),obs=120,MA=maValues,initial=c(10,-5))$data
 layout(matrix(c(1,2,1,3),2,2))
 ssarima(xMA2, orders=c(0,0,2), MA=c(-0.9,0.8), h=20, holdout=TRUE) |>
@@ -745,9 +753,9 @@ forecast::Acf(xMA2, main="")
 pacf(xMA2, main="")
 ```
 
-To make things even more complicated, we present similar plots for ARMA(2,2) model in Figure \@ref(fig:acfpacfExampleARMA22).
+To make things even more complicated, we present similar plots for an ARMA(2,2) model in Figure \@ref(fig:acfpacfExampleARMA22).
 
-```{r acfpacfExampleARMA22, fig.cap="ARMA(2,2) process with $\\phi_1=0.9, \\phi_2=-0.4$, $\\theta_1=-0.9$ and $\\theta_2=0.8$", echo=FALSE}
+```{r acfpacfExampleARMA22, fig.cap="ARMA(2,2) process with $\\phi_1=0.9, \\phi_2=-0.4$, $\\theta_1=-0.9$ and $\\theta_2=0.8$.", echo=FALSE}
 # xARMA22 <- sim.ssarima(list(ar=2,i=0,ma=2),obs=120,MA=maValues,AR=c(0.9,-0.4),initial=c(10,-5))$data
 layout(matrix(c(1,2,1,3),2,2))
 ssarima(xARMA22, orders=c(2,0,2), AR=c(0.9,-0.4), MA=c(-0.9,0.8), h=20, holdout=TRUE) |>
@@ -757,11 +765,11 @@ forecast::Acf(xARMA22, main="")
 pacf(xARMA22, main="")
 ```
 
-Based on ACF/PACF in Figure \@ref(fig:acfpacfExampleARMA22), we can conclude that the process is not fundamentally distinguishable from AR(2) and/or MA(2). In order to correctly identify the order in this situation, @Box1976 recommend doing the identification sequentially, by fitting an AR model, then analysing the residuals and selecting an appropriate MA order. Still, even this iterative process is challenging and does not guarantee that the correct order will be selected. This is one of the reasons why modern ARIMA order selection methods do not fully rely on the Box-Jenkins approach and involve selection based on information criteria [@Hyndman2008Forecast, @Svetunkov2019].
+Based on the ACF/PACF in Figure \@ref(fig:acfpacfExampleARMA22), we can conclude that the process is not fundamentally distinguishable from AR(2) and/or MA(2). In order to correctly identify the order in this situation, @Box1976 recommend doing the identification sequentially, by fitting an AR model, then analysing the residuals and selecting an appropriate MA order. Still, even this iterative process is challenging and does not guarantee that the correct order will be selected. This is one of the reasons why modern ARIMA order selection methods do not fully rely on the Box-Jenkins approach and involve selection based on information criteria [@Hyndman2008Forecast, @Svetunkov2019].
 
 
 ## ARIMA and ETS {#ARIMAandETS}
-@Box1976 showed in their textbook that several exponential smoothing methods could be considered special cases of the ARIMA model. Because of that, statisticians have thought for many years that ARIMA is a superior model and paid no attention to exponential smoothing. It took many years, many papers and a lot of effort [@Makridakis1982; @Fildes1998; @Makridakis2000] to show that this is not correct and that if you are interested in forecasting, then exponential smoothing, being a simpler model, typically does a better job than ARIMA. It was only after @Ord1997 that statisticians have started considering ETS as a separate model with its own properties. Furthermore, it seems that some of the conclusions from the previous competitions mainly apply to the [Box-Jenkins approach](#BJApproach) [for example, see @Makridakis1997], pointing out that selecting the correct order of ARIMA models is a much more challenging task than the statisticians have thought before.
+@Box1976 showed in their textbook that several Exponential Smoothing methods could be considered special cases of the ARIMA model. Because of that, statisticians have thought for many years that ARIMA is a superior model and paid no attention to Exponential Smoothing. It took many years, many papers, and a lot of effort [@Makridakis1982; @Fildes1998; @Makridakis2000] to show that this is not correct and that if you are interested in forecasting, then Exponential Smoothing, being a simpler model, typically does a better job than ARIMA. It was only after @Ord1997 that statisticians have started considering ETS as a separate model with its own properties. Furthermore, it seems that some of the conclusions from the previous competitions mainly apply to the [Box-Jenkins approach](#BJApproach) [for example, see @Makridakis1997], pointing out that selecting the correct order of ARIMA models is a much more challenging task than statisticians had thought before.
 
 Still, there is a connection between ARIMA and ETS models, which can benefit both models, so it is worth discussing this in a separate section of the monograph.
 
@@ -782,13 +790,13 @@ Finally, using the backshift operator for ARIMA, substituting the estimated valu
 \begin{equation*}
   y_{t}(1 -B) = \epsilon_t(1 + \theta_1 B),
 \end{equation*}
-where $\theta_1 = \alpha-1$. This relation was one of the first hints that $\alpha$ in SES should lie in a wider interval: based on the fact that $\theta_1 \in (-1, 1)$, the smoothing parameter $\alpha \in (0, 2)$. This is the same region we get when we deal with the admissible bounds of the ETS(A,N,N) model (Section \@ref(SESandETS)). This connection between the parameters of ARIMA(0,1,1) and ETS(A,N,N) is useful on its own because we can transfer the properties of ETS to ARIMA. For example, we know that the level in ETS(A,N,N) will change slowly when $\alpha$ is close to zero. Similar behaviour would be observed in ARIMA(0,1,1) with $\theta_1$ close to -1. In addition, we know that ETS(A,N,N) reverts to Random Walk, when $\alpha=1$, which corresponds to $\theta_1=0$. So, the closer $\theta_1$ to zero, the more abrupt behaviour the ARIMA model exhibits. In cases of $\theta_1>0$, the model's behaviour becomes even more uncertain. In a way, this relation gives us the idea of what to expect from more complicated ARIMA(p,d,q) models when the parameters for moving average are negative -- the model should typically behave smoother. However, this might differ from one model to another, depending on the MA order.
+where $\theta_1 = \alpha-1$. This relation was one of the first hints that $\alpha$ in SES should lie in a wider interval: based on the fact that $\theta_1 \in (-1, 1)$, the smoothing parameter $\alpha \in (0, 2)$. This is the same region we get when we deal with the admissible bounds of the ETS(A,N,N) model (Section \@ref(SESandETS)). This connection between the parameters of ARIMA(0,1,1) and ETS(A,N,N) is useful on its own because we can transfer the properties of ETS to ARIMA. For example, we know that the level in ETS(A,N,N) will change slowly when $\alpha$ is close to zero. Similar behaviour would be observed in ARIMA(0,1,1) with $\theta_1$ close to -1. In addition, we know that ETS(A,N,N) reverts to Random Walk, when $\alpha=1$, which corresponds to $\theta_1=0$. So, the closer $\theta_1$ is to zero, the more abrupt behaviour the ARIMA model exhibits. In cases of $\theta_1>0$, the model's behaviour becomes even more uncertain. In a way, this relation gives us the idea of what to expect from more complicated ARIMA(p,d,q) models when the parameters for the moving average are negative -- the model should typically behave smoother. However, this might differ from one model to another, depending on the MA order.
 
-The main conceptual difference between ARIMA(0,1,1) and ETS(A,N,N) is that the latter still makes sense, when $\alpha=0$, while in case of ARIMA(0,1,1) the condition $\theta_1=-1$ is unacceptable. The global level model with $\theta_1=-1$ corresponds to just a different model, ARIMA(0,0,0) with constant.
+The main conceptual difference between ARIMA(0,1,1) and ETS(A,N,N) is that the latter still makes sense, when $\alpha=0$, while in the case of ARIMA(0,1,1), the condition $\theta_1=-1$ is unacceptable. The global level model with $\theta_1=-1$ corresponds to just a different model, ARIMA(0,0,0) with constant.
 
 Finally, the connection between the two models tells us that if we have the ARIMA(0,1,q) model, this model would be suitable for the data called "level" in the ETS framework. The length of $q$ would define the distribution of the weights in the model. The specific impact of each MA parameter on the actual values would differ, depending on the order $q$ and values of parameters. The forecast from the ARIMA(0,1,q) would be a straight line parallel to the x-axis for $h\geq q$.
 
-In order to demonstrate the connection between the two models we consider the following example in R using functions `sim.es()`, `es()` and `msarima()` from `smooth` package:
+In order to demonstrate the connection between the two models we consider the following example in R using functions `sim.es()`, `es()`, and `msarima()` from `smooth` package:
 ```{r}
 # Generate data from ETS(A,N,N) with alpha=0.2
 y <- sim.es("ANN", obs=120, persistence=0.2)
@@ -821,7 +829,7 @@ plot(esModel,7)
 plot(msarimaModel,7)
 ```
 
-We expect the ETS(A,N,N) and ARIMA(0,1,1) models to be similar in this example because they are estimated using the respective functions `es()` and `msarima()`, which are implemented in the same way, using the same framework. If the framework, initialisation, construction or estimation would be different, then the relation between the applied models might be not exact but approximate.
+We expect the ETS(A,N,N) and ARIMA(0,1,1) models to be similar in this example because they are estimated using the respective functions `es()` and `msarima()`, which are implemented in the same way, using the same framework. If the framework, initialisation, construction, or estimation would be different, then the relation between the applied models might be not exact but approximate.
 
 
 ### ARIMA(0,2,2) and ETS(A,A,N) {#ARIMAETS022}
@@ -830,23 +838,23 @@ We expect the ETS(A,N,N) and ARIMA(0,1,1) models to be similar in this example b
   \begin{aligned}
     &\theta_1 = \alpha + \beta -2 \\
     &\theta_2 = 1 -\alpha
-  \end{aligned}
+  \end{aligned} .
 \end{equation*}
-We also know from the section \@ref(ETSExamples) that Holt's method has an underlying ETS(A,A,N) model. Thus there is a connection between this model and ARIMA(0,2,2). This means that ARIMA(0,2,2) will produce linear trajectories for the data and that the MA parameters of the model regulate the speed of the update of values. Because of the second difference, ARIMA(0,2,q) will produce a straight line as a forecasting trajectory for any $h\geq q$.
+We also know from Section \@ref(ETSExamples) that Holt's method has an underlying ETS(A,A,N) model. Thus, there is a connection between this model and ARIMA(0,2,2). This means that ARIMA(0,2,2) will produce linear trajectories for the data and that the MA parameters of the model regulate the speed of the update of values. Because of the second difference, ARIMA(0,2,q) will produce a straight line as a forecasting trajectory for any $h\geq q$.
 
 Similarly to the ARIMA(0,1,1) vs ETS(A,N,N), one of the important differences between the models is that the boundary values for parameters are not possible for ARIMA(0,2,2): $\alpha=0$ and $\beta=0$ are possible in ETS, but the respective $\theta_1=2$ and $\theta_2=-1$ in ARIMA are not.
 
-Furthermore, the model that corresponds to the situation, when $\alpha=1$ and $\beta=0$ is formulated as ARIMA(0,1,0) with drift (discussed in Section \@ref(Differences)), while the global trend ARIMA could hypothetically appear in the boundary case with $\theta_1=-2$ and $\theta_2=1$, implying the following model:
+Furthermore, the model that corresponds to the situation, when $\alpha=1$ and $\beta=0$ can only be formulated as ARIMA(0,1,0) with drift (discussed in Section \@ref(Differences)). The Global Trend ARIMA can only appear in the boundary case with $\theta_1=-2$ and $\theta_2=1$, implying the following model:
 \begin{equation*}
     y_t (1 -B)^2 = \epsilon_t -2\epsilon_{t-1} + \epsilon_{t-2} = \epsilon_t (1 -B)^2 ,
 \end{equation*}
-which tells us that in ARIMA framework, the global trend model is only available as a global mean on second differences of the data.
+which tells us that in ARIMA framework, the Global Trend model is only available as a Global Mean on second differences of the data.
 
-Finally, the ETA(A,A,N) and ARIMA(0,2,2) will fit the data similarly and produce the exact forecasts as long as they are constructed, initialised and estimated in the same way.
+Finally, the ETA(A,A,N) and ARIMA(0,2,2) will fit the data similarly and produce the exact forecasts as long as they are constructed, initialised, and estimated in the same way.
 
 
 ### ARIMA(1,1,2) and ETS(A,Ad,N) {#ARIMAETS112}
-@Roberts1982 proposed damped trend exponential smoothing method (Section \@ref(ETSAAdN)), showing that it is related to ARIMA(1,1,2) model, with the following connection between the parameters of the two:
+@Roberts1982 proposed damped trend Exponential Smoothing method (Section \@ref(ETSAAdN)), showing that it is related to the ARIMA(1,1,2) model, with the following connection between the parameters of the two:
 \begin{equation*}
   \begin{aligned}
     &\theta_1 = \alpha -1 + \phi (\beta -1) \\
@@ -856,17 +864,17 @@ Finally, the ETA(A,A,N) and ARIMA(0,2,2) will fit the data similarly and produce
 \end{equation*}
 At the same time, the damped trend method has underlying ETS(A,Ad,N), thus the two models are connected. Recalling that ETS(A,Ad,N) reverts to ETS(A,A,N), when $\phi=1$, we can see a similar property in ARIMA: when $\phi_1=1$, the model should be reformulated as ARIMA(0,2,2) instead of ARIMA(1,1,2). Given the direct connection between the dampening parameters and the AR(1) parameter of the two models, we can conclude that AR(1) defines the forecasting trajectory's dampening effect. We have already noticed this in Section \@ref(ARMAConstant). However, we should acknowledge that the dampening only happens when $\phi_1 \in (0,1)$. The case of $\phi_1>1$ is unacceptable in the ARIMA framework and is not very useful in the case of ETS, producing explosive exponential trajectories. The case of $\phi_1 \in (-1, 0)$ is possible but is less useful in practice, as the trajectory will oscillate.
 
-The lesson to learn from the connection between the two models is that AR(p) part of ARIMA can act as a dampening element for the forecasting trajectories, although the specific shape would depend on the value of $p$ and the values of parameters.
+The lesson to learn from the connection between the two models is that the AR(p) part of ARIMA can act as a dampening element for the forecasting trajectories, although the specific shape would depend on the value of $p$ and the values of parameters.
 
 
 ### ARIMA and other ETS models {#ARIMAETSOther}
 The pure additive seasonal ETS models (Chapter \@ref(ADAMETSPureAdditive)) also have a connection with ARIMA, but the resulting models are not parsimonious. For example, ETS(A,A,A) is related to SARIMA(0,1,m+1)(0,1,0)$_m$ [@Mckenzie1976; @Chatfield1977] with some restrictions on parameters. If we were to work with SARIMA and wanted to model the seasonal time series, we would probably apply SARIMA(0,1,1)(0,1,1)$_m$ instead of this larger model.
 
-When it comes to pure multiplicative (Chapter \@ref(ADAMETSPureMultiplicativeChapter)) and mixed (Section \@ref(ADAMETSMixedModels)) ETS models, there are no appropriate ARIMA analogues for them. For example, @Chatfield1977 showed that there are no ARIMA models for the exponential smoothing with the multiplicative seasonal component. This makes ETS distinct from ARIMA. The closest one can get to a pure multiplicative ETS model is the ARIMA applied to logarithmically transformed data when the smoothing parameters of ETS are close to zero, coming from the limit \@ref(eq:limitOf1x).
+When it comes to pure multiplicative (Chapter \@ref(ADAMETSPureMultiplicativeChapter)) and mixed (Section \@ref(ADAMETSMixedModels)) ETS models, there are no appropriate ARIMA analogues for them. For example, @Chatfield1977 showed that there are no ARIMA models for the Exponential Smoothing with the multiplicative seasonal component. This makes ETS distinct from ARIMA. The closest one can get to a pure multiplicative ETS model is the ARIMA applied to logarithmically transformed data when the smoothing parameters of ETS are close to zero, coming from the limit \@ref(eq:limitOf1x).
 
 
 ### ETS + ARIMA
-Finally, based on the discussion above, it is possible to have a combination of ETS and ARIMA, but not all combinations would be meaningful and helpful. For example, fitting a combination of ETS(A,N,N)+ARIMA(0,1,1) is not a good idea due to the connection of the two models (Subsection \@ref(ARIMAETS011)). However, doing ETS(A,N,N) and adding ARIMA(1,0,0) component would make sense -- the resulting model would exhibit the dampening trend as discussed in Section \@ref(ARIMAETS112) but would have fewer parameters to estimate than ETS(A,Ad,N). @Gardner1985 pointed out that using AR(1) with exponential smoothing methods improves forecasting accuracy, so this combination of the two models is potentially beneficial for ETS. In the next chapter, we will discuss how specifically the two models can be united in one framework.
+Finally, based on the discussion above, it is possible to have a combination of ETS and ARIMA, but not all combinations would be meaningful and helpful. For example, fitting a combination of ETS(A,N,N)+ARIMA(0,1,1) is not a good idea due to the connection of the two models (Subsection \@ref(ARIMAETS011)). However, doing ETS(A,N,N) and adding an ARIMA(1,0,0) component would make sense -- the resulting model would exhibit the dampening trend as discussed in Section \@ref(ARIMAETS112) but would have fewer parameters to estimate than ETS(A,Ad,N). @Gardner1985 pointed out that using AR(1) with Exponential Smoothing methods improves forecasting accuracy, so this combination of the two models is potentially beneficial for ETS. In the next chapter, we will discuss how specifically the two models can be united in one framework.
 
 
 ## Examples of application {#ARIMAExampleInR}
@@ -874,10 +882,10 @@ Finally, based on the discussion above, it is possible to have a combination of 
 Using the time series from the Box-Jenkins textbook [@Box1976], we fit the ARIMA model to the data but based on our judgment rather than their approach. Just a reminder, here is how the data looks (series `BJsales`, Figure \@ref(fig:BJSalesPlot)):
 
 ```{r BJSalesPlot, fig.cap="Box-Jenkins sales data.", echo=FALSE}
-plot(BJsales)
+plot(BJsales, ylab="Sales")
 ```
 
-It seems to exhibit the trend in the data, so we can consider ARIMA(1,1,2), ARIMA(0,2,2) and ARIMA(1,1,1) models. We do not consider models with drift in this example, because they would imply the same slope over time for the whole series, which does not seem to be the case here. We use `msarima()` function from the `smooth` package, which is a wrapper for the `adam()` function:
+It seems to exhibit the trend in the data, so we can consider ARIMA(1,1,2), ARIMA(0,2,2), and ARIMA(1,1,1) models. We do not consider models with drift in this example, because they would imply the same slope over time for the whole series, which does not seem to be the case here. We use the `msarima()` function from the `smooth` package, which is a wrapper for the `adam()` function:
 ```{r}
 adamARIMABJ <- vector("list",3)
 # ARIMA(1,1,2)
@@ -898,12 +906,12 @@ sapply(adamARIMABJ, AICc)
 ```
 
 ::: remark
-Note that this comparison is possible in `adam()`, `ssarima()` and `msarima()` because the implemented ARIMA is formulated in state space form, sidestepping the issue of the conventional ARIMA (where taking differences reduces the sample size).
+Note that this comparison is possible in `adam()`, `ssarima()`, and `msarima()` because the implemented ARIMA is formulated in state space form, sidestepping the issue of the conventional ARIMA (where taking differences reduces the sample size).
 :::
 
-Based on this comparison, it looks like the ARIMA(0,2,2) is the most appropriate model (among the three) for the data. Here how the fit and the forecast from the model looks (Figure \@ref(fig:adamARIMAPlotBJSales)):
+Based on this comparison, it looks like the ARIMA(0,2,2) is the most appropriate model (among the three) for the data. Here is how the fit and the forecast from the model looks (Figure \@ref(fig:adamARIMAPlotBJSales)):
 
-```{r adamARIMAPlotBJSales, fig.cap="BJSales series and ARIMA(0,2,2)"}
+```{r adamARIMAPlotBJSales, fig.cap="BJSales series and ARIMA(0,2,2)."}
 plot(adamARIMABJ[[2]], which=7)
 ```
 
@@ -914,15 +922,15 @@ adam(BJsales, "AAN", h=10, holdout=TRUE)
 
 If we are interested in a more classical Box-Jenkins approach, we can always analyse the residuals of the constructed model and try improving it further. Here is an example of ACF and PACF of the residuals of the ARIMA(0,2,2):
 
-```{r adamARIMAPlotBJSalesACFPACF, fig.cap="ACF and PACF of ARIMA(0,2,2) on BJSales data"}
+```{r adamARIMAPlotBJSalesACFPACF, fig.cap="ACF and PACF of the ARIMA(0,2,2) model on BJSales data"}
 par(mfcol=c(1,2))
 plot(adamARIMABJ[[2]], which=c(10,11), main="")
 ```
 
-As we see from the plot in Figure \@ref(fig:adamARIMAPlotBJSalesACFPACF), all autocorrelation coefficients lie inside the confidence interval, implying that there are no significant AR / MA lags to include in the model.
+As we see from the plot in Figure \@ref(fig:adamARIMAPlotBJSalesACFPACF), all autocorrelation coefficients lie inside the confidence interval, implying that there are no significant AR/MA lags to include in the model.
 
 ### Seasonal data {#ARIMAExampleInRSeasonal}
-Similarly to the previous cases, we use Box-Jenkins AirPassengers data, which exhibits a multiplicative seasonality and a trend. We will model this using SARIMA(0,2,2)(0,1,1)$_{12}$, SARIMA(0,2,2)(1,1,1)$_{12}$ and SARIMA(0,2,2)(1,1,0)$_{12}$ models, which are selected to see what type of seasonal ARIMA is more appropriate to the data:
+Similarly to the previous cases, we use Box-Jenkins AirPassengers data, which exhibits a multiplicative seasonality and a trend. We will model this using SARIMA(0,2,2)(0,1,1)$_{12}$, SARIMA(0,2,2)(1,1,1)$_{12}$, and SARIMA(0,2,2)(1,1,0)$_{12}$ models, which are selected to see what type of seasonal ARIMA is more appropriate to the data:
 ```{r}
 adamSARIMAAir <- vector("list",3)
 # SARIMA(0,2,2)(0,1,1)[12]
@@ -944,19 +952,19 @@ names(adamSARIMAAir) <- c("SARIMA(0,2,2)(0,1,1)[12]",
                           "SARIMA(0,2,2)(1,1,1)[12]",
                           "SARIMA(0,2,2)(1,1,0)[12]")
 ```
-Note that now that we have a seasonal component, we need to provide the SARIMA lags: 1 and $m=12$ and specify `orders` differently -- as a list with values for AR, I and MA orders separately. This is done because the SARIMA implemented in `msarima()` and `adam()` supports multiple seasonalities (e.g. you can have `lags=c(1,24,24*7)` if you want). The resulting information criteria of models are:
+Note that now that we have a seasonal component, we need to provide the SARIMA lags: 1 and $m=12$ and specify `orders` differently -- as a list with values for AR, I, and MA orders separately. This is done because the SARIMA implemented in `msarima()` and `adam()` supports multiple seasonalities (e.g. you can have `lags=c(1,24,24*7)` if you want). The resulting information criteria of models are:
 ```{r}
 sapply(adamSARIMAAir, AICc)
 ```
 It looks like the second model is slightly better than the other two, so we will use it in order to produce forecasts (see Figure \@ref(fig:adamSARIMAPlotAir)):
 
-```{r adamSARIMAPlotAir, fig.cap="Forecast of AirPassengers data from SARIMA(0,2,2)(1,1,1)$_{12}$ model."}
+```{r adamSARIMAPlotAir, fig.cap="Forecast of AirPassengers data from a SARIMA(0,2,2)(1,1,1)$_{12}$ model."}
 forecast(adamSARIMAAir[[2]], h=12,
          interval="prediction") |>
      plot(main="")
 ```
 
-This model is directly comparable with ETS models, so here is, for example, AICc of ETS(M,A,M) on the same data:
+This model is directly comparable with ETS models, so here is, for example, the AICc value of ETS(M,A,M) on the same data:
 ```{r}
 AICc(adamETSAir <- adam(AirPassengers, "MAM",
                         h=12, holdout=TRUE))
@@ -964,7 +972,7 @@ AICc(adamETSAir <- adam(AirPassengers, "MAM",
 
 It is lower than for the SARIMA model, which means that ETS(M,A,M) is more appropriate for the data in terms of information criteria than SARIMA(0,2,2)(1,1,1)$_{12}$. We can also investigate if there is a way to improve ETS(M,A,M) by adding some ARMA components (Figure \@ref(fig:adamETSPlotAirACFPACF)):
 
-```{r adamETSPlotAirACFPACF, fig.cap="ACF and PACF of ETS(M,A,M) on AirPassengers data"}
+```{r adamETSPlotAirACFPACF, fig.cap="ACF and PACF of ETS(M,A,M) on AirPassengers data."}
 par(mfcol=c(1,2))
 plot(adamETSAir, which=c(10,11), main="")
 ```
