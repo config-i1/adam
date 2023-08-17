@@ -1,15 +1,15 @@
 # Handling uncertainty in ADAM {#ADAMUncertainty}
-So far, when we discussed forecasts from ADAM, we have assumed that the smoothing parameters and initial values are known, even though we have acknowledged in Chapter \@ref(ADAMETSEstimation) that they are estimated. This is the conventional assumption of ETS models from @Hyndman2008b, which also applies to ARIMA models. However, in reality, the parameters are never known and are always estimated in-sample. This means that the estimates of parameters will inevitably change with the change of sample size. This uncertainty will impact the model fit, the point forecasts and prediction intervals. To overcome this issue, @Bergmeir2016 proposed bagging ETS -- the procedure that decomposes time series using STL [@Cleveland1990] then recreates many time series by bootstrapping the remainder then fits best ETS model to each of the newly created time series and combines the forecasts from the models. This way [as was explained by @Petropoulos2018], the parameters of models will differ from one generated time series to another. Thus the final forecasts will handle the uncertainty about the parameters. In addition, this approach also mitigates to some extent the model uncertainty, which was discussed in Section \@ref(ADAMCombinations), because models are selected automatically on each bootstrapped series. The main issue with the approach is that it is computationally expensive and assumes that STL decomposition is appropriate for time series. Furthermore, it assumes that the residuals from this decomposition do not contain any information and are independent.
+So far, when we discussed forecasts from ADAM, we have assumed that the smoothing parameters and initial values are known, even though we have acknowledged in Chapter \@ref(ADAMETSEstimation) that they are estimated. This is the conventional assumption of ETS models from @Hyndman2008b, which also applies to ARIMA models. However, in reality, the parameters are never known and are always estimated in-sample. This means that the estimates of parameters will inevitably change with the change of sample size. This uncertainty will impact the model fit, the point forecasts, and prediction intervals. To overcome this issue, @Bergmeir2016 proposed bagging ETS -- the procedure that decomposes time series using STL [@Cleveland1990] then recreates many time series by bootstrapping the remainder then fits best ETS model to each of the newly created time series and combines the forecasts from the models. This way [as was explained by @Petropoulos2018], the parameters of the models will differ from one generated time series to another. Thus, the final forecasts will handle the uncertainty about the parameters. In addition, this approach also mitigates to some extent the model uncertainty, which was discussed in Section \@ref(ADAMCombinations), because models are selected automatically on each bootstrapped series. The main issue with the approach is that it is computationally expensive and assumes that STL decomposition is appropriate for time series. Furthermore, it assumes that the residuals from this decomposition do not contain any information and are independent.
 
-In this chapter, we focus on a discussion of uncertainty in ADAM, specifically about the estimates of parameters. We start with a discussion of how the data can be simulated from an estimated ADAM, then move to how to deal with confidence intervals for the parameters and after that -- how the parameters uncertainty can be propagated to the states and fitted values of the model.
+In this chapter, we focus on a discussion of uncertainty in ADAM, specifically about the estimates of parameters. We start with a discussion of how the data can be simulated from an estimated ADAM, then move to how to deal with confidence intervals for the parameters and after that -- how the parameters' uncertainty can be propagated to the states and fitted values of the model. Some parts of this chapter are based on @SvetunkovETSUnceartain2023.
 
 
 ## Simulating data from ADAM {#ADAMUncertaintySimulation}
-Before we move to the discussion of parameters uncertainty and how it propagates to the states, fitted values and final forecasts, it makes sense to understand how data can be generated based on an ADAM with some parameters. The data generation in this case is done in the following steps:
+Before we move to the discussion of parameters' uncertainty and how it propagates to the states, fitted values, and final forecasts, it makes sense to understand how data can be generated based on an ADAM with some parameters. The data generation in this case is done in the following steps:
 
 1. Decide what structure will be used for data generation. This depends on the type and order of the specific ADAM. For example, if it a pure additive ETS(A,N,A)+ARIMA(2,0,0) model then the set of equations \@ref(eq:ADAMETSARIMAANA100) will be used with matrices and vectors defined by \@ref(eq:ADAMETSARIMAANN100Matrices);
-2. Generate error term for the values of $t=1 \dots T$, where $T$ is the desired sample size. The error term can be generated using any known distribution as long as its mean equals to zero in case of additive error ($\mathrm{E}(\epsilon_t)=0$) or equals to one in case of the multiplicative one ($\mathrm{E}(1+\epsilon_t)=1$);
-3. Set values of the persistence vector $\mathbf{g}$ and the matrices $\mathbf{w}$ and $\mathbf{F}$. In case of ARIMA, the values are defined based on the order of the model and the values of its parameters (see discussion in Section \@ref(StateSpaceARIMA)). The specific values will change depending on the type of model and the elements it has;
+2. Generate an error term for the values of $t=1 \dots T$, where $T$ is the desired sample size. The error term can be generated using any known distribution as long as its mean equals to zero in the case of additive error ($\mathrm{E}(\epsilon_t)=0$) or equals to one in the case of the multiplicative one ($\mathrm{E}(1+\epsilon_t)=1$);
+3. Set the values of the persistence vector $\mathbf{g}$ and the matrices $\mathbf{w}$ and $\mathbf{F}$. In the case of ARIMA, the values are defined based on the order of the model and the values of its parameters (see discussion in Section \@ref(StateSpaceARIMA)). The specific values will change depending on the type of model and the elements it has;
 4. Define the initial value of the state vector $\mathbf{v}_t$ for $t<1$;
 5. Apply recursively the formula of the state space model \@ref(eq:ETSADAMStateSpace) (discussed in Section \@ref(ADAMETSGeneral)), collecting the values of the state vector $\mathbf{v}_{t}$ and the generated actual values $y_t$ for all $t=1,\dots,T$.
 
@@ -18,7 +18,7 @@ Note that the simulation process allows using distributions that are not officia
 In the `smooth` package for R, there are several functions that implement this simulation procedure:
 
 - `sim.es()` allows generating data from an arbitrary ETS model;
-- `sim.ssarima()` supports data generation from a State Space ARIMA model with parameters and initial states provided by user;
+- `sim.ssarima()` supports data generation from a state space ARIMA model with parameters and initial states provided by the user;
 - `sim.sma()` generates data from Simple Moving Average, discussed in Subsection \@ref(SMA);
 - `simulate()` method for `adam` and `smooth` classes allows generating the data using the parameters of an estimated model, thus creating time series similar to the original one.
 
@@ -34,9 +34,9 @@ adam(AirPassengers, "MMM") |>
     plot(main="")
 ```
 
-You might notice that the trend in Figure \@ref(fig:adamSimulated) differs from the one in the original data. This is because the ETS model captured some changes in the trend in the data, which was then reflected in the generated series. In some cases, the error term The resulting simulated data can be used for the experiments in a controlled environment.
+You might notice that the trend in Figure \@ref(fig:adamSimulated) differs from the one in the original data. This is because the ETS model captured some changes in the trend in the data, which was then reflected in the generated series. The resulting simulated data can be used for the experiments in a controlled environment.
 
-In some cases, some specific data might be required with specific parameters and values for error term. In those cases, the `sim.es()`, `sim.ssarima()` and other similar function from the `smooth` package can be used. Here is an example of a code for `sim.es()` with an arbitrary function for generation of the error term:
+In some cases, some specific data might be required with specific parameters and values for the error term. In those cases, the `sim.es()`, `sim.ssarima()`, and other similar functions from the `smooth` package can be used. Here is an example of a code for `sim.es()` with an arbitrary function for the generation of the error term:
 
 ```{r eval=FALSE}
 # A function to generate error term
@@ -47,18 +47,18 @@ randomizer <- function(n, mu=0, s=1){
 x <- sim.es("ANN", obs=120, nsim=10,
             persistence=0.1, initial=1000,
             randomizer="randomizer", mu=0, s=1)
-# Plot a random series from the 10 generated ones
+# Plot a randomly selected series from the 10 generated ones
 plot(x)
 ```
 
 
 ## Covariance matrix of parameters {#ADAMUncertaintyVCOV}
-One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of the covariance matrix of parameters. The covariance matrix that is typically calculated in regression context can be based either on OLS estimates of parameters, or on MLE assuming that the residuals of the model follow Normal distribution. In the latter case, it relies on the "Fisher Information", which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of the likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point to understand what impact each of the parameters has on the likelihood. If we calculate the Hessian matrix and have the Fisher Information, then using Cramer-Rao bound [@Rao1945], the true variance of parameters will be greater or equal to the inverse of the Fisher Information:
+One of the basic conventional statistical ways of capturing uncertainty about estimates of parameters is via the calculation of the covariance matrix of parameters. The covariance matrix that is typically calculated in regression context can be based either on OLS estimates of parameters, or on MLE assuming that the residuals of the model follow Normal distribution. In the latter case, it relies on the "Fisher Information", which in turn is calculated as a negative expectation of Hessian of parameters (the matrix of second derivatives of the likelihood function with respect to all the estimates of parameters). The idea of Hessian is to capture the curvatures of the likelihood function in its optimal point to understand what impact each of the parameters has on the likelihood. If we calculate the Hessian matrix and have the Fisher Information, then using the Cramer-Rao bound [@Rao1945], the true variance of the parameters will be greater than or equal to the inverse of the Fisher Information:
 \begin{equation}
     \mathrm{V}(\hat{\theta}_j) \geq \frac{1}{\mathrm{FI}(\hat{\theta}_j)} ,
     (\#eq:FICovariance)
 \end{equation}
-where $\theta_j$ is the parameter under consideration. The property \@ref(eq:FICovariance) can then be used for the calculation of the covariance matrix of parameters. While in case of the linear regression this calculation has an analytical solution, in case of ETS and ARIMA, this can only be done via numeric methods, because the models rely on recursive relations and there is no closed analytical solution for the parameters of these models.
+where $\theta_j$ is the parameter under consideration. The property \@ref(eq:FICovariance) can then be used for the calculation of the covariance matrix of parameters. While in the case of the linear regression this calculation has an analytical solution, in cases of ETS and ARIMA, this can only be done via numeric methods, because the models rely on recursive relations and there is no closed analytical solution for the parameters of these models.
 
 In R, an efficient calculation of Hessian can be done via the `hessian()` function from the `pracma` package [@R-pracma]. In `smooth` there is a method `vcov()` that does all the calculations, estimating the negative Hessian inside the `adam()` and then inverting the result. Here is an example of how this works:
 ```{r}
@@ -71,7 +71,7 @@ The precision of the estimate will depend on the closeness of the likelihood fun
 cov2cor(adamETSBJVcov) |>
     round(3)
 ```
-This matrix demonstrates that the estimates of the initial level and trend of the ETS(A,Ad,N) model applied to this data are strongly negatively correlated. This means that on average with the increase of the initial level, the initial trend tends to be lower, which makes sense as a starting point of a model. The values from the covariance matrix can also be used for example, for calculation of confidence intervals of parameters (Section \@ref(ADAMUncertaintyConfidenceInterval)), construction of confidence interval for the fitted values and point forecasts (Section \@ref(adamRefitted)), and for the construction of more adequate prediction intervals (i.e. taking the uncertainty of estimates of parameters into account, see Subsection \@ref(ADAMForecastingPIComplete)).
+This matrix demonstrates that the estimates of the initial level and trend of the ETS(A,Ad,N) model applied to this data are strongly negatively correlated. This means that on average with the increase of the initial level, the initial trend tends to be lower, which makes sense as a starting point of a model. The values from the covariance matrix can also be used, for example, for calculation of confidence intervals of parameters (Section \@ref(ADAMUncertaintyConfidenceInterval)), construction of confidence intervals for the fitted values and point forecasts (Section \@ref(adamRefitted)), and for the construction of more adequate prediction intervals (i.e. taking the uncertainty of estimates of parameters into account, see Subsection \@ref(ADAMForecastingPIComplete)).
 
 In some cases, the `vcov()` method would complain that the Fisher Information cannot be inverted. This typically means that the `adam()` failed to reach the maximum of the likelihood function. Re-estimating the model with different initial values and/or optimiser settings might resolve the problem (see Section \@ref(ADAMInitialisation)).
 
@@ -81,14 +81,14 @@ This method only works when `loss="likelihood"` or when the loss is aligned with
 
 
 ### Bootstrapped covariance matrix
-An alternative way of constructing the matrix is via the bootstrap. The one implemented in `smooth` is based on the `coefbootstrap()` method from the `greybox` package, which implements the modified case resampling. It is less efficient than the Fisher Information method in terms of computational time and works only for larger samples. The algorithm implemented in the function creates continuous sub-samples of the original data, starting from the initial point $t=1$ (if backcasting is used, as discussed in Section \@ref(ADAMInitialisationOptAndBack), then the starting point will be allowed to vary). These sub-samples are then used for re-estimation of `adam()` to get the empirical estimates of parameters. The procedure is repeated `nsim` times, which for `adam()` is by default equal to 100. This approach is far from ideal and will typically lead to the underestimated variance of initials because of the sample size restrictions. Still, it does not break the data structure and allows obtaining results relatively fast without imposing any additional assumptions on the model and the data. I personally recommend using it in case of the initialisation via backcasting.
+An alternative way of constructing the matrix is via the bootstrap. The one implemented in `smooth` is based on the `coefbootstrap()` method from the `greybox` package, which implements the modified case resampling. It is less efficient than the Fisher Information method in terms of computational time and works only for larger samples. The algorithm implemented in the function creates continuous sub-samples of the original data, starting from the initial point $t=1$ (if backcasting is used, as discussed in Section \@ref(ADAMInitialisationOptAndBack), then the starting point will be allowed to vary). These sub-samples are then used for re-estimation of `adam()` to get the empirical estimates of parameters. The procedure is repeated `nsim` times, which for `adam()` is by default equal to 100. This approach is far from ideal and will typically lead to the underestimated variance of initials because of the sample size restrictions. Still, it does not break the data structure and allows obtaining results relatively fast without imposing any additional assumptions on the model and the data. I personally recommend using it in the case of the initialisation via backcasting.
 
 Here is an example of how the function works on the data above -- it is possible to speed up the process by doing parallel calculations:
 ```{r}
 adamETSBJBoot <- coefbootstrap(adamETSBJ, parallel=TRUE)
 adamETSBJBoot
 ```
-The `size` in the output above refers to the sub-sample size, which by default is 75% of the original data length. The covariance matrix can then be extracted from the result via `adamETSBJBoot$vcov`. The same procedure is used in `vcov()` method if `bootstrap=TRUE`:
+The `size` in the output above refers to the sub-sample size, which by default is 75% of the original data length. The covariance matrix can then be extracted from the result via `adamETSBJBoot$vcov`. The same procedure is used in the `vcov()` method if `bootstrap=TRUE`:
 ```{r}
 adamETSBJ |>
     vcov(bootstrap=TRUE, parallel=TRUE) |>
@@ -97,14 +97,14 @@ adamETSBJ |>
 
 
 ## Confidence intervals for parameters {#ADAMUncertaintyConfidenceInterval}
-As it is well known in statistics [e.g. see Section 6.4 of @SvetunkovSBA], if several vital model assumptions (discussed in Section \@ref(diagnostics)) are satisfied and CLT holds, then the distribution of estimates of parameters will follow the Normal one, which will allow us to construct confidence intervals to capture the uncertainty around the parameters. In case of ETS and ARIMA models in the ADAM framework, the estimated parameters include smoothing, dampening and ARMA parameters together with the initial states. In the case of explanatory variables, the pool of parameters is increased by the coefficients for those variables and their smoothing parameters (if the dynamic model from Section \@ref(ADAMXDynamic) is used). Furthermore, in case of the intermittent state space model, the parameters will also include the elements of the occurrence part of the model. The CLT should hold for all of them if:
+As it is well known in statistics [e.g. see Section 6.4 of @SvetunkovSBA], if several vital model assumptions (discussed in Section \@ref(diagnostics)) are satisfied and CLT holds, then the distribution of estimates of parameters will follow the Normal one, which will allow us to construct confidence intervals to capture the uncertainty around the parameters. In cases of ETS and ARIMA models in the ADAM framework, the estimated parameters include smoothing, dampening, and ARMA parameters together with the initial states. In the case of explanatory variables, the pool of parameters is increased by the coefficients for those variables and their smoothing parameters (if the dynamic model from Section \@ref(ADAMXDynamic) is used). Furthermore, in the case of the intermittent state space model, the parameters will also include the elements of the occurrence part of the model. The CLT should hold for all of them if:
 
-1. Estimates of parameters are consistent (e.g. MSE or Likelihood is used in estimation, see Section \@ref(ADAMETSEstimation));
+1. Estimates of parameters are consistent (e.g. MSE or likelihood is used in estimation, see Section \@ref(ADAMETSEstimation));
 2. The parameters do not lie near the bounds;
 3. The model is correctly specified;
 4. Moments of the distribution of error term are finite.
 
-In case of ETS and ARIMA, some of parameters are bounded (e.g. to satisfy stability condition from Section \@ref(stabilityConditionAdditiveError)), and the estimates might lie near the bounds. This means that the distribution of estimates of parameters might not be Normal. However, given that the bounds of the parameters are typically fixed, and all estimates that exceed them are set to the boundary values in the optimisation routine, the estimates of parameters will follow Rectified Normal distribution [@Socci1997]. This is important because knowing the distribution, we can derive the confidence intervals for the parameters. However, given that we estimate the standard errors of parameters in sample, we need to use t-statistics to correctly capture the uncertainty. The confidence intervals will be constructed in a conventional way in this case, using the formula [see Section 6.4 of @SvetunkovSBA]:
+In case of ETS and ARIMA, some of the parameters are bounded (e.g. to satisfy stability condition from Section \@ref(stabilityConditionAdditiveError)), and the estimates might lie near the bounds. This means that the distribution of estimates of parameters might not be Normal. However, given that the bounds of the parameters are typically fixed, and all estimates that exceed them are set to the boundary values in the optimisation routine, the estimates of parameters will follow Rectified Normal distribution [@Socci1997]. This is important because knowing the distribution, we can derive the confidence intervals for the parameters. However, given that we estimate the standard errors of parameters in-sample, we need to use t-statistics to correctly capture the uncertainty. The confidence intervals will be constructed in a conventional way in this case, using the formula [see Section 6.4 of @SvetunkovSBA]:
 \begin{equation}
     \theta_j \in (\hat{\theta_j} + t_{\alpha/2}(df) s_{\theta_j}, \hat{\theta_j} + t_{1-\alpha/2}(df) s_{\theta_j}), 
     (\#eq:confidenceInterval)
@@ -117,11 +117,11 @@ To construct the interval, we need to know the standard errors of parameters. Lu
 diag(adamETSBJVcov) |>
     sqrt()
 ```
-Based on these values and the formula \@ref(eq:confidenceInterval), we can produce confidence intervals for parameters of any ADAM, which is done in R using the `confint()` method. For example, here are the intervals for the model estimated before with the significance level of 1% (confidence level of 99%):
+Based on these values and the formula \@ref(eq:confidenceInterval), we can produce confidence intervals for the parameters of any ADAM, which is done in R using the `confint()` method. For example, here are the intervals for the model estimated before with the significance level of 1% (confidence level of 99%):
 ```{r}
 confint(adamETSBJ, level=0.99)
 ```
-In the output above, the distributions for $\alpha$, $\beta$ and $\phi$ are rectified: $\alpha$ and $\phi$ are restricted with the region (0, 1) and thus are rectified from above, while $\beta \in (0, \alpha)$ and as a result is rectified from below.
+In the output above, the distributions for $\alpha$, $\beta$, and $\phi$ are rectified: $\alpha$ and $\phi$ are restricted with the region (0, 1) and thus are rectified from above, while $\beta \in (0, \alpha)$ and as a result is rectified from below.
 
 ::: remark
 We do not rectify the distribution of $\beta$ from above, because $\hat{\alpha} \approx$ `r round(adamETSBJ$persistence[1],4)`.
@@ -133,7 +133,7 @@ summary(adamETSBJ, level=0.99)
 ```
 The output above shows the estimates of parameters and their 99% confidence intervals. Based on this output, for example, we can conclude that the uncertainty about the initial trend estimate is large, and in the "true model", it could be either positive or negative (or even close to zero). At the same time, the "true" parameter of the initial level will lie in 99% of the cases between 190.4172 and 215.0740. Just as a reminder, Figure \@ref(fig:adamModelBJAAdN) shows the model fit and point forecasts for the estimated ETS model on this data.
 
-```{r adamModelBJAAdN, fig.cap="Model fit and point forecasts of ETS(A,Ad,N) on Box-Jenkins Sales data.", echo=FALSE}
+```{r adamModelBJAAdN, fig.cap="Model fit and point forecasts of ETS(A,Ad,N) on Box-Jenkins sales data.", echo=FALSE}
 plot(adamETSBJ,7)
 ```
 
@@ -151,11 +151,11 @@ From the summary above, we can see that the parameter $\theta_2$ is close to zer
 If we faced difficulties estimating the covariance matrix of parameters using the standard Hessian-based approach, we could try bootstrap via `summary(adamETSBJ, bootstrap=TRUE)`.
 :::
 
-This estimate of uncertainty via confidence intervals might also be helpful to see what can happen with the estimates of parameters if the sample size increases: will they change substantially or not. If they do, then the decisions made on Monday based on the available data might differ considerably from the decisions made on Tuesday. So, in the ideal world, we would want to have as narrow confidence intervals of parameters as possible.
+This estimate of uncertainty via confidence intervals might also be helpful to see what can happen with the estimates of parameters if the sample size increases: will they change substantially or not? If they do, then the decisions made on Monday based on the available data might differ considerably from the decisions made on Tuesday. So, in the ideal world, we would want to have as narrow confidence intervals of parameters as possible.
 
 
 ## Conditional variance with uncertain parameters {#conditionalVarianceUncertainty}
-Now that we have discussed how the covariance matrix of parameters and confidence intervals for parameters can be generated in ADAM, we can move to the discussion of propagating the effect of uncertainty of parameters to the states, fitted values and forecasts. I consider two special cases with pure additive state space models:
+Now that we have discussed how the covariance matrix of parameters and confidence intervals for parameters can be generated in ADAM, we can move to the discussion of propagating the effect of uncertainty of parameters to the states, fitted values, and forecasts. I consider two special cases with pure additive state space models:
 
 (1) When the values of the initial state vector are estimated;
 (2) When the model parameters (e.g. smoothing or AR/MA parameters) are estimated.
@@ -164,7 +164,7 @@ I discuss analytical formulae for the conditional variance for these cases. This
 
 
 ### Estimated initial state
-First, we need to recall the recursive relations discussed in Section \@ref(stabilityConditionAdditiveError), specifically formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04). Just to simplify all the derivations in this section, we consider the non-seasonal case, in which all elements of $\boldsymbol{l}$ are equal to one. This can be ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N) or some ARIMA models. 
+First, we need to recall the recursive relations discussed in Section \@ref(stabilityConditionAdditiveError), specifically formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion04). Just to simplify all the derivations in this section, we consider the non-seasonal case, in which all elements of $\boldsymbol{l}$ are equal to one. This can be ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N), or some ARIMA models. 
 
 ::: remark
 The more general case is more complicated but is derivable using the same principles as discussed below.
@@ -178,10 +178,10 @@ The recursive relation from the first observation till some observation $t$ can 
 where $\mathbf{D}=\mathbf{F} -\mathbf{g}\mathbf{w}^\prime$. The formula \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal01) shows that the most recent value of the state vector depends on the initial value $\hat{\mathbf{v}}_{0}$ and on the linear combination of actual values.
 
 ::: remark
-We assume in this part that the matrix $\mathbf{D}$ is known, i.e. the smoothing parameters are not estimated. Although this is an unrealistic assumption, it helps in showing how the variance of initial state would influence the conditional variance of actual values at the end of sample.
+We assume in this part that the matrix $\mathbf{D}$ is known, i.e. the smoothing parameters are not estimated. Although this is an unrealistic assumption, it helps in showing how the variance of the initial state would influence the conditional variance of actual values at the end of the sample.
 :::
 
-If we now take the variance of state vector conditional on the previous actual values $y_{t-j}$ for all $j=\{0, \dots, t-1 \}$, then we will have (due to independence of two terms in \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal01)):
+If we now take the variance of state vector conditional on the previous actual values $y_{t-j}$ for all $j=\{0, \dots, t-1 \}$, then we will have (due to the independence of two terms in \@ref(eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal01)):
 \begin{equation}
     \mathrm{V}(\hat{\mathbf{v}}_{t} | y_1, y_2, \dots y_t) = \mathrm{V}\left( \mathbf{D}^{t} \hat{\mathbf{v}}_{0} \right) + \mathrm{V}\left(\sum_{j=0}^{t-1} \mathbf{D}^{j} y_{t-j} | y_1, y_2, \dots y_t \right) .
   (\#eq:ETSADAMStateSpacePureAdditiveRecursionNonSeasonal02)
@@ -196,7 +196,7 @@ Inserting the values of matrix $\mathbf{D}$ in \@ref(eq:ETSADAMStateSpacePureAdd
     \mathrm{V}(\hat{l}_{t} | y_1, y_2, \dots y_t) = (1-\alpha)^{t} \mathrm{V}\left( \hat{l}_{0} \right) (1-\alpha)^{t} .
   (\#eq:ETSADAMStateSpacePureAdditiveRecursionANN)
 \end{equation}
-As the formula above shows, if the smoothing parameter lies between zero and one, then the impact of the uncertainty of the initial level on the current one will be diminished with the increase of $t$. The closer $\alpha$ is to zero, the more impact the variance of the initial level will have on the variance of the current level. If we use admissible bounds (see Section \@ref(ETSParametersBounds)), then the smoothing parameter might lie in the region (1, 2), and the impact of the variance of the initial state on the current one will be higher the close $\alpha$ is to 2.
+As the formula above shows, if the smoothing parameter lies between zero and one, then the impact of the uncertainty of the initial level on the current one will be diminished with the increase of $t$. The closer $\alpha$ is to zero, the more impact the variance of the initial level will have on the variance of the current level. If we use admissible bounds (see Section \@ref(ETSParametersBounds)), then the smoothing parameter might lie in the region (1, 2), and the impact of the variance of the initial state on the current one will be higher the closer $\alpha$ is to two.
 
 Now that we have the variance of the state, we can also calculate the variance of the fitted values (or one step ahead in-sample forecast). In the pure additive model, the fitted values are calculated as:
 \begin{equation}
@@ -219,12 +219,12 @@ This variance can then be used to calculate the confidence interval for the fitt
   (\#eq:ETSADAMStateSpacePureAdditiveFittedVarianceANN)
 \end{equation}
 
-Finally, the variance of the initial states will also impact the conditional h steps ahead variance of the model. This can be seen from the recursion \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion05), which in case of non-seasonal models simplifies to:
+Finally, the variance of the initial states will also impact the conditional $h$ steps ahead variance of the model. This can be seen from the recursion \@ref(eq:ETSADAMStateSpacePureAdditiveRecursion05), which in the case of non-seasonal models simplifies to:
 \begin{equation}
     y_{t+h} = \mathbf{w}^\prime \mathbf{F}^{h-1} \hat{\mathbf{v}}_{t} + \mathbf{w}^\prime \sum_{j=1}^{h-1} \mathbf{F}^{j-1} \mathbf{g} e_{t+h-j} + e_{t+h} .
   (\#eq:ETSADAMStateSpacePureAdditiveForecastVariance01)
 \end{equation}
-Taking the variance of $y_{t+h}$ conditional on the all the information until the observation $t$ (all actual values) with $h>1$ leads to:
+Taking the variance of $y_{t+h}$ conditional on all the information until the observation $t$ (all actual values) with $h>1$ leads to:
 \begin{equation}
     \begin{aligned}
     \mathrm{V}( y_{t+h} | y_1, y_2, \dots y_t) = & \mathbf{w}^\prime \mathbf{F}^{h-1} \mathbf{D}^{t-1} \mathrm{V}\left( \hat{\mathbf{v}}_{0} \right) \left(\mathbf{D}^{t-1}\right)^\prime (\mathbf{F}^\prime)^{h-1} \mathbf{w} + \\
@@ -232,7 +232,7 @@ Taking the variance of $y_{t+h}$ conditional on the all the information until th
     \end{aligned}
   (\#eq:ETSADAMStateSpacePureAdditiveForecastVariance02)
 \end{equation}
-This formula can then be used for the construction of prediction intervals of the model, for example using formula \@ref(eq:ETSADAMStateSpacePureAdditivePredictionInterval). The topic of construction of prediction intervals will be discussed later in Section \@ref(ADAMForecastingPI). In case of the ETS(A,N,N) model this simplifies to:
+This formula can then be used for the construction of prediction intervals of the model, for example using formula \@ref(eq:ETSADAMStateSpacePureAdditivePredictionInterval). The topic of construction of prediction intervals will be discussed later in Section \@ref(ADAMForecastingPI). In the case of the ETS(A,N,N) model this simplifies to:
 \begin{equation}
     \begin{aligned}
     \mathrm{V}( y_{t+h} | y_1, y_2, \dots y_t) = & (1-\alpha)^{t-1} \mathrm{V}\left( \hat{l}_{0} \right) (1-\alpha)^{t-1} + \\
@@ -242,7 +242,7 @@ This formula can then be used for the construction of prediction intervals of th
 \end{equation}
 
 ::: remark
-It is also possible to derive the variances for the seasonal models. The only thing that would change in comparison with the formulae above is that the matrices $\mathbf{F}$, $\mathbf{w}$ and $\mathbf{g}$ will need to be split into sub-matrices, similar to how it was done in Section \@ref(adamETSPureAdditiveRecursive).
+It is also possible to derive the variances for the seasonal models. The only thing that would change in comparison with the formulae above is that the matrices $\mathbf{F}$, $\mathbf{w}$, and $\mathbf{g}$ will need to be split into sub-matrices, similar to how it was done in Section \@ref(adamETSPureAdditiveRecursive).
 :::
 
 
@@ -274,7 +274,7 @@ Each variance in the left-hand side of \@ref(eq:ETSADAMStateSpacePureAdditiveVar
     \end{aligned}
   (\#eq:ETSADAMStateSpacePureAdditiveVariance03)
 \end{equation}
-Given that the expectation of error term is assumed to be zero, and substituting $\mathrm{V}(e_{t+h-j})=\sigma^2$ (assuming that the error term is homoscedastic), this simplifies to:
+Given that the expectation of the error term is assumed to be zero, and substituting $\mathrm{V}(e_{t+h-j})=\sigma^2$ (assuming that the error term is homoscedastic), this simplifies to:
 \begin{equation}
     \mathrm{V} \left(\mathbf{F}^{j-1} \hat{\mathbf{g}} e_{t+h-j}\right) = \mathbf{F}^{j-1} \left( \mathrm{V} (\hat{\mathbf{g}}) + \mathrm{E} (\hat{\mathbf{g}}) \mathrm{E} (\hat{\mathbf{g}})^\prime \right) (\mathbf{F}^{j})^\prime \sigma^2.
   (\#eq:ETSADAMStateSpacePureAdditiveVariance04)
@@ -298,7 +298,7 @@ As discussed in Section \@ref(pureAdditiveExpectationAndVariance), the condition
     \mathrm{V}(y_{t+h}|t) = \mathbf{w}^\prime \mathrm{V}(\mathbf{v}_{t+h-1}|t) \mathbf{w} + \sigma^2
   (\#eq:ETSADAMStateSpacePureAdditiveVariance07)
 \end{equation}
-Inserting \@ref(eq:ETSADAMStateSpacePureAdditiveVariance06) in \@ref(eq:ETSADAMStateSpacePureAdditiveVariance07), we get the final conditional h steps ahead variance of the model:
+Inserting \@ref(eq:ETSADAMStateSpacePureAdditiveVariance06) in \@ref(eq:ETSADAMStateSpacePureAdditiveVariance07), we get the final conditional $h$ steps ahead variance of the model:
 \begin{equation}
     \sigma^2_h = \mathrm{V}(y_{t+h}|t) = \left(\mathbf{w}^\prime \sum_{j=1}^{h-1} \mathbf{F}^{j-1} \left( \mathrm{V} (\hat{\mathbf{g}}) + \mathrm{E} (\hat{\mathbf{g}}) \mathrm{E} (\hat{\mathbf{g}})^\prime \right) (\mathbf{F}^{j})^\prime \mathbf{w} + 1 \right)\sigma^2,
   (\#eq:ETSADAMStateSpacePureAdditiveVarianceFinal)
@@ -308,17 +308,17 @@ which looks similar to the formula \@ref(eq:ETSADAMStateSpaceANNRecursionMeanAnd
     \sigma^2_h = \mathrm{V}(y_{t+h}|t) = \left((h-1) \left(\mathrm{V}(\hat{\alpha}) + \hat{\alpha}^2 \right) + 1 \right) \sigma^2,
   (\#eq:ETSADAMStateSpacePureAdditiveVarianceFinalANN)
 \end{equation}
-which as can be seen differs from the conventional variance by the value of the variance of the smoothing parameter $\mathrm{V}(\hat{\alpha})$. Similarly, the conditional variances for ETS(A,A,N), ETS(A,N,A) and ETS(A,A,A) can be produced using the formula \@ref(eq:ETSADAMStateSpacePureAdditiveVarianceFinal).
+which as can be seen differs from the conventional variance by the value of the variance of the smoothing parameter $\mathrm{V}(\hat{\alpha})$. Similarly, the conditional variances for ETS(A,A,N), ETS(A,N,A), and ETS(A,A,A) can be produced using the formula \@ref(eq:ETSADAMStateSpacePureAdditiveVarianceFinal).
 
 Unfortunately, the conditional variances for the other models are more complicated due to the introduction of convolutions of parameters. Furthermore, the formula \@ref(eq:ETSADAMStateSpacePureAdditiveVarianceFinal) only focuses on the conditional variance given the known $\mathbf{v}_t$ but does not take into account the uncertainty of it for the fitted values in-sample. Given the complexity of the problem, in the next section, we introduce a technique that allows correctly propagating the uncertainty of parameters and initial values to the forecasts of any ADAM.
 
 
 ## Multi-scenarios for ADAM states {#adamRefitted}
-As discussed in Section \@ref(conditionalVarianceUncertainty), it is difficult to capture the impact of the uncertainty about the parameters on the states of the model and, as a result, difficult to take it into account on the forecasting stage. Furthermore, so far, we have only discussed pure additive models, for which it is at least possible to do some derivations. When it comes to models with multiplicative components, it becomes nearly impossible to demonstrate how the uncertainty propagates over time. To overcome these limitations, we develop a simulation-based approach (similar to the one discussed in Section \@ref(ADAMUncertaintySimulation)) that relies on the selected model form.
+As discussed in Section \@ref(conditionalVarianceUncertainty), it is difficult to capture the impact of the uncertainty about the parameters on the states of the model and, as a result, difficult to take it into account on the forecasting stage. Furthermore, so far, we have only discussed pure additive models, for which it is at least possible to do some derivations. When it comes to models with multiplicative components, it becomes nearly impossible to demonstrate how the uncertainty propagates over time. To overcome these limitations, we developed [@SvetunkovETSUnceartain2023] a simulation-based approach (similar to the one discussed in Section \@ref(ADAMUncertaintySimulation)) that relies on the selected model form.
 
-The idea of the approach is to get the covariance matrix of the parameters of the selected model (see Section \@ref(ADAMUncertaintyVCOV)) and then generate $n$ sets of parameters randomly from a Rectified Multivariate Normal distribution using the matrix and the values of estimated parameters. After that, the model is applied to the data with each generated parameters combination to get the states, fitted values, and residuals (simulation is done using the principles from Section \@ref(ADAMUncertaintySimulation)). This way, we propagate the uncertainty about the parameters from the first observation to the last one. The final states can then be used to produce point forecasts and prediction intervals based on each set of parameters. These scenarios allow creating more adequate prediction intervals from the model and/or confidence intervals for the fitted values, states and conditional expectations. All of this is done without any additional model assumptions and without any additional modelling steps, relying entirely on the estimated ADAM. This approach is computationally expensive, as it requires fitting all the $n$ models to the data, however no estimation is needed. Furthermore, if the uncertainty about the model needs to be taken into account, then the combination of models can be used, as described in Section \@ref(ADAMCombinations), where the approach from this Section would be applied for each of the models in the pool before combining the point forecasts and prediction intervals with IC weights.
+The idea of the approach is to get the covariance matrix of the parameters of the selected model (see Section \@ref(ADAMUncertaintyVCOV)) and then generate $n$ sets of parameters randomly from a Rectified Multivariate Normal distribution using the matrix and the values of estimated parameters. After that, the model is applied to the data with each generated parameters combination to get the states, fitted values, and residuals (simulation is done using the principles from Section \@ref(ADAMUncertaintySimulation)). This way, we propagate the uncertainty about the parameters from the first observation to the last one. The final states can then be used to produce point forecasts and prediction intervals based on each set of parameters. These scenarios allow creating more adequate prediction intervals from the model and/or confidence intervals for the fitted values, states, and conditional expectations. All of this is done without any additional model assumptions and without any additional modelling steps, relying entirely on the estimated ADAM. This approach is computationally expensive, as it requires fitting all the $n$ models to the data, however no estimation is needed. Furthermore, if the uncertainty about the model needs to be taken into account, then the combination of models can be used, as described in Section \@ref(ADAMCombinations), where the approach from this section would be applied for each of the models in the pool before combining the point forecasts and prediction intervals with information criteria weights.
 
-`smooth` package has the method `reapply()` that implements this approach for `adam()` models. This works with ADAM ETS, ARIMA, regression and any combination of the three. Here is an example in R with $n=1000$:
+The `smooth` package has the method `reapply()` that implements this approach for `adam()` models. This works with ADAM ETS, ARIMA, regression, and any combination of the three. Here is an example in R with $n=1000$:
 
 ```{r warning=FALSE}
 # Estimate the model
@@ -329,7 +329,7 @@ adamETSAirReapply <- reapply(adamETSAir, nsim=1000)
 ```
 
 ::: remark
-In the code above I have increased the number of iterations in optimiser to $k \times 100$, because I noticed that the default value does not allow reaching the maximum of the likelihood, and as a result the variances of parameters become too large. At the moment, there is no automated solution to this problem and $k \times 100$ is a heuristic that can be used if a more precise optimum is required.
+In the code above I have increased the number of iterations in the optimiser to $k \times 100$, because I noticed that the default value does not allow reaching the maximum of the likelihood, and as a result the variances of parameters become too large. At the moment, there is no automated solution to this problem and $k \times 100$ is a heuristic that can be used if a more precise optimum is required.
 :::
 
 After producing the scenarios, we can plot them (see Figure \@ref(fig:adamETSRefitted)).
@@ -338,17 +338,17 @@ After producing the scenarios, we can plot them (see Figure \@ref(fig:adamETSRef
 plot(adamETSAirReapply)
 ```
 
-Figure \@ref(fig:adamETSRefitted) demonstrates how the approach works on the example of `AirPassengers` data with ETS(M,M,M) model. The grey areas around the fitted line show quantiles from the fitted values, forming confidence intervals of width 95%, 80%, 60%, 40% and 20%. They show how the fitted value would vary if the parameters would differ from the estimated ones. Notice that there was a warning about the covariance matrix of parameters, which typically appears if the optimal value of the loss function was not reached. If this happens, I would recommend tuning the optimiser (see Section \@ref(ADAMInitialisation)).
+Figure \@ref(fig:adamETSRefitted) demonstrates how the approach works on the example of `AirPassengers` data with an ETS(M,M,M) model. The grey areas around the fitted line show quantiles from the fitted values, forming confidence intervals of the width 95%, 80%, 60%, 40%, and 20%. They show how the fitted value would vary if the parameters would differ from the estimated ones. Notice that there was a warning about the covariance matrix of parameters, which typically appears if the optimal value of the loss function was not reached. If this happens, I would recommend tuning the optimiser (see Section \@ref(ADAMInitialisation)).
 
 The `adamETSAirReapply` object contains several variables, including:
 
-- `adamETSAirReapply$states` -- the array of states of dimensions $k \times (T+m) \times n$, where $m$ is the maximum lag of the model, $k$ is the number of components and $T$ is the sample size;
+- `adamETSAirReapply$states` -- the array of states of dimensions $k \times (T+m) \times n$, where $m$ is the maximum lag of the model, $k$ is the number of components, and $T$ is the sample size;
 - `adamETSAirReapply$refitted` -- fitted values produced from different parameters, dimensions $T \times n$;
 - `adamETSAirReapply$transition` -- the array of transition matrices of the size $k \times k \times n$;
 - `adamETSAirReapply$measurement` -- the array of measurement matrices of the size $(T+m) \times k \times n$;
 - `adamETSAirReapply$persistence` -- the persistence matrix of the size $k \times n$;
 
-The last three will contain the random parameters (smoothing, damping and AR/MA parameters), which is why they are provided together with the other values.
+The last three will contain the random parameters (smoothing, dampening, and AR/MA parameters), which is why they are provided together with the other values.
 
 As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on an artificial, non-seasonal data, generated from ARIMA(0,1,1) (see Figure \@ref(fig:adamARIMARefitted)):
 
@@ -367,7 +367,7 @@ load("data/adamRefitted.Rdata")
 plot(adamModelARIMARefitted1)
 ```
 
-Note that the more complicated the fitted model is, the more difficult it is to optimise, and thus the more difficult it is to get accurate estimates of the covariance matrix of parameters. This might result in highly uncertain states and thus fitted values. The safer approach, in this case, is using bootstrap for the estimation of the covariance matrix, but this is more computationally expensive and would only work on longer time series. Here how the bootstrap can be used for the multi-scenarios in R (and Figure \@ref(fig:adamARIMARefitted200)):
+Note that the more complicated the fitted model is, the more difficult it is to optimise, and thus the more difficult it is to get accurate estimates of the covariance matrix of parameters. This might result in highly uncertain states and thus fitted values. The safer approach, in this case, is using bootstrap for the estimation of the covariance matrix, but this is more computationally expensive and would only work on longer time series. Here is how bootstrap can be used for the multi-scenarios in R (and Figure \@ref(fig:adamARIMARefitted200)):
 
 ```{r eval=FALSE}
 adam(y$data, "NNN", h=10, holdout=TRUE,
@@ -380,4 +380,4 @@ adam(y$data, "NNN", h=10, holdout=TRUE,
 plot(adamModelARIMARefitted2)
 ```
 
-The approach described in this section is still a work in progress. While it works in theory, there are computational difficulties with calculating the Hessian matrix in some situations. If the covariance matrix is not estimated accurately, it might contain high variances, leading to the higher than needed uncertainty of the model. This might result in unreasonable confidence bounds and lead to extremely wide prediction intervals.
+The approach described in this section is still a work in progress. While it works in theory, there are computational difficulties with calculating the Hessian matrix in some situations. If the covariance matrix is not estimated accurately, it might contain high variances, leading to higher than needed uncertainty of the model. This might result in unreasonable confidence bounds and lead to extremely wide prediction intervals.
