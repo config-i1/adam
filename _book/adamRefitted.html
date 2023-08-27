@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-08-18" />
+<meta name="date" content="2023-08-27" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -49,7 +49,6 @@
 
 
 
-<script src="libs/accessible-code-block-0.0.1/empty-anchor.js"></script>
 <link href="libs/anchor-sections-1.1.0/anchor-sections.css" rel="stylesheet" />
 <link href="libs/anchor-sections-1.1.0/anchor-sections-hash.css" rel="stylesheet" />
 <script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
@@ -72,6 +71,7 @@
 pre > code.sourceCode { white-space: pre; position: relative; }
 pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
 pre.sourceCode { margin: 0; }
 @media screen {
@@ -105,7 +105,7 @@ code span.al { color: #ff0000; font-weight: bold; } /* Alert */
 code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
 code span.at { color: #7d9029; } /* Attribute */
 code span.bn { color: #40a070; } /* BaseN */
-code span.bu { } /* BuiltIn */
+code span.bu { color: #008000; } /* BuiltIn */
 code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
 code span.ch { color: #4070a0; } /* Char */
 code span.cn { color: #880000; } /* Constant */
@@ -118,7 +118,7 @@ code span.er { color: #ff0000; font-weight: bold; } /* Error */
 code span.ex { } /* Extension */
 code span.fl { color: #40a070; } /* Float */
 code span.fu { color: #06287e; } /* Function */
-code span.im { } /* Import */
+code span.im { color: #008000; font-weight: bold; } /* Import */
 code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
 code span.kw { color: #007020; font-weight: bold; } /* Keyword */
 code span.op { color: #666666; } /* Operator */
@@ -135,6 +135,28 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <style type="text/css">
   
   div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+</style>
+<style type="text/css">
+/* Used with Pandoc 2.11+ new --citeproc when CSL is used */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}
 </style>
 
 <link rel="stylesheet" href="style.css" type="text/css" />
@@ -597,19 +619,19 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 \)
 <div id="adamRefitted" class="section level2 hasAnchor" number="16.5">
 <h2><span class="header-section-number">16.5</span> Multi-scenarios for ADAM states<a href="adamRefitted.html#adamRefitted" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>As discussed in Section <a href="conditionalVarianceUncertainty.html#conditionalVarianceUncertainty">16.4</a>, it is difficult to capture the impact of the uncertainty about the parameters on the states of the model and, as a result, difficult to take it into account on the forecasting stage. Furthermore, so far, we have only discussed pure additive models, for which it is at least possible to do some derivations. When it comes to models with multiplicative components, it becomes nearly impossible to demonstrate how the uncertainty propagates over time. To overcome these limitations, we developed <span class="citation">(I. Svetunkov and K. Pritularga, <a href="#ref-SvetunkovETSUnceartain2023" role="doc-biblioref">2023</a>)</span> a simulation-based approach (similar to the one discussed in Section <a href="ADAMUncertaintySimulation.html#ADAMUncertaintySimulation">16.1</a>) that relies on the selected model form.</p>
+<p>As discussed in Section <a href="conditionalVarianceUncertainty.html#conditionalVarianceUncertainty">16.4</a>, it is difficult to capture the impact of the uncertainty about the parameters on the states of the model and, as a result, difficult to take it into account on the forecasting stage. Furthermore, so far, we have only discussed pure additive models, for which it is at least possible to do some derivations. When it comes to models with multiplicative components, it becomes nearly impossible to demonstrate how the uncertainty propagates over time. To overcome these limitations, we developed <span class="citation">(<a href="#ref-SvetunkovETSUnceartain2023" role="doc-biblioref">Svetunkov and K. Pritularga, 2023</a>)</span> a simulation-based approach (similar to the one discussed in Section <a href="ADAMUncertaintySimulation.html#ADAMUncertaintySimulation">16.1</a>) that relies on the selected model form.</p>
 <p>The idea of the approach is to get the covariance matrix of the parameters of the selected model (see Section <a href="ADAMUncertaintyVCOV.html#ADAMUncertaintyVCOV">16.2</a>) and then generate <span class="math inline">\(n\)</span> sets of parameters randomly from a Rectified Multivariate Normal distribution using the matrix and the values of estimated parameters. After that, the model is applied to the data with each generated parameters combination to get the states, fitted values, and residuals (simulation is done using the principles from Section <a href="ADAMUncertaintySimulation.html#ADAMUncertaintySimulation">16.1</a>). This way, we propagate the uncertainty about the parameters from the first observation to the last one. The final states can then be used to produce point forecasts and prediction intervals based on each set of parameters. These scenarios allow creating more adequate prediction intervals from the model and/or confidence intervals for the fitted values, states, and conditional expectations. All of this is done without any additional model assumptions and without any additional modelling steps, relying entirely on the estimated ADAM. This approach is computationally expensive, as it requires fitting all the <span class="math inline">\(n\)</span> models to the data, however no estimation is needed. Furthermore, if the uncertainty about the model needs to be taken into account, then the combination of models can be used, as described in Section <a href="ADAMCombinations.html#ADAMCombinations">15.4</a>, where the approach from this section would be applied for each of the models in the pool before combining the point forecasts and prediction intervals with information criteria weights.</p>
 <p>The <code>smooth</code> package has the method <code>reapply()</code> that implements this approach for <code>adam()</code> models. This works with ADAM ETS, ARIMA, regression, and any combination of the three. Here is an example in R with <span class="math inline">\(n=1000\)</span>:</p>
-<div class="sourceCode" id="cb368"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb368-1"><a href="adamRefitted.html#cb368-1" aria-hidden="true"></a><span class="co"># Estimate the model</span></span>
-<span id="cb368-2"><a href="adamRefitted.html#cb368-2" aria-hidden="true"></a>adamETSAir &lt;-<span class="st"> </span><span class="kw">adam</span>(AirPassengers, <span class="st">&quot;MMM&quot;</span>, <span class="dt">h=</span><span class="dv">10</span>, <span class="dt">holdout=</span><span class="ot">TRUE</span>,</span>
-<span id="cb368-3"><a href="adamRefitted.html#cb368-3" aria-hidden="true"></a>                   <span class="dt">maxeval=</span><span class="dv">16</span><span class="op">*</span><span class="dv">100</span>)</span>
-<span id="cb368-4"><a href="adamRefitted.html#cb368-4" aria-hidden="true"></a><span class="co"># Produce the multiple scenarios</span></span>
-<span id="cb368-5"><a href="adamRefitted.html#cb368-5" aria-hidden="true"></a>adamETSAirReapply &lt;-<span class="st"> </span><span class="kw">reapply</span>(adamETSAir, <span class="dt">nsim=</span><span class="dv">1000</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb368"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb368-1"><a href="adamRefitted.html#cb368-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Estimate the model</span></span>
+<span id="cb368-2"><a href="adamRefitted.html#cb368-2" aria-hidden="true" tabindex="-1"></a>adamETSAir <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MMM&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb368-3"><a href="adamRefitted.html#cb368-3" aria-hidden="true" tabindex="-1"></a>                   <span class="at">maxeval=</span><span class="dv">16</span><span class="sc">*</span><span class="dv">100</span>)</span>
+<span id="cb368-4"><a href="adamRefitted.html#cb368-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Produce the multiple scenarios</span></span>
+<span id="cb368-5"><a href="adamRefitted.html#cb368-5" aria-hidden="true" tabindex="-1"></a>adamETSAirReapply <span class="ot">&lt;-</span> <span class="fu">reapply</span>(adamETSAir, <span class="at">nsim=</span><span class="dv">1000</span>)</span></code></pre></div>
 <div class="remark">
 <p><span id="unlabeled-div-54" class="remark"><em>Remark</em>. </span>In the code above I have increased the number of iterations in the optimiser to <span class="math inline">\(k \times 100\)</span>, because I noticed that the default value does not allow reaching the maximum of the likelihood, and as a result the variances of parameters become too large. At the moment, there is no automated solution to this problem and <span class="math inline">\(k \times 100\)</span> is a heuristic that can be used if a more precise optimum is required.</p>
 </div>
 <p>After producing the scenarios, we can plot them (see Figure <a href="adamRefitted.html#fig:adamETSRefitted">16.3</a>).</p>
-<div class="sourceCode" id="cb369"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb369-1"><a href="adamRefitted.html#cb369-1" aria-hidden="true"></a><span class="kw">plot</span>(adamETSAirReapply)</span></code></pre></div>
+<div class="sourceCode" id="cb369"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb369-1"><a href="adamRefitted.html#cb369-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamETSAirReapply)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamETSRefitted"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamETSRefitted-1.png" alt="Refitted ADAM ETS(M,M,M) model on AirPassengers data." width="672" />
 <p class="caption">
@@ -627,13 +649,13 @@ Figure 16.3: Refitted ADAM ETS(M,M,M) model on AirPassengers data.
 </ul>
 <p>The last three will contain the random parameters (smoothing, dampening, and AR/MA parameters), which is why they are provided together with the other values.</p>
 <p>As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on an artificial, non-seasonal data, generated from ARIMA(0,1,1) (see Figure <a href="adamRefitted.html#fig:adamARIMARefitted">16.4</a>):</p>
-<div class="sourceCode" id="cb370"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb370-1"><a href="adamRefitted.html#cb370-1" aria-hidden="true"></a><span class="co"># Generate the data</span></span>
-<span id="cb370-2"><a href="adamRefitted.html#cb370-2" aria-hidden="true"></a>y &lt;-<span class="st"> </span><span class="kw">sim.ssarima</span>(<span class="dt">orders=</span><span class="kw">list</span>(<span class="dt">i=</span><span class="dv">1</span>,<span class="dt">ma=</span><span class="dv">1</span>), <span class="dt">obs=</span><span class="dv">120</span>, <span class="dt">MA=</span><span class="op">-</span><span class="fl">0.7</span>)</span>
-<span id="cb370-3"><a href="adamRefitted.html#cb370-3" aria-hidden="true"></a><span class="co"># Apply ADAM, then refit it and plot</span></span>
-<span id="cb370-4"><a href="adamRefitted.html#cb370-4" aria-hidden="true"></a><span class="kw">adam</span>(y<span class="op">$</span>data, <span class="st">&quot;NNN&quot;</span>, <span class="dt">h=</span><span class="dv">10</span>, <span class="dt">holdout=</span><span class="ot">TRUE</span>,</span>
-<span id="cb370-5"><a href="adamRefitted.html#cb370-5" aria-hidden="true"></a>     <span class="dt">orders=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">1</span>)) <span class="op">|</span><span class="er">&gt;</span></span>
-<span id="cb370-6"><a href="adamRefitted.html#cb370-6" aria-hidden="true"></a><span class="st">    </span><span class="kw">reapply</span>() <span class="op">|</span><span class="er">&gt;</span></span>
-<span id="cb370-7"><a href="adamRefitted.html#cb370-7" aria-hidden="true"></a><span class="st">    </span><span class="kw">plot</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb370"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb370-1"><a href="adamRefitted.html#cb370-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate the data</span></span>
+<span id="cb370-2"><a href="adamRefitted.html#cb370-2" aria-hidden="true" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">sim.ssarima</span>(<span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="dv">1</span>,<span class="at">ma=</span><span class="dv">1</span>), <span class="at">obs=</span><span class="dv">120</span>, <span class="at">MA=</span><span class="sc">-</span><span class="fl">0.7</span>)</span>
+<span id="cb370-3"><a href="adamRefitted.html#cb370-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply ADAM, then refit it and plot</span></span>
+<span id="cb370-4"><a href="adamRefitted.html#cb370-4" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(y<span class="sc">$</span>data, <span class="st">&quot;NNN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb370-5"><a href="adamRefitted.html#cb370-5" aria-hidden="true" tabindex="-1"></a>     <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb370-6"><a href="adamRefitted.html#cb370-6" aria-hidden="true" tabindex="-1"></a>    <span class="fu">reapply</span>() <span class="sc">|&gt;</span></span>
+<span id="cb370-7"><a href="adamRefitted.html#cb370-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamARIMARefitted"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamARIMARefitted-1.png" alt="Refitted ADAM ARIMA(0,1,1) model on artificial data." width="672" />
 <p class="caption">
@@ -641,10 +663,10 @@ Figure 16.4: Refitted ADAM ARIMA(0,1,1) model on artificial data.
 </p>
 </div>
 <p>Note that the more complicated the fitted model is, the more difficult it is to optimise, and thus the more difficult it is to get accurate estimates of the covariance matrix of parameters. This might result in highly uncertain states and thus fitted values. The safer approach, in this case, is using bootstrap for the estimation of the covariance matrix, but this is more computationally expensive and would only work on longer time series. Here is how bootstrap can be used for the multi-scenarios in R (and Figure <a href="adamRefitted.html#fig:adamARIMARefitted200">16.5</a>):</p>
-<div class="sourceCode" id="cb371"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb371-1"><a href="adamRefitted.html#cb371-1" aria-hidden="true"></a><span class="kw">adam</span>(y<span class="op">$</span>data, <span class="st">&quot;NNN&quot;</span>, <span class="dt">h=</span><span class="dv">10</span>, <span class="dt">holdout=</span><span class="ot">TRUE</span>,</span>
-<span id="cb371-2"><a href="adamRefitted.html#cb371-2" aria-hidden="true"></a>     <span class="dt">orders=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">1</span>)) <span class="op">|</span><span class="er">&gt;</span></span>
-<span id="cb371-3"><a href="adamRefitted.html#cb371-3" aria-hidden="true"></a><span class="st">    </span><span class="kw">reapply</span>(<span class="dt">bootstrap=</span><span class="ot">TRUE</span>, <span class="dt">parallel=</span><span class="ot">TRUE</span>) <span class="op">|</span><span class="er">&gt;</span></span>
-<span id="cb371-4"><a href="adamRefitted.html#cb371-4" aria-hidden="true"></a><span class="st">    </span><span class="kw">plot</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb371"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb371-1"><a href="adamRefitted.html#cb371-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(y<span class="sc">$</span>data, <span class="st">&quot;NNN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb371-2"><a href="adamRefitted.html#cb371-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>,<span class="dv">1</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb371-3"><a href="adamRefitted.html#cb371-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">reapply</span>(<span class="at">bootstrap=</span><span class="cn">TRUE</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb371-4"><a href="adamRefitted.html#cb371-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamARIMARefitted200"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamARIMARefitted200-1.png" alt="Refitted ADAM ARIMA(0,1,1) model on artificial data, bootstrapped covariance matrix." width="672" />
 <p class="caption">
@@ -656,9 +678,9 @@ Figure 16.5: Refitted ADAM ARIMA(0,1,1) model on artificial data, bootstrapped c
 </div>
 <!-- </div> -->
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<div id="refs" class="references hanging-indent">
-<div id="ref-SvetunkovETSUnceartain2023">
-<p>• Svetunkov, I., Pritularga, K., 2023. Incorporating Parameters Uncertainty in ETS. Department of Management Science Working Paper Series. 1–19.</p>
+<div id="refs" class="references csl-bib-body hanging-indent">
+<div id="ref-SvetunkovETSUnceartain2023" class="csl-entry">
+• Svetunkov, I., Pritularga, K., 2023. <span class="nocase">Incorporating Parameters Uncertainty in ETS</span>. Department of Management Science Working Paper Series. 1–19.
 </div>
 </div>
 
