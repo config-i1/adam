@@ -284,10 +284,27 @@ adamARIMA <- adam(y, "NNN", lags=c(1,336), initial="back",
 adamARIMA
 ```
 
-As we see from the output above, this model has the lowest RMSSE value among all models we tried. Furthermore, this model is directly comparable with ADAM ETS via information criteria, and as we can see, it is worse than ADAM ETS(M,N,M)+AR(1) and multiple seasonal ETS(M,N,M) in terms of AICc. Figure \@ref(fig:adamARIMA) shows the fit and forecast from this model.
+As we see from the output above, this model has the lowest RMSSE value among all models we tried. Furthermore, this model is directly comparable with ADAM ETS via information criteria, and as we can see, it is worse than ADAM ETS(M,N,M)+AR(1) and multiple seasonal ETS(M,N,M) in terms of AICc. One of potential ways of improving this model is to try a different distribution for the error term. To aid us in this task, we can produce a QQ-plot (see details in Section \@ref(diagnosticsResidualsIIDDistribution)):
 
-```{r adamARIMA, fig.cap="The fit and the forecast of the ARIMA(0,1,1)(0,1,1)$_{336}$ model on half-hourly electricity demand data."}
-plot(adamARIMA, which=7)
+```{r adamARIMAQQPlot, fig.cap="QQ plot of the ARIMA model with Normal distribution."}
+plot(adamARIMA, 6)
 ```
 
-We could analyse the residuals of this model and iteratively test whether the addition of AR terms and a half-hour of day seasonality improves the model's accuracy. We could also try ARIMA models with different distributions, compare them and select the most appropriate one or estimate the model using multistep losses. All of this can be done in `adam()`. The reader is encouraged to do this on their own.
+Figure \@ref(fig:adamARIMAQQPlot) shows that the empirical distribution of residual has much fatter tails than in case of the normal distribution. Instead of trying to find the most suitable distribution (which can be done automatically as discussed in Chapter \@ref(ADAMSelection)), I will fit the same ARIMA model, but with the Generalised Normal distribution:
+
+```{r}
+adamARIMAGN <- adam(y, "NNN", lags=c(1,336), initial="back",
+                    orders=list(i=c(1,1),ma=c(1,1)),
+                    h=336, holdout=TRUE, distribution="dgnorm")
+adamARIMAGN
+```
+
+This model now has much lower AICc than the previous models and should have a better behaved residuals (an interested reader is encouraged to produce a QQ-plot similarly to how it was done above).
+
+Figure \@ref(fig:adamARIMA) shows the fit and forecast from this model.
+
+```{r adamARIMA, fig.cap="The fit and the forecast of the ARIMA(0,1,1)(0,1,1)$_{336}$ model with Generalised Normal distribution on half-hourly electricity demand data."}
+plot(adamARIMAGN, which=7)
+```
+
+We could analyse the residuals of this model further and iteratively test whether the addition of AR terms and a half-hour of day seasonality improves the model's accuracy. We could also try ARIMA models with other distributions, compare them and select the most appropriate one or estimate the model using multistep losses. All of this can be done in `adam()`. The reader is encouraged to do this on their own.
