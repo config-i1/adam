@@ -835,7 +835,7 @@ Figure 12.5: Plot of the level of the ETSX model.
 <span id="cb218-2"><a href="ADAMMultipleFrequenciesExamples.html#cb218-2" aria-hidden="true" tabindex="-1"></a>                  <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)),</span>
 <span id="cb218-3"><a href="ADAMMultipleFrequenciesExamples.html#cb218-3" aria-hidden="true" tabindex="-1"></a>                  <span class="at">h=</span><span class="dv">336</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb218-4"><a href="ADAMMultipleFrequenciesExamples.html#cb218-4" aria-hidden="true" tabindex="-1"></a>adamARIMA</span></code></pre></div>
-<pre><code>## Time elapsed: 0.31 seconds
+<pre><code>## Time elapsed: 0.21 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.77
@@ -855,15 +855,49 @@ Figure 12.5: Plot of the level of the ETSX model.
 ## ME: 49.076; MAE: 373.297; RMSE: 499.539
 ## sCE: 55.728%; Asymmetry: 18.5%; sMAE: 1.262%; sMSE: 0.029%
 ## MASE: 0.574; RMSSE: 0.529; rMAE: 0.056; rRMSE: 0.061</code></pre>
-<p>As we see from the output above, this model has the lowest RMSSE value among all models we tried. Furthermore, this model is directly comparable with ADAM ETS via information criteria, and as we can see, it is worse than ADAM ETS(M,N,M)+AR(1) and multiple seasonal ETS(M,N,M) in terms of AICc. Figure <a href="ADAMMultipleFrequenciesExamples.html#fig:adamARIMA">12.6</a> shows the fit and forecast from this model.</p>
-<div class="sourceCode" id="cb220"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb220-1"><a href="ADAMMultipleFrequenciesExamples.html#cb220-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamARIMA, <span class="at">which=</span><span class="dv">7</span>)</span></code></pre></div>
-<div class="figure"><span style="display:block;" id="fig:adamARIMA"></span>
-<img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamARIMA-1.png" alt="The fit and the forecast of the ARIMA(0,1,1)(0,1,1)$_{336}$ model on half-hourly electricity demand data." width="672" />
+<p>As we see from the output above, this model has the lowest RMSSE value among all models we tried. Furthermore, this model is directly comparable with ADAM ETS via information criteria, and as we can see, it is worse than ADAM ETS(M,N,M)+AR(1) and multiple seasonal ETS(M,N,M) in terms of AICc. One of potential ways of improving this model is to try a different distribution for the error term. To aid us in this task, we can produce a QQ-plot (see details in Section <a href="diagnosticsResidualsIIDDistribution.html#diagnosticsResidualsIIDDistribution">14.8</a>):</p>
+<div class="sourceCode" id="cb220"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb220-1"><a href="ADAMMultipleFrequenciesExamples.html#cb220-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamARIMA, <span class="dv">6</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:adamARIMAQQPlot"></span>
+<img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamARIMAQQPlot-1.png" alt="QQ plot of the ARIMA model with Normal distribution." width="672" />
 <p class="caption">
-Figure 12.6: The fit and the forecast of the ARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{336}\)</span> model on half-hourly electricity demand data.
+Figure 12.6: QQ plot of the ARIMA model with Normal distribution.
 </p>
 </div>
-<p>We could analyse the residuals of this model and iteratively test whether the addition of AR terms and a half-hour of day seasonality improves the model’s accuracy. We could also try ARIMA models with different distributions, compare them and select the most appropriate one or estimate the model using multistep losses. All of this can be done in <code>adam()</code>. The reader is encouraged to do this on their own.</p>
+<p>Figure <a href="ADAMMultipleFrequenciesExamples.html#fig:adamARIMAQQPlot">12.6</a> shows that the empirical distribution of residual has much fatter tails than in case of the normal distribution. Instead of trying to find the most suitable distribution (which can be done automatically as discussed in Chapter <a href="ADAMSelection.html#ADAMSelection">15</a>), I will fit the same ARIMA model, but with the Generalised Normal distribution:</p>
+<div class="sourceCode" id="cb221"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb221-1"><a href="ADAMMultipleFrequenciesExamples.html#cb221-1" aria-hidden="true" tabindex="-1"></a>adamARIMAGN <span class="ot">&lt;-</span> <span class="fu">adam</span>(y, <span class="st">&quot;NNN&quot;</span>, <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">336</span>), <span class="at">initial=</span><span class="st">&quot;back&quot;</span>,</span>
+<span id="cb221-2"><a href="ADAMMultipleFrequenciesExamples.html#cb221-2" aria-hidden="true" tabindex="-1"></a>                    <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">1</span>)),</span>
+<span id="cb221-3"><a href="ADAMMultipleFrequenciesExamples.html#cb221-3" aria-hidden="true" tabindex="-1"></a>                    <span class="at">h=</span><span class="dv">336</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>, <span class="at">distribution=</span><span class="st">&quot;dgnorm&quot;</span>)</span>
+<span id="cb221-4"><a href="ADAMMultipleFrequenciesExamples.html#cb221-4" aria-hidden="true" tabindex="-1"></a>adamARIMAGN</span></code></pre></div>
+<pre><code>## Time elapsed: 0.3 seconds
+## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
+## Distribution assumed in the model: Generalised Normal with shape=0.7511
+## Loss function type: likelihood; Loss function value: 25145.3
+## ARMA parameters of the model:
+## MA:
+##   theta1[1] theta1[336] 
+##      0.2671     -0.1579 
+## 
+## Sample size: 3696
+## Number of estimated parameters: 4
+## Number of degrees of freedom: 3692
+## Information criteria:
+##      AIC     AICc      BIC     BICc 
+## 50298.59 50298.60 50323.45 50323.50 
+## 
+## Forecast errors:
+## ME: 75.822; MAE: 375.101; RMSE: 498.56
+## sCE: 86.099%; Asymmetry: 25.7%; sMAE: 1.268%; sMSE: 0.028%
+## MASE: 0.577; RMSSE: 0.528; rMAE: 0.056; rRMSE: 0.061</code></pre>
+<p>This model now has much lower AICc than the previous models and should have a better behaved residuals (an interested reader is encouraged to produce a QQ-plot similarly to how it was done above).</p>
+<p>Figure <a href="ADAMMultipleFrequenciesExamples.html#fig:adamARIMA">12.7</a> shows the fit and forecast from this model.</p>
+<div class="sourceCode" id="cb223"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb223-1"><a href="ADAMMultipleFrequenciesExamples.html#cb223-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamARIMAGN, <span class="at">which=</span><span class="dv">7</span>)</span></code></pre></div>
+<div class="figure"><span style="display:block;" id="fig:adamARIMA"></span>
+<img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamARIMA-1.png" alt="The fit and the forecast of the ARIMA(0,1,1)(0,1,1)$_{336}$ model with Generalised Normal distribution on half-hourly electricity demand data." width="672" />
+<p class="caption">
+Figure 12.7: The fit and the forecast of the ARIMA(0,1,1)(0,1,1)<span class="math inline">\(_{336}\)</span> model with Generalised Normal distribution on half-hourly electricity demand data.
+</p>
+</div>
+<p>We could analyse the residuals of this model further and iteratively test whether the addition of AR terms and a half-hour of day seasonality improves the model’s accuracy. We could also try ARIMA models with other distributions, compare them and select the most appropriate one or estimate the model using multistep losses. All of this can be done in <code>adam()</code>. The reader is encouraged to do this on their own.</p>
 
 </div>
 </div>
