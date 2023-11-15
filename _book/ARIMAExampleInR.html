@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-11-02" />
+<meta name="date" content="2023-11-15" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -658,25 +658,25 @@ Figure 8.22: BJSales series and ARIMA(0,2,2).
 </div>
 <p>Comparing this model with the ETS(A,A,N), we will see a slight difference because the two models are initialised and estimated differently:</p>
 <div class="sourceCode" id="cb130"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb130-1"><a href="ARIMAExampleInR.html#cb130-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(BJsales, <span class="st">&quot;AAN&quot;</span>, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
-<pre><code>## Time elapsed: 0.02 seconds
+<pre><code>## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
-## Loss function type: likelihood; Loss function value: 243.4073
+## Loss function type: likelihood; Loss function value: 243.6299
 ## Persistence vector g:
 ##  alpha   beta 
-## 1.0000 0.2392 
+## 1.0000 0.2419 
 ## 
 ## Sample size: 140
 ## Number of estimated parameters: 5
 ## Number of degrees of freedom: 135
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 496.8146 497.2624 511.5228 512.6292 
+## 497.2598 497.7076 511.9680 513.0744 
 ## 
 ## Forecast errors:
-## ME: 3.229; MAE: 3.341; RMSE: 3.797
-## sCE: 14.178%; Asymmetry: 91.7%; sMAE: 1.467%; sMSE: 0.028%
-## MASE: 2.826; RMSSE: 2.491; rMAE: 0.928; rRMSE: 0.924</code></pre>
+## ME: 3.22; MAE: 3.332; RMSE: 3.787
+## sCE: 14.137%; Asymmetry: 91.6%; sMAE: 1.463%; sMSE: 0.028%
+## MASE: 2.819; RMSSE: 2.484; rMAE: 0.926; rRMSE: 0.922</code></pre>
 <p>If we are interested in a more classical Box-Jenkins approach, we can always analyse the residuals of the constructed model and try improving it further. Here is an example of ACF and PACF of the residuals of the ARIMA(0,2,2):</p>
 <div class="sourceCode" id="cb132"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb132-1"><a href="ARIMAExampleInR.html#cb132-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))</span>
 <span id="cb132-2"><a href="ARIMAExampleInR.html#cb132-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamARIMABJ[[<span class="dv">2</span>]], <span class="at">which=</span><span class="fu">c</span>(<span class="dv">10</span>,<span class="dv">11</span>), <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
@@ -713,7 +713,7 @@ Figure 8.23: ACF and PACF of the ARIMA(0,2,2) model on BJSales data
 <p>Note that now that we have a seasonal component, we need to provide the SARIMA lags: 1 and <span class="math inline">\(m=12\)</span> and specify <code>orders</code> differently – as a list with values for AR, I, and MA orders separately. This is done because the SARIMA implemented in <code>msarima()</code> and <code>adam()</code> supports multiple seasonalities (e.g. you can have <code>lags=c(1,24,24*7)</code> if you want). The resulting information criteria of models are:</p>
 <div class="sourceCode" id="cb134"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb134-1"><a href="ARIMAExampleInR.html#cb134-1" aria-hidden="true" tabindex="-1"></a><span class="fu">sapply</span>(adamSARIMAAir, AICc)</span></code></pre></div>
 <pre><code>## SARIMA(0,2,2)(0,1,1)[12] SARIMA(0,2,2)(1,1,1)[12] SARIMA(0,2,2)(1,1,0)[12] 
-##                 1065.427                 1083.118                 1082.625</code></pre>
+##                 1028.244                 1078.419                 1100.358</code></pre>
 <p>It looks like the second model is slightly better than the other two, so we will use it in order to produce forecasts (see Figure <a href="ARIMAExampleInR.html#fig:adamSARIMAPlotAir">8.24</a>):</p>
 <div class="sourceCode" id="cb136"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb136-1"><a href="ARIMAExampleInR.html#cb136-1" aria-hidden="true" tabindex="-1"></a><span class="fu">forecast</span>(adamSARIMAAir[[<span class="dv">2</span>]], <span class="at">h=</span><span class="dv">12</span>,</span>
 <span id="cb136-2"><a href="ARIMAExampleInR.html#cb136-2" aria-hidden="true" tabindex="-1"></a>         <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>) <span class="sc">|&gt;</span></span>
@@ -727,7 +727,7 @@ Figure 8.24: Forecast of AirPassengers data from a SARIMA(0,2,2)(1,1,1)<span cla
 <p>This model is directly comparable with ETS models, so here is, for example, the AICc value of ETS(M,A,M) on the same data:</p>
 <div class="sourceCode" id="cb137"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb137-1"><a href="ARIMAExampleInR.html#cb137-1" aria-hidden="true" tabindex="-1"></a><span class="fu">AICc</span>(adamETSAir <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>,</span>
 <span id="cb137-2"><a href="ARIMAExampleInR.html#cb137-2" aria-hidden="true" tabindex="-1"></a>                        <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>))</span></code></pre></div>
-<pre><code>## [1] 973.9646</code></pre>
+<pre><code>## [1] 972.5559</code></pre>
 <p>It is lower than for the SARIMA model, which means that ETS(M,A,M) is more appropriate for the data in terms of information criteria than SARIMA(0,2,2)(1,1,1)<span class="math inline">\(_{12}\)</span>. We can also investigate if there is a way to improve ETS(M,A,M) by adding some ARMA components (Figure <a href="ARIMAExampleInR.html#fig:adamETSPlotAirACFPACF">8.25</a>):</p>
 <div class="sourceCode" id="cb139"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb139-1"><a href="ARIMAExampleInR.html#cb139-1" aria-hidden="true" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>))</span>
 <span id="cb139-2"><a href="ARIMAExampleInR.html#cb139-2" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(adamETSAir, <span class="at">which=</span><span class="fu">c</span>(<span class="dv">10</span>,<span class="dv">11</span>), <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
@@ -741,7 +741,7 @@ Figure 8.25: ACF and PACF of ETS(M,A,M) on AirPassengers data.
 <div class="sourceCode" id="cb140"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb140-1"><a href="ARIMAExampleInR.html#cb140-1" aria-hidden="true" tabindex="-1"></a><span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
 <span id="cb140-2"><a href="ARIMAExampleInR.html#cb140-2" aria-hidden="true" tabindex="-1"></a>     <span class="at">order=</span><span class="fu">list</span>(<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)), <span class="at">lags=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">12</span>)) <span class="sc">|&gt;</span></span>
 <span id="cb140-3"><a href="ARIMAExampleInR.html#cb140-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">AICc</span>()</span></code></pre></div>
-<pre><code>## [1] 1012.416</code></pre>
+<pre><code>## [1] 1010.913</code></pre>
 <p>As we see, the increased complexity does not decrease the AICc (probably because now we need to estimate 13 parameters more than in just ETS(M,A,M)), so we should not add the SARIMA component. We could try adding other SARIMA elements to see if they improve the model, but we do not aim to find the best model here. The interested reader is encouraged to do that as an additional exercise.</p>
 
 </div>
