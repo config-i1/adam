@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>16.2 Covariance matrix of parameters | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM)</title>
   <meta name="description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in the smooth package for R." />
-  <meta name="generator" content="bookdown 0.35 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.37 and GitBook 2.6.7" />
 
   <meta property="og:title" content="16.2 Covariance matrix of parameters | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM)" />
   <meta property="og:type" content="book" />
@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2023-12-18" />
+<meta name="date" content="2024-01-15" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -625,7 +625,7 @@ div.csl-indent {
     \tag{16.1}
 \end{equation}\]</span>
 where <span class="math inline">\(\theta_j\)</span> is the parameter under consideration. The property <a href="ADAMUncertaintyVCOV.html#eq:FICovariance">(16.1)</a> can then be used for the calculation of the covariance matrix of parameters. While in the case of the linear regression this calculation has an analytical solution, in cases of ETS and ARIMA, this can only be done via numeric methods, because the models rely on recursive relations and there is no closed analytical solution for the parameters of these models.</p>
-<p>In R, an efficient calculation of Hessian can be done via the <code>hessian()</code> function from the <code>pracma</code> package <span class="citation">(<a href="#ref-R-pracma" role="doc-biblioref">Borchers, 2022</a>)</span>. In <code>smooth</code> there is a method <code>vcov()</code> that does all the calculations, estimating the negative Hessian inside the <code>adam()</code> and then inverting the result. Here is an example of how this works:</p>
+<p>In R, an efficient calculation of Hessian can be done via the <code>hessian()</code> function from the <code>pracma</code> package <span class="citation">(<a href="#ref-R-pracma" role="doc-biblioref"><strong>R-pracma?</strong></a>)</span>. In <code>smooth</code> there is a method <code>vcov()</code> that does all the calculations, estimating the negative Hessian inside the <code>adam()</code> and then inverting the result. Here is an example of how this works:</p>
 <div class="sourceCode" id="cb356"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb356-1"><a href="ADAMUncertaintyVCOV.html#cb356-1" aria-hidden="true" tabindex="-1"></a>adamETSBJ <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb356-2"><a href="ADAMUncertaintyVCOV.html#cb356-2" aria-hidden="true" tabindex="-1"></a>adamETSBJVcov <span class="ot">&lt;-</span> <span class="fu">vcov</span>(adamETSBJ)</span>
 <span id="cb356-3"><a href="ADAMUncertaintyVCOV.html#cb356-3" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(adamETSBJVcov, <span class="dv">3</span>)</span></code></pre></div>
@@ -656,24 +656,21 @@ where <span class="math inline">\(\theta_j\)</span> is the parameter under consi
 <div class="sourceCode" id="cb360"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb360-1"><a href="ADAMUncertaintyVCOV.html#cb360-1" aria-hidden="true" tabindex="-1"></a>adamETSBJBoot <span class="ot">&lt;-</span> <span class="fu">coefbootstrap</span>(adamETSBJ, <span class="at">parallel=</span><span class="cn">TRUE</span>)</span>
 <span id="cb360-2"><a href="ADAMUncertaintyVCOV.html#cb360-2" aria-hidden="true" tabindex="-1"></a>adamETSBJBoot</span></code></pre></div>
 <pre><code>## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.51 seconds</code></pre>
+## Time elapsed: 0.52 seconds</code></pre>
 <p>The <code>size</code> in the output above refers to the sub-sample size, which by default is 75% of the original data length. The covariance matrix can then be extracted from the result via <code>adamETSBJBoot$vcov</code>. The same procedure is used in the <code>vcov()</code> method if <code>bootstrap=TRUE</code>:</p>
 <div class="sourceCode" id="cb362"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb362-1"><a href="ADAMUncertaintyVCOV.html#cb362-1" aria-hidden="true" tabindex="-1"></a>adamETSBJ <span class="sc">|&gt;</span></span>
 <span id="cb362-2"><a href="ADAMUncertaintyVCOV.html#cb362-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">vcov</span>(<span class="at">bootstrap=</span><span class="cn">TRUE</span>, <span class="at">parallel=</span><span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
 <span id="cb362-3"><a href="ADAMUncertaintyVCOV.html#cb362-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">round</span>(<span class="dv">3</span>)</span></code></pre></div>
 <pre><code>##        alpha   beta    phi  level  trend
-## alpha  0.026 -0.005  0.004  0.058 -0.009
-## beta  -0.005  0.006 -0.004 -0.021 -0.005
-## phi    0.004 -0.004  0.013  0.030  0.028
-## level  0.058 -0.021  0.030  0.552 -0.126
-## trend -0.009 -0.005  0.028 -0.126  0.173</code></pre>
+## alpha  0.037 -0.008  0.011  0.074 -0.004
+## beta  -0.008  0.010 -0.006 -0.023 -0.021
+## phi    0.011 -0.006  0.015  0.045  0.028
+## level  0.074 -0.023  0.045  0.587 -0.126
+## trend -0.004 -0.021  0.028 -0.126  0.210</code></pre>
 </div>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <div id="refs" class="references csl-bib-body hanging-indent">
-<div id="ref-R-pracma" class="csl-entry">
-• Borchers, H.W., 2022. Pracma: Practical numerical math functions. <a href="https://CRAN.R-project.org/package=pracma">https://CRAN.R-project.org/package=pracma</a> R package version 2.4.2
-</div>
 <div id="ref-Rao1945" class="csl-entry">
 • Rao, R.C., 1945. <span class="nocase">Information and Accuracy Attainable in the Estimation of Statistical Parameters</span>. Bulletin of the Calcutta Mathematical Society. 37, 81–91.
 </div>
