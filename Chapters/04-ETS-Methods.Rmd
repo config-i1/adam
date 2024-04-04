@@ -498,7 +498,14 @@ Figure \@ref(fig:ETSANNExamplealpha01) shows that the prediction interval does n
   \end{aligned} ,
   (\#eq:ETSMNN)
 \end{equation}
-where $(1+\epsilon_t)$ corresponds to the $\varepsilon_t$ discussed in Section \@ref(tsComponents). In order to see the connection of this model with SES, we need to revert to the estimation of the model on the data again:
+where $(1+\epsilon_t)$ corresponds to the $\varepsilon_t$ discussed in Section \@ref(tsComponents). If we open the brackets in the measurement equation of \@ref(eq:ETSMNN), we will see the main property of the ETS(M,N,N) - the variability in the model changes together with the level:
+\begin{equation}
+    y_{t} = l_{t-1} + l_{t-1} \epsilon_t .
+  (\#eq:ETSMNNMeasurement)
+\end{equation}
+So, if the error term had a standard deviation of 0.05, the standard deviation of the data would be $l_{t-1} \times 0.05$. This means that the model captures the percentage deviation in the data rather than the unit one as in the ETS(A,N,N).
+
+In order to see the connection of this model with SES, we need to revert to the estimation of the model on the data again:
 \begin{equation}
   \begin{aligned}
     & y_{t} = \hat{l}_{t-1}(1 + e_t) \\
@@ -548,7 +555,57 @@ forecast(esModel, h=12, interval="pred") |>
                      round(esModel$persistence,4)))
 ```
 
-Conceptually, the data in Figure \@ref(fig:ETSMNNExample) looks very similar to the one from ETS(A,N,N) (Figure \@ref(fig:ETSANNExample)), but demonstrating the changing variance of the error term with the change of the level. The model itself would in general produce a wider prediction interval than its additive error counterpart, keeping the same smoothing parameter.
+Conceptually, the data in Figure \@ref(fig:ETSMNNExample) looks very similar to the one from ETS(A,N,N) (Figure \@ref(fig:ETSANNExample)), but demonstrating the changing variance of the error term with the change of the level. The model itself would in general produce a wider prediction interval  with the increase of the level than its additive error counterpart, keeping the same smoothing parameter.
+
+
+### ETS(A,N,N) vs ETS(M,N,N)
+To better understand the difference between ETS(A,N,N) and ETS(M,N,N), consider the following example. I generated data from ETS(A,N,N) and ETS(M,N,N) using the `sim.es()` function from the `smooth` package with some predefined parameters to make the two comparable:
+```{r}
+seed <- 50
+set.seed(seed, kind="L'Ecuyer-CMRG")
+y1 <- sim.es("ANN", 120, frequency=12,
+             persistence=0.4, initial=500,
+             mean=0, sd=25)
+set.seed(seed, kind="L'Ecuyer-CMRG")
+y2 <- sim.es("MNN", 120, frequency=12,
+             persistence=0.4, initial=500,
+             mean=1, sd=0.05)
+```
+
+Note that I fixed the random seed to have the same sequence of errors. I also set the standard deviations in the two models so that the error term variability in the beginning of the data is similar: $l_{t-1} \times \epsilon_t = 500 \times 0.05 = 25$. In the ETS(A,N,N), the variability around the level will be on average around 25 units (based on the standard deviation used in the generation), while in the ETS(M,N,N), it should be around 5% (once again, based on the used DGP). Visually the generated data is shown in Figure \@ref(fig:ETSANNvsMNNData).
+
+```{r ETSANNvsMNNData, fig.cap="Data generated from ETS(A,N,N) and ETS(M,N,N).", echo=FALSE}
+par(mfcol=c(1,2), mar=c(4,4,2,1))
+plot(y1, ylim=range(c(y1$data,y2$data)),
+     main="Data from ETS(A,N,N)", ylab="Demand")
+lines(c(2,2), c(465,535), col=rgb(1,0.1,0.1,0.5), lwd=5, lty=1)
+lines(c(8.65,8.65), 635+c(2,72), col=rgb(0.1,0.1,1,0.5), lwd=5, lty=1)
+# lines(c(10.1,10.1), c(600,720), col=rgb(0.1,0.1,1,0.5), lwd=5, lty=1)
+plot(y2, ylim=range(c(y1$data,y2$data)),
+     main="Data from ETS(M,N,N)", ylab="Demand")
+lines(c(2,2), c(465,535), col=rgb(1,0.1,0.1,0.5), lwd=5, lty=1)
+lines(c(8.65,8.65), c(640,742), col=rgb(0.1,0.1,1,0.5), lwd=5, lty=1)
+# lines(c(10.1,10.1), c(590,750), col=rgb(0.1,0.1,1,0.5), lwd=5, lty=1)
+```
+
+The red lines in Figure \@ref(fig:ETSANNvsMNNData) depict the initial variability in the data for the two time series, while the blue ones show the final one, when the level increased from 500 to roughly 700. As we see, the variability in the data generated using ETS(M,N,N) increased (to roughly $700 \times 0.05 = 35$), while in case of the ETS(A,N,N), it stayed the same (25). When we apply the ETS(A,N,N) and ETS(M,N,N) models to the respective data using the `es()` function from the `smooth` package, we get the model fit and forecasts shown in Figure \@ref(fig:ETSANNvsMNNForecasts).
+
+```{r ETSANNvsMNNForecasts, fig.cap="Data generated from ETS(A,N,N) and ETS(M,N,N).", echo=FALSE}
+test1 <- es(y1, "ANN", h=12, holdout=TRUE, persistence=0.4)
+test2 <- es(y2, "MNN", h=12, holdout=TRUE, persistence=0.4)
+par(mfcol=c(1,2), mar=c(4,4,2,1))
+forecast(test1, h=12, interval="pred") |>
+    plot(ylim=c(400,800), main="ETS(A,N,N)")
+forecast(test2, h=12, interval="pred") |>
+    plot(ylim=c(400,800), main="ETS(M,N,N)")
+
+```
+
+Figure \@ref(fig:ETSANNvsMNNForecasts) demonstrates that although the two models produce very similar fit and point forecasts (because they had the same initial levels and smoothing parameters), the prediction interval in the ETS(M,N,N) is wider than in the ETS(A,N,N), reflecting the increased uncertainty due to the increase of the level.
+
+::: remark
+The fact that the ETS(M,N,N) has the percentage variability rather than the unit one also means that if the level was to decrease, for example, to 200, the model would produce narrower prediction interval than the ETS(A,N,N) for the same values of the smoothing parameter. This follows directly from the formula for the error term in the model: $l_{t-1} \times \epsilon_t = 200 \times 0.05 = 10$ vs the constant variability of 25 of the ETS(A,N,N).
+:::
 
 
 ## Several examples of ETS and related Exponential Smoothing methods {#ETSExamples}
