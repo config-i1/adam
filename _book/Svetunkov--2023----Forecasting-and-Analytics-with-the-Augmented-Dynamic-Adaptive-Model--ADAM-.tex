@@ -142,7 +142,7 @@
 
 \title{Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM)}
 \author{Ivan Svetunkov}
-\date{2024-03-12}
+\date{2024-04-04}
 
 \usepackage{amsthm}
 \newtheorem{theorem}{Theorem}[chapter]
@@ -412,7 +412,7 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well-behaved data, point forecast, and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 81.56 and 121.34. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 79.29 and 120.09. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For a more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 6 of \citet{SvetunkovSBA}.
 
@@ -1144,7 +1144,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.06790258 0.05689590 0.05807681
+## 0.06469539 0.06201202 0.06753113
 \end{verbatim}
 
 In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with an alternative one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(0,2,2) to the same data, we will get:
@@ -1162,7 +1162,7 @@ In this example, we use the \texttt{apply()} function to distinguish between the
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.07084147 0.06073347 0.06270791
+## 0.06057277 0.05847347 0.06818028
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.
@@ -2107,10 +2107,10 @@ I hope that it becomes more apparent to the reader how the ETS framework is buil
 As discussed in Section \ref{ETSTaxonomy}, given different types of components and their interactions, we end up with 30 models in the taxonomy. Tables \ref{tab:ETSAdditiveError} and \ref{tab:ETSMultiplicativeError} summarise mathematically all 30 ETS models shown graphically on Figures \ref{fig:ETSTaxonomyAdditive} and \ref{fig:ETSTaxonomyMultiplicative}, presenting formulae for measurement and transition equations.
 
 \begin{landscape}\begin{table}
-
+\centering
 \caption{\label{tab:ETSAdditiveError}Additive error ETS models.}
 \centering
-\resizebox{\linewidth}{!}{
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
 \fontsize{12}{14}\selectfont
 \begin{tabular}[t]{l|l|l|l}
 \hline
@@ -2185,10 +2185,10 @@ Multiplicative damped & $\begin{aligned} &y_{t} = l_{t-1} b_{t-1}^\phi + \epsilo
 \end{landscape}
 
 \begin{landscape}\begin{table}
-
+\centering
 \caption{\label{tab:ETSMultiplicativeError}Multiplicative error ETS models.}
 \centering
-\resizebox{\linewidth}{!}{
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
 \fontsize{12}{14}\selectfont
 \begin{tabular}[t]{l|l|l|l}
 \hline
@@ -2280,10 +2280,10 @@ In the case of the additive error models, the point forecasts correspond to the 
 \end{remark}
 
 \begin{landscape}\begin{table}
-
+\centering
 \caption{\label{tab:ETSModelsForecasts}Point forecasts and expectations of ETS models. n.c.f. stands for "No Closed Form".}
 \centering
-\resizebox{\linewidth}{!}{
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
 \fontsize{12}{14}\selectfont
 \begin{tabular}[t]{l|l|l|l}
 \hline
@@ -2505,7 +2505,14 @@ Figure \ref{fig:ETSANNExamplealpha01} shows that the prediction interval does no
   \end{aligned} ,
   \label{eq:ETSMNN}
 \end{equation}
-where \((1+\epsilon_t)\) corresponds to the \(\varepsilon_t\) discussed in Section \ref{tsComponents}. In order to see the connection of this model with SES, we need to revert to the estimation of the model on the data again:
+where \((1+\epsilon_t)\) corresponds to the \(\varepsilon_t\) discussed in Section \ref{tsComponents}. If we open the brackets in the measurement equation of \eqref{eq:ETSMNN}, we will see the main property of the ETS(M,N,N) - the variability in the model changes together with the level:
+\begin{equation}
+    y_{t} = l_{t-1} + l_{t-1} \epsilon_t .
+  \label{eq:ETSMNNMeasurement}
+\end{equation}
+So, if the error term had a standard deviation of 0.05, the standard deviation of the data would be \(l_{t-1} \times 0.05\). This means that the model captures the percentage deviation in the data rather than the unit one as in the ETS(A,N,N).
+
+In order to see the connection of this model with SES, we need to revert to the estimation of the model on the data again:
 \begin{equation}
   \begin{aligned}
     & y_{t} = \hat{l}_{t-1}(1 + e_t) \\
@@ -2569,7 +2576,48 @@ And here is an example with the ETS(M,N,N) data (Figure \ref{fig:ETSMNNExample})
 \caption{\label{fig:ETSMNNExample}ETS(M,N,N) model applied to the data generated from the same model.}
 \end{figure}
 
-Conceptually, the data in Figure \ref{fig:ETSMNNExample} looks very similar to the one from ETS(A,N,N) (Figure \ref{fig:ETSANNExample}), but demonstrating the changing variance of the error term with the change of the level. The model itself would in general produce a wider prediction interval than its additive error counterpart, keeping the same smoothing parameter.
+Conceptually, the data in Figure \ref{fig:ETSMNNExample} looks very similar to the one from ETS(A,N,N) (Figure \ref{fig:ETSANNExample}), but demonstrating the changing variance of the error term with the change of the level. The model itself would in general produce a wider prediction interval with the increase of the level than its additive error counterpart, keeping the same smoothing parameter.
+
+\hypertarget{etsann-vs-etsmnn}{%
+\subsection{ETS(A,N,N) vs ETS(M,N,N)}\label{etsann-vs-etsmnn}}
+
+To better understand the difference between ETS(A,N,N) and ETS(M,N,N), consider the following example. I generated data from ETS(A,N,N) and ETS(M,N,N) using the \texttt{sim.es()} function from the \texttt{smooth} package with some predefined parameters to make the two comparable:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{seed }\OtherTok{\textless{}{-}} \DecValTok{50}
+\FunctionTok{set.seed}\NormalTok{(seed, }\AttributeTok{kind=}\StringTok{"L\textquotesingle{}Ecuyer{-}CMRG"}\NormalTok{)}
+\NormalTok{y1 }\OtherTok{\textless{}{-}} \FunctionTok{sim.es}\NormalTok{(}\StringTok{"ANN"}\NormalTok{, }\DecValTok{120}\NormalTok{, }\AttributeTok{frequency=}\DecValTok{12}\NormalTok{,}
+             \AttributeTok{persistence=}\FloatTok{0.4}\NormalTok{, }\AttributeTok{initial=}\DecValTok{500}\NormalTok{,}
+             \AttributeTok{mean=}\DecValTok{0}\NormalTok{, }\AttributeTok{sd=}\DecValTok{25}\NormalTok{)}
+\FunctionTok{set.seed}\NormalTok{(seed, }\AttributeTok{kind=}\StringTok{"L\textquotesingle{}Ecuyer{-}CMRG"}\NormalTok{)}
+\NormalTok{y2 }\OtherTok{\textless{}{-}} \FunctionTok{sim.es}\NormalTok{(}\StringTok{"MNN"}\NormalTok{, }\DecValTok{120}\NormalTok{, }\AttributeTok{frequency=}\DecValTok{12}\NormalTok{,}
+             \AttributeTok{persistence=}\FloatTok{0.4}\NormalTok{, }\AttributeTok{initial=}\DecValTok{500}\NormalTok{,}
+             \AttributeTok{mean=}\DecValTok{1}\NormalTok{, }\AttributeTok{sd=}\FloatTok{0.05}\NormalTok{)}
+\end{Highlighting}
+\end{Shaded}
+
+Note that I fixed the random seed to have the same sequence of errors. I also set the standard deviations in the two models so that the error term variability in the beginning of the data is similar: \(l_{t-1} \times \epsilon_t = 500 \times 0.05 = 25\). In the ETS(A,N,N), the variability around the level will be on average around 25 units (based on the standard deviation used in the generation), while in the ETS(M,N,N), it should be around 5\% (once again, based on the used DGP). Visually the generated data is shown in Figure \ref{fig:ETSANNvsMNNData}.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-latex/ETSANNvsMNNData-1.pdf}
+\caption{\label{fig:ETSANNvsMNNData}Data generated from ETS(A,N,N) and ETS(M,N,N).}
+\end{figure}
+
+The red lines in Figure \ref{fig:ETSANNvsMNNData} depict the initial variability in the data for the two time series, while the blue ones show the final one, when the level increased from 500 to roughly 700. As we see, the variability in the data generated using ETS(M,N,N) increased (to roughly \(700 \times 0.05 = 35\)), while in case of the ETS(A,N,N), it stayed the same (25). When we apply the ETS(A,N,N) and ETS(M,N,N) models to the respective data using the \texttt{es()} function from the \texttt{smooth} package, we get the model fit and forecasts shown in Figure \ref{fig:ETSANNvsMNNForecasts}.
+
+\begin{figure}
+\centering
+\includegraphics{Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-latex/ETSANNvsMNNForecasts-1.pdf}
+\caption{\label{fig:ETSANNvsMNNForecasts}Data generated from ETS(A,N,N) and ETS(M,N,N).}
+\end{figure}
+
+Figure \ref{fig:ETSANNvsMNNForecasts} demonstrates that although the two models produce very similar fit and point forecasts (because they had the same initial levels and smoothing parameters), the prediction interval in the ETS(M,N,N) is wider than in the ETS(A,N,N), reflecting the increased uncertainty due to the increase of the level.
+
+\begin{remark}
+The fact that the ETS(M,N,N) has the percentage variability rather than the unit one also means that if the level was to decrease, for example, to 200, the model would produce narrower prediction interval than the ETS(A,N,N) for the same values of the smoothing parameter. This follows directly from the formula for the error term in the model: \(l_{t-1} \times \epsilon_t = 200 \times 0.05 = 10\) vs the constant variability of 25 of the ETS(A,N,N).
+\end{remark}
 
 \hypertarget{ETSExamples}{%
 \section{Several examples of ETS and related Exponential Smoothing methods}\label{ETSExamples}}
@@ -3290,7 +3338,7 @@ The series in Figure \ref{fig:BJsalesDataPlot} seem to exhibit a trend, so we wi
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.02 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.6076
@@ -3315,7 +3363,7 @@ The model's output summarises which specific model was constructed, what distrib
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.01 seconds
+## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(ANN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 273.2898
@@ -3357,7 +3405,7 @@ Notice that the bounds in Figure \ref{fig:BJsalesAANForecast} are expanding fast
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.15 seconds
+## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(AAN)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.5814
@@ -3913,7 +3961,7 @@ After running the command above we might get a warning, saying that the model ha
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.11 seconds
+## Time elapsed: 0.22 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 467.5831
@@ -3985,11 +4033,11 @@ If we want to calculate the error measures based on the conditional expectation,
 
 \begin{verbatim}
 ##            ME           MAE           MSE           MPE          MAPE 
-##  -3.327764971  15.812210006 472.541201046  -0.011654372   0.033914280 
+##  -3.614605262  15.690518568 470.155934235  -0.012230974   0.033723674 
 ##           sCE          sMAE          sMSE          MASE         RMSSE 
-##  -0.152130789   0.060238729   0.006858137   0.656545011   0.693793039 
+##  -0.165243867   0.059775129   0.006823519   0.651492213   0.692039779 
 ##          rMAE         rRMSE          rAME     asymmetry          sPIS 
-##   0.208055395   0.211096760   0.046760164  -0.057541547   1.590813850
+##   0.206454192   0.210563305   0.050790706  -0.076198258   1.658080263
 \end{verbatim}
 
 These can be compared with the measures from the ETS(A,A,A) model:
@@ -5079,7 +5127,7 @@ These rules are tempting to use when determining the appropriate order of the AR
 However, these rules are not necessarily bi-directional and might not work in practice, e.g.~\emph{if we deal with MA(q), ACF drops abruptly right after the lag q, but if ACF drops abruptly after the lag q, then this does not necessarily mean that we deal with MA(q)}. The former follows directly from the assumed ``true'' model, while the latter refers to the identification of the model on the data, and there can be different reasons for the ACF to behave in the way it does. The logic here is similar to the following:
 
 \begin{example}
-\protect\hypertarget{exm:unnamed-chunk-43}{}\label{exm:unnamed-chunk-43}All birds have wings. Sarah has wings. Thus, Sarah is a bird.
+\protect\hypertarget{exm:unnamed-chunk-44}{}\label{exm:unnamed-chunk-44}All birds have wings. Sarah has wings. Thus, Sarah is a bird.
 
 Here is Sarah:
 \end{example}
@@ -5190,7 +5238,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     517.6241     517.6140
+##     513.1031     512.5974
 \end{verbatim}
 
 \begin{Shaded}
@@ -5203,7 +5251,7 @@ Given the the two models in smooth have the same initialisation mechanism, they 
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##     1041.248     1041.228
+##     1032.206     1031.195
 \end{verbatim}
 
 In addition, their parameters should be related based on the formula discussed above. The following two lines should produce similar values:
@@ -5218,7 +5266,7 @@ In addition, their parameters should be related based on the formula discussed a
 
 \begin{verbatim}
 ##   ETS(A,N,N) ARIMA(0,1,1) 
-##    0.1632765    0.1526854
+##    0.2205784    0.2899985
 \end{verbatim}
 
 Finally, the fit and the forecasts from the two models should be exactly the same if the parameters are linearly related (Figure \ref{fig:ETSARIMAConnection}):
@@ -6081,7 +6129,7 @@ Building upon the example with \texttt{AirPassengers} data from Section \ref{ARI
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-latex/unnamed-chunk-58-1.pdf}
+\includegraphics{Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-latex/unnamed-chunk-59-1.pdf}
 
 We still have the trend in the data, and the seasonality now corresponds to the additive rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking the first differences for the seasonal should suffice because the logarithmic transform will take care of the expanding seasonal pattern in the data. So we can test several models with different options for ARIMA orders:
 
@@ -6195,7 +6243,7 @@ Comparing information criteria, ETS(M,M,M) should be preferred to Log-ARIMA, but
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.16 seconds
+## Time elapsed: 0.17 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[12]
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 471.2455
@@ -6736,7 +6784,7 @@ Figure \ref{fig:SeatbeltsForecastX} shows the forecast from the second model, wh
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.38 seconds
+## Time elapsed: 0.39 seconds
 ## Model estimated using adam() function: ETSX(MNM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1113.992
@@ -6780,7 +6828,7 @@ In our specific case, the difference between the ETSX and ETSX\{D\} models is in
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.03 seconds
+## Time elapsed: 1.05 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 1113.811
@@ -6922,10 +6970,10 @@ Contrary to common belief, the MLE itself does not assume that a true model foll
 MLE of the ADAM relies on the distributional assumptions of each specific model and might differ from one model to another (see assumptions in Sections \ref{ADAMETSAdditiveDistributions}, \ref{ADAMETSMultiplicativeDistributions}, and \ref{ADAMARIMADistributions}). There are several options for the \texttt{distribution} parameter supported by the \texttt{adam()} function in the \texttt{smooth} package, here we briefly discuss how the estimation is done for each one of them. We start with the additive error model, for which the assumptions, log-likelihoods, and MLE of scales are provided in Table \ref{tab:additiveErrorLikelihoods}.
 
 \begin{landscape}\begin{table}
-
+\centering
 \caption{\label{tab:additiveErrorLikelihoods}Likelihood approach for additive error models. $\mathcal{N}$ is the Normal, $\mathcal{L}$ is the Laplace, $\mathcal{S}$ is the S, $\mathcal{GN}$ is the Generalised Normal, $\mathcal{IG}$ is the Inverse Gaussian, $\Gamma$ is the Gamma, and $\mathrm{log}\mathcal{N}$ is the Log-Normal distribution.}
 \centering
-\resizebox{\linewidth}{!}{
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
 \fontsize{12}{14}\selectfont
 \begin{tabular}[t]{l|l|l|l}
 \hline
@@ -7000,10 +7048,10 @@ Similar logic is applicable to Laplace (\(\mathcal{L}\)), Generalised Normal (\(
 All the likelihoods for the multiplicative error models are summarised in Table \ref{tab:multiplicativeErrorLikelihoods}.
 
 \begin{landscape}\begin{table}
-
+\centering
 \caption{\label{tab:multiplicativeErrorLikelihoods}Likelihood approach for multiplicative error models. $\mathcal{N}$ is the Normal, $\mathcal{L}$ is the Laplace, $\mathcal{S}$ is the S, $\mathcal{GN}$ is the Generalised Normal, $\mathcal{IG}$ is the Inverse Gaussian, $\Gamma$ is the Gamma, and $\mathrm{log}\mathcal{N}$ is the Log-Normal distribution.}
 \centering
-\resizebox{\linewidth}{!}{
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
 \fontsize{12}{14}\selectfont
 \begin{tabular}[t]{l|l|l|l}
 \hline
@@ -7831,7 +7879,7 @@ Given that we are trying the ETS+ARIMA model, we can use backcasting, which shou
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.05 seconds
+## Time elapsed: 0.04 seconds
 ## Model estimated using adam() function: ETS(AAN)+ARIMA(2,0,0)
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 258.7807
@@ -8364,7 +8412,7 @@ Another model we can try on this data is Multiple Seasonal ARIMA. We have not ye
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.3 seconds
+## Time elapsed: 0.29 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Normal
 ## Loss function type: likelihood; Loss function value: 26098.77
@@ -8412,7 +8460,7 @@ Figure \ref{fig:adamARIMAQQPlot} shows that the empirical distribution of residu
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.29 seconds
+## Time elapsed: 0.28 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## Distribution assumed in the model: Generalised Normal with shape=0.7511
 ## Loss function type: likelihood; Loss function value: 25145.3
@@ -9188,10 +9236,10 @@ A classic example with EM is when several samples have different parameters, and
 The first term in \eqref{eq:LogLikelihoodForDGPExpectation} is known because the \(z_t\) are observed when \(o_t=1\). The expectation in the second term of \eqref{eq:LogLikelihoodForDGPExpectation} is known in statistics as ``Differential Entropy'' (in the formula above, we have the negative differential entropy). It will differ from one distribution to another. Table \ref{tab:differentialEntropy} summarises differential entropies for the distributions used in ADAM.
 
 \begin{table}
-
+\centering
 \caption{\label{tab:differentialEntropy}Differential entropies for different distributions. $\Gamma(\cdot)$ is the Gamma function, while $\psi(\cdot)$ is the digamma function.}
 \centering
-\resizebox{\linewidth}{!}{
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{
 \fontsize{12}{14}\selectfont
 \begin{tabular}[t]{l|l|l}
 \hline
@@ -10773,7 +10821,7 @@ The function \texttt{auto.adam()} implements this automatic selection of distrib
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.52 seconds
+## Time elapsed: 1.53 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## Distribution assumed in the model: Log-Normal
 ## Loss function type: likelihood; Loss function value: 245.3718
@@ -10873,7 +10921,7 @@ Here is an example with an automatically selected ETS model using the branch-and
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.06 seconds
+## Time elapsed: 1.05 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 466.5937
@@ -10977,7 +11025,7 @@ Based on the relation between ARIMA and ETS (see Section \ref{ARIMAandETS}), we 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.25 seconds
+## Time elapsed: 1.28 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)+SARIMA(3,0,0)[1](1,0,0)[12]
 ## Distribution assumed in the model: Gamma
 ## Loss function type: likelihood; Loss function value: 468.9398
@@ -11331,16 +11379,16 @@ These weights can then be used for the combination of the fitted values, forecas
 ## End = 150 
 ## Frequency = 1 
 ##         Mean Lower bound (2.5%) Upper bound (97.5%)
-## 141 257.6664           254.8912            260.4738
-## 142 257.7267           253.2829            262.1162
-## 143 257.7911           251.8316            263.8098
-## 144 257.8492           250.3235            265.4070
-## 145 257.9044           248.7470            267.0737
-## 146 257.9645           247.2274            268.7608
-## 147 258.0070           245.4975            270.4935
-## 148 258.0632           243.9429            272.3078
-## 149 258.1136           242.2523            274.0835
-## 150 258.1677           240.5850            275.9507
+## 141 257.6807           254.8857            260.4238
+## 142 257.7457           253.4012            262.1678
+## 143 257.8170           251.8587            263.8720
+## 144 257.8767           250.3674            265.5720
+## 145 257.9391           248.8681            267.1957
+## 146 257.9943           247.2011            268.9043
+## 147 258.0621           245.6038            270.7090
+## 148 258.1136           244.0052            272.4431
+## 149 258.1649           242.3399            274.2080
+## 150 258.2231           240.6150            276.1260
 \end{verbatim}
 
 In order to see how the forecast looks, we can plot it via \texttt{graphmaker()} function from \texttt{greybox}:
@@ -11510,7 +11558,7 @@ Here is an example of how the function works on the data above -- it is possible
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=100 and size=70
-## Time elapsed: 0.48 seconds
+## Time elapsed: 0.52 seconds
 \end{verbatim}
 
 The \texttt{size} in the output above refers to the sub-sample size, which by default is 75\% of the original data length. The covariance matrix can then be extracted from the result via \texttt{adamETSBJBoot\$vcov}. The same procedure is used in the \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
@@ -11525,11 +11573,11 @@ The \texttt{size} in the output above refers to the sub-sample size, which by de
 
 \begin{verbatim}
 ##        alpha   beta    phi  level  trend
-## alpha  0.022 -0.007  0.004  0.056 -0.010
-## beta  -0.007  0.006 -0.003 -0.022 -0.003
-## phi    0.004 -0.003  0.011  0.028  0.023
-## level  0.056 -0.022  0.028  0.574 -0.153
-## trend -0.010 -0.003  0.023 -0.153  0.180
+## alpha  0.042 -0.008  0.007  0.082 -0.008
+## beta  -0.008  0.005 -0.003 -0.022 -0.002
+## phi    0.007 -0.003  0.011  0.035  0.018
+## level  0.082 -0.022  0.035  0.606 -0.144
+## trend -0.008 -0.002  0.018 -0.144  0.142
 \end{verbatim}
 
 \hypertarget{ADAMUncertaintyConfidenceInterval}{%
@@ -13004,7 +13052,7 @@ For simplicity, we apply an iETS(M,Md,N) model with odds ratio occurrence:
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-latex/unnamed-chunk-183-1.pdf}
+\includegraphics{Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-latex/unnamed-chunk-184-1.pdf}
 
 To make this setting closer to a possible real life situation, we assume that the lead time is seven days, and we need to satisfy the 99\% of demand for the last seven observations based on our model. Thus we produce the upper bound for the cumulative values for the confidence level of 99\%:
 
@@ -13041,7 +13089,7 @@ Given that we deal with cumulative values, the basic plot will not be helpful, a
 \caption{\label{fig:adamModeliETSCumulative}The actual cumulative demand (black dot), the expectation (the solid blue line), and the 95\% quantile of the distribution of the cumulative demand (the dashed grey line) based on the iETS model.}
 \end{figure}
 
-What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of seven days, the cumulative demand was around 21 units, while the upper bound of the interval was approximately 28. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
+What Figure \ref{fig:adamModeliETSCumulative} demonstrates is that for the holdout period of seven days, the cumulative demand was around 18 units, while the upper bound of the interval was approximately 35. Based on that upper bound, we could place an order (based on what we already have in stock) and have an appropriate safety stock.
 
 This example is provided for demonstration purposes only. To see if the approach is suitable for a specific situation, we would need to apply it in either a rolling origin fashion (Section \ref{rollingOrigin}) or to a set of products to collect the distribution of related error measures.
 
