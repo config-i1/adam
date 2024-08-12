@@ -81,14 +81,14 @@ This method only works when `loss="likelihood"` or when the loss is aligned with
 
 
 ### Bootstrapped covariance matrix
-An alternative way of constructing the matrix is via the bootstrap. The one implemented in `smooth` is based on the `coefbootstrap()` method from the `greybox` package, which implements the modified case resampling. It is less efficient than the Fisher Information method in terms of computational time and works only for larger samples. The algorithm implemented in the function creates continuous sub-samples of the original data, starting from the initial point $t=1$ (if backcasting is used, as discussed in Section \@ref(ADAMInitialisationOptAndBack), then the starting point will be allowed to vary). These sub-samples are then used for re-estimation of `adam()` to get the empirical estimates of parameters. The procedure is repeated `nsim` times, which for `adam()` is by default equal to 100. This approach is far from ideal and will typically lead to the underestimated variance of initials because of the sample size restrictions. Still, it does not break the data structure and allows obtaining results relatively fast without imposing any additional assumptions on the model and the data. I personally recommend using it in the case of the initialisation via backcasting.
+An alternative way of constructing the matrix is via the bootstrap. The one implemented in `smooth` is based on the `coefbootstrap()` method from the `greybox` package, which uses the modification of the Maximum Entropy Bootstrap of @Vinod2009, implemented in the `timeboot()` function of the `greybox` package. It is less efficient than the Fisher Information method in terms of computational time. The algorithm recreates the original time series many times and then re-estimates `adam()` on each one of them to get the empirical estimates of parameters. The procedure is repeated `nsim` times, which for `adam()` is by default equal to 100. The algorithm does not break the data structure and it allows obtaining results relatively fast without imposing any additional assumptions on the model and the data.
 
 Here is an example of how the function works on the data above -- it is possible to speed up the process by doing parallel calculations:
 ```{r}
 adamETSBJBoot <- coefbootstrap(adamETSBJ, parallel=TRUE)
 adamETSBJBoot
 ```
-The `size` in the output above refers to the sub-sample size, which by default is 75% of the original data length. The covariance matrix can then be extracted from the result via `adamETSBJBoot$vcov`. The same procedure is used in the `vcov()` method if `bootstrap=TRUE`:
+The `size` in the output above refers to the sub-sample size, which is deprecated for ADAM. The covariance matrix can then be extracted from the result via `adamETSBJBoot$vcov`. The same procedure is used in the `vcov()` method if `bootstrap=TRUE`:
 ```{r}
 adamETSBJ |>
     vcov(bootstrap=TRUE, parallel=TRUE) |>
@@ -145,7 +145,7 @@ adam(BJsales, "NNN", h=10, holdout=TRUE,
     summary()
 ```
 
-From the summary above, we can see that the parameter $\theta_2$ is close to zero, and the interval around it is wide. So, we can expect that it might change the sign if the sample size increases or become even closer to zero. Given that the model above was estimated with the optimisation of initial states, we also see the values for the ARIMA states and their confidence intervals in the summary above. If we used `initial="backcasting"`, the summary would not include them.
+From the summary above, we can see that the parameter $\phi_2$ is close to zero, and the interval around it is wide. So, we can expect that it might change the sign if the sample size increases or become even closer to zero. Given that the model above was estimated with the optimisation of initial states, we also see the values for the ARIMA states and their confidence intervals in the summary above. If we used `initial="backcasting"`, the summary would not include them.
 
 ::: remark
 If we faced difficulties estimating the covariance matrix of parameters using the standard Hessian-based approach, we could try bootstrap via `summary(adamETSBJ, bootstrap=TRUE)`.
@@ -353,6 +353,7 @@ The last three will contain the random parameters (smoothing, dampening, and AR/
 As mentioned earlier, ADAM ARIMA also supports this approach. Here is an example on an artificial, non-seasonal data, generated from ARIMA(0,1,1) (see Figure \@ref(fig:adamARIMARefitted)):
 
 ```{r eval=FALSE}
+set.seed(41)
 # Generate the data
 y <- sim.ssarima(orders=list(i=1,ma=1), obs=120, MA=-0.7)
 # Apply ADAM, then refit it and plot
