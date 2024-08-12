@@ -671,24 +671,20 @@ The pre-initialisation described here is not simple, but it guarantees that any 
 
 
 ### Starting optimisation of ARIMA states
-ADAM ARIMA models have as many states as the number of polynomials $K$ (see Subsection \@ref(StateSpaceARIMAAdditive)). Each state $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second, etc). This leads in general to more initial values for states than the SSARIMA from @Svetunkov2019: $\frac{K(K+1)}{2}$ instead of $K$. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or using the following trick. First, we take the conditional expectations of all ARIMA states, which leads to:
+ADAM ARIMA models have as many states as the number of polynomials $K$ (see Subsection \@ref(StateSpaceARIMAAdditive)). Each state $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second, etc). This leads in general to more initial values for states than the SSARIMA from @Svetunkov2019: $\frac{K(K+1)}{2}$ instead of $K$. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or by propagating $K$ initial values to all the states using the formula for the transition equation \@eqref{eq:MSARIMATransition}: 
+\begin{equation*}
+  v_{i,t} = \eta_i \sum_{j=1}^K B_{j} + (\eta_i + \psi_i) \epsilon_{t}.
+\end{equation*}
+The problem with the formula above is the absence of the error term for the observations before the beginning of the sample (where we initialise ADAM). So, to get the estimates of the initial vector, we use expectations of states instead:
 \begin{equation}
-  \mathrm{E}(v_{i,t} | t) = \eta_i y_{t} \text{ for } t=\{-K+1, -K+2, \dots, 0\},
-  (\#eq:MSARIMAInitialisation00)
+  \mathrm{E}(v_{i,t} | t) = \eta_i \sum_{j=1}^K B_{j} \text{ for } t=\{-K+1, -K+2, \dots, 0\}.
+  (\#eq:MSARIMATransition)
 \end{equation}
-and then we use these expectations for the initialisation of ARIMA states. This still implies calculating a lot of initials, but we can further reduce their number. We can express the actual value in terms of the state and error from \@ref(eq:MSARIMAState) for the last state $K$:
-\begin{equation}
-  y_{t} = \frac{v_{K,t} -\theta_K \epsilon_{t}}{\eta_K}.
-  (\#eq:MSARIMAInitialisation01)
-\end{equation}
-We select the last state $K$ because it has the highest number of initials to estimate among all states. We can then insert the value \@ref(eq:MSARIMAInitialisation01) in each formula \@ref(eq:MSARIMAInitialisation00) for each state for $i=\{1, 2, \dots, K-1\}$ and take their expectations:
-\begin{equation}
-  \mathrm{E}(v_{i,t}|t) = \frac{\eta_i}{\eta_K} \mathrm{E}(v_{K,t}|t)  \text{ for } t=\{-i+1, -i+2, \dots, 0\}.
-  (\#eq:MSARIMAInitialisation02)
-\end{equation}
-This formula shows how the expectation of each state $i$ depends on the expectation of the state $K$. We can use it to propagate the values of the last state to the previous ones. However, this strategy will only work for the states corresponding to the ARI elements of the model. In the case of MA, using the same principle of initialisation via the conditional expectation, we can set the initial MA states to zero and estimate only ARI states. This is a crude but relatively simple way to pre-initialise ADAM ARIMA.
+Using this approach, the optimisier will find some optimal values of $B_j$ that will be propagated to all the states and then used in model fit. However, this method will only work for the states corresponding to the ARI elements of the model. In the case of MA, using the same principle of initialisation via the conditional expectation, we can set the initial MA states to zero and estimate only ARI states. This is a crude but relatively simple way to pre-initialise ADAM ARIMA. Furthermore, to get some initial estimates of $B_j$, ADAM applies ARIMA with backcasting and extracts the seed values from it.
 
 Having said all that, we need to point out that it is advised to use backcasting in the ADAM ARIMA model -- this is a more reliable and faster procedure for initialisation of ARIMA than the optimisation.
+
+Finally, the experiments that I have done in the simulated setting show that the *seasonal ADAM ARIMA* implemented in the `smooth` package produces *biased* but consistent estimates of parameters, both in case of backcasting and optimisation. This does not apply to the non-seasonal ARIMA, which in general works perfectly well.
 
 
 ### Starting optimisation of regressor states and constant
