@@ -671,7 +671,7 @@ The pre-initialisation described here is not simple, but it guarantees that any 
 
 
 ### Starting optimisation of ARIMA states
-ADAM ARIMA models have as many states as the number of polynomials $K$ (see Subsection \@ref(StateSpaceARIMAAdditive)). Each state $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second, etc). This leads in general to more initial values for states than the SSARIMA from @Svetunkov2019: $\frac{K(K+1)}{2}$ instead of $K$. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or by propagating $K$ initial values to all the states using the formula for the transition equation \@eqref{eq:MSARIMATransition}: 
+ADAM ARIMA models have as many states as the number of polynomials $K$ (see Subsection \@ref(StateSpaceARIMAAdditive)). Each state $v_{i,t}$ needs to be initialised with $i$ values (e.g. 1 for the first state, 2 for the second, etc). This leads in general to more initial values for states than the SSARIMA from @Svetunkov2019: $\frac{K(K+1)}{2}$ instead of $K$. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or by propagating $K$ initial values to all the states using the formula for the transition equation \@ref{eq:MSARIMATransition}:
 \begin{equation*}
   v_{i,t} = \eta_i \sum_{j=1}^K B_{j} + (\eta_i + \psi_i) \epsilon_{t}.
 \end{equation*}
@@ -680,11 +680,13 @@ The problem with the formula above is the absence of the error term for the obse
   \mathrm{E}(v_{i,t} | t) = \eta_i \sum_{j=1}^K B_{j} \text{ for } t=\{-K+1, -K+2, \dots, 0\}.
   (\#eq:MSARIMATransition)
 \end{equation}
-Using this approach, the optimisier will find some optimal values of $B_j$ that will be propagated to all the states and then used in model fit. However, this method will only work for the states corresponding to the ARI elements of the model. In the case of MA, using the same principle of initialisation via the conditional expectation, we can set the initial MA states to zero and estimate only ARI states. This is a crude but relatively simple way to pre-initialise ADAM ARIMA. Furthermore, to get some initial estimates of $B_j$, ADAM applies ARIMA with backcasting and extracts the seed values from it.
+Using this approach, the optimisier will find some optimal values of $B_j$ that will be propagated to all the states and then used in model fit. This way we will need to estimate only $K$ parameters for the initial values of the state vector. However, this method will only work for the states corresponding to the ARI elements of the model. In the case of MA, using the same principle of initialisation via the conditional expectation, we can set the initial MA states to zero and estimate only ARI states. This is a crude but relatively simple way to pre-initialise ADAM ARIMA.
 
-Having said all that, we need to point out that it is advised to use backcasting in the ADAM ARIMA model -- this is a more reliable and faster procedure for initialisation of ARIMA than the optimisation.
+To get some initial estimates of $B_j$, which will be used in the optimiser, ADAM applies ARIMA with backcasting and extracts the seed values from it.
 
-Finally, the experiments that I have done in the simulated setting show that the *seasonal ADAM ARIMA* implemented in the `smooth` package produces *biased* but consistent estimates of parameters, both in case of backcasting and optimisation. This does not apply to the non-seasonal ARIMA, which in general works perfectly well.
+Having said all that, I need to point out that it is advised to use backcasting in the ADAM ARIMA model -- this is a more reliable and faster procedure for initialisation of ARIMA than the optimisation.
+
+Finally, the experiments that I have done in the simulated setting show that the *seasonal ADAM ARIMA* implemented in the `smooth` package produces *biased* but consistent estimates of parameters, both in case of backcasting and optimisation. This does not apply to the non-seasonal ARIMA, which in general works well.
 
 
 ### Starting optimisation of regressor states and constant
