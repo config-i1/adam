@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2024-08-12" />
+<meta name="date" content="2024-08-19" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -724,7 +724,7 @@ The new values of <span class="math inline">\(\mathbf{v}_t\)</span> for <span cl
 </div>
 <div id="starting-optimisation-of-arima-states" class="section level3 hasAnchor" number="11.4.4">
 <h3><span class="header-section-number">11.4.4</span> Starting optimisation of ARIMA states<a href="ADAMInitialisation.html#starting-optimisation-of-arima-states" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>ADAM ARIMA models have as many states as the number of polynomials <span class="math inline">\(K\)</span> (see Subsection <a href="StateSpaceARIMA.html#StateSpaceARIMAAdditive">9.1.2</a>). Each state <span class="math inline">\(v_{i,t}\)</span> needs to be initialised with <span class="math inline">\(i\)</span> values (e.g. 1 for the first state, 2 for the second, etc). This leads in general to more initial values for states than the SSARIMA from <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019" role="doc-biblioref">2020</a>)</span>: <span class="math inline">\(\frac{K(K+1)}{2}\)</span> instead of <span class="math inline">\(K\)</span>. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or by propagating <span class="math inline">\(K\)</span> initial values to all the states using the formula for the transition equation @eqref{eq:MSARIMATransition}:
+<p>ADAM ARIMA models have as many states as the number of polynomials <span class="math inline">\(K\)</span> (see Subsection <a href="StateSpaceARIMA.html#StateSpaceARIMAAdditive">9.1.2</a>). Each state <span class="math inline">\(v_{i,t}\)</span> needs to be initialised with <span class="math inline">\(i\)</span> values (e.g. 1 for the first state, 2 for the second, etc). This leads in general to more initial values for states than the SSARIMA from <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019" role="doc-biblioref">2020</a>)</span>: <span class="math inline">\(\frac{K(K+1)}{2}\)</span> instead of <span class="math inline">\(K\)</span>. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or by propagating <span class="math inline">\(K\)</span> initial values to all the states using the formula for the transition equation @ref{eq:MSARIMATransition}:
 <span class="math display">\[\begin{equation*}
   v_{i,t} = \eta_i \sum_{j=1}^K B_{j} + (\eta_i + \psi_i) \epsilon_{t}.
 \end{equation*}\]</span>
@@ -733,9 +733,10 @@ The problem with the formula above is the absence of the error term for the obse
   \mathrm{E}(v_{i,t} | t) = \eta_i \sum_{j=1}^K B_{j} \text{ for } t=\{-K+1, -K+2, \dots, 0\}.
   \tag{9.7}
 \end{equation}\]</span>
-Using this approach, the optimisier will find some optimal values of <span class="math inline">\(B_j\)</span> that will be propagated to all the states and then used in model fit. However, this method will only work for the states corresponding to the ARI elements of the model. In the case of MA, using the same principle of initialisation via the conditional expectation, we can set the initial MA states to zero and estimate only ARI states. This is a crude but relatively simple way to pre-initialise ADAM ARIMA. Furthermore, to get some initial estimates of <span class="math inline">\(B_j\)</span>, ADAM applies ARIMA with backcasting and extracts the seed values from it.</p>
-<p>Having said all that, we need to point out that it is advised to use backcasting in the ADAM ARIMA model – this is a more reliable and faster procedure for initialisation of ARIMA than the optimisation.</p>
-<p>Finally, the experiments that I have done in the simulated setting show that the <em>seasonal ADAM ARIMA</em> implemented in the <code>smooth</code> package produces <em>biased</em> but consistent estimates of parameters, both in case of backcasting and optimisation. This does not apply to the non-seasonal ARIMA, which in general works perfectly well.</p>
+Using this approach, the optimisier will find some optimal values of <span class="math inline">\(B_j\)</span> that will be propagated to all the states and then used in model fit. This way we will need to estimate only <span class="math inline">\(K\)</span> parameters for the initial values of the state vector. However, this method will only work for the states corresponding to the ARI elements of the model. In the case of MA, using the same principle of initialisation via the conditional expectation, we can set the initial MA states to zero and estimate only ARI states. This is a crude but relatively simple way to pre-initialise ADAM ARIMA.</p>
+<p>To get some initial estimates of <span class="math inline">\(B_j\)</span>, which will be used in the optimiser, ADAM applies ARIMA with backcasting and extracts the seed values from it.</p>
+<p>Having said all that, I need to point out that it is advised to use backcasting in the ADAM ARIMA model – this is a more reliable and faster procedure for initialisation of ARIMA than the optimisation.</p>
+<p>Finally, the experiments that I have done in the simulated setting show that the <em>seasonal ADAM ARIMA</em> implemented in the <code>smooth</code> package produces <em>biased</em> but consistent estimates of parameters, both in case of backcasting and optimisation. This does not apply to the non-seasonal ARIMA, which in general works well.</p>
 </div>
 <div id="starting-optimisation-of-regressor-states-and-constant" class="section level3 hasAnchor" number="11.4.5">
 <h3><span class="header-section-number">11.4.5</span> Starting optimisation of regressor states and constant<a href="ADAMInitialisation.html#starting-optimisation-of-regressor-states-and-constant" class="anchor-section" aria-label="Anchor link to header"></a></h3>
@@ -767,7 +768,7 @@ Using this approach, the optimisier will find some optimal values of <span class
 <p>Similar output is saved in <code>adamETSBJ$res</code>, so that you can access it to understand how the optimisation went.</p>
 <p>Hopefully, after several iterations, we will get a better estimates of parameters of the model:</p>
 <div class="sourceCode" id="cb195"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb195-1"><a href="ADAMInitialisation.html#cb195-1" aria-hidden="true" tabindex="-1"></a>adamETSBJ</span></code></pre></div>
-<pre><code>## Time elapsed: 0.05 seconds
+<pre><code>## Time elapsed: 0.06 seconds
 ## Model estimated using adam() function: ETS(AAN)+ARIMA(2,0,0)
 ## With optimal initialisation
 ## Distribution assumed in the model: Normal
