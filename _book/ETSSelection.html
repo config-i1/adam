@@ -23,11 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<<<<<<< HEAD
-<meta name="date" content="2024-08-27" />
-=======
 <meta name="date" content="2024-09-19" />
->>>>>>> 2415b263c (New version of adam compiled)
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -626,7 +622,7 @@ div.csl-indent {
 <div id="ETSSelection" class="section level2 hasAnchor" number="15.1">
 <h2><span class="header-section-number">15.1</span> ETS components selection<a href="ETSSelection.html#ETSSelection" class="anchor-section" aria-label="Anchor link to header"></a></h2>
 <div class="remark">
-<p><span id="unlabeled-div-46" class="remark"><em>Remark</em>. </span>The model selection mechanism explained in this section is also used in the <code>es()</code> function from the <code>smooth</code> package. So, all the options for ADAM discussed here can be used in the case of <code>es()</code> as well.</p>
+<p><span id="unlabeled-div-47" class="remark"><em>Remark</em>. </span>The model selection mechanism explained in this section is also used in the <code>es()</code> function from the <code>smooth</code> package. So, all the options for ADAM discussed here can be used in the case of <code>es()</code> as well.</p>
 </div>
 <p>Having 30 ETS models to choose from, selecting the most appropriate one becomes challenging. <span class="citation">Petropoulos et al. (<a href="#ref-Petropoulos2018a">2018b</a>)</span> showed that human experts can do this task successfully if they need to decide which components to include in the time series. However, when you face the problem of fitting ETS to thousands of time series, the judgmental selection becomes infeasible. Using some sort of automation becomes critically important.</p>
 <p>The components selection in ETS is based on information criteria <span class="citation">(Section 16.4 of <a href="#ref-SvetunkovSBA">Svetunkov, 2022</a>)</span>. The general procedure consists of the following three main steps <span class="citation">(in the ETS context, this approach was first proposed by <a href="#ref-Hyndman2002">Hyndman et al., 2002</a>)</span>:</p>
@@ -653,14 +649,14 @@ div.csl-indent {
 <li>Fit the model with the additive trend component and the seasonal component selected from the previous steps, which can be either “N”, “A”, or “M”. Calculate information criterion for the new model and compare it with the best information criterion so far. If it is lower than any of criteria before, there is some trend component in the data. If it is not, then the trend component is not needed.</li>
 </ol>
 <div class="remark">
-<p><span id="unlabeled-div-47" class="remark"><em>Remark</em>. </span>In case of multiple seasonal ETS (e.g. day of week and day of year seasonality), all the seasonal components should have the same type (see discussion in Section <a href="ADAMMultipleFrequenciesModel.html#ADAMMultipleFrequenciesModel">12.1</a>), so there is no need to test mixed ones (e.g. one seasonal component being additive, while the other one is multiplicative). Also, while it is possible to test whether each of the seasonal components is needed (e.g. day of week is needed, while day of year is unnecessary), this is not yet implemented in <code>adam()</code>. The simple solution here would be fitting models with and without some of the seasonal components and then selecting the one that has the lowest information criterion.</p>
+<p><span id="unlabeled-div-48" class="remark"><em>Remark</em>. </span>In case of multiple seasonal ETS (e.g. day of week and day of year seasonality), all the seasonal components should have the same type (see discussion in Section <a href="ADAMMultipleFrequenciesModel.html#ADAMMultipleFrequenciesModel">12.1</a>), so there is no need to test mixed ones (e.g. one seasonal component being additive, while the other one is multiplicative). Also, while it is possible to test whether each of the seasonal components is needed (e.g. day of week is needed, while day of year is unnecessary), this is not yet implemented in <code>adam()</code>. The simple solution here would be fitting models with and without some of the seasonal components and then selecting the one that has the lowest information criterion.</p>
 </div>
 <p>Based on these four steps, we can kick off the unnecessary components and reduce the pool of models to check. For example, if the algorithm shows that seasonality is not needed, but there is a trend, then we only have ten models to check overall instead of 30: ETS(A,N,N), ETS(A,A,N), ETS(A,Ad,N), ETS(M,N,N), ETS(M,M,N), ETS(M,Md,N), ETS(A,M,N), ETS(A,Md,N), ETS(M,A,N), and ETS(M,Ad,N). In steps (2) and (3), if there is a trend in the seasonal data, the model will have a higher than needed smoothing parameter <span class="math inline">\(\alpha\)</span>. While it will not approximate the data perfectly, the seasonality will play a more important role than the trend in reducing the value of the information criterion, which will help in correctly selecting the component. This is why the algorithm is, in general, efficient. It might not guarantee that the optimal model is selected all the time, but it substantially reduces the computational time.</p>
 <p>The branch-and-bound algorithm can be combined with different types of model pools and is also supported in <code>model="XXX"</code> and <code>model="YYY"</code>, where the pool of models for steps (1) – (4) is restricted by the pure ones only. This would also work in the combinations of the style <code>model="XYZ"</code>, where the function would form the pool of the following models: ETS(A,N,N), ETS(A,M,N), ETS(A,Md,N), ETS(A,N,A), ETS(A,M,A), ETS(A,Md,A), ETS(A,N,M), ETS(A,M,M), and ETS(A,Md,M).</p>
 <p>Finally, while the branch-and-bound algorithm is efficient, it might end up providing a mixed model, which might not be suitable for your data. So, it is recommended to think of the possible pool of models before applying it to the data. For example, in some cases, you might realise that additive seasonality is unnecessary and that the data can be either non-seasonal or with multiplicative seasonality. In this case, you can explore the <code>model="YZY"</code> option, aligning the error term with the seasonal component.</p>
 <p>Here is an example with an automatically selected ETS model using the branch-and-bound algorithm described above:</p>
 <div class="sourceCode" id="cb331"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb331-1"><a href="ETSSelection.html#cb331-1" tabindex="-1"></a><span class="fu">adam</span>(AirPassengers, <span class="at">model=</span><span class="st">&quot;ZZZ&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
-<pre><code>## Time elapsed: 1.76 seconds
+<pre><code>## Time elapsed: 2.72 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
