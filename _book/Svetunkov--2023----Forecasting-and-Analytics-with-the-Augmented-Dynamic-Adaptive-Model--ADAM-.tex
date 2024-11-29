@@ -419,7 +419,7 @@ As some forecasters say, all point forecasts are wrong. They will never correspo
 \caption{\label{fig:adamExampleNormal}An example of a well-behaved data, point forecast, and a 95\% prediction interval.}
 \end{figure}
 
-Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 82.34 and 121.11. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
+Figure \ref{fig:adamExampleNormal} shows an example with a well-behaved demand, for which the best point forecast is the straight line. To capture the uncertainty of demand, we can construct the prediction interval, which will tell roughly where the demand will lie in \(1-\alpha\) percent of cases. The interval in Figure \ref{fig:adamExampleNormal} has the width of 95\% (significance level \(\alpha=0.05\)) and shows that if the situation is repeated many times, the actual demand will be between 77.64 and 123.35. Capturing the uncertainty correctly is important because real-life decisions need to be made based on the full information, not only on the point forecasts.
 
 We will discuss how to produce prediction intervals in more detail in Section \ref{ADAMForecastingPI}. For a more detailed discussion on the concepts of prediction and confidence intervals, see Chapter 6 of \citet{SvetunkovSBA}.
 
@@ -1151,7 +1151,7 @@ The function returns a list with all the values that we asked for plus the actua
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.10528614 0.09678539 0.08640434
+## 0.03978286 0.04732071 0.06510574
 \end{verbatim}
 
 In this example, we use the \texttt{apply()} function to distinguish between the different forecasting horizons and have an idea of how the model performs for each of them. These numbers do not tell us much on their own, but if we compare the performance of this model with an alternative one, we could infer if one model is more appropriate for the data than the other one. For example, applying ARIMA(0,2,2) to the same data, we will get:
@@ -1169,7 +1169,7 @@ In this example, we use the \texttt{apply()} function to distinguish between the
 
 \begin{verbatim}
 ##         h1         h2         h3 
-## 0.10434799 0.09587108 0.08658194
+## 0.03962156 0.04737999 0.06587086
 \end{verbatim}
 
 Comparing these errors with the ones from the previous model, we can conclude which of the approaches is more suitable for the data.
@@ -3558,7 +3558,7 @@ In some cases, the optimiser might converge to the local minimum, so if you find
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.12 seconds
+## Time elapsed: 0.11 seconds
 ## Model estimated using adam() function: ETS(AAA)
 ## With optimal initialisation
 ## Distribution assumed in the model: Normal
@@ -3841,16 +3841,16 @@ There is a fundamental design flaw in the ETS with multiplicative components, wh
   \end{aligned}.
 \end{equation*}
 
-This model captures the effect of percentage changes in components on the final sales, as discuss in previous sections. Yet its error term has a linear effect on the states, and if the error term contains a substantial outlier, it will have a deteriorating effect on states. To see the problem better, consider the error term in the level equation, \(1+\alpha \epsilon_t\), which can also be reformulated as (for convenience):
+This model captures the effect of percentage changes in components on the final sales, as discuss in previous sections. Yet its error term has a linear effect on the states, and if the error term contains a substantial outlier, it will have a damaging effect on them. To see the problem better, consider the error term in the level equation, \(1+\alpha \epsilon_t\), which can also be reformulated as (for convenience):
 \begin{equation}
     1 + \alpha \epsilon_t = 1 - \alpha + \alpha (1 + \epsilon_t).
     \label{eq:ETSMErrorReformulation}
 \end{equation}
-Take an arbitrary value of the smoothing parameter \(\alpha=0.3\), which means that \eqref{eq:ETSMErrorReformulation} becomes equal to:
+Take an arbitrary value of the smoothing parameter, for example, \(\alpha=0.3\), which means that \eqref{eq:ETSMErrorReformulation} becomes equal to:
 \begin{equation*}
     1 + \alpha \epsilon_t = 0.7 + 0.3 (1 + \epsilon_t).
 \end{equation*}
-Given that the error term \(1 + \epsilon_t\) is always positive, the range of values of this error term becomes \((0.7, \infty)\), meaning that whatever error the model makes, the state will not decrease by more than 30\% (i.e.~1 - 0.7). However, its increase is not bounded by anything, and if we observe an outlier, for example, that equals to 4, the update of state upwards will be \(0.7 + 0.3 \times 4 = 1.9\) - 90\% up in comparison with the previous value. Furthermore, this increase is linear: the higher the outlier is, the stronger the state reacts to it, without a chance to come back to the previous level as fast. This behaviour becomes especially harmful for the trend component, which can jump from being equal to 1 to 1.9 in just one observation. And the multiplicative trend with the slope of 1.9 exhibits extremely explosive behaviour.
+Given that the error term \(1 + \epsilon_t\) should always be positive, the range of values of this error term becomes \((0.7, \infty)\), meaning that whatever error the model makes, the state will not decrease by more than 30\% (i.e.~\(1 - 0.7 = 0.3\)). However, its increase is not bounded by anything, and if we observe an outlier, for example, so that \(1+\epsilon_t=4\) (actual value is four times larger than the expected one), the update of state upwards will be \(0.7 + 0.3 \times 4 = 1.9\), 90\% up in comparison with the previous value. Furthermore, this increase is linear: the higher the outlier is, the stronger the state reacts to it, without a chance to come back to the previous level as fast. This behaviour becomes especially harmful for the trend component, which can jump from being equal to 1 to 1.9 in just one observation. And the multiplicative trend with the slope of 1.9 is especially dangerous in forecasting, because it exhibits extremely explosive behaviour.
 
 To make the model more balanced and less reactive to positive outliers, we need to reformulate it, for example, to:
 \begin{equation*}
@@ -3862,18 +3862,7 @@ To make the model more balanced and less reactive to positive outliers, we need 
     \end{aligned} .
     \label{eq:ETSMReformulation}
 \end{equation*}
-This model essentially is the additive model applied to the data in logarithms. The effect of the error term on the states in this model is more balanced. If we take the same value of \(\alpha=0.3\), the range of values of the error term \((1 + \epsilon_t)^\alpha\) is \((0, \infty)\). Furthermore, because of the raising to a power of \(\alpha\), the effect of outliers on the states will be diminished. Figure \ref{fig:errorEffects} shows the effect of errors on the states with different values of error.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{alpha }\OtherTok{\textless{}{-}} \FloatTok{0.3}
-\FunctionTok{plot}\NormalTok{(}\FunctionTok{seq}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{4}\NormalTok{,}\FloatTok{0.05}\NormalTok{),}\DecValTok{1}\SpecialCharTok{{-}}\NormalTok{alpha}\SpecialCharTok{+}\NormalTok{alpha}\SpecialCharTok{*}\FunctionTok{seq}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{4}\NormalTok{,}\FloatTok{0.05}\NormalTok{), }\AttributeTok{type=}\StringTok{"l"}\NormalTok{,}
-     \AttributeTok{ylim=}\FunctionTok{c}\NormalTok{(}\DecValTok{0}\NormalTok{, }\DecValTok{2}\NormalTok{), }\AttributeTok{ylab=}\StringTok{"Effect of the error"}\NormalTok{, }\AttributeTok{xlab=}\StringTok{"Error values"}\NormalTok{,}
-     \AttributeTok{col=}\StringTok{"lightblue3"}\NormalTok{, }\AttributeTok{lwd=}\DecValTok{2}\NormalTok{)}
-\FunctionTok{lines}\NormalTok{(}\FunctionTok{seq}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{4}\NormalTok{,}\FloatTok{0.005}\NormalTok{), }\FunctionTok{seq}\NormalTok{(}\DecValTok{0}\NormalTok{,}\DecValTok{4}\NormalTok{,}\FloatTok{0.005}\NormalTok{)}\SpecialCharTok{\^{}}\NormalTok{alpha,}
-      \AttributeTok{col=}\StringTok{"blue3"}\NormalTok{, }\AttributeTok{lwd=}\DecValTok{2}\NormalTok{, }\AttributeTok{lty=}\DecValTok{2}\NormalTok{)}
-\end{Highlighting}
-\end{Shaded}
+This model is equivalent to \eqref{eq:ETSADAMMMMLogsEquivalent} and is essentially the additive model applied to the data in logarithms. The effect of the error term on the states in this model is more balanced. If we take the same value of \(\alpha=0.3\), the range of values of the error term \((1 + \epsilon_t)^\alpha\) is \((0, \infty)\). Furthermore, because of the raising to a power of \(\alpha\), the effect of outliers on the states will be diminished with the increase of its value. Figure \ref{fig:errorEffects} shows the effect of errors on the states with different values of error.
 
 \begin{figure}
 \centering
@@ -3887,12 +3876,12 @@ More generally, this model can be expressed as:
   \begin{aligned}
         \log y_t = & \mathbf{w}^\prime \log(\mathbf{v}_{t-\boldsymbol{l}}) + \log(1 + \epsilon_{t}) \\
         \log \mathbf{v}_{t} = & \mathbf{F} \log \mathbf{v}_{t-\boldsymbol{l}} + \mathbf{g} \log(1 + \epsilon_t)
-  \end{aligned}.
+  \end{aligned},
   \label{eq:ETSADAMStateSpacePureMultiplicativeAlternative}
 \end{equation}
-In addition to the advantages discussed above, this model also has simpler recursive relation than the one in Subsection \ref{adamETSPuremultiplicativeRecursive}, has closed forms for the h-steps ahead expectation and variance, which can be used for the calculation of the multistep point forecasts and construction of the parametric prediction intervals.
+using the same notations as before. Furthermore, in addition to the advantages discussed above, this model also has simpler recursive relation than the one in Subsection \ref{adamETSPuremultiplicativeRecursive} (they will be similar to the ones discussed in Subsection \ref{adamETSPureAdditiveRecursive}), and has closed forms for the h-steps ahead expectation and variance, which can be used for the calculation of the multistep point forecasts and construction of the parametric prediction intervals.
 
-Having said that, as of the 1st December 2024, this model is not yet implemented in ADAM.
+Having said that, as of the 1st December 2024, this model is not yet implemented in the \texttt{adam()} function from the \texttt{smooth} package.
 
 \hypertarget{ADAMETSMultiplicativeExamples}{%
 \section{Examples of application}\label{ADAMETSMultiplicativeExamples}}
@@ -3910,7 +3899,7 @@ We continue our examples with the same Box-Jenkins sales data by fitting the ETS
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.04 seconds
+## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(MMN)
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
@@ -4051,7 +4040,7 @@ After running the command above we might get a warning, saying that the model ha
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.11 seconds
+## Time elapsed: 0.12 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
@@ -6305,7 +6294,7 @@ The ETS model closest to the logSARIMA(1,1,2)(0,1,1)\(_{12}\) would probably be 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.11 seconds
+## Time elapsed: 0.12 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
@@ -6336,7 +6325,7 @@ Comparing information criteria, Log-ARIMA should be preferred to ETS(M,M,M). Sim
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.45 seconds
+## Time elapsed: 0.31 seconds
 ## Model estimated using adam() function: SARIMA(1,1,2)[1](0,1,1)[12]
 ## With optimal initialisation
 ## Distribution assumed in the model: Log-Normal
@@ -6812,7 +6801,7 @@ This simple model already does a fine job fitting the data and producing forecas
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.09 seconds
+## Time elapsed: 0.1 seconds
 ## Model estimated using adam() function: ETS(MNM)
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
@@ -6926,7 +6915,7 @@ In our specific case, the difference between the ETSX and ETSX\{D\} models is in
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.14 seconds
+## Time elapsed: 1.17 seconds
 ## Model estimated using adam() function: ETSX(MNM){D}
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
@@ -7947,7 +7936,7 @@ Hopefully, after several iterations, we will get a better estimates of parameter
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.05 seconds
+## Time elapsed: 0.06 seconds
 ## Model estimated using adam() function: ETS(AAN)+ARIMA(2,0,0)
 ## With optimal initialisation
 ## Distribution assumed in the model: Normal
@@ -8213,7 +8202,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.55 seconds
+## Time elapsed: 0.56 seconds
 ## Model estimated using adam() function: ETS(MNM)[48, 336]
 ## With backcasting initialisation
 ## Distribution assumed in the model: Gamma
@@ -8235,7 +8224,7 @@ First, it is ADAM ETS(M,N,M) with \texttt{lags=c(48,7*48)}:
 ## MASE: 1.662; RMSSE: 1.238; rMAE: 0.162; rRMSE: 0.143
 \end{verbatim}
 
-As we see from the output above, the model was constructed in 0.55 seconds. Notice that the seasonal smoothing parameters are relatively high in this model. For example, the second \(\gamma\) is equal to 0.5213, which means that the model adapts the seasonal profile to the data substantially (takes 52.13\% of the error from the previous observation in it). Furthermore, the smoothing parameter \(\alpha\) is equal to 0.3298, which is also potentially too high, given that we have well-behaved data and that we deal with a multiplicative model. This might indicate that the model overfits the data. To see if this is the case, we can produce the plot of components over time (Figure \ref{fig:adamModelETSMNM12}).
+As we see from the output above, the model was constructed in 0.56 seconds. Notice that the seasonal smoothing parameters are relatively high in this model. For example, the second \(\gamma\) is equal to 0.5213, which means that the model adapts the seasonal profile to the data substantially (takes 52.13\% of the error from the previous observation in it). Furthermore, the smoothing parameter \(\alpha\) is equal to 0.3298, which is also potentially too high, given that we have well-behaved data and that we deal with a multiplicative model. This might indicate that the model overfits the data. To see if this is the case, we can produce the plot of components over time (Figure \ref{fig:adamModelETSMNM12}).
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -8518,7 +8507,7 @@ Another model we can try on this data is Multiple Seasonal ARIMA. We have not ye
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.18 seconds
+## Time elapsed: 0.29 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## With backcasting initialisation
 ## Distribution assumed in the model: Normal
@@ -8566,7 +8555,7 @@ Figure \ref{fig:adamARIMAQQPlot} shows that the empirical distribution of residu
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.39 seconds
+## Time elapsed: 0.27 seconds
 ## Model estimated using adam() function: SARIMA(0,1,1)[1](0,1,1)[336]
 ## With backcasting initialisation
 ## Distribution assumed in the model: Generalised Normal with shape=0.9722
@@ -9564,7 +9553,7 @@ Depending on the generated data, there might be issues in the ETS(M,Md,N) model 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.09 seconds
+## Time elapsed: 0.08 seconds
 ## Model estimated using adam() function: iARIMA(1,1,2)[D]
 ## With optimal initialisation
 ## Occurrence model type: Direct
@@ -10956,7 +10945,7 @@ The function \texttt{auto.adam()} implements this automatic selection of distrib
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.83 seconds
+## Time elapsed: 1.82 seconds
 ## Model estimated using auto.adam() function: ETS(MMN)
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
@@ -11057,7 +11046,7 @@ Here is an example with an automatically selected ETS model using the branch-and
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 1.06 seconds
+## Time elapsed: 1.05 seconds
 ## Model estimated using adam() function: ETS(MAM)
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
@@ -11162,7 +11151,7 @@ Based on the relation between ARIMA and ETS (see Section \ref{ARIMAandETS}), we 
 \end{Shaded}
 
 \begin{verbatim}
-## Time elapsed: 0.56 seconds
+## Time elapsed: 0.57 seconds
 ## Model estimated using auto.adam() function: ETS(MMM)
 ## With backcasting initialisation
 ## Distribution assumed in the model: Gamma
@@ -11691,7 +11680,7 @@ Here is an example of how the function works on the data above -- it is possible
 
 \begin{verbatim}
 ## Bootstrap for the adam model with nsim=1000 using dsr method
-## Time elapsed: 2.5 seconds
+## Time elapsed: 2.52 seconds
 \end{verbatim}
 
 The covariance matrix can then be extracted from the result via \texttt{adamETSBJBoot\$vcov}. The same procedure is used in the \texttt{vcov()} method if \texttt{bootstrap=TRUE}:
