@@ -2,7 +2,7 @@
 In this chapter, we consider case studies, demonstrating how ADAM can be used for specific tasks. At the moment, we only have one case study: number of visitors of the [openforecast.org](https://www.openforecast.org) blog.
 
 ## Openforecast.org blog visits
-For this example, we consider statistics of the number of visitors of the [openforecast.org](https://www.openforecast.org) blog. This statistics does not include the visits to the online monographs published on the website and only focuses on the Wordpress blog, which has existed since 2015. It started as a blog with materials written in Russian but then slowly but surely has started focusing on the international audience. The [statistics was collected](http://top.mail.ru/jump?from=2629777) by a Russian service "Mail.RU" via a counter at the bottom of the website. Although the audience has changed over the years, the recent (10th October 2024) data tells that the largest group of visitors (18.38%) still comes from Russia, which is mainly because I have several pages on basics of forecasting in Russian language. I downloaded the data in csv files, aggregated it to daily level, and as a result got a 3502 observations of my website visitors.
+For this example, we consider statistics of the number of visitors of the [openforecast.org](https://www.openforecast.org) blog. This statistics does not include the visits to the online monographs published on the website and only focuses on the Wordpress blog, which has existed since 2015. It started as a blog with materials written in Russian but then slowly but surely has started focusing on the international audience. The [statistics was collected](http://top.mail.ru/jump?from=2629777) by a Russian service "Mail.RU" via a counter at the bottom of the website. Although the audience has changed over the years, the recent (10th October 2024) data tells that the largest group of visitors (18.38%) still comes from Russia, which is mainly because I have several pages on basics of forecasting in Russian language. I downloaded the data in csv files, aggregated it to daily level, and as a result got 3502 observations of my website visitors.
 
 A thing to note is that whenever I publish posts, I usually advertise them on LinkedIn and they are also reposted automatically on [R-bloggers](https://www.r-bloggers.com/). This boosts the number of visitors, but typically does not change the core audience.
 
@@ -79,6 +79,56 @@ Summarising this basic visual analysis, there are several characteristics that w
 5. Special events (R-bloggers and LinkedIn posts).
 
 Based on this we can construct ETS(M,N,M), ETSX(M,N,M), logARIMA(0,1,1)(0,1,1), logARIMAX(0,1,1)(0,1,1), and multiplicative regression. Comparing these models will allow us to choose the most suitable for the data.
+
+
+### Getting explanatory variables
+Before we move to the forecasting and the initialisation, we need to make sure that we have all the necessary features (calendar effects and promotions) to work with. We start with calendar effects. To better investigate what calendar effects might have effect on the number of visitors, I do decomposition using the `msdecompose()` function for one year of data (2022), specifying the frequency of 7 only:
+
+```{r}
+# Add 7 to have exactly 365 fitted values. Otherwise, we would loose them
+# because of the simple moving average
+openForecast2022Decompose <- msdecompose(openForecastVisits[2475+1:365+7],
+                                         lags=c(7), type="m")
+```
+
+After that, we produce the deseasonalised series:
+
+```{r}
+# Record the dates
+openForecast2022Time <- time(openForecastVisits)[2475+1:365+7]
+# Get multiply level by error to get the deseasonalised series
+(openForecast2022Decompose$states[,1] *
+    exp(resid(openForecast2022Decompose))) |> 
+    zoo(order.by=openForecast2022Time) -> 
+    openForecast2022Deseas
+```
+
+and plot it to be able to see the possible effects clearer (Figure \@ref(fig:openForecast2022Deseas)):
+
+```{r openForecast2022Deseas, fig.cap="Deseasonalised series of visits in 2022."}
+# Plot the series
+plot(openForecast2022Deseas, type="l", ylab="Visits")
+# Mark potential important dates
+# Catholic Christmas
+abline(v=as.Date(c("2021-12-23")):as.Date(c("2021-12-25")),
+       col=rgb(0.5,0.8,0.5,0.5), lwd=2)
+# Russian New Year holidays
+abline(v=as.Date(c("2021-12-29")):as.Date(c("2022-01-07")),
+       col=rgb(1,0.5,0.5,0.5), lwd=2)
+# May holidays
+abline(v=as.Date(c("2022-05-01")):as.Date(c("2022-05-10")),
+       col=rgb(0.5,0.5,0.8,0.5), lwd=2)
+# Misc public holidays
+abline(v=as.Date(c("2022-02-23","2022-03-08",
+                   "2022-06-13","2022-11-04")),
+       col=rgb(0.8,0.5,0.8,0.5), lwd=2)
+```
+
+In Figure \@ref(fig:openForecast2022Deseas), we are not interested in peaks (they happen because of promotions), but instead we want to see troughs caused by potential holidays. The main apparent effect in Figure \@ref(fig:openForecast2022Deseas) is the dip in January 2022. This is because the website has lots of visitors from ex-soviet countries (Russia, Belarus, Ukraine and others), and there, the first week in January is typically the week of holidays. The May holidays show also a potential decline in visitors number and are worth investigating. Some of the other holidays have effect as well, but this will need to be investigated more thoroughly.
+
+I created a table with categorical variable for the public holidays for the whole period and saved it in the same file in github under the name `openForecastHolidays`.
+
+
 
 
 ### The evaluation
