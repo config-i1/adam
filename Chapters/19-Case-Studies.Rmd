@@ -14,7 +14,7 @@ As I usually say, forecasting and analytics need to be done to inform decisions.
 
 To answer these questions, I decided to use ADAM, compare it with several simple models to decide what works better and what can give me a better answer.
 
-### The data
+### Preliminary analysis
 
 ```{r echo=FALSE}
 load("data/openForecastVisits.Rdata")
@@ -35,27 +35,32 @@ plot(openForecastVisits, ylab="Visitors")
 The thing that is easily noticeable is the number of outliers in the data. These were caused by reposts on R-bloggers and LinkedIn. On the other hand, the seasonality is hard to spot in Figure \@ref(fig:openForecastVisitsPlot) because of the sheer number of observations. To see it clearer, we can plot a specific part of the data:
 
 ```{r openForecastVisits56, fig.cap="8 weeks of data from the whole time series}
-plot(openForecastVisits[1:56+3000], ylab="Visitors")
+plot(openForecastVisits[3000+1:56], ylab="Visitors")
 ```
 
-Figure \@ref(fig:openForecastVisits56) shows that there is a pattern that repeats itself every 7 days: on weekends people tend not to visit the website, while on workweek they do that more often. The seasonality is multiplicative because we can see the increase of the fluctuations in Figure \@ref(fig:openForecastVisits) with the increase of the level of data.
+Figure \@ref(fig:openForecastVisits56) shows that there is a pattern that repeats itself every 7 days: on weekends people tend not to visit the website, while on work week they do that more often. The seasonality is multiplicative because we can see the increase of the fluctuations in Figure \@ref(fig:openForecastVisits) with the increase of the level of data.
 
-But that's not all, because in addition to that, there are also calendar effects in the data, which make sense: when there are Christmas and New Year holidays, people do not want to read about forecasting and statistics, they tend to do other things. One way to spot this in our data is to aggregate it to monthly level and produce a seasonal plot (I use here `seasplot()` function from the `tsutils` package by @R-tsutils):
+But that's not all, because in addition to that, there is also seasonal pattern and calendar effects in the data, which make sense:
+
+1. In Summer, people are on holidays and have other things to do than reading about forecasting;
+2. when there are Christmas and New Year holidays, people also tend not to read about forecasting and statistics.
+
+One way to spot this in our data is to aggregate it to weekly level and produce a seasonal plot (I use here `seasplot()` function from the `tsutils` package by @R-tsutils):
 
 ```{r openForecastVisitsWeekly, fig.cap="Seasonal plot for the weekly viitors of the blog."}
-# Load xts, which allows easily aggreting data
+# Load xts, which allows easily aggregating data
 library(xts)
 # Aggregate to weekly
 openForecastVisitsWeekly <- apply.weekly(openForecastVisits, sum)
-# Produce a seasonal plot
-tsutils::seasplot(openForecastVisitsWeekly, m=52)
+# Produce a seasonal plot, set trend=TRUE, because we had changes in data
+tsutils::seasplot(openForecastVisitsWeekly, m=52, trend=TRUE)
 ```
 
-We can spot that there is a decline for weeks 18 - 30 in Figure \@ref(fig:openForecastVisitsWeekly) and then another one around week 45. The first one is due to Summer holidays, the second one is because of Christmas.
+We can spot that there is a decline between the weeks 18 - 30 in Figure \@ref(fig:openForecastVisitsWeekly) and then another one around week 45. The first one is due to Summer holidays, the second one is because of Christmas.
 
-Finally, while there was an increase in the number of visitors over the first few years, it stabilised after 2021 and started slowing down. The increase itself is not very rapid, so we can get away with a level model (no trend). This becomes more apparent if we add a smooth line to the linear graph from Figure \@ref(fig:openForecastVisits) (see Figure \@ref(fig:openForecastVisitsLOWESS)):
+Finally, while there was an increase in the number of visitors over the first few years, it stabilised after 2021 and started slowing down. The increase itself is not very rapid, so we can get away with a level model (no trend). This becomes more apparent if we add a smooth line to the linear graph from Figure \@ref(fig:openForecastVisits) (see Figure \@ref(fig:openForecastVisitsSmooth)):
 
-```{r openForecastVisitsLOWESS, fig.cap="Original data and its smoothed values via LOWESS."}
+```{r openForecastVisitsSmooth, fig.cap="Original data and its smoothed values via Friedman's super smoother."}
 plot(openForecastVisits, ylab="Visitors")
 # Use Friedman's Super Smoother
 lines(time(openForecastVisits),
@@ -65,16 +70,29 @@ lines(time(openForecastVisits),
 
 Summarising this basic visual analysis, there are several characteristics that we should take into account in our model:
 
-1. Multiplicative seasonality;
+1. Multiplicative seasonality:
+    - Day of week pattern,
+    - Day of year or week of year pattern;
 2. Multiplicative error (variance increases together with the level of data);
 3. No trend;
-4. Calendar events (Summer holidays, Christmas, Easter?);
+4. Calendar events (Christmas, New Year, Easter?);
 5. Special events (R-bloggers and LinkedIn posts).
 
 Based on this we can construct ETS(M,N,M), ETSX(M,N,M), logARIMA(0,1,1)(0,1,1), logARIMAX(0,1,1)(0,1,1), and multiplicative regression. Comparing these models will allow us to choose the most suitable for the data.
 
 
 ### The evaluation
-Given the amount of data, we can do rolling origin evaluation (from Section \@ref(rollingOrigin)) to select the most robust model. To see how they perform, I will use RMSE and ME. I will produce the forecasts for horizon of 7 days because I need to select the most suitable day for the post over the next week.
+Given the amount of data, we can do rolling origin evaluation (from Section \@ref(rollingOrigin)) to select the most robust model. I will do this for the last year of data and will produce forecasts for each week ahead from each Sunday (rolling origin step of 7). To see how models perform, I will use RMSE and ME. I will produce the forecasts for horizon of 7 days because I need to select the most suitable day for the post over the next week.
+
+For this example, I will use the `ro()` function from the `greybox` package in R [@R-greybox] v2.0.3, which has all the necessary features I need. I will have a fixed out-of-sample and an increasing in-sample, meaning that I will set `co=TRUE`, `ci=FALSE`. The following setting will give us almost a year of data for the holdout:
+
+```{r}
+origins <- 52
+step <- 7
+h <- 7
+
+# Check the size of the holdout sample
+origins*step + (h-step)
+```
 
 
