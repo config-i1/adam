@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>9.5 Examples of application | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM)</title>
   <meta name="description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in the smooth package for R." />
-  <meta name="generator" content="bookdown 0.40 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.42 and GitBook 2.6.7" />
 
   <meta property="og:title" content="9.5 Examples of application | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM)" />
   <meta property="og:type" content="book" />
@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2025-02-12" />
+<meta name="date" content="2025-04-08" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -621,7 +621,7 @@ div.csl-indent {
 \)
 <div id="ADAMARIMAExamples" class="section level2 hasAnchor" number="9.5">
 <h2><span class="header-section-number">9.5</span> Examples of application<a href="ADAMARIMAExamples.html#ADAMARIMAExamples" class="anchor-section" aria-label="Anchor link to header"></a></h2>
-<p>Building upon the example with <code>AirPassengers</code> data from Section <a href="ARIMAExampleInR.html#ARIMAExampleInRSeasonal">8.5.2</a>, we will construct several multiplicative ARIMA models and see which one is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(1,1,1)<span class="math inline">\(_{12}\)</span>, which had AICc of 1035.196. We will do something similar here, using Log-Normal distribution, thus working with Log-ARIMA. To understand what model can be used in this case, we can take the logarithm of data and see what happens with the components of time series:</p>
+<p>Building upon the example with <code>AirPassengers</code> data from Section <a href="ARIMAExampleInR.html#ARIMAExampleInRSeasonal">8.5.2</a>, we will construct several multiplicative ARIMA models and see which one is the most appropriate for the data. As a reminder, the best additive ARIMA model was SARIMA(0,2,2)(1,1,1)<span class="math inline">\(_{12}\)</span>, which had AICc of 1057.905. We will do something similar here, using Log-Normal distribution, thus working with Log-ARIMA. To understand what model can be used in this case, we can take the logarithm of data and see what happens with the components of time series:</p>
 <div class="sourceCode" id="cb144"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb144-1"><a href="ADAMARIMAExamples.html#cb144-1" tabindex="-1"></a><span class="fu">log</span>(AirPassengers) <span class="sc">|&gt;</span> <span class="fu">plot</span>()</span></code></pre></div>
 <p><img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/unnamed-chunk-59-1.png" width="672" /></p>
 <p>We still have the trend in the data, and the seasonality now corresponds to the additive rather than the multiplicative (as expected). While we might still need the second differences for the non-seasonal part of the model, taking the first differences for the seasonal should suffice because the logarithmic transform will take care of the expanding seasonal pattern in the data. So we can test several models with different options for ARIMA orders:</p>
@@ -647,9 +647,9 @@ div.csl-indent {
 <p>The thing that is different between the models is the non-seasonal part. Using the connection with ETS (discussed in Section <a href="ARIMAandETS.html#ARIMAandETS">8.4</a>), the first model should work on local level data, the second should be optimal for the local trend series, and the third one is placed somewhere in between the two. We can compare the models using AICc:</p>
 <div class="sourceCode" id="cb146"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb146-1"><a href="ADAMARIMAExamples.html#cb146-1" tabindex="-1"></a><span class="fu">sapply</span>(adamLogSARIMAAir, AICc)</span></code></pre></div>
 <pre><code>## logSARIMA(0,1,1)(0,1,1)[12] logSARIMA(0,2,2)(0,1,1)[12] 
-##                    988.6863                   1310.5471 
+##                    989.0600                   1246.9493 
 ## logSARIMA(1,1,2)(0,1,1)[12] 
-##                    983.6632</code></pre>
+##                    985.6385</code></pre>
 <p>It looks like the logSARIMA(1,1,2)(0,1,1)<span class="math inline">\(_{12}\)</span> is more appropriate for the data. In order to make sure that we did not miss anything, we analyse the residuals of this model (Figure <a href="ADAMARIMAExamples.html#fig:logSARIMAACF">9.1</a>):</p>
 <div class="sourceCode" id="cb148"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb148-1"><a href="ADAMARIMAExamples.html#cb148-1" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">2</span>,<span class="dv">1</span>))</span>
 <span id="cb148-2"><a href="ADAMARIMAExamples.html#cb148-2" tabindex="-1"></a><span class="fu">plot</span>(adamLogSARIMAAir[[<span class="dv">3</span>]], <span class="at">which=</span><span class="dv">10</span><span class="sc">:</span><span class="dv">11</span>)</span></code></pre></div>
@@ -672,7 +672,7 @@ Figure 9.2: Forecast from logSARIMA(1,1,2)(0,1,1)<span class="math inline">\(_{1
 <p>The ETS model closest to the logSARIMA(1,1,2)(0,1,1)<span class="math inline">\(_{12}\)</span> would probably be ETS(M,M,M), because the former has both seasonal and non-seasonal differences (see discussion in Subsection <a href="ARIMAandETS.html#ARIMAETSOther">8.4.4</a>):</p>
 <div class="sourceCode" id="cb150"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb150-1"><a href="ADAMARIMAExamples.html#cb150-1" tabindex="-1"></a>adamETSAir <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MMM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
 <span id="cb150-2"><a href="ADAMARIMAExamples.html#cb150-2" tabindex="-1"></a>adamETSAir</span></code></pre></div>
-<pre><code>## Time elapsed: 0.11 seconds
+<pre><code>## Time elapsed: 0.13 seconds
 ## Model estimated using adam() function: ETS(MMM)
 ## With optimal initialisation
 ## Distribution assumed in the model: Gamma
@@ -694,29 +694,29 @@ Figure 9.2: Forecast from logSARIMA(1,1,2)(0,1,1)<span class="math inline">\(_{1
 ## MASE: 0.777; RMSSE: 0.753; rMAE: 0.246; rRMSE: 0.229</code></pre>
 <p>Comparing information criteria, Log-ARIMA should be preferred to ETS(M,M,M). Similar conclusion is achieved if we compare holdout accuracy (based on RMSSE) of the two models:</p>
 <div class="sourceCode" id="cb152"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb152-1"><a href="ADAMARIMAExamples.html#cb152-1" tabindex="-1"></a>adamLogSARIMAAir[[<span class="dv">3</span>]]</span></code></pre></div>
-<pre><code>## Time elapsed: 0.31 seconds
+<pre><code>## Time elapsed: 0.3 seconds
 ## Model estimated using adam() function: SARIMA(1,1,2)[1](0,1,1)[12]
 ## With optimal initialisation
 ## Distribution assumed in the model: Log-Normal
-## Loss function type: likelihood; Loss function value: 469.4387
+## Loss function type: likelihood; Loss function value: 470.4264
 ## ARMA parameters of the model:
 ##         Lag 1
-## AR(1) -0.4546
+## AR(1) -0.6404
 ##         Lag 1  Lag 12
-## MA(1)  0.1243 -0.5919
-## MA(2) -0.0541      NA
+## MA(1)  0.3649 -0.5821
+## MA(2) -0.0783      NA
 ## 
 ## Sample size: 132
 ## Number of estimated parameters: 19
 ## Number of degrees of freedom: 113
 ## Information criteria:
 ##       AIC      AICc       BIC      BICc 
-##  976.8775  983.6632 1031.6507 1048.2174 
+##  978.8528  985.6385 1033.6260 1050.1926 
 ## 
 ## Forecast errors:
-## ME: -12.767; MAE: 13.653; RMSE: 18.998
-## sCE: -58.363%; Asymmetry: -92%; sMAE: 5.201%; sMSE: 0.524%
-## MASE: 0.567; RMSSE: 0.606; rMAE: 0.18; rRMSE: 0.184</code></pre>
+## ME: -13.367; MAE: 14.199; RMSE: 19.405
+## sCE: -61.11%; Asymmetry: -92.5%; sMAE: 5.409%; sMSE: 0.546%
+## MASE: 0.59; RMSSE: 0.619; rMAE: 0.187; rRMSE: 0.188</code></pre>
 <p>To get a better idea about the holdout performance of the two models, we would need to apply them in the rolling origin fashion (Section <a href="rollingOrigin.html#rollingOrigin">2.4</a>), collect a distribution of errors, and then decide, which one to choose.</p>
 
 </div>
@@ -742,42 +742,42 @@ Figure 9.2: Forecast from logSARIMA(1,1,2)(0,1,1)<span class="math inline">\(_{1
 <script>
 gitbook.require(["gitbook"], function(gitbook) {
 gitbook.start({
-"sharing": {
-"github": false,
-"facebook": true,
-"twitter": true,
-"linkedin": false,
-"weibo": false,
-"instapaper": false,
-"vk": false,
-"whatsapp": false,
-"all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
-},
-"fontsettings": {
-"theme": "white",
-"family": "sans",
-"size": 2
-},
-"edit": {
-"link": "https://github.com/config-i1/adam/tree/master/Chapters//09-ADAM-ARIMA-State-Space.Rmd",
-"text": "Edit"
-},
-"history": {
-"link": null,
-"text": null
-},
-"view": {
-"link": null,
-"text": null
-},
-"download": null,
-"search": {
-"engine": "fuse",
-"options": null
-},
-"toc": {
-"collapse": "section"
-}
+  "sharing": {
+    "github": false,
+    "facebook": true,
+    "twitter": true,
+    "linkedin": false,
+    "weibo": false,
+    "instapaper": false,
+    "vk": false,
+    "whatsapp": false,
+    "all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
+  },
+  "fontsettings": {
+    "theme": "white",
+    "family": "sans",
+    "size": 2
+  },
+  "edit": {
+    "link": "https://github.com/config-i1/adam/tree/master/Chapters//09-ADAM-ARIMA-State-Space.Rmd",
+    "text": "Edit"
+  },
+  "history": {
+    "link": null,
+    "text": null
+  },
+  "view": {
+    "link": null,
+    "text": null
+  },
+  "download": null,
+  "search": {
+    "engine": "fuse",
+    "options": null
+  },
+  "toc": {
+    "collapse": "section"
+  }
 });
 });
 </script>
