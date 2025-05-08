@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2025-04-08" />
+<meta name="date" content="2025-05-08" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -725,7 +725,7 @@ The new values of <span class="math inline">\(\mathbf{v}_t\)</span> for <span cl
 </div>
 <div id="starting-optimisation-of-arima-states" class="section level3 hasAnchor" number="11.4.4">
 <h3><span class="header-section-number">11.4.4</span> Starting optimisation of ARIMA states<a href="ADAMInitialisation.html#starting-optimisation-of-arima-states" class="anchor-section" aria-label="Anchor link to header"></a></h3>
-<p>ADAM ARIMA models have as many states as the number of polynomials <span class="math inline">\(K\)</span> (see Subsection <a href="StateSpaceARIMA.html#StateSpaceARIMAAdditive">9.1.2</a>). Each state <span class="math inline">\(v_{i,t}\)</span> needs to be initialised with <span class="math inline">\(i\)</span> values (e.g. 1 for the first state, 2 for the second, etc). This leads in general to more initial values for states than the SSARIMA from <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019">2020</a>)</span>: <span class="math inline">\(\frac{K(K+1)}{2}\)</span> instead of <span class="math inline">\(K\)</span>. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or by propagating <span class="math inline">\(K\)</span> initial values to all the states using the formula for the transition equation @ref{eq:MSARIMATransition}:
+<p>ADAM ARIMA models have as many states as the number of polynomials <span class="math inline">\(K\)</span> (see Subsection <a href="StateSpaceARIMA.html#StateSpaceARIMAAdditive">9.1.2</a>). Each state <span class="math inline">\(v_{i,t}\)</span> needs to be initialised with <span class="math inline">\(i\)</span> values (e.g. 1 for the first state, 2 for the second, etc). This leads in general to more initial values for states than the SSARIMA from <span class="citation">Svetunkov and Boylan (<a href="#ref-Svetunkov2019">2020</a>)</span>: <span class="math inline">\(\frac{K(K+1)}{2}\)</span> instead of <span class="math inline">\(K\)</span>. However, we can reduce the number of initial seeds to estimate either by using a different initialisation procedure (e.g. backcasting) or by propagating <span class="math inline">\(K\)</span> initial values to all the states using the formula for the transition equation <a href="StateSpaceARIMA.html#eq:MSARIMATransition">(9.7)</a>:
 <span class="math display">\[\begin{equation*}
   v_{i,t} = \eta_i \sum_{j=1}^K B_{j} + (\eta_i + \psi_i) \epsilon_{t}.
 \end{equation*}\]</span>
@@ -756,10 +756,8 @@ Using this approach, the optimisier will find some optimal values of <span class
 <div class="sourceCode" id="cb190"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb190-1"><a href="ADAMInitialisation.html#cb190-1" tabindex="-1"></a>adamETSBJ <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;AAN&quot;</span>, <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">0</span>))</span></code></pre></div>
 <p>The function will return the vector of parameters in the form it was used by the optimiser:</p>
 <div class="sourceCode" id="cb191"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb191-1"><a href="ADAMInitialisation.html#cb191-1" tabindex="-1"></a>adamETSBJ<span class="sc">$</span>B</span></code></pre></div>
-<pre><code>##        alpha         beta      phi1[1]      phi2[1]        level        trend 
-##   0.35599284   0.18725749   0.72535123   0.27394992 203.58337120   0.06576924 
-##  ARIMAState1  ARIMAState2 
-##  -2.60296042  28.44884218</code></pre>
+<pre><code>##     alpha      beta   phi1[1]   phi2[1] 
+## 0.3503263 0.1793033 0.7391483 0.2602031</code></pre>
 <p>It can be amended to help the optimiser if we have an idea of what values we should have or just reused again to get to better set of values:</p>
 <div class="sourceCode" id="cb193"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb193-1"><a href="ADAMInitialisation.html#cb193-1" tabindex="-1"></a>adamETSBJ <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="st">&quot;AAN&quot;</span>, <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">0</span>),</span>
 <span id="cb193-2"><a href="ADAMInitialisation.html#cb193-2" tabindex="-1"></a>                  <span class="at">B=</span>adamETSBJ<span class="sc">$</span>B)</span></code></pre></div>
@@ -769,26 +767,26 @@ Using this approach, the optimisier will find some optimal values of <span class
 <p>Similar output is saved in <code>adamETSBJ$res</code>, so that you can access it to understand how the optimisation went.</p>
 <p>Hopefully, after several iterations, we will get a better estimates of parameters of the model:</p>
 <div class="sourceCode" id="cb195"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb195-1"><a href="ADAMInitialisation.html#cb195-1" tabindex="-1"></a>adamETSBJ</span></code></pre></div>
-<pre><code>## Time elapsed: 0.05 seconds
+<pre><code>## Time elapsed: 0.03 seconds
 ## Model estimated using adam() function: ETS(AAN)+ARIMA(2,0,0)
-## With optimal initialisation
+## With backcasting initialisation
 ## Distribution assumed in the model: Normal
-## Loss function type: likelihood; Loss function value: 258.2003
+## Loss function type: likelihood; Loss function value: 258.3503
 ## Persistence vector g:
 ##  alpha   beta 
-## 0.3227 0.1916 
+## 0.3372 0.1901 
 ## 
 ## ARMA parameters of the model:
 ##        Lag 1
-## AR(1) 0.7508
-## AR(2) 0.2487
+## AR(1) 0.7390
+## AR(2) 0.2609
 ## 
 ## Sample size: 150
-## Number of estimated parameters: 9
-## Number of degrees of freedom: 141
+## Number of estimated parameters: 5
+## Number of degrees of freedom: 145
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 534.4005 535.6862 561.4962 564.7174</code></pre>
+## 526.7007 527.1173 541.7538 542.7977</code></pre>
 <p>Given that we are trying the ETS+ARIMA model, we can use backcasting, which should help the optimiser by reducing the number of estimated parameters:</p>
 <div class="sourceCode" id="cb197"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb197-1"><a href="ADAMInitialisation.html#cb197-1" tabindex="-1"></a><span class="fu">adam</span>(BJsales, <span class="st">&quot;AAN&quot;</span>, <span class="at">orders=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">0</span>,<span class="dv">0</span>),</span>
 <span id="cb197-2"><a href="ADAMInitialisation.html#cb197-2" tabindex="-1"></a>     <span class="at">initial=</span><span class="st">&quot;backcasting&quot;</span>)</span></code></pre></div>
