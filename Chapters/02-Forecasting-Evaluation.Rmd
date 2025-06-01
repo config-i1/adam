@@ -36,6 +36,10 @@ It assumes that the actual values and the forecasts are positive, and it is **mi
 
 The main difference in the three measures arises when the data we deal with is not symmetric -- in that case, the arithmetic, geometric means, and median will all be different. Thus, the error measures might recommend different methods depending on what specifically is produced as a point forecast from the model (see discussion in Section \@ref(typesOfForecastsPoint)).
 
+::: remark
+If all your approaches rely on symmetric distributions for the error term (e.g. Normal), the mean and median will coincide. In that case, it becomes unimportant, whether you use MAE or RMSE for forecasts evaluation.
+:::
+
 ### An example in R
 In order to see how the error measures work, we consider the following example based on a couple of forecasting functions from the `smooth` package for R [@Hyndman2008b; @Svetunkov2015] and measures from `greybox`:
 ```{r eval=FALSE}
@@ -91,6 +95,10 @@ The main advantage of the error measures discussed in the previous subsection is
 
 To tackle this issue, different error scaling techniques have been proposed, resulting in a zoo of error measures:
 
+::: remark
+Here, I show the principles of scaling, which can be applied to any fundamental measure: MAE, RMSE, RMSLE etc.
+:::
+
 1. MAPE -- Mean Absolute Percentage Error:
 \begin{equation}
     \mathrm{MAPE} = \frac{1}{h} \sum_{j=1}^h \frac{|y_{t+j} -\hat{y}_{t+j}|}{y_{t+j}},
@@ -129,7 +137,7 @@ There is no "best" error measure. All have advantages and disadvantages, but som
 
 When comparing different forecasting methods, it might make sense to calculate several error measures for comparison. The choice of metric might depend on the specific needs of the forecaster. Here are a few rules of thumb:
 
-- You should typically avoid MAPE and other percentage error measures because the actual values highly influence them in the holdout;
+- You should typically **avoid MAPE and other percentage error measures** because the actual values highly influence them in the holdout;
 - If you want a robust measure that works consistently, but you do not care about the interpretation, then go with MASE;
 - If you want an interpretation, go with rMAE or sMAE. Just keep in mind that if you decide to use rMAE or any other relative measure for research purposes, you might get in an unnecessary dispute with its creator, who might blame you of stealing his creation (even if you reference his work);
 - If the data does not exhibit trends (stationary), you can use sMAE.
@@ -570,9 +578,9 @@ Well, we should not make hasty decisions, and we should remember that we are dea
 
 We can **compare means** of distributions of errors using a parametric statistical test. We can try the F-test [see, for example Section 10.4 of @Newbold2020], which will tell us whether the mean performance of methods is similar or not. Unfortunately, this will not tell us how the methods compare. But the t-test [see Chapter 10 of @Newbold2020] could be used to do that instead for pairwise comparison. One could also use a regression model with dummy variables for methods, giving us parameters and their confidence intervals (based on t-statistics), telling us how the means of methods compare. However, F-test, t-test, and t-statistics from regression rely on strong assumptions related to the distribution of the means of error measures [that it is symmetric, so that the Central Limit Theorem (CLT) works, see discussion in Section 6.2 of @SvetunkovSBA]. If we had a large sample (e.g. a thousand series) and well-behaved distribution, we could try it, hoping that the CLT would work and might get something relatively meaningful. However, on 100 observations, this still could be an issue, especially given that the distribution of error measures is typically asymmetric (the estimate of the mean might be biased, which leads to many issues).
 
-Alternatively, we can **compare medians** of distributions of errors. They are robust to outliers, so their estimates should not be too biased in case of skewed distributions on smaller samples. To have a general understanding of performance (is everything the same or is there at least one method that performs differently), we could try the Friedman test [@Friedman1937], which could be considered a nonparametric alternative of the F-test. This should work in our case but will not tell us how specifically the methods compare. We could try the Wilcoxon signed-ranks test [@Wilcoxon1945], which could be considered a nonparametric counterpart of the t-test. However, it only applies to two variables, while we want to compare four.
+Alternatively, we can **compare medians** of distributions of errors. They are robust to outliers, so their estimates should not be too biased in case of skewed distributions on smaller samples. To have a general understanding of performance (is everything the same or is there at least one method that performs differently), we could try the Friedman test [@Friedman1937], which could be considered a nonparametric alternative of the F-test. This should work in our case but will not tell us how specifically the methods compare. We could try the Wilcoxon signed-ranks test [@Wilcoxon1945], which could be considered a nonparametric counterpart of the t-test, although it tests the so-called "statistical dominance" of one variable versus the other [i.e. not comparing medians, see Chapter 8 of @SvetunkovSBA]. But the main issues with it is that it only applies to two variables, while we want to compare four.
 
-Luckily, there is the Nemenyi/MCB test [@Demsar2006; @KourentzesWeb2012; @Koning2005]. What the test does, is it ranks the performance of methods for each time series and then takes the mean of those ranks and produces confidence bounds for those means. The means of ranks correspond to the medians, so by using this test, we compare the medians of errors of different methods. If the confidence bounds for different methods intersect, we can conclude that the medians are not different from a statistical point of view. Otherwise, we can see which of the methods has a higher rank and which has the lower one. There are different ways to present the test results, and there are several R functions that implement it, including `nemenyi()` from the `tsutils` package. However, we will use the function `rmcb()` from the `greybox`, which has more flexible plotting capabilities, supporting all the default parameters for the `plot()` method.
+Luckily, there is the Nemenyi/MCB test [@Demsar2006; @KourentzesWeb2012; @Koning2005]. What the test does, is it ranks the performance of methods for each time series and then takes the mean of those ranks and produces confidence bounds for those means. The means of ranks will capture the overal statistical dominance of one approach above the others. If the confidence bounds for different methods intersect, we can conclude that the performance of methods is not different from a statistical point of view (on the selected significance level). Otherwise, we can see which of the methods has a higher rank and which has the lower one. There are different ways to present the test results, and there are several R functions that implement it, including `nemenyi()` from the `tsutils` package. However, we will use the function `rmcb()` from the `greybox`, which has more flexible plotting capabilities, supporting all the default parameters for the `plot()` method.
 
 ```{r eval=FALSE}
 rmcb(smallCompetition, outplot="none") |>
