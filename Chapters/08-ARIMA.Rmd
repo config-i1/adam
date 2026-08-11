@@ -86,7 +86,8 @@ No matter what the forecast trajectory of the AR model is, it will asymptoticall
 An example of an AR(3) time series generated using the `sim.ssarima()` function from the `smooth` package and a forecast for it via `msarima()` is shown in Figure \@ref(fig:ARExample).
 
 ```{r ARExample, fig.cap="An example of an AR(3) series and a forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
-x <- sim.ssarima(orders=list(ar=3), lags=1, obs=120, AR=c(0.9, -0.7, 0.6), initial=c(10,15,20), mean=0, sd=10)
+x <- sim.ssarima(orders=list(ar=3), lags=1, obs=120, arma=list(ar=c(0.9, -0.7, 0.6)),
+                 initial=c(10,15,20), mean=0, sd=10)
 msarima(x$data, orders=list(ar=3), constant=FALSE,
         h=10, holdout=TRUE) |>
     forecast(interval="pred") |>
@@ -124,7 +125,8 @@ where $\theta_i$ is the parameters for the $i$-th lag of the error term, typical
 An example of an MA(3) time series and a forecast for it is shown in Figure \@ref(fig:MAExample).
 
 ```{r MAExample, fig.cap="An example of an MA(3) series and forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
-x <- sim.ssarima(orders=list(ma=3), lags=1, obs=120, MA=c(0.9, -0.3, -0.6), initial=c(10,10,5), mean=0, sd=10)
+x <- sim.ssarima(orders=list(ma=3), lags=1, obs=120, arma=list(ma=c(0.9, -0.3, -0.6)),
+                 initial=c(10,10,5), mean=0, sd=10)
 msarima(x$data, orders=list(ma=3), constant=FALSE,
         h=10, holdout=TRUE) |>
     forecast(interval="pred") |>
@@ -175,8 +177,9 @@ The model \@ref(eq:ARIMAp0qCompact) can be considered a compact form of \@ref(eq
 Figure \@ref(fig:ARMAExample) shows an example of an ARMA(3,3) series with a forecast from it.
 
 ```{r ARMAExample, fig.cap="An example of an ARMA(3,3) series and a forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
-x <- sim.ssarima(orders=list(ar=3, ma=3), lags=1, obs=120, AR=c(0.9, -0.7, 0.6),
-                 MA=c(0.9, -0.3, -0.6), initial=c(10,10,5), mean=0, sd=10)
+x <- sim.ssarima(orders=list(ar=3, ma=3), lags=1, obs=120,
+                 arma=list(ar=c(0.9, -0.7, 0.6), ma=c(0.9, -0.3, -0.6)),
+                 initial=c(10,10,5), mean=0, sd=10)
 msarima(x$data, orders=list(ar=3, ma=3), constant=FALSE,
         h=10, holdout=TRUE) |>
     forecast(interval="pred") |>
@@ -234,8 +237,9 @@ The more complicated ARMA(p,q) models with p>1 will have more complex trajectori
 An example of time series generated from ARMA(3,3) with constant is provided in Figure \@ref(fig:ARMAConstExample).
 
 ```{r ARMAConstExample, fig.cap="An example of an ARMA(3,3) with constant series and a forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
-x <- sim.ssarima(orders=list(ar=3, ma=3), lags=1, obs=120, AR=c(0.9, -0.8, 0.3),
-                 MA=c(0.7, -0.3, 0.6), initial=c(300,-150,80), constant=200, mean=0, sd=10)
+x <- sim.ssarima(orders=list(ar=3, ma=3), lags=1, obs=120,
+                 arma=list(ar=c(0.9, -0.8, 0.3), ma=c(0.7, -0.3, 0.6)),
+                 initial=c(300,-150,80), constant=200, mean=0, sd=10)
 msarima(x$data, orders=list(ar=3, ma=3), constant=TRUE,
         h=10, holdout=TRUE) |>
     forecast(interval="parametric") |>
@@ -351,7 +355,7 @@ The model \@ref(eq:ARIMApdq) is difficult to interpret in a general form, but op
 Figure \@ref(fig:ARIMA112Example) demonstrates how data would look if it was generated from ARIMA(1,1,2) and how the forecasts would look if the same model ARIMA(1,1,2) was applied to the data. Because of the AR(1) term in the model, its forecast trajectory is dampening, similar to how it was done in the ETS(A,Ad,N) model.
 
 ```{r ARIMA112Example, fig.cap="An example of ARIMA(1,1,2) data and a forecast for it.", fig.width=5, fig.height=4, echo=FALSE}
-x <- sim.ssarima(orders=list(ar=1,i=1,ma=2), lags=1, obs=120, AR=0.7, initial=c(500, -350),
+x <- sim.ssarima(orders=list(ar=1,i=1,ma=2), lags=1, obs=120, arma=list(ar=0.7), initial=c(500, -350),
             mean=0, sd=10)
 msarima(x$data, orders=list(ar=1,i=1,ma=2), constant=FALSE, initial="back",
         AR=x$AR, MA=x$MA, h=10, holdout=TRUE) |>
@@ -716,7 +720,7 @@ Figure \@ref(fig:acfpacfExampleAR1) shows the plot of the data and ACF/PACF for 
 load("data/armaExamples.Rdata")
 # xAR1 <- sim.ssarima(list(ar=1,i=0,ma=0),obs=120,AR=0.9,initial=10)$data
 layout(matrix(c(1,2,1,3),2,2))
-ssarima(xAR1, orders=c(1,0,0), AR=0.9, h=20, holdout=TRUE) |>
+ssarima(xAR1, orders=c(1,0,0), arma=0.9, h=20, holdout=TRUE) |>
     forecast(interval="parametric", h=20) |>
     plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
 par(mar=c(4,4,0,2))
@@ -733,7 +737,7 @@ A similar idea is shown in Figure \@ref(fig:acfpacfExampleAR2) for an AR(2) proc
 ```{r acfpacfExampleAR2, fig.cap="AR(2) process with $\\phi_1=0.9$ and $\\phi_2=-0.4$.", echo=FALSE}
 # xAR2 <- sim.ssarima(list(ar=2,i=0,ma=0),obs=120,AR=c(0.9,-0.4),initial=c(10,-5))$data
 layout(matrix(c(1,2,1,3),2,2))
-ssarima(xAR2, orders=c(2,0,0), AR=c(0.9,-0.4), h=20, holdout=TRUE) |>
+ssarima(xAR2, orders=c(2,0,0), arma=c(0.9,-0.4), h=20, holdout=TRUE) |>
     forecast(interval="parametric", h=20) |>
     plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
 par(mar=c(4,4,0,2))
@@ -746,7 +750,7 @@ Similar plots but with different behaviours of ACF and PACF can be shown for MA(
 ```{r acfpacfExampleMA2, fig.cap="MA(2) process with $\\theta_1=-0.9$ and $\\theta_2=0.8$.", echo=FALSE}
 # xMA2 <- sim.ssarima(list(ar=0,i=0,ma=2),obs=120,MA=maValues,initial=c(10,-5))$data
 layout(matrix(c(1,2,1,3),2,2))
-ssarima(xMA2, orders=c(0,0,2), MA=c(-0.9,0.8), h=20, holdout=TRUE) |>
+ssarima(xMA2, orders=c(0,0,2), arma=c(-0.9,0.8), h=20, holdout=TRUE) |>
     forecast(interval="parametric", h=20) |>
     plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
 forecast::Acf(xMA2, main="")
@@ -758,7 +762,9 @@ To make things even more complicated, we present similar plots for an ARMA(2,2) 
 ```{r acfpacfExampleARMA22, fig.cap="ARMA(2,2) process with $\\phi_1=0.9, \\phi_2=-0.4$, $\\theta_1=-0.9$ and $\\theta_2=0.8$.", echo=FALSE}
 # xARMA22 <- sim.ssarima(list(ar=2,i=0,ma=2),obs=120,MA=maValues,AR=c(0.9,-0.4),initial=c(10,-5))$data
 layout(matrix(c(1,2,1,3),2,2))
-ssarima(xARMA22, orders=c(2,0,2), AR=c(0.9,-0.4), MA=c(-0.9,0.8), h=20, holdout=TRUE) |>
+ssarima(xARMA22, orders=c(2,0,2),
+        arma=list(ar=c(0.9,-0.4), ma=c(-0.9,0.8)),
+        h=20, holdout=TRUE) |>
     forecast(interval="parametric", h=20) |>
     plot(legend=FALSE, parReset=FALSE, ylab="Data", xlab="Time")
 forecast::Acf(xARMA22, main="")

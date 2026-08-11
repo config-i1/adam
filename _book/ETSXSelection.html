@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>15.3 Explanatory variables selection | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM) - v2</title>
   <meta name="description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in the smooth package for R." />
-  <meta name="generator" content="bookdown 0.44 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.47 and GitBook 2.6.7" />
 
   <meta property="og:title" content="15.3 Explanatory variables selection | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM) - v2" />
   <meta property="og:type" content="book" />
@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2025-12-02" />
+<meta name="date" content="2026-08-11" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -54,8 +54,6 @@
 <script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
 <script src="libs/kePrint-0.0.1/kePrint.js"></script>
 <link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
-<link href="libs/bsTable-3.3.7/bootstrapTable.min.css" rel="stylesheet" />
-<script src="libs/bsTable-3.3.7/bootstrapTable.js"></script>
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XH37Z8VYP8"></script>
 <script>
@@ -65,11 +63,83 @@
 
   gtag('config', 'G-XH37Z8VYP8');
 </script>
+<style>
+.of-booknav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 8px 18px;
+  background: #ffffff;
+  border-bottom: 2px solid #AE1921;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.of-booknav__logo img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.of-booknav a {
+  color: #222222;
+  text-decoration: none;
+}
+
+.of-booknav__links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.of-booknav__links a:hover {
+  color: #AE1921;
+  text-decoration: underline;
+}
+
+/* Push the book's own chrome down so the bar does not overlap it */
+body { padding-top: 46px !important; }
+.book .book-summary { top: 46px !important; }
+.book .book-body { top: 46px !important; }
+
+@media (max-width: 767px) {
+  .of-booknav { font-size: 13px; gap: 12px; padding: 6px 12px; }
+  .of-booknav__links { gap: 12px; }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var nav = document.createElement("div");
+  nav.className = "of-booknav";
+  nav.innerHTML =
+    '<a class="of-booknav__logo" href="https://openforecast.org/">' +
+      '<img src="https://openforecast.org/wp-content/uploads/2026/07/cropped-of-logo-full.png" alt="OpenForecast">' +
+    '</a>' +
+    '<nav class="of-booknav__links">' +
+      '<a href="https://openforecast.org/">Home</a>' +
+      '<a href="https://openforecast.org/blog/">Blog</a>' +
+      '<a href="https://openforecast.org/training/">Training</a>' +
+      '<a href="https://openforecast.org/packages/">Packages</a>' +
+      '<a href="https://openforecast.org/resources/">Resources</a>' +
+      '<a href="https://openforecast.org/contact-us/">Contact us</a>' +
+    '</nav>';
+  document.body.insertBefore(nav, document.body.firstChild);
+});
+</script>
 
 
 <style type="text/css">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -79,7 +149,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
   { counter-reset: source-line 0; }
@@ -661,57 +731,67 @@ div.csl-indent {
 <p>In R, step (3) is done using the <code>stepwise()</code> function from the <code>greybox</code> package, supporting all the distributions implemented in ADAM. The only thing that needs to be modified is the number of degrees of freedom: the function should consider all estimated parameters (including the number of parameters of the dynamic part). This is done internally via the <code>df</code> parameter in <code>stepwise()</code>.</p>
 <p>While the suggested approach has obvious limitations (e.g. smoothing parameters can be higher than needed, explaining the variability otherwise explained by variables), it is efficient in terms of computational time.</p>
 <p>To see how it works, we use SeatBelt data:</p>
-<div class="sourceCode" id="cb337"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb337-1"><a href="ETSXSelection.html#cb337-1" tabindex="-1"></a>SeatbeltsData <span class="ot">&lt;-</span> Seatbelts[,<span class="fu">c</span>(<span class="st">&quot;drivers&quot;</span>,<span class="st">&quot;kms&quot;</span>,<span class="st">&quot;PetrolPrice&quot;</span>,<span class="st">&quot;law&quot;</span>)]</span></code></pre></div>
+<div class="sourceCode" id="cb341"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb341-1"><a href="ETSXSelection.html#cb341-1" tabindex="-1"></a>SeatbeltsData <span class="ot">&lt;-</span> Seatbelts[,<span class="fu">c</span>(<span class="st">&quot;drivers&quot;</span>,<span class="st">&quot;kms&quot;</span>,<span class="st">&quot;PetrolPrice&quot;</span>,<span class="st">&quot;law&quot;</span>)]</span></code></pre></div>
 <p>We have already had a look at this data earlier in Section <a href="ETSXRExample.html#ETSXRExample">10.6</a>, so we can move directly to the selection part:</p>
-<div class="sourceCode" id="cb338"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb338-1"><a href="ETSXSelection.html#cb338-1" tabindex="-1"></a>adamETSXMNMSelectSeat <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
-<span id="cb338-2"><a href="ETSXSelection.html#cb338-2" tabindex="-1"></a>                              <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb338-3"><a href="ETSXSelection.html#cb338-3" tabindex="-1"></a>                              <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
-<span id="cb338-4"><a href="ETSXSelection.html#cb338-4" tabindex="-1"></a><span class="fu">summary</span>(adamETSXMNMSelectSeat)</span></code></pre></div>
+<div class="sourceCode" id="cb342"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb342-1"><a href="ETSXSelection.html#cb342-1" tabindex="-1"></a>adamETSXMNMSelectSeat <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
+<span id="cb342-2"><a href="ETSXSelection.html#cb342-2" tabindex="-1"></a>                              <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb342-3"><a href="ETSXSelection.html#cb342-3" tabindex="-1"></a>                              <span class="at">regressors=</span><span class="st">&quot;select&quot;</span>)</span>
+<span id="cb342-4"><a href="ETSXSelection.html#cb342-4" tabindex="-1"></a><span class="fu">summary</span>(adamETSXMNMSelectSeat)</span></code></pre></div>
+<pre><code>## Warning: The OPG covariance could not be computed for this model (unsupported parameter type or numerical failure); falling
+## back to the Hessian-based covariance.</code></pre>
+<pre><code>## Warning: Observed Fisher Information is not positive semi-definite, which might mean that the likelihood was not maximised
+## properly. There&#39;s not much I can do with that. Just keep in mind that there might be some issues with the covariance matrix
+## of parameters.</code></pre>
 <pre><code>## 
 ## Model estimated using adam() function: ETSX(MNM)
 ## Response variable: drivers
 ## Distribution used in the estimation: Gamma
-## Loss function type: likelihood; Loss function value: 1121.8
+## Loss function type: likelihood; Loss function value: 1117.48
 ## Coefficients:
 ##       Estimate Std. Error Lower 2.5% Upper 97.5%  
-## alpha   0.2756     0.0812     0.1153      0.4359 *
-## gamma   0.0408     0.0209     0.0000      0.0821  
-## law    -0.2413     0.0552    -0.3501     -0.1325 *
+## alpha   0.2875     0.0717     0.1459      0.4289 *
+## gamma   0.0000     0.0497     0.0000      0.0981  
+## law    -0.2326     0.0509    -0.3331     -0.1323 *
 ## 
-## Error standard deviation: 0.0744
+## Error standard deviation: 0.0751
 ## Sample size: 180
-## Number of estimated parameters: 4
-## Number of degrees of freedom: 176
+## Number of estimated parameters: 16
+## Number of degrees of freedom: 164
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 2251.601 2251.829 2264.373 2264.966</code></pre>
+## 2266.959 2270.297 2318.047 2326.712</code></pre>
 <div class="remark">
 <p><span id="unlabeled-div-51" class="remark"><em>Remark</em>. </span>The <code>summary()</code> method might complain about the observed Fisher Information. This only means that the estimated variances of parameters might be lower than they should be in reality. This is discussed in Section <a href="ADAMUncertaintyVCOV.html#ADAMUncertaintyVCOV">16.2</a>.</p>
 </div>
 <p>Based on the summary from the model, we can see that neither <code>kms</code> nor <code>PetrolPrice</code> improve the model in terms of AICc (they were not included in the model). We could check them manually to see if the selection worked out well in our case (construct sink regression as a benchmark):</p>
-<div class="sourceCode" id="cb340"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb340-1"><a href="ETSXSelection.html#cb340-1" tabindex="-1"></a>adamETSXMNMSinkSeat <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
-<span id="cb340-2"><a href="ETSXSelection.html#cb340-2" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb340-3"><a href="ETSXSelection.html#cb340-3" tabindex="-1"></a><span class="fu">summary</span>(adamETSXMNMSinkSeat)</span></code></pre></div>
+<div class="sourceCode" id="cb346"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb346-1"><a href="ETSXSelection.html#cb346-1" tabindex="-1"></a>adamETSXMNMSinkSeat <span class="ot">&lt;-</span> <span class="fu">adam</span>(SeatbeltsData, <span class="st">&quot;MNM&quot;</span>,</span>
+<span id="cb346-2"><a href="ETSXSelection.html#cb346-2" tabindex="-1"></a>                            <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
+<span id="cb346-3"><a href="ETSXSelection.html#cb346-3" tabindex="-1"></a><span class="fu">summary</span>(adamETSXMNMSinkSeat)</span></code></pre></div>
+<pre><code>## Warning: The OPG covariance could not be computed for this model (unsupported parameter type or numerical failure); falling
+## back to the Hessian-based covariance.</code></pre>
+<pre><code>## Warning: Observed Fisher Information is not positive semi-definite, which might mean that the likelihood was not maximised
+## properly. There&#39;s not much I can do with that. Just keep in mind that there might be some issues with the covariance matrix
+## of parameters.</code></pre>
 <pre><code>## 
 ## Model estimated using adam() function: ETSX(MNM)
 ## Response variable: drivers
 ## Distribution used in the estimation: Gamma
-## Loss function type: likelihood; Loss function value: 1117.048
+## Loss function type: likelihood; Loss function value: 1113.965
 ## Coefficients:
 ##             Estimate Std. Error Lower 2.5% Upper 97.5%  
-## alpha         0.1852     0.1308     0.0000      0.4431  
-## gamma         0.0390     0.0246     0.0000      0.0874  
+## alpha         0.1972     0.0905     0.0185      0.3755 *
+## gamma         0.0000     0.0654     0.0000      0.1289  
 ## kms           0.0000     0.0000     0.0000      0.0000  
-## PetrolPrice  -2.6042     2.5397    -7.6167      2.4061  
-## law          -0.2412     0.0527    -0.3451     -0.1373 *
+## PetrolPrice  -2.6479     1.0963    -4.8127     -0.4860 *
+## law          -0.2334     0.0466    -0.3255     -0.1415 *
 ## 
-## Error standard deviation: 0.073
+## Error standard deviation: 0.0742
 ## Sample size: 180
-## Number of estimated parameters: 6
-## Number of degrees of freedom: 174
+## Number of estimated parameters: 18
+## Number of degrees of freedom: 162
 ## Information criteria:
 ##      AIC     AICc      BIC     BICc 
-## 2246.096 2246.581 2265.253 2266.514</code></pre>
+## 2263.931 2268.179 2321.404 2332.435</code></pre>
 <p>We can see that the sink regression model has a higher AICc value than the model with the selected variables, which means that the latter is closer to the “true model”. While <code>adamETSXMNMSelectSeat</code> might not be the best possible model in terms of information criteria, it is still a reasonable one and can be used for further inference.</p>
 </div>
 <h3>References<a href="references.html#references" class="anchor-section" aria-label="Anchor link to header"></a></h3>

@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>14.5 Residuals are i.i.d.: Autocorrelation | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM) - v2</title>
   <meta name="description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in the smooth package for R." />
-  <meta name="generator" content="bookdown 0.44 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.47 and GitBook 2.6.7" />
 
   <meta property="og:title" content="14.5 Residuals are i.i.d.: Autocorrelation | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM) - v2" />
   <meta property="og:type" content="book" />
@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2025-12-02" />
+<meta name="date" content="2026-08-11" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -54,8 +54,6 @@
 <script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
 <script src="libs/kePrint-0.0.1/kePrint.js"></script>
 <link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
-<link href="libs/bsTable-3.3.7/bootstrapTable.min.css" rel="stylesheet" />
-<script src="libs/bsTable-3.3.7/bootstrapTable.js"></script>
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XH37Z8VYP8"></script>
 <script>
@@ -65,11 +63,83 @@
 
   gtag('config', 'G-XH37Z8VYP8');
 </script>
+<style>
+.of-booknav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 8px 18px;
+  background: #ffffff;
+  border-bottom: 2px solid #AE1921;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.of-booknav__logo img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.of-booknav a {
+  color: #222222;
+  text-decoration: none;
+}
+
+.of-booknav__links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.of-booknav__links a:hover {
+  color: #AE1921;
+  text-decoration: underline;
+}
+
+/* Push the book's own chrome down so the bar does not overlap it */
+body { padding-top: 46px !important; }
+.book .book-summary { top: 46px !important; }
+.book .book-body { top: 46px !important; }
+
+@media (max-width: 767px) {
+  .of-booknav { font-size: 13px; gap: 12px; padding: 6px 12px; }
+  .of-booknav__links { gap: 12px; }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var nav = document.createElement("div");
+  nav.className = "of-booknav";
+  nav.innerHTML =
+    '<a class="of-booknav__logo" href="https://openforecast.org/">' +
+      '<img src="https://openforecast.org/wp-content/uploads/2026/07/cropped-of-logo-full.png" alt="OpenForecast">' +
+    '</a>' +
+    '<nav class="of-booknav__links">' +
+      '<a href="https://openforecast.org/">Home</a>' +
+      '<a href="https://openforecast.org/blog/">Blog</a>' +
+      '<a href="https://openforecast.org/training/">Training</a>' +
+      '<a href="https://openforecast.org/packages/">Packages</a>' +
+      '<a href="https://openforecast.org/resources/">Resources</a>' +
+      '<a href="https://openforecast.org/contact-us/">Contact us</a>' +
+    '</nav>';
+  document.body.insertBefore(nav, document.body.firstChild);
+});
+</script>
 
 
 <style type="text/css">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -79,7 +149,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
   { counter-reset: source-line 0; }
@@ -645,12 +715,12 @@ div.csl-indent {
 <h2><span class="header-section-number">14.5</span> Residuals are i.i.d.: Autocorrelation<a href="diagnosticsResidualsIIDAuto.html#diagnosticsResidualsIIDAuto" class="anchor-section" aria-label="Anchor link to header"></a></h2>
 <p>One of the typical characteristics of time series models is the dynamic relation between variables. Even if fundamentally, the sales of ice cream on Monday do not impact sales of the same ice cream on Tuesday, they might impact sales of a competing product on Tuesday, Wednesday, or next week. Missing this structure might lead to the autocorrelation of residuals, influencing the estimates of parameters and final forecasts. This can influence the prediction intervals (causing miscalibration) and in serious cases can lead to biased forecasts. Autocorrelations might also arise due to wrong transformations of variables, where the model would systematically underforecast the actuals, producing autocorrelated residuals. In this section, we will see one of the potential ways for the diagnostics of this issue and try to improve the model in a stepwise manner, adding different orders of the ARIMA model (Section <a href="ADAMARIMA.html#ADAMARIMA">9</a>).</p>
 <p>As an example, we continue with the same seatbelts data, dropping the dynamic part to see what would happen in this case:</p>
-<div class="sourceCode" id="cb286"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb286-1"><a href="diagnosticsResidualsIIDAuto.html#cb286-1" tabindex="-1"></a>adamSeat09 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;NNN&quot;</span>, <span class="at">lags=</span><span class="dv">12</span>,</span>
-<span id="cb286-2"><a href="diagnosticsResidualsIIDAuto.html#cb286-2" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law)</span>
-<span id="cb286-3"><a href="diagnosticsResidualsIIDAuto.html#cb286-3" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat09)</span></code></pre></div>
+<div class="sourceCode" id="cb289"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb289-1"><a href="diagnosticsResidualsIIDAuto.html#cb289-1" tabindex="-1"></a>adamSeat09 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts, <span class="st">&quot;NNN&quot;</span>, <span class="at">lags=</span><span class="dv">12</span>,</span>
+<span id="cb289-2"><a href="diagnosticsResidualsIIDAuto.html#cb289-2" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law)</span>
+<span id="cb289-3"><a href="diagnosticsResidualsIIDAuto.html#cb289-3" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat09)</span></code></pre></div>
 <pre><code>## [1] 2651.191</code></pre>
 <p>There are different ways to diagnose the autocorrelation in this model. We start with a basic plot of residuals over time (Figure <a href="diagnosticsResidualsIIDAuto.html#fig:adamSeat09ResidvsTime">14.16</a>):</p>
-<div class="sourceCode" id="cb288"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb288-1"><a href="diagnosticsResidualsIIDAuto.html#cb288-1" tabindex="-1"></a><span class="fu">plot</span>(adamSeat09, <span class="at">which=</span><span class="dv">8</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb291"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb291-1"><a href="diagnosticsResidualsIIDAuto.html#cb291-1" tabindex="-1"></a><span class="fu">plot</span>(adamSeat09, <span class="at">which=</span><span class="dv">8</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamSeat09ResidvsTime"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamSeat09ResidvsTime-1.png" alt="Standardised residuals vs time for Model 9." width="672" />
 <p class="caption">
@@ -658,17 +728,18 @@ Figure 14.16: Standardised residuals vs time for Model 9.
 </p>
 </div>
 <p>We see in Figure <a href="diagnosticsResidualsIIDAuto.html#fig:adamSeat09ResidvsTime">14.16</a> that on one hand the residuals still contain seasonality and on the other, they do not look stationary. We could conduct ADF and/or KPSS tests to get a formal answer to the stationarity question:</p>
-<div class="sourceCode" id="cb289"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb289-1"><a href="diagnosticsResidualsIIDAuto.html#cb289-1" tabindex="-1"></a>adamSeat09 <span class="sc">|&gt;</span> <span class="fu">resid</span>() <span class="sc">|&gt;</span> tseries<span class="sc">::</span><span class="fu">kpss.test</span>()</span></code></pre></div>
-<pre><code>## Warning in tseries::kpss.test(resid(adamSeat09)): p-value greater than printed
-## p-value</code></pre>
+<div class="sourceCode" id="cb292"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb292-1"><a href="diagnosticsResidualsIIDAuto.html#cb292-1" tabindex="-1"></a>adamSeat09 <span class="sc">|&gt;</span> <span class="fu">resid</span>() <span class="sc">|&gt;</span> tseries<span class="sc">::</span><span class="fu">kpss.test</span>()</span></code></pre></div>
+<pre><code>## Registered S3 method overwritten by &#39;quantmod&#39;:
+##   method            from
+##   as.zoo.data.frame zoo</code></pre>
+<pre><code>## Warning in tseries::kpss.test(resid(adamSeat09)): p-value greater than printed p-value</code></pre>
 <pre><code>## 
 ##  KPSS Test for Level Stationarity
 ## 
 ## data:  resid(adamSeat09)
 ## KPSS Level = 0.12844, Truncation lag parameter = 4, p-value = 0.1</code></pre>
-<div class="sourceCode" id="cb292"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb292-1"><a href="diagnosticsResidualsIIDAuto.html#cb292-1" tabindex="-1"></a>adamSeat09 <span class="sc">|&gt;</span> <span class="fu">resid</span>() <span class="sc">|&gt;</span> tseries<span class="sc">::</span><span class="fu">adf.test</span>()</span></code></pre></div>
-<pre><code>## Warning in tseries::adf.test(resid(adamSeat09)): p-value smaller than printed
-## p-value</code></pre>
+<div class="sourceCode" id="cb296"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb296-1"><a href="diagnosticsResidualsIIDAuto.html#cb296-1" tabindex="-1"></a>adamSeat09 <span class="sc">|&gt;</span> <span class="fu">resid</span>() <span class="sc">|&gt;</span> tseries<span class="sc">::</span><span class="fu">adf.test</span>()</span></code></pre></div>
+<pre><code>## Warning in tseries::adf.test(resid(adamSeat09)): p-value smaller than printed p-value</code></pre>
 <pre><code>## 
 ##  Augmented Dickey-Fuller Test
 ## 
@@ -676,17 +747,17 @@ Figure 14.16: Standardised residuals vs time for Model 9.
 ## Dickey-Fuller = -6.8851, Lag order = 5, p-value = 0.01
 ## alternative hypothesis: stationary</code></pre>
 <p>The tests have opposite null hypotheses, and in our case, we would fail to reject H<span class="math inline">\(_0\)</span> on a 1% significance level for the KPSS test and reject H<span class="math inline">\(_0\)</span> on the same level for the ADF, which means that the residuals look stationary. The main problem in the residuals is the seasonality, which formally makes the residuals non-stationary (their mean changes from month to month), but which cannot be detected by these tests. Yes, there is a Canova-Hansen test (implemented in the <code>ch.test</code> function of the <code>uroot</code> package in R), which tests the seasonal unit root, but instead of trying it out and coming to conclusions, I will try the model in seasonal differences and see if it is better than the one without it:</p>
-<div class="sourceCode" id="cb295"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb295-1"><a href="diagnosticsResidualsIIDAuto.html#cb295-1" tabindex="-1"></a><span class="co"># SARIMAX(0,0,0)(0,1,0)_12</span></span>
-<span id="cb295-2"><a href="diagnosticsResidualsIIDAuto.html#cb295-2" tabindex="-1"></a>adamSeat10 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
-<span id="cb295-3"><a href="diagnosticsResidualsIIDAuto.html#cb295-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
-<span id="cb295-4"><a href="diagnosticsResidualsIIDAuto.html#cb295-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
-<span id="cb295-5"><a href="diagnosticsResidualsIIDAuto.html#cb295-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat10)</span></code></pre></div>
-<pre><code>## [1] 2506.291</code></pre>
+<div class="sourceCode" id="cb299"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb299-1"><a href="diagnosticsResidualsIIDAuto.html#cb299-1" tabindex="-1"></a><span class="co"># SARIMAX(0,0,0)(0,1,0)_12</span></span>
+<span id="cb299-2"><a href="diagnosticsResidualsIIDAuto.html#cb299-2" tabindex="-1"></a>adamSeat10 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
+<span id="cb299-3"><a href="diagnosticsResidualsIIDAuto.html#cb299-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
+<span id="cb299-4"><a href="diagnosticsResidualsIIDAuto.html#cb299-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
+<span id="cb299-5"><a href="diagnosticsResidualsIIDAuto.html#cb299-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat10)</span></code></pre></div>
+<pre><code>## [1] 2533.186</code></pre>
 <div class="remark">
 <p><span id="unlabeled-div-48" class="remark"><em>Remark</em>. </span>While in general models in differences are not comparable with the models applied to the original data, <code>adam()</code> allows such comparison, because the ARIMA model implemented in it is initialised before the start of the sample and does not loose any observations.</p>
 </div>
 <p>This leads to an improvement in AICc in comparison with the previous model. The residuals of the model are now also better behaved (Figure <a href="diagnosticsResidualsIIDAuto.html#fig:adamSeat10ResidvsTime">14.17</a>):</p>
-<div class="sourceCode" id="cb297"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb297-1"><a href="diagnosticsResidualsIIDAuto.html#cb297-1" tabindex="-1"></a><span class="fu">plot</span>(adamSeat10, <span class="at">which=</span><span class="dv">8</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb301"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb301-1"><a href="diagnosticsResidualsIIDAuto.html#cb301-1" tabindex="-1"></a><span class="fu">plot</span>(adamSeat10, <span class="at">which=</span><span class="dv">8</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamSeat10ResidvsTime"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamSeat10ResidvsTime-1.png" alt="Standardised residuals vs time for Model 10." width="672" />
 <p class="caption">
@@ -694,8 +765,8 @@ Figure 14.17: Standardised residuals vs time for Model 10.
 </p>
 </div>
 <p>In order to see whether there are any other dynamic elements left, we plot the ACF and PACF (discussed in Subsections <a href="BJApproach.html#ACF">8.3.2</a> and <a href="BJApproach.html#PACF">8.3.3</a>) of residuals (Figure <a href="diagnosticsResidualsIIDAuto.html#fig:adamSeat10ACFPACF">14.18</a>):</p>
-<div class="sourceCode" id="cb298"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb298-1"><a href="diagnosticsResidualsIIDAuto.html#cb298-1" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">1</span>))</span>
-<span id="cb298-2"><a href="diagnosticsResidualsIIDAuto.html#cb298-2" tabindex="-1"></a><span class="fu">plot</span>(adamSeat10, <span class="at">which=</span><span class="dv">10</span><span class="sc">:</span><span class="dv">11</span>, <span class="at">level=</span><span class="fl">0.99</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb302"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb302-1"><a href="diagnosticsResidualsIIDAuto.html#cb302-1" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">1</span>,<span class="dv">1</span>))</span>
+<span id="cb302-2"><a href="diagnosticsResidualsIIDAuto.html#cb302-2" tabindex="-1"></a><span class="fu">plot</span>(adamSeat10, <span class="at">which=</span><span class="dv">10</span><span class="sc">:</span><span class="dv">11</span>, <span class="at">level=</span><span class="fl">0.99</span>, <span class="at">main=</span><span class="st">&quot;&quot;</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamSeat10ACFPACF"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamSeat10ACFPACF-1.png" alt="ACF and PACF of residuals of Model 10." width="576" />
 <p class="caption">
@@ -703,24 +774,24 @@ Figure 14.18: ACF and PACF of residuals of Model 10.
 </p>
 </div>
 <p>In the case of the <code>adam</code> objects, these plots, by default, will always have the range for the y-axis from -1 to 1 and will start from lag 1 on the x-axis. The red horizontal lines represent the “non-rejection” region. If a point lies inside the region, it is not statistically different from zero on the selected confidence <code>level</code> (the uncertainty around it is so high that it covers zero). The points with numbers are those that are statistically significantly different from zero. So, the ACF/PACF analysis might show the statistically significant lags on the selected level (the default one is 0.95, but I use <code>level=0.99</code> in this section). Given that this is a statistical instrument, we expect that approximately (1-level)% (e.g. 1%) of lags will lie outside these bounds just due to randomness, even if the null hypothesis is correct. So it is okay if we do not see all points lying inside them. However, we should not see any patterns there, and we might need to investigate the suspicious lags to improve the model (low orders of up to 3 – 5 and the seasonal lags if they appear). In our example in Figure <a href="diagnosticsResidualsIIDAuto.html#fig:adamSeat10ACFPACF">14.18</a>, we see that there are spikes in lag 12 for both ACF and PACF, which means that we have missed the seasonal element in the data. There is also a suspicious lag 1 on PACF and lags 1 and 2 on ACF, which could potentially indicate that MA(1) and/or AR(1), AR(2) elements are needed in the model. While it is not clear what specifically is needed here, we can try out several models and see which one is better to determine the appropriate order of ARIMA. We should start with the seasonal part of the model, as it is easier to deal with in the first step.</p>
-<div class="sourceCode" id="cb299"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb299-1"><a href="diagnosticsResidualsIIDAuto.html#cb299-1" tabindex="-1"></a><span class="co"># SARIMAX(0,0,0)(1,1,0)_12</span></span>
-<span id="cb299-2"><a href="diagnosticsResidualsIIDAuto.html#cb299-2" tabindex="-1"></a>adamSeat11 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
-<span id="cb299-3"><a href="diagnosticsResidualsIIDAuto.html#cb299-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
-<span id="cb299-4"><a href="diagnosticsResidualsIIDAuto.html#cb299-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
-<span id="cb299-5"><a href="diagnosticsResidualsIIDAuto.html#cb299-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat11)</span></code></pre></div>
-<pre><code>## [1] 2474.548</code></pre>
-<div class="sourceCode" id="cb301"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb301-1"><a href="diagnosticsResidualsIIDAuto.html#cb301-1" tabindex="-1"></a><span class="co"># SARIMAX(0,0,0)(0,1,1)_12</span></span>
-<span id="cb301-2"><a href="diagnosticsResidualsIIDAuto.html#cb301-2" tabindex="-1"></a>adamSeat12 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
-<span id="cb301-3"><a href="diagnosticsResidualsIIDAuto.html#cb301-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
-<span id="cb301-4"><a href="diagnosticsResidualsIIDAuto.html#cb301-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
-<span id="cb301-5"><a href="diagnosticsResidualsIIDAuto.html#cb301-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat12)</span></code></pre></div>
-<pre><code>## [1] 2464.461</code></pre>
-<div class="sourceCode" id="cb303"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb303-1"><a href="diagnosticsResidualsIIDAuto.html#cb303-1" tabindex="-1"></a><span class="co"># SARIMAX(0,0,0)(1,1,1)_12</span></span>
-<span id="cb303-2"><a href="diagnosticsResidualsIIDAuto.html#cb303-2" tabindex="-1"></a>adamSeat13 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
+<div class="sourceCode" id="cb303"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb303-1"><a href="diagnosticsResidualsIIDAuto.html#cb303-1" tabindex="-1"></a><span class="co"># SARIMAX(0,0,0)(1,1,0)_12</span></span>
+<span id="cb303-2"><a href="diagnosticsResidualsIIDAuto.html#cb303-2" tabindex="-1"></a>adamSeat11 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
 <span id="cb303-3"><a href="diagnosticsResidualsIIDAuto.html#cb303-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
-<span id="cb303-4"><a href="diagnosticsResidualsIIDAuto.html#cb303-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
-<span id="cb303-5"><a href="diagnosticsResidualsIIDAuto.html#cb303-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat13)</span></code></pre></div>
-<pre><code>## [1] 2456.01</code></pre>
+<span id="cb303-4"><a href="diagnosticsResidualsIIDAuto.html#cb303-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
+<span id="cb303-5"><a href="diagnosticsResidualsIIDAuto.html#cb303-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat11)</span></code></pre></div>
+<pre><code>## [1] 2532.967</code></pre>
+<div class="sourceCode" id="cb305"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb305-1"><a href="diagnosticsResidualsIIDAuto.html#cb305-1" tabindex="-1"></a><span class="co"># SARIMAX(0,0,0)(0,1,1)_12</span></span>
+<span id="cb305-2"><a href="diagnosticsResidualsIIDAuto.html#cb305-2" tabindex="-1"></a>adamSeat12 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
+<span id="cb305-3"><a href="diagnosticsResidualsIIDAuto.html#cb305-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
+<span id="cb305-4"><a href="diagnosticsResidualsIIDAuto.html#cb305-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
+<span id="cb305-5"><a href="diagnosticsResidualsIIDAuto.html#cb305-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat12)</span></code></pre></div>
+<pre><code>## [1] 2491.656</code></pre>
+<div class="sourceCode" id="cb307"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb307-1"><a href="diagnosticsResidualsIIDAuto.html#cb307-1" tabindex="-1"></a><span class="co"># SARIMAX(0,0,0)(1,1,1)_12</span></span>
+<span id="cb307-2"><a href="diagnosticsResidualsIIDAuto.html#cb307-2" tabindex="-1"></a>adamSeat13 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
+<span id="cb307-3"><a href="diagnosticsResidualsIIDAuto.html#cb307-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
+<span id="cb307-4"><a href="diagnosticsResidualsIIDAuto.html#cb307-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
+<span id="cb307-5"><a href="diagnosticsResidualsIIDAuto.html#cb307-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat13)</span></code></pre></div>
+<pre><code>## [1] 2515.12</code></pre>
 <p>Based on this analysis, we would be inclined to include the seasonal MA(1) only in the model. The next step in our iterative process – another ACF/PACF plot of the residuals to investigate whether there is anything else left:</p>
 <div class="figure"><span style="display:block;" id="fig:adamSeat13ACFPACF"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamSeat13ACFPACF-1.png" alt="ACF and PACF of residuals of the model 12." width="576" />
@@ -729,24 +800,24 @@ Figure 14.19: ACF and PACF of residuals of the model 12.
 </p>
 </div>
 <p>In this case, there is a spike on PACF for lag 1 and a textbook exponential decrease in ACF starting from lag 1, which might mean that we need to include AR(1) component in the model:</p>
-<div class="sourceCode" id="cb305"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb305-1"><a href="diagnosticsResidualsIIDAuto.html#cb305-1" tabindex="-1"></a><span class="co"># ARIMAX(1,0,0)(0,1,1)_12</span></span>
-<span id="cb305-2"><a href="diagnosticsResidualsIIDAuto.html#cb305-2" tabindex="-1"></a>adamSeat14 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
-<span id="cb305-3"><a href="diagnosticsResidualsIIDAuto.html#cb305-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
-<span id="cb305-4"><a href="diagnosticsResidualsIIDAuto.html#cb305-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">0</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
-<span id="cb305-5"><a href="diagnosticsResidualsIIDAuto.html#cb305-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat14)</span></code></pre></div>
-<pre><code>## [1] 2417.982</code></pre>
+<div class="sourceCode" id="cb309"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb309-1"><a href="diagnosticsResidualsIIDAuto.html#cb309-1" tabindex="-1"></a><span class="co"># ARIMAX(1,0,0)(0,1,1)_12</span></span>
+<span id="cb309-2"><a href="diagnosticsResidualsIIDAuto.html#cb309-2" tabindex="-1"></a>adamSeat14 <span class="ot">&lt;-</span> <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
+<span id="cb309-3"><a href="diagnosticsResidualsIIDAuto.html#cb309-3" tabindex="-1"></a>                   <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
+<span id="cb309-4"><a href="diagnosticsResidualsIIDAuto.html#cb309-4" tabindex="-1"></a>                   <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">0</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>)))</span>
+<span id="cb309-5"><a href="diagnosticsResidualsIIDAuto.html#cb309-5" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat14)</span></code></pre></div>
+<pre><code>## [1] 2447.947</code></pre>
 <p>Choosing between the new model and the old one, we should give preference to the former, which has a lower AICc than the previous one. So, adding AR(1) to the model leads to further improvement in AICc. Using this iterative procedure, we could continue our investigation to find the most suitable SARIMAX model for the data. We stop our discussion here, because this example should suffice in providing a general idea of how the diagnostics and the fix of autocorrelation issue can be done in ADAM. As an alternative, we could simplify the process and use the automated ARIMA selection algorithm (see discussion in Section <a href="ARIMASelection.html#ARIMASelection">15.2</a>). This is built on the principles discussed above (testing sequentially the potential orders based on ACF/PACF and AIC):</p>
-<div class="sourceCode" id="cb307"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb307-1"><a href="diagnosticsResidualsIIDAuto.html#cb307-1" tabindex="-1"></a>adamSeat15 <span class="ot">&lt;-</span></span>
-<span id="cb307-2"><a href="diagnosticsResidualsIIDAuto.html#cb307-2" tabindex="-1"></a>  <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
-<span id="cb307-3"><a href="diagnosticsResidualsIIDAuto.html#cb307-3" tabindex="-1"></a>       <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
-<span id="cb307-4"><a href="diagnosticsResidualsIIDAuto.html#cb307-4" tabindex="-1"></a>       <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">2</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">2</span>),<span class="at">select=</span><span class="cn">TRUE</span>))</span>
-<span id="cb307-5"><a href="diagnosticsResidualsIIDAuto.html#cb307-5" tabindex="-1"></a>adamSeat15<span class="sc">$</span>model</span></code></pre></div>
+<div class="sourceCode" id="cb311"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb311-1"><a href="diagnosticsResidualsIIDAuto.html#cb311-1" tabindex="-1"></a>adamSeat15 <span class="ot">&lt;-</span></span>
+<span id="cb311-2"><a href="diagnosticsResidualsIIDAuto.html#cb311-2" tabindex="-1"></a>  <span class="fu">adam</span>(Seatbelts,<span class="st">&quot;NNN&quot;</span>,<span class="at">lags=</span><span class="dv">12</span>,</span>
+<span id="cb311-3"><a href="diagnosticsResidualsIIDAuto.html#cb311-3" tabindex="-1"></a>       <span class="at">formula=</span>drivers<span class="sc">~</span><span class="fu">log</span>(PetrolPrice)<span class="sc">+</span><span class="fu">log</span>(kms)<span class="sc">+</span>law,</span>
+<span id="cb311-4"><a href="diagnosticsResidualsIIDAuto.html#cb311-4" tabindex="-1"></a>       <span class="at">orders=</span><span class="fu">list</span>(<span class="at">ar=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">2</span>),<span class="at">i=</span><span class="fu">c</span>(<span class="dv">2</span>,<span class="dv">1</span>),<span class="at">ma=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">2</span>),<span class="at">select=</span><span class="cn">TRUE</span>))</span>
+<span id="cb311-5"><a href="diagnosticsResidualsIIDAuto.html#cb311-5" tabindex="-1"></a>adamSeat15<span class="sc">$</span>model</span></code></pre></div>
 <pre><code>## [1] &quot;SARIMAX(0,1,1)[1](0,1,1)[12]&quot;</code></pre>
-<div class="sourceCode" id="cb309"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb309-1"><a href="diagnosticsResidualsIIDAuto.html#cb309-1" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat15)</span></code></pre></div>
-<pre><code>## [1] 2411.379</code></pre>
+<div class="sourceCode" id="cb313"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb313-1"><a href="diagnosticsResidualsIIDAuto.html#cb313-1" tabindex="-1"></a><span class="fu">AICc</span>(adamSeat15)</span></code></pre></div>
+<pre><code>## [1] 2441.343</code></pre>
 <p>This newly constructed model is SARIMAX(2,0,0)(0,1,1)<span class="math inline">\(_{12}\)</span>, which differs from the model that we achieved manually. Its residuals are better behaved than the ones of Model 5 (although we might need to analyse the residuals for the potential outliers, as discussed in Subsection <a href="diagnosticsOutliers.html#diagnosticsOutliers">14.4</a>):</p>
-<div class="sourceCode" id="cb311"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb311-1"><a href="diagnosticsResidualsIIDAuto.html#cb311-1" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">1</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">2</span>,<span class="dv">1</span>))</span>
-<span id="cb311-2"><a href="diagnosticsResidualsIIDAuto.html#cb311-2" tabindex="-1"></a><span class="fu">plot</span>(adamSeat15, <span class="at">which=</span><span class="fu">c</span>(<span class="dv">8</span>,<span class="dv">10</span><span class="sc">:</span><span class="dv">11</span>), <span class="at">level=</span><span class="fl">0.99</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb315"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb315-1"><a href="diagnosticsResidualsIIDAuto.html#cb315-1" tabindex="-1"></a><span class="fu">par</span>(<span class="at">mfcol=</span><span class="fu">c</span>(<span class="dv">3</span>,<span class="dv">1</span>), <span class="at">mar=</span><span class="fu">c</span>(<span class="dv">4</span>,<span class="dv">4</span>,<span class="dv">2</span>,<span class="dv">1</span>))</span>
+<span id="cb315-2"><a href="diagnosticsResidualsIIDAuto.html#cb315-2" tabindex="-1"></a><span class="fu">plot</span>(adamSeat15, <span class="at">which=</span><span class="fu">c</span>(<span class="dv">8</span>,<span class="dv">10</span><span class="sc">:</span><span class="dv">11</span>), <span class="at">level=</span><span class="fl">0.99</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamSeat16Resid"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamSeat16Resid-1.png" alt="Residuals of Model 16." width="672" />
 <p class="caption">
@@ -758,24 +829,24 @@ Figure 14.20: Residuals of Model 16.
 <h3><span class="header-section-number">14.5.1</span> Correlations of multistep forecast errors<a href="diagnosticsResidualsIIDAuto.html#diagnosticsResidualsIIDAutoMulti" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>As a reminder, the multistep forecast errors are generated by producing 1 to <span class="math inline">\(h\)</span> steps ahead forecasts from each observation in-sample starting from <span class="math inline">\(t=1\)</span> and ending with <span class="math inline">\(t=T-h\)</span> and subtracting it from the respective actual values. We have already discussed them and loss functions based on them in Section <a href="multistepLosses.html#multistepLosses">11.3</a>. They can be a useful diagnostic instrument, but they have one important property, which is sometimes ignored by researchers. In contrast with the residual <span class="math inline">\(e_t\)</span>, which is expected not to be autocorrelated, the forecast errors <span class="math inline">\(e_{t+i}\)</span> and <span class="math inline">\(e_{t+j}\)</span> for <span class="math inline">\(i \neq j\)</span> should always be correlated if the persistence matrix of the model contains non-zero values. This is discussed by <span class="citation">Svetunkov et al. (<a href="#ref-Svetunkov2020Multistep">2023a</a>)</span> who showed that the only case when the forecast errors are uncorrelated is when the model is deterministic and does not have autocorrelated residuals. The correlation between the forecast errors will be stronger the closer <span class="math inline">\(i\)</span> and <span class="math inline">\(j\)</span> are to each other (e.g. it will be stronger between <span class="math inline">\(e_{t+3}\)</span> and <span class="math inline">\(e_{t+4}\)</span> than between <span class="math inline">\(e_{t+3}\)</span> and <span class="math inline">\(e_{t+6}\)</span>).</p>
 <p>In R, the multistep forecast errors can be extracted via <code>rmultistep()</code> function from the <code>smooth</code> package. For demonstration purposes we use model 5:</p>
-<div class="sourceCode" id="cb312"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb312-1"><a href="diagnosticsResidualsIIDAuto.html#cb312-1" tabindex="-1"></a><span class="co"># Extract multistep errors</span></span>
-<span id="cb312-2"><a href="diagnosticsResidualsIIDAuto.html#cb312-2" tabindex="-1"></a>adamSeat05ResidMulti <span class="ot">&lt;-</span> <span class="fu">rmultistep</span>(adamSeat05, <span class="at">h=</span><span class="dv">10</span>)</span>
-<span id="cb312-3"><a href="diagnosticsResidualsIIDAuto.html#cb312-3" tabindex="-1"></a><span class="co"># Give adequate names to the columns</span></span>
-<span id="cb312-4"><a href="diagnosticsResidualsIIDAuto.html#cb312-4" tabindex="-1"></a><span class="fu">colnames</span>(adamSeat05ResidMulti) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
-<span id="cb312-5"><a href="diagnosticsResidualsIIDAuto.html#cb312-5" tabindex="-1"></a><span class="co"># Calculate correlation matrix for forecast errors</span></span>
-<span id="cb312-6"><a href="diagnosticsResidualsIIDAuto.html#cb312-6" tabindex="-1"></a><span class="fu">cor</span>(adamSeat05ResidMulti) <span class="sc">|&gt;</span></span>
-<span id="cb312-7"><a href="diagnosticsResidualsIIDAuto.html#cb312-7" tabindex="-1"></a>    <span class="fu">round</span>(<span class="dv">3</span>)</span></code></pre></div>
-<pre><code>##         1      2     3      4      5     6      7      8      9     10
-## 1   1.000  0.113 0.091 -0.025 -0.108 0.002 -0.086 -0.093 -0.197 -0.113
-## 2   0.113  1.000 0.297  0.273  0.143 0.067  0.185  0.097  0.077 -0.030
-## 3   0.091  0.297 1.000  0.341  0.304 0.172  0.114  0.212  0.125  0.094
-## 4  -0.025  0.273 0.341  1.000  0.369 0.323  0.209  0.143  0.240  0.140
-## 5  -0.108  0.143 0.304  0.369  1.000 0.376  0.339  0.211  0.148  0.231
-## 6   0.002  0.067 0.172  0.323  0.376 1.000  0.383  0.332  0.204  0.127
-## 7  -0.086  0.185 0.114  0.209  0.339 0.383  1.000  0.392  0.339  0.200
-## 8  -0.093  0.097 0.212  0.143  0.211 0.332  0.392  1.000  0.399  0.334
-## 9  -0.197  0.077 0.125  0.240  0.148 0.204  0.339  0.399  1.000  0.397
-## 10 -0.113 -0.030 0.094  0.140  0.231 0.127  0.200  0.334  0.397  1.000</code></pre>
+<div class="sourceCode" id="cb316"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb316-1"><a href="diagnosticsResidualsIIDAuto.html#cb316-1" tabindex="-1"></a><span class="co"># Extract multistep errors</span></span>
+<span id="cb316-2"><a href="diagnosticsResidualsIIDAuto.html#cb316-2" tabindex="-1"></a>adamSeat05ResidMulti <span class="ot">&lt;-</span> <span class="fu">rmultistep</span>(adamSeat05, <span class="at">h=</span><span class="dv">10</span>)</span>
+<span id="cb316-3"><a href="diagnosticsResidualsIIDAuto.html#cb316-3" tabindex="-1"></a><span class="co"># Give adequate names to the columns</span></span>
+<span id="cb316-4"><a href="diagnosticsResidualsIIDAuto.html#cb316-4" tabindex="-1"></a><span class="fu">colnames</span>(adamSeat05ResidMulti) <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">10</span>)</span>
+<span id="cb316-5"><a href="diagnosticsResidualsIIDAuto.html#cb316-5" tabindex="-1"></a><span class="co"># Calculate correlation matrix for forecast errors</span></span>
+<span id="cb316-6"><a href="diagnosticsResidualsIIDAuto.html#cb316-6" tabindex="-1"></a><span class="fu">cor</span>(adamSeat05ResidMulti) <span class="sc">|&gt;</span></span>
+<span id="cb316-7"><a href="diagnosticsResidualsIIDAuto.html#cb316-7" tabindex="-1"></a>    <span class="fu">round</span>(<span class="dv">3</span>)</span></code></pre></div>
+<pre><code>##         1      2     3      4      5      6      7      8      9     10
+## 1   1.000  0.110 0.087 -0.031 -0.115 -0.003 -0.083 -0.095 -0.199 -0.114
+## 2   0.110  1.000 0.304  0.280  0.157  0.076  0.189  0.113  0.097 -0.003
+## 3   0.087  0.304 1.000  0.354  0.316  0.188  0.129  0.224  0.146  0.117
+## 4  -0.031  0.280 0.354  1.000  0.382  0.337  0.227  0.161  0.253  0.161
+## 5  -0.115  0.157 0.316  0.382  1.000  0.390  0.354  0.234  0.169  0.243
+## 6  -0.003  0.076 0.188  0.337  0.390  1.000  0.398  0.350  0.228  0.150
+## 7  -0.083  0.189 0.129  0.227  0.354  0.398  1.000  0.410  0.358  0.224
+## 8  -0.095  0.113 0.224  0.161  0.234  0.350  0.410  1.000  0.418  0.352
+## 9  -0.199  0.097 0.146  0.253  0.169  0.228  0.358  0.418  1.000  0.416
+## 10 -0.114 -0.003 0.117  0.161  0.243  0.150  0.224  0.352  0.416  1.000</code></pre>
 <p>As we can see from the output above, the correlations between the neighbouring forecast errors is higher than between the ones with larger distance. We cannot use this property for diagnostics purposes, it is just one of the features of dynamic models that we should keep in mind.</p>
 </div>
 </div>

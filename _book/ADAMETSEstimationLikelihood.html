@@ -6,7 +6,7 @@
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <title>11.1 Maximum Likelihood Estimation | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM) - v2</title>
   <meta name="description" content="This monograph explains how to do time series analysis and forecasting using Augmented Dynamic Adaptive Model, implemented in the smooth package for R." />
-  <meta name="generator" content="bookdown 0.44 and GitBook 2.6.7" />
+  <meta name="generator" content="bookdown 0.47 and GitBook 2.6.7" />
 
   <meta property="og:title" content="11.1 Maximum Likelihood Estimation | Forecasting and Analytics with the Augmented Dynamic Adaptive Model (ADAM) - v2" />
   <meta property="og:type" content="book" />
@@ -23,7 +23,7 @@
 <meta name="author" content="Ivan Svetunkov" />
 
 
-<meta name="date" content="2025-12-02" />
+<meta name="date" content="2026-08-11" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -54,8 +54,6 @@
 <script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
 <script src="libs/kePrint-0.0.1/kePrint.js"></script>
 <link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
-<link href="libs/bsTable-3.3.7/bootstrapTable.min.css" rel="stylesheet" />
-<script src="libs/bsTable-3.3.7/bootstrapTable.js"></script>
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XH37Z8VYP8"></script>
 <script>
@@ -65,11 +63,83 @@
 
   gtag('config', 'G-XH37Z8VYP8');
 </script>
+<style>
+.of-booknav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 8px 18px;
+  background: #ffffff;
+  border-bottom: 2px solid #AE1921;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.of-booknav__logo img {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.of-booknav a {
+  color: #222222;
+  text-decoration: none;
+}
+
+.of-booknav__links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.of-booknav__links a:hover {
+  color: #AE1921;
+  text-decoration: underline;
+}
+
+/* Push the book's own chrome down so the bar does not overlap it */
+body { padding-top: 46px !important; }
+.book .book-summary { top: 46px !important; }
+.book .book-body { top: 46px !important; }
+
+@media (max-width: 767px) {
+  .of-booknav { font-size: 13px; gap: 12px; padding: 6px 12px; }
+  .of-booknav__links { gap: 12px; }
+}
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  var nav = document.createElement("div");
+  nav.className = "of-booknav";
+  nav.innerHTML =
+    '<a class="of-booknav__logo" href="https://openforecast.org/">' +
+      '<img src="https://openforecast.org/wp-content/uploads/2026/07/cropped-of-logo-full.png" alt="OpenForecast">' +
+    '</a>' +
+    '<nav class="of-booknav__links">' +
+      '<a href="https://openforecast.org/">Home</a>' +
+      '<a href="https://openforecast.org/blog/">Blog</a>' +
+      '<a href="https://openforecast.org/training/">Training</a>' +
+      '<a href="https://openforecast.org/packages/">Packages</a>' +
+      '<a href="https://openforecast.org/resources/">Resources</a>' +
+      '<a href="https://openforecast.org/contact-us/">Contact us</a>' +
+    '</nav>';
+  document.body.insertBefore(nav, document.body.firstChild);
+});
+</script>
 
 
 <style type="text/css">
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -79,7 +149,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
   { counter-reset: source-line 0; }
@@ -647,10 +717,10 @@ div.csl-indent {
 <div class="remark">
 <p><span id="unlabeled-div-34" class="remark"><em>Remark</em>. </span>Contrary to common belief, the MLE itself does not assume that a true model follows a specific distribution. It just tries to fit the predefined distribution to the available data.</p>
 </div>
-<p>MLE of the ADAM relies on the distributional assumptions of each specific model and might differ from one model to another (see assumptions in Sections <a href="ADAMETSAdditiveDistributions.html#ADAMETSAdditiveDistributions">5.5</a>, <a href="ADAMETSMultiplicativeDistributions.html#ADAMETSMultiplicativeDistributions">6.5</a>, and <a href="ADAMARIMADistributions.html#ADAMARIMADistributions">9.3</a>). There are several options for the <code>distribution</code> parameter supported by the <code>adam()</code> function in the <code>smooth</code> package, here we briefly discuss how the estimation is done for each one of them. We start with the additive error model, for which the assumptions, log-likelihoods, and MLE of scales are provided in Table <a href="ADAMETSEstimationLikelihood.html#tab:additiveErrorLikelihoods">11.1</a>.</p>
+<p>MLE of the ADAM relies on the distributional assumptions of each specific model and might differ from one model to another (see assumptions in Sections <a href="ADAMETSAdditiveDistributions.html#ADAMETSAdditiveDistributions">5.5</a>, <a href="ADAMETSMultiplicativeDistributions.html#ADAMETSMultiplicativeDistributions">6.5</a>, and <a href="ADAMARIMADistributions.html#ADAMARIMADistributions">9.3</a>). There are several options for the <code>distribution</code> parameter supported by the <code>adam()</code> function in the <code>smooth</code> package, here we briefly discuss how the estimation is done for each one of them. We start with the additive error model, for which the assumptions, log-likelihoods, and MLE of scales are provided in Table <a href="ADAMETSEstimationLikelihood.html#tab:additiveErrorLikelihoods">11.2</a>.</p>
 <table class="table" style="font-size: 12px; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
-<span id="tab:additiveErrorLikelihoods">Table 11.1: </span>Likelihood approach for additive error models. <span class="math inline">\(\mathcal{N}\)</span> is the Normal, <span class="math inline">\(\mathcal{L}\)</span> is the Laplace, <span class="math inline">\(\mathcal{S}\)</span> is the S, <span class="math inline">\(\mathcal{GN}\)</span> is the Generalised Normal, <span class="math inline">\(\mathcal{IG}\)</span> is the Inverse Gaussian, <span class="math inline">\(\Gamma\)</span> is the Gamma, and <span class="math inline">\(\mathrm{log}\mathcal{N}\)</span> is the Log-Normal distribution.
+<span id="tab:unnamed-chunk-72">Table 11.1: </span><span id="tab:additiveErrorLikelihoods">Table 11.2: </span>Likelihood approach for additive error models. <span class="math inline">\(\mathcal{N}\)</span> is the Normal, <span class="math inline">\(\mathcal{L}\)</span> is the Laplace, <span class="math inline">\(\mathcal{S}\)</span> is the S, <span class="math inline">\(\mathcal{GN}\)</span> is the Generalised Normal, <span class="math inline">\(\mathcal{IG}\)</span> is the Inverse Gaussian, <span class="math inline">\(\Gamma\)</span> is the Gamma, and <span class="math inline">\(\mathrm{log}\mathcal{N}\)</span> is the Log-Normal distribution.
 </caption>
 <thead>
 <tr>
@@ -690,10 +760,10 @@ MLE of scale
 <span class="math inline">\(\epsilon_t \sim \mathcal{L}(0, s)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(-T \log(2 s) -\sum_{t=1}^T \frac{|\epsilon_t|}{s}\)</span>
+<span class="math inline">\(-T \log(2 s) -\sum_{t=1}^T \frac{&amp;amp;#124;\epsilon_t&amp;amp;#124;}{s}\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\hat{s} = \frac{1}{T} \sum_{t=1}^T |e_t|\)</span>
+<span class="math inline">\(\hat{s} = \frac{1}{T} \sum_{t=1}^T &amp;amp;#124;e_t&amp;amp;#124;\)</span>
 </td>
 </tr>
 <tr>
@@ -704,10 +774,10 @@ MLE of scale
 <span class="math inline">\(\epsilon_t \sim \mathcal{S}(0, s)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(-T \log(4 s^2) -\sum_{t=1}^T \frac{\sqrt{|\epsilon_t|}}{s}\)</span>
+<span class="math inline">\(-T \log(4 s^2) -\sum_{t=1}^T \frac{\sqrt{&amp;amp;#124;\epsilon_t&amp;amp;#124;}}{s}\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\hat{s} = \frac{1}{2T} \sum_{t=1}^T \sqrt{|e_t|}\)</span>
+<span class="math inline">\(\hat{s} = \frac{1}{2T} \sum_{t=1}^T \sqrt{&amp;amp;#124;e_t&amp;amp;#124;}\)</span>
 </td>
 </tr>
 <tr>
@@ -718,11 +788,11 @@ MLE of scale
 <span class="math inline">\(\epsilon_t \sim \mathcal{GN}(0, s, \beta)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;T\log\beta -T \log(2 s \Gamma\left(\beta^{-1}\right)) -\\
-                                         &amp;\sum_{t=1}^T \frac{\left|\epsilon_t\right|^\beta}{s}\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;T\log\beta -T \log(2 s \Gamma\left(\beta^{-1}\right)) -\\
+                                         &amp;amp;\sum_{t=1}^T \frac{\left&amp;amp;#124;\epsilon_t\right&amp;amp;#124;^\beta}{s}\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\hat{s} = \sqrt[^{\beta}]{\frac{\beta}{T} \sum_{t=1}^T\left| e_t \right|^{\beta}}\)</span>
+<span class="math inline">\(\hat{s} = \sqrt[^{\beta}]{\frac{\beta}{T} \sum_{t=1}^T\left&amp;amp;#124; e_t \right&amp;amp;#124;^{\beta}}\)</span>
 </td>
 </tr>
 <tr>
@@ -733,8 +803,8 @@ MLE of scale
 <span class="math inline">\(1+\frac{\epsilon_t}{\mu_{y,t}} \sim \mathcal{IG}(1, \sigma^2)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-\frac{T}{2} \log \left(2 \pi \sigma^2 \right) -\frac{1}{2} \sum_{t=1}^T \left( \left(\frac{y_t}{\mu_{y,t}}\right)^3 \right) -\\
-                                         &amp;\frac{3}{2}\sum_{t=1}^T \log y_t -\frac{1}{2\sigma^2} \sum_{t=1}^{T} \frac{\epsilon_t^2}{\mu_{y,t}y_t}\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-\frac{T}{2} \log \left(2 \pi \sigma^2 \right) -\frac{1}{2} \sum_{t=1}^T \left( \left(\frac{y_t}{\mu_{y,t}}\right)^3 \right) -\\
+                                         &amp;amp;\frac{3}{2}\sum_{t=1}^T \log y_t -\frac{1}{2\sigma^2} \sum_{t=1}^{T} \frac{\epsilon_t^2}{\mu_{y,t}y_t}\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
 <span class="math inline">\(\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^{T} \frac{e_t^2}{\hat{\mu}_{y,t} y_t}\)</span>
@@ -748,8 +818,8 @@ MLE of scale
 <span class="math inline">\(1+\frac{\epsilon_t}{\mu_{y,t}} \sim \mathcal{\Gamma}(\sigma^{-2}, \sigma^2)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-T \log \Gamma \left(\sigma^{-2}\right) -\frac{T}{\sigma^2} \log \sigma^2 + \\
-                                         &amp;\frac{1}{\sigma^2} \sum_{t=1}^T \log \left(\frac{y_t/\mu_{y,t}}{ \exp(y_t/\mu_{y,t})}\right) -\sum_{t=1}^T \log y_t\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-T \log \Gamma \left(\sigma^{-2}\right) -\frac{T}{\sigma^2} \log \sigma^2 + \\
+                                         &amp;amp;\frac{1}{\sigma^2} \sum_{t=1}^T \log \left(\frac{y_t/\mu_{y,t}}{ \exp(y_t/\mu_{y,t})}\right) -\sum_{t=1}^T \log y_t\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
 <span class="math inline">\(\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^T \left(\frac{e_t}{\mu_{y,t}}\right)^2\)</span> *
@@ -763,8 +833,8 @@ MLE of scale
 <span class="math inline">\(1+\frac{\epsilon_t}{\mu_{y,t}} \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-\frac{T}{2} \log \left(2 \pi \sigma^2\right) -\sum_{t=1}^T \log y_t -\\
-                                         &amp;\frac{1}{2\sigma^2} \sum_{t=1}^{T} \left(\log \left(\frac{y_t}{\mu_{y,t}}\right)+\frac{\sigma^2}{2}\right)^2 \end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-\frac{T}{2} \log \left(2 \pi \sigma^2\right) -\sum_{t=1}^T \log y_t -\\
+                                         &amp;amp;\frac{1}{2\sigma^2} \sum_{t=1}^{T} \left(\log \left(\frac{y_t}{\mu_{y,t}}\right)+\frac{\sigma^2}{2}\right)^2 \end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
 <span class="math inline">\(\hat{\sigma}^2 = 2\left(1-\sqrt{ 1-\frac{1}{T} \sum_{t=1}^{T} \log^2\left(\frac{y_t}{\hat{\mu}_{y,t}}\right)}\right)\)</span>
@@ -786,7 +856,7 @@ where <span class="math inline">\(\mathbf{y}\)</span> is the vector of all in-sa
 <div class="remark">
 <p><span id="unlabeled-div-35" class="remark"><em>Remark</em>. </span>MLE of scale parameter for Gamma distribution (formulated in ADAM) does not have a closed-form. While there are no proofs for it, it seems that the maximum of the likelihood of Gamma distribution is achieved, when <span class="math inline">\(\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^T \left(\frac{e_t}{\mu_{y,t}}\right)^2\)</span>, which corresponds to the estimate based on method of moments.</p>
 </div>
-<p>While other distributions can be used in ADAM ETS (for example, Logistic distribution or Student’s t), we do not discuss them here. In all cases in Table <a href="ADAMETSEstimationLikelihood.html#tab:additiveErrorLikelihoods">11.1</a>, the assumptions imply that the actual value follows the same distributionn as the error term (due to additivity of the model) but with a different location and/or scale. For example, for the Normal distribution, we have:
+<p>While other distributions can be used in ADAM ETS (for example, Logistic distribution or Student’s t), we do not discuss them here. In all cases in Table <a href="ADAMETSEstimationLikelihood.html#tab:additiveErrorLikelihoods">11.2</a>, the assumptions imply that the actual value follows the same distributionn as the error term (due to additivity of the model) but with a different location and/or scale. For example, for the Normal distribution, we have:
 <span class="math display" id="eq:ETSADAMNormalDistributionExample02">\[\begin{equation}
   \begin{aligned}
     &amp; \epsilon_t \sim \mathcal{N}(0, \sigma^2) \\
@@ -809,10 +879,10 @@ As a result, the log-likelihoods would have the <span class="math inline">\(\mu_
 <p><span id="unlabeled-div-36" class="remark"><em>Remark</em>. </span>The part <span class="math inline">\(\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2}\)</span> does not contain <span class="math inline">\(\mu_{y,t}\)</span> because when inserted in the formula of Normal distribution, the numerator (based on <a href="ADAMETSEstimationLikelihood.html#eq:ETSADAMNormalDistributionExample03">(11.5)</a>) is: <span class="math inline">\(y_t - \mu_{y,t} = \mu_{y,t} \epsilon_t\)</span>. After inserting it in the formula for the Normal distribution that part becomes: <span class="math inline">\(\frac{1}{2} \sum_{t=1}^T \frac{(\mu_{y,t} \epsilon_t)^2}{\mu_{y,t}^2\sigma^2}\)</span> which after cancellations leads to <a href="ADAMETSEstimationLikelihood.html#eq:ETSADAMNormalDistributionExample04">(11.6)</a>.</p>
 </div>
 <p>Similar logic is applicable to Laplace (<span class="math inline">\(\mathcal{L}\)</span>), Generalised Normal (<span class="math inline">\(\mathcal{GN}\)</span>), and S (<span class="math inline">\(\mathcal{S}\)</span>) distributions. From the practical point of view, these assumptions imply that the scale (and variance) of the distribution of <span class="math inline">\(y_t\)</span> changes together with the level of the series. When it comes to the Inverse Gaussian (<span class="math inline">\(\mathcal{IG}\)</span>), Gamma (<span class="math inline">\(\Gamma\)</span>), and Log-Normal (log<span class="math inline">\(\mathcal{N}\)</span>), the assumptions are imposed on the <span class="math inline">\(1+\epsilon_t\)</span> part of the model and the respective likelihoods do not involve the expectation <span class="math inline">\(\mu_{y,t}\)</span>, but the formulation still implies that the variance of the data increases together with the increase of the level of data.</p>
-<p>All the likelihoods for the multiplicative error models are summarised in Table <a href="ADAMETSEstimationLikelihood.html#tab:multiplicativeErrorLikelihoods">11.2</a>.</p>
+<p>All the likelihoods for the multiplicative error models are summarised in Table <a href="ADAMETSEstimationLikelihood.html#tab:multiplicativeErrorLikelihoods">11.4</a>.</p>
 <table class="table" style="font-size: 12px; margin-left: auto; margin-right: auto;">
 <caption style="font-size: initial !important;">
-<span id="tab:multiplicativeErrorLikelihoods">Table 11.2: </span>Likelihood approach for multiplicative error models. <span class="math inline">\(\mathcal{N}\)</span> is the Normal, <span class="math inline">\(\mathcal{L}\)</span> is the Laplace, <span class="math inline">\(\mathcal{S}\)</span> is the S, <span class="math inline">\(\mathcal{GN}\)</span> is the Generalised Normal, <span class="math inline">\(\mathcal{IG}\)</span> is the Inverse Gaussian, <span class="math inline">\(\Gamma\)</span> is the Gamma, and <span class="math inline">\(\mathrm{log}\mathcal{N}\)</span> is the Log-Normal distribution.
+<span id="tab:unnamed-chunk-73">Table 11.3: </span><span id="tab:multiplicativeErrorLikelihoods">Table 11.4: </span>Likelihood approach for multiplicative error models. <span class="math inline">\(\mathcal{N}\)</span> is the Normal, <span class="math inline">\(\mathcal{L}\)</span> is the Laplace, <span class="math inline">\(\mathcal{S}\)</span> is the S, <span class="math inline">\(\mathcal{GN}\)</span> is the Generalised Normal, <span class="math inline">\(\mathcal{IG}\)</span> is the Inverse Gaussian, <span class="math inline">\(\Gamma\)</span> is the Gamma, and <span class="math inline">\(\mathrm{log}\mathcal{N}\)</span> is the Log-Normal distribution.
 </caption>
 <thead>
 <tr>
@@ -838,8 +908,8 @@ MLE of scale
 <span class="math inline">\(\epsilon_t \sim \mathcal{N}(0, \sigma^2)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2} -\\
-                                         &amp;\sum_{t=1}^T \log |\mu_{y,t}|\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-\frac{T}{2} \log(2 \pi \sigma^2) -\frac{1}{2} \sum_{t=1}^T \frac{\epsilon_t^2}{\sigma^2} -\\
+                                         &amp;amp;\sum_{t=1}^T \log &amp;amp;#124;\mu_{y,t}&amp;amp;#124;\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
 <span class="math inline">\(\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^T e_t^2\)</span>
@@ -853,11 +923,11 @@ MLE of scale
 <span class="math inline">\(\epsilon_t \sim \mathcal{L}(0, s)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-T \log(2 s) -\sum_{t=1}^T \frac{|\epsilon_t|}{s} -\\
-                                         &amp;\sum_{t=1}^T \log \mu_{y,t}\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-T \log(2 s) -\sum_{t=1}^T \frac{&amp;amp;#124;\epsilon_t&amp;amp;#124;}{s} -\\
+                                         &amp;amp;\sum_{t=1}^T \log \mu_{y,t}\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\hat{s} = \frac{1}{T} \sum_{t=1}^T |e_t|\)</span>
+<span class="math inline">\(\hat{s} = \frac{1}{T} \sum_{t=1}^T &amp;amp;#124;e_t&amp;amp;#124;\)</span>
 </td>
 </tr>
 <tr>
@@ -868,11 +938,11 @@ MLE of scale
 <span class="math inline">\(\epsilon_t \sim \mathcal{S}(0, s)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-T \log(4 s^2) -\sum_{t=1}^T \frac{\sqrt{|\epsilon_t|}}{s} -\\
-                                         &amp;\sum_{t=1}^T \log \mu_{y,t}\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-T \log(4 s^2) -\sum_{t=1}^T \frac{\sqrt{&amp;amp;#124;\epsilon_t&amp;amp;#124;}}{s} -\\
+                                         &amp;amp;\sum_{t=1}^T \log \mu_{y,t}\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\hat{s} = \frac{1}{2T} \sum_{t=1}^T \sqrt{|e_t|}\)</span>
+<span class="math inline">\(\hat{s} = \frac{1}{2T} \sum_{t=1}^T \sqrt{&amp;amp;#124;e_t&amp;amp;#124;}\)</span>
 </td>
 </tr>
 <tr>
@@ -883,11 +953,11 @@ MLE of scale
 <span class="math inline">\(\epsilon_t \sim \mathcal{GN}(0, s, \beta)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;T\log\beta -T \log(2 s \Gamma\left(\beta^{-1}\right)) -\\
-                                         &amp;\sum_{t=1}^T \frac{\left|\epsilon_t\right|^\beta}{s} -\sum_{t=1}^T \log \mu_{y,t}\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;T\log\beta -T \log(2 s \Gamma\left(\beta^{-1}\right)) -\\
+                                         &amp;amp;\sum_{t=1}^T \frac{\left&amp;amp;#124;\epsilon_t\right&amp;amp;#124;^\beta}{s} -\sum_{t=1}^T \log \mu_{y,t}\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\hat{s} = \sqrt[^{\beta}]{\frac{\beta}{T} \sum_{t=1}^T\left| e_t \right|^{\beta}}\)</span>
+<span class="math inline">\(\hat{s} = \sqrt[^{\beta}]{\frac{\beta}{T} \sum_{t=1}^T\left&amp;amp;#124; e_t \right&amp;amp;#124;^{\beta}}\)</span>
 </td>
 </tr>
 <tr>
@@ -898,8 +968,8 @@ MLE of scale
 <span class="math inline">\(1+\epsilon_t \sim \mathcal{IG}(1, \sigma^2)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-\frac{T}{2} \log \left(2 \pi \sigma^2 \right) -\frac{1}{2}\sum_{t=1}^T \left(1+\epsilon_{t}\right)^3 -\\
-                                         &amp;\frac{3}{2}\sum_{t=1}^T \log y_t -\frac{1}{2\sigma^2} \sum_{t=1}^{T} \frac{\epsilon_t^2}{1+\epsilon_t}\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-\frac{T}{2} \log \left(2 \pi \sigma^2 \right) -\frac{1}{2}\sum_{t=1}^T \left(1+\epsilon_{t}\right)^3 -\\
+                                         &amp;amp;\frac{3}{2}\sum_{t=1}^T \log y_t -\frac{1}{2\sigma^2} \sum_{t=1}^{T} \frac{\epsilon_t^2}{1+\epsilon_t}\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
 <span class="math inline">\(\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^{T} \frac{e_t^2}{1+e_t}\)</span>
@@ -913,8 +983,8 @@ MLE of scale
 <span class="math inline">\(1+\epsilon_t \sim \mathcal{\Gamma}(\sigma^{-2}, \sigma)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-T \log \Gamma \left(\sigma^{-2}\right) -\frac{T}{\sigma^2} \log \sigma^2 + \\
-                                         &amp;\frac{1}{\sigma^2} \sum_{t=1}^T \log \left(\frac{1+\epsilon_t}{\exp(1+\epsilon_t)}\right) -\sum_{t=1}^T \log y_t\end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-T \log \Gamma \left(\sigma^{-2}\right) -\frac{T}{\sigma^2} \log \sigma^2 + \\
+                                         &amp;amp;\frac{1}{\sigma^2} \sum_{t=1}^T \log \left(\frac{1+\epsilon_t}{\exp(1+\epsilon_t)}\right) -\sum_{t=1}^T \log y_t\end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
 <span class="math inline">\(\hat{\sigma}^2 = \frac{1}{T} \sum_{t=1}^T e_t^2\)</span> *
@@ -928,8 +998,8 @@ MLE of scale
 <span class="math inline">\(1+\epsilon_t \sim \mathrm{log}\mathcal{N}\left(-\frac{\sigma^2}{2}, \sigma^2\right)\)</span>
 </td>
 <td style="text-align:left;">
-<span class="math inline">\(\begin{aligned} &amp;-\frac{T}{2} \log \left(2 \pi \sigma^2\right) - \sum_{t=1}^T \log y_t -\\
-                                         &amp;\frac{1}{2\sigma^2} \sum_{t=1}^{T} \left(\log \left(1+\epsilon_t\right)+\frac{\sigma^2}{2}\right)^2 \end{aligned}\)</span>
+<span class="math inline">\(\begin{aligned} &amp;amp;-\frac{T}{2} \log \left(2 \pi \sigma^2\right) - \sum_{t=1}^T \log y_t -\\
+                                         &amp;amp;\frac{1}{2\sigma^2} \sum_{t=1}^{T} \left(\log \left(1+\epsilon_t\right)+\frac{\sigma^2}{2}\right)^2 \end{aligned}\)</span>
 </td>
 <td style="text-align:left;">
 <span class="math inline">\(\hat{\sigma}^2 = 2\left(1-\sqrt{ 1-\frac{1}{T} \sum_{t=1}^{T} \log^2\left(1+e_t\right)}\right)\)</span>
@@ -937,7 +1007,7 @@ MLE of scale
 </tr>
 </tbody>
 </table>
-<p>When it comes to practicalities, the optimiser in the <code>adam()</code> function calculates the scale from Tables <a href="ADAMETSEstimationLikelihood.html#tab:additiveErrorLikelihoods">11.1</a> and <a href="ADAMETSEstimationLikelihood.html#tab:multiplicativeErrorLikelihoods">11.2</a> on each iteration and then uses it in the log-likelihood based on the respective distribution function. For additive error models:</p>
+<p>When it comes to practicalities, the optimiser in the <code>adam()</code> function calculates the scale from Tables <a href="ADAMETSEstimationLikelihood.html#tab:additiveErrorLikelihoods">11.2</a> and <a href="ADAMETSEstimationLikelihood.html#tab:multiplicativeErrorLikelihoods">11.4</a> on each iteration and then uses it in the log-likelihood based on the respective distribution function. For additive error models:</p>
 <ol style="list-style-type: decimal">
 <li>Normal, <span class="math inline">\(\mathcal{N}\)</span> – <code>dnorm(x=actuals, mean=fitted, sd=scale,  log=TRUE)</code> from the <code>stats</code> package;</li>
 <li>Laplace, <span class="math inline">\(\mathcal{L}\)</span> – <code>dlaplace(q=actuals, mu=fitted, scale=scale, log=TRUE)</code> from the <code>greybox</code> package;</li>
@@ -966,24 +1036,24 @@ MLE of scale
 <div id="an-example-in-r-1" class="section level3 hasAnchor" number="11.1.1">
 <h3><span class="header-section-number">11.1.1</span> An example in R<a href="ADAMETSEstimationLikelihood.html#an-example-in-r-1" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>The <code>adam()</code> function in the <code>smooth</code> package has the parameter <code>distribution</code>, which allows selecting between several options discussed in this chapter, based on the respective density functions. Here is a brief example in R with ADAM ETS(M,A,M) applied to the <code>AirPassengers</code> data with several distributions:</p>
-<div class="sourceCode" id="cb172"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb172-1"><a href="ADAMETSEstimationLikelihood.html#cb172-1" tabindex="-1"></a>adamETSMAMAir <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">5</span>)</span>
-<span id="cb172-2"><a href="ADAMETSEstimationLikelihood.html#cb172-2" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb172-3"><a href="ADAMETSEstimationLikelihood.html#cb172-3" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dnorm&quot;</span>)</span>
-<span id="cb172-4"><a href="ADAMETSEstimationLikelihood.html#cb172-4" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">2</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb172-5"><a href="ADAMETSEstimationLikelihood.html#cb172-5" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dlaplace&quot;</span>)</span>
-<span id="cb172-6"><a href="ADAMETSEstimationLikelihood.html#cb172-6" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">3</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb172-7"><a href="ADAMETSEstimationLikelihood.html#cb172-7" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dgnorm&quot;</span>)</span>
-<span id="cb172-8"><a href="ADAMETSEstimationLikelihood.html#cb172-8" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">4</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb172-9"><a href="ADAMETSEstimationLikelihood.html#cb172-9" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dinvgauss&quot;</span>)</span>
-<span id="cb172-10"><a href="ADAMETSEstimationLikelihood.html#cb172-10" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">5</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
-<span id="cb172-11"><a href="ADAMETSEstimationLikelihood.html#cb172-11" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dgamma&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb174"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb174-1"><a href="ADAMETSEstimationLikelihood.html#cb174-1" tabindex="-1"></a>adamETSMAMAir <span class="ot">&lt;-</span> <span class="fu">vector</span>(<span class="st">&quot;list&quot;</span>,<span class="dv">5</span>)</span>
+<span id="cb174-2"><a href="ADAMETSEstimationLikelihood.html#cb174-2" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">1</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb174-3"><a href="ADAMETSEstimationLikelihood.html#cb174-3" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dnorm&quot;</span>)</span>
+<span id="cb174-4"><a href="ADAMETSEstimationLikelihood.html#cb174-4" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">2</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb174-5"><a href="ADAMETSEstimationLikelihood.html#cb174-5" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dlaplace&quot;</span>)</span>
+<span id="cb174-6"><a href="ADAMETSEstimationLikelihood.html#cb174-6" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">3</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb174-7"><a href="ADAMETSEstimationLikelihood.html#cb174-7" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dgnorm&quot;</span>)</span>
+<span id="cb174-8"><a href="ADAMETSEstimationLikelihood.html#cb174-8" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">4</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb174-9"><a href="ADAMETSEstimationLikelihood.html#cb174-9" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dinvgauss&quot;</span>)</span>
+<span id="cb174-10"><a href="ADAMETSEstimationLikelihood.html#cb174-10" tabindex="-1"></a>adamETSMAMAir[[<span class="dv">5</span>]] <span class="ot">&lt;-</span> <span class="fu">adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>,</span>
+<span id="cb174-11"><a href="ADAMETSEstimationLikelihood.html#cb174-11" tabindex="-1"></a>                           <span class="at">distribution=</span><span class="st">&quot;dgamma&quot;</span>)</span></code></pre></div>
 <p>In this case, the function will select the most appropriate ETS model for each distribution. We can see what was selected in each case and compare the models using information criteria:</p>
-<div class="sourceCode" id="cb173"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb173-1"><a href="ADAMETSEstimationLikelihood.html#cb173-1" tabindex="-1"></a><span class="fu">sapply</span>(adamETSMAMAir, AICc) <span class="sc">|&gt;</span></span>
-<span id="cb173-2"><a href="ADAMETSEstimationLikelihood.html#cb173-2" tabindex="-1"></a>    <span class="fu">setNames</span>(<span class="fu">c</span>(<span class="st">&quot;dnorm&quot;</span>,<span class="st">&quot;dlaplace&quot;</span>,<span class="st">&quot;dgnorm&quot;</span>,<span class="st">&quot;dinvgauss&quot;</span>,<span class="st">&quot;dgamma&quot;</span>))</span></code></pre></div>
+<div class="sourceCode" id="cb175"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb175-1"><a href="ADAMETSEstimationLikelihood.html#cb175-1" tabindex="-1"></a><span class="fu">sapply</span>(adamETSMAMAir, AICc) <span class="sc">|&gt;</span></span>
+<span id="cb175-2"><a href="ADAMETSEstimationLikelihood.html#cb175-2" tabindex="-1"></a>    <span class="fu">setNames</span>(<span class="fu">c</span>(<span class="st">&quot;dnorm&quot;</span>,<span class="st">&quot;dlaplace&quot;</span>,<span class="st">&quot;dgnorm&quot;</span>,<span class="st">&quot;dinvgauss&quot;</span>,<span class="st">&quot;dgamma&quot;</span>))</span></code></pre></div>
 <pre><code>##     dnorm  dlaplace    dgnorm dinvgauss    dgamma 
-##  960.0097  972.4851  961.8199  960.2590  960.1204</code></pre>
+##  972.4501  981.4395  975.6769  974.2351  973.6000</code></pre>
 <p>We could compare the performance of models in detail, but for demonstration purposes, it should suffice to say that among the four models considered above, based on the AICc value, the model with the Gamma distribution should be selected. This process of fit and selection can be automated using the <code>auto.adam()</code> function, which accepts the vector of distributions to test and by default would consider <code>distribution=c("default", "dnorm", "dlaplace", "ds", "dgnorm", "dlnorm", "dinvgauss", "dgamma")</code> (where <code>default</code> is Normal for additive error and Gamma for the multiplicative error model):</p>
-<div class="sourceCode" id="cb175"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb175-1"><a href="ADAMETSEstimationLikelihood.html#cb175-1" tabindex="-1"></a><span class="fu">auto.adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb177"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb177-1"><a href="ADAMETSEstimationLikelihood.html#cb177-1" tabindex="-1"></a><span class="fu">auto.adam</span>(AirPassengers, <span class="st">&quot;MAM&quot;</span>, <span class="at">h=</span><span class="dv">12</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
 <p>This command should return the ADAM ETS(M,A,M) model with the most appropriate distribution, selected based on the AICc.</p>
 </div>
 </div>
