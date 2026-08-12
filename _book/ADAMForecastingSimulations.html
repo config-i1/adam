@@ -54,8 +54,6 @@
 <script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
 <script src="libs/kePrint-0.0.1/kePrint.js"></script>
 <link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
-<link href="libs/bsTable-3.3.7/bootstrapTable.min.css" rel="stylesheet" />
-<script src="libs/bsTable-3.3.7/bootstrapTable.js"></script>
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XH37Z8VYP8"></script>
 <script>
@@ -84,34 +82,51 @@
   box-sizing: border-box;
 }
 
-.of-booknav__logo img {
-  height: 28px;
-  width: auto;
-  display: block;
-}
+.of-booknav__logo img { height: 28px; width: auto; display: block; }
+.of-booknav a { color: #222222; text-decoration: none; }
+.of-booknav__links { display: flex; gap: 16px; flex-wrap: wrap; }
+.of-booknav__links a:hover { color: #AE1921; text-decoration: underline; }
 
-.of-booknav a {
-  color: #222222;
-  text-decoration: none;
-}
-
-.of-booknav__links {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.of-booknav__links a:hover {
+/* Fold toggle */
+.of-booknav__toggle {
+  margin-left: auto;
+  border: 1px solid #d5d5d5;
+  background: #ffffff;
   color: #AE1921;
-  text-decoration: underline;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 5px 9px;
 }
+.of-booknav__toggle:hover { background: #faf6f6; }
+
+/* Folded state: bar collapses to a small tab */
+body.of-nav-folded .of-booknav {
+  left: auto;
+  right: 0;
+  padding: 4px 8px;
+  border-bottom: none;
+  border-left: 2px solid #AE1921;
+  border-bottom: 2px solid #AE1921;
+  border-radius: 0 0 0 4px;
+}
+body.of-nav-folded .of-booknav__logo,
+body.of-nav-folded .of-booknav__links { display: none; }
 
 /* Push the book's own chrome down so the bar does not overlap it */
 body { padding-top: 46px !important; }
-.book .book-summary { top: 46px !important; }
-.book .book-body { top: 46px !important; }
-.book .book-header { top: 46px !important; }
+.book .book-summary,
+.book .book-body,
+.book .book-header,
 .book .book-body .body-inner { top: 46px !important; }
+
+/* Folded: give the space back */
+body.of-nav-folded { padding-top: 0 !important; }
+body.of-nav-folded .book .book-summary,
+body.of-nav-folded .book .book-body,
+body.of-nav-folded .book .book-header,
+body.of-nav-folded .book .book-body .body-inner { top: 0 !important; }
 
 @media (max-width: 767px) {
   .of-booknav { font-size: 13px; gap: 12px; padding: 6px 12px; }
@@ -122,9 +137,15 @@ body { padding-top: 46px !important; }
   .book .book-body,
   .book .book-header,
   .book .book-body .body-inner { top: 76px !important; }
-}
 
+  body.of-nav-folded { padding-top: 0 !important; }
+  body.of-nav-folded .book .book-summary,
+  body.of-nav-folded .book .book-body,
+  body.of-nav-folded .book .book-header,
+  body.of-nav-folded .book .book-body .body-inner { top: 0 !important; }
+}
 </style>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   var nav = document.createElement("div");
@@ -139,8 +160,25 @@ document.addEventListener("DOMContentLoaded", function () {
       '<a href="https://openforecast.org/packages/">Packages</a>' +
       '<a href="https://openforecast.org/resources/">Resources</a>' +
       '<a href="https://openforecast.org/contact-us/">Contact us</a>' +
-    '</nav>';
+    '</nav>' +
+    '<button class="of-booknav__toggle" type="button" aria-label="Toggle OpenForecast menu">&times;</button>';
   document.body.insertBefore(nav, document.body.firstChild);
+
+  var btn = nav.querySelector(".of-booknav__toggle");
+  var folded = false;
+  try { folded = localStorage.getItem("ofNavFolded") === "1"; } catch (e) {}
+
+  function apply() {
+    document.body.classList.toggle("of-nav-folded", folded);
+    btn.innerHTML = folded ? "&#9776;" : "&times;";
+  }
+  apply();
+
+  btn.addEventListener("click", function () {
+    folded = !folded;
+    try { localStorage.setItem("ofNavFolded", folded ? "1" : "0"); } catch (e) {}
+    apply();
+  });
 });
 </script>
 
@@ -755,27 +793,27 @@ Figure 18.1: Sample paths (scenarios) generated from ADAM for the holdout sample
 <div id="scenariosExample" class="section level3 hasAnchor" number="18.1.2">
 <h3><span class="header-section-number">18.1.2</span> Demonstration in R<a href="ADAMForecastingSimulations.html#scenariosExample" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>In order to demonstrate the simulation approach, we consider an artificial case of an ETS(M,M,N) model with <span class="math inline">\(l_t=1000\)</span>, <span class="math inline">\(b_t=0.95\)</span>, <span class="math inline">\(\alpha=0.1\)</span>, <span class="math inline">\(\beta=0.01\)</span>, and Gamma distribution for error term with scale <span class="math inline">\(s=0.05\)</span>. We generate 1000 scenarios from this model for the horizon of <span class="math inline">\(h=10\)</span> using the <code>sim.es()</code> function from the <code>smooth</code> package:</p>
-<div class="sourceCode" id="cb404"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb404-1"><a href="ADAMForecastingSimulations.html#cb404-1" tabindex="-1"></a>nsim <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
-<span id="cb404-2"><a href="ADAMForecastingSimulations.html#cb404-2" tabindex="-1"></a>h <span class="ot">&lt;-</span> <span class="dv">10</span></span>
-<span id="cb404-3"><a href="ADAMForecastingSimulations.html#cb404-3" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fl">0.1</span></span>
-<span id="cb404-4"><a href="ADAMForecastingSimulations.html#cb404-4" tabindex="-1"></a>initial <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1000</span>,<span class="fl">0.95</span>)</span>
-<span id="cb404-5"><a href="ADAMForecastingSimulations.html#cb404-5" tabindex="-1"></a>persistence <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.1</span>,<span class="fl">0.01</span>)</span>
-<span id="cb404-6"><a href="ADAMForecastingSimulations.html#cb404-6" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">sim.es</span>(<span class="st">&quot;MMN&quot;</span>, <span class="at">obs=</span>h, <span class="at">nsim=</span>nsim, <span class="at">persistence=</span>persistence,</span>
-<span id="cb404-7"><a href="ADAMForecastingSimulations.html#cb404-7" tabindex="-1"></a>            <span class="at">initial=</span>initial, <span class="at">randomizer=</span><span class="st">&quot;rgamma&quot;</span>,</span>
-<span id="cb404-8"><a href="ADAMForecastingSimulations.html#cb404-8" tabindex="-1"></a>            <span class="at">shape=</span><span class="dv">1</span><span class="sc">/</span>s, <span class="at">scale=</span>s)</span></code></pre></div>
+<div class="sourceCode" id="cb403"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb403-1"><a href="ADAMForecastingSimulations.html#cb403-1" tabindex="-1"></a>nsim <span class="ot">&lt;-</span> <span class="dv">1000</span></span>
+<span id="cb403-2"><a href="ADAMForecastingSimulations.html#cb403-2" tabindex="-1"></a>h <span class="ot">&lt;-</span> <span class="dv">10</span></span>
+<span id="cb403-3"><a href="ADAMForecastingSimulations.html#cb403-3" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fl">0.1</span></span>
+<span id="cb403-4"><a href="ADAMForecastingSimulations.html#cb403-4" tabindex="-1"></a>initial <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1000</span>,<span class="fl">0.95</span>)</span>
+<span id="cb403-5"><a href="ADAMForecastingSimulations.html#cb403-5" tabindex="-1"></a>persistence <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.1</span>,<span class="fl">0.01</span>)</span>
+<span id="cb403-6"><a href="ADAMForecastingSimulations.html#cb403-6" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">sim.es</span>(<span class="st">&quot;MMN&quot;</span>, <span class="at">obs=</span>h, <span class="at">nsim=</span>nsim, <span class="at">persistence=</span>persistence,</span>
+<span id="cb403-7"><a href="ADAMForecastingSimulations.html#cb403-7" tabindex="-1"></a>            <span class="at">initial=</span>initial, <span class="at">randomizer=</span><span class="st">&quot;rgamma&quot;</span>,</span>
+<span id="cb403-8"><a href="ADAMForecastingSimulations.html#cb403-8" tabindex="-1"></a>            <span class="at">shape=</span><span class="dv">1</span><span class="sc">/</span>s, <span class="at">scale=</span>s)</span></code></pre></div>
 <p>After running the code above, we will obtain an object <code>y</code> that will contain several variables, including <code>y$data</code> with all the 1000 possible future trajectories. We can plot them to get an impression of what we are dealing with (see Figure <a href="ADAMForecastingSimulations.html#fig:adamForecastSimulated">18.2</a>):</p>
-<div class="sourceCode" id="cb405"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb405-1"><a href="ADAMForecastingSimulations.html#cb405-1" tabindex="-1"></a><span class="fu">plot</span>(y<span class="sc">$</span>data[,<span class="dv">1</span>], <span class="at">ylab=</span><span class="st">&quot;Sales&quot;</span>, <span class="at">ylim=</span><span class="fu">range</span>(y<span class="sc">$</span>data),</span>
-<span id="cb405-2"><a href="ADAMForecastingSimulations.html#cb405-2" tabindex="-1"></a>     <span class="at">col=</span><span class="fu">rgb</span>(<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.4</span>), <span class="at">xlab=</span><span class="st">&quot;Horizon&quot;</span>)</span>
-<span id="cb405-3"><a href="ADAMForecastingSimulations.html#cb405-3" tabindex="-1"></a><span class="co"># Plot all the generated lines</span></span>
-<span id="cb405-4"><a href="ADAMForecastingSimulations.html#cb405-4" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>nsim){</span>
-<span id="cb405-5"><a href="ADAMForecastingSimulations.html#cb405-5" tabindex="-1"></a>  <span class="fu">lines</span>(y<span class="sc">$</span>data[,i], <span class="at">col=</span><span class="fu">rgb</span>(<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.4</span>))</span>
-<span id="cb405-6"><a href="ADAMForecastingSimulations.html#cb405-6" tabindex="-1"></a>}</span>
-<span id="cb405-7"><a href="ADAMForecastingSimulations.html#cb405-7" tabindex="-1"></a><span class="co"># Add conditional mean and quantiles</span></span>
-<span id="cb405-8"><a href="ADAMForecastingSimulations.html#cb405-8" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(y<span class="sc">$</span>data,<span class="dv">1</span>,mean))</span>
-<span id="cb405-9"><a href="ADAMForecastingSimulations.html#cb405-9" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(y<span class="sc">$</span>data,<span class="dv">1</span>,quantile,<span class="fl">0.025</span>),</span>
-<span id="cb405-10"><a href="ADAMForecastingSimulations.html#cb405-10" tabindex="-1"></a>      <span class="at">col=</span><span class="st">&quot;grey&quot;</span>, <span class="at">lwd=</span><span class="dv">2</span>, <span class="at">lty=</span><span class="dv">2</span>)</span>
-<span id="cb405-11"><a href="ADAMForecastingSimulations.html#cb405-11" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(y<span class="sc">$</span>data,<span class="dv">1</span>,quantile,<span class="fl">0.975</span>),</span>
-<span id="cb405-12"><a href="ADAMForecastingSimulations.html#cb405-12" tabindex="-1"></a>      <span class="at">col=</span><span class="st">&quot;grey&quot;</span>, <span class="at">lwd=</span><span class="dv">2</span>, <span class="at">lty=</span><span class="dv">2</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb404"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb404-1"><a href="ADAMForecastingSimulations.html#cb404-1" tabindex="-1"></a><span class="fu">plot</span>(y<span class="sc">$</span>data[,<span class="dv">1</span>], <span class="at">ylab=</span><span class="st">&quot;Sales&quot;</span>, <span class="at">ylim=</span><span class="fu">range</span>(y<span class="sc">$</span>data),</span>
+<span id="cb404-2"><a href="ADAMForecastingSimulations.html#cb404-2" tabindex="-1"></a>     <span class="at">col=</span><span class="fu">rgb</span>(<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.4</span>), <span class="at">xlab=</span><span class="st">&quot;Horizon&quot;</span>)</span>
+<span id="cb404-3"><a href="ADAMForecastingSimulations.html#cb404-3" tabindex="-1"></a><span class="co"># Plot all the generated lines</span></span>
+<span id="cb404-4"><a href="ADAMForecastingSimulations.html#cb404-4" tabindex="-1"></a><span class="cf">for</span>(i <span class="cf">in</span> <span class="dv">2</span><span class="sc">:</span>nsim){</span>
+<span id="cb404-5"><a href="ADAMForecastingSimulations.html#cb404-5" tabindex="-1"></a>  <span class="fu">lines</span>(y<span class="sc">$</span>data[,i], <span class="at">col=</span><span class="fu">rgb</span>(<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.8</span>,<span class="fl">0.4</span>))</span>
+<span id="cb404-6"><a href="ADAMForecastingSimulations.html#cb404-6" tabindex="-1"></a>}</span>
+<span id="cb404-7"><a href="ADAMForecastingSimulations.html#cb404-7" tabindex="-1"></a><span class="co"># Add conditional mean and quantiles</span></span>
+<span id="cb404-8"><a href="ADAMForecastingSimulations.html#cb404-8" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(y<span class="sc">$</span>data,<span class="dv">1</span>,mean))</span>
+<span id="cb404-9"><a href="ADAMForecastingSimulations.html#cb404-9" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(y<span class="sc">$</span>data,<span class="dv">1</span>,quantile,<span class="fl">0.025</span>),</span>
+<span id="cb404-10"><a href="ADAMForecastingSimulations.html#cb404-10" tabindex="-1"></a>      <span class="at">col=</span><span class="st">&quot;grey&quot;</span>, <span class="at">lwd=</span><span class="dv">2</span>, <span class="at">lty=</span><span class="dv">2</span>)</span>
+<span id="cb404-11"><a href="ADAMForecastingSimulations.html#cb404-11" tabindex="-1"></a><span class="fu">lines</span>(<span class="fu">apply</span>(y<span class="sc">$</span>data,<span class="dv">1</span>,quantile,<span class="fl">0.975</span>),</span>
+<span id="cb404-12"><a href="ADAMForecastingSimulations.html#cb404-12" tabindex="-1"></a>      <span class="at">col=</span><span class="st">&quot;grey&quot;</span>, <span class="at">lwd=</span><span class="dv">2</span>, <span class="at">lty=</span><span class="dv">2</span>)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamForecastSimulated"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamForecastSimulated-1.png" alt="Data generated from 1000 ETS(M,M,N) models." width="672" />
 <p class="caption">
@@ -807,17 +845,7 @@ Figure 18.2: Data generated from 1000 ETS(M,M,N) models.
 <script>
 gitbook.require(["gitbook"], function(gitbook) {
 gitbook.start({
-  "sharing": {
-    "github": false,
-    "facebook": true,
-    "twitter": true,
-    "linkedin": false,
-    "weibo": false,
-    "instapaper": false,
-    "vk": false,
-    "whatsapp": false,
-    "all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
-  },
+  "sharing": false,
   "fontsettings": {
     "theme": "white",
     "family": "sans",

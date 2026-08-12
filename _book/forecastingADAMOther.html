@@ -54,8 +54,6 @@
 <script src="libs/anchor-sections-1.1.0/anchor-sections.js"></script>
 <script src="libs/kePrint-0.0.1/kePrint.js"></script>
 <link href="libs/lightable-0.0.1/lightable.css" rel="stylesheet" />
-<link href="libs/bsTable-3.3.7/bootstrapTable.min.css" rel="stylesheet" />
-<script src="libs/bsTable-3.3.7/bootstrapTable.js"></script>
 <!-- Global site tag (gtag.js) - Google Analytics -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-XH37Z8VYP8"></script>
 <script>
@@ -84,34 +82,51 @@
   box-sizing: border-box;
 }
 
-.of-booknav__logo img {
-  height: 28px;
-  width: auto;
-  display: block;
-}
+.of-booknav__logo img { height: 28px; width: auto; display: block; }
+.of-booknav a { color: #222222; text-decoration: none; }
+.of-booknav__links { display: flex; gap: 16px; flex-wrap: wrap; }
+.of-booknav__links a:hover { color: #AE1921; text-decoration: underline; }
 
-.of-booknav a {
-  color: #222222;
-  text-decoration: none;
-}
-
-.of-booknav__links {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.of-booknav__links a:hover {
+/* Fold toggle */
+.of-booknav__toggle {
+  margin-left: auto;
+  border: 1px solid #d5d5d5;
+  background: #ffffff;
   color: #AE1921;
-  text-decoration: underline;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  padding: 5px 9px;
 }
+.of-booknav__toggle:hover { background: #faf6f6; }
+
+/* Folded state: bar collapses to a small tab */
+body.of-nav-folded .of-booknav {
+  left: auto;
+  right: 0;
+  padding: 4px 8px;
+  border-bottom: none;
+  border-left: 2px solid #AE1921;
+  border-bottom: 2px solid #AE1921;
+  border-radius: 0 0 0 4px;
+}
+body.of-nav-folded .of-booknav__logo,
+body.of-nav-folded .of-booknav__links { display: none; }
 
 /* Push the book's own chrome down so the bar does not overlap it */
 body { padding-top: 46px !important; }
-.book .book-summary { top: 46px !important; }
-.book .book-body { top: 46px !important; }
-.book .book-header { top: 46px !important; }
+.book .book-summary,
+.book .book-body,
+.book .book-header,
 .book .book-body .body-inner { top: 46px !important; }
+
+/* Folded: give the space back */
+body.of-nav-folded { padding-top: 0 !important; }
+body.of-nav-folded .book .book-summary,
+body.of-nav-folded .book .book-body,
+body.of-nav-folded .book .book-header,
+body.of-nav-folded .book .book-body .body-inner { top: 0 !important; }
 
 @media (max-width: 767px) {
   .of-booknav { font-size: 13px; gap: 12px; padding: 6px 12px; }
@@ -122,9 +137,15 @@ body { padding-top: 46px !important; }
   .book .book-body,
   .book .book-header,
   .book .book-body .body-inner { top: 76px !important; }
-}
 
+  body.of-nav-folded { padding-top: 0 !important; }
+  body.of-nav-folded .book .book-summary,
+  body.of-nav-folded .book .book-body,
+  body.of-nav-folded .book .book-header,
+  body.of-nav-folded .book .book-body .body-inner { top: 0 !important; }
+}
 </style>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
   var nav = document.createElement("div");
@@ -139,8 +160,25 @@ document.addEventListener("DOMContentLoaded", function () {
       '<a href="https://openforecast.org/packages/">Packages</a>' +
       '<a href="https://openforecast.org/resources/">Resources</a>' +
       '<a href="https://openforecast.org/contact-us/">Contact us</a>' +
-    '</nav>';
+    '</nav>' +
+    '<button class="of-booknav__toggle" type="button" aria-label="Toggle OpenForecast menu">&times;</button>';
   document.body.insertBefore(nav, document.body.firstChild);
+
+  var btn = nav.querySelector(".of-booknav__toggle");
+  var folded = false;
+  try { folded = localStorage.getItem("ofNavFolded") === "1"; } catch (e) {}
+
+  function apply() {
+    document.body.classList.toggle("of-nav-folded", folded);
+    btn.innerHTML = folded ? "&#9776;" : "&times;";
+  }
+  apply();
+
+  btn.addEventListener("click", function () {
+    folded = !folded;
+    try { localStorage.setItem("ofNavFolded", folded ? "1" : "0"); } catch (e) {}
+    apply();
+  });
 });
 </script>
 
@@ -767,21 +805,21 @@ where <span class="math inline">\(Y_{c,t,h}=\sum_{j=1}^h y_{t+j}\)</span> is the
 <div id="forecastingADAMOtherExample" class="section level3 hasAnchor" number="18.4.4">
 <h3><span class="header-section-number">18.4.4</span> Example in R<a href="forecastingADAMOther.html#forecastingADAMOtherExample" class="anchor-section" aria-label="Anchor link to header"></a></h3>
 <p>For demonstration purposes, we consider an artificial intermittent demand example, similar to the one from Section <a href="IntermittentExample.html#IntermittentExample">13.4</a>:</p>
-<div class="sourceCode" id="cb419"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb419-1"><a href="forecastingADAMOther.html#cb419-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">41</span>)</span>
-<span id="cb419-2"><a href="forecastingADAMOther.html#cb419-2" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">ts</span>(<span class="fu">c</span>(<span class="fu">rpois</span>(<span class="dv">20</span>,<span class="fl">0.25</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="fl">0.5</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">1</span>),</span>
-<span id="cb419-3"><a href="forecastingADAMOther.html#cb419-3" tabindex="-1"></a>          <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">2</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">3</span>)))</span></code></pre></div>
+<div class="sourceCode" id="cb418"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb418-1"><a href="forecastingADAMOther.html#cb418-1" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">41</span>)</span>
+<span id="cb418-2"><a href="forecastingADAMOther.html#cb418-2" tabindex="-1"></a>y <span class="ot">&lt;-</span> <span class="fu">ts</span>(<span class="fu">c</span>(<span class="fu">rpois</span>(<span class="dv">20</span>,<span class="fl">0.25</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="fl">0.5</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">1</span>),</span>
+<span id="cb418-3"><a href="forecastingADAMOther.html#cb418-3" tabindex="-1"></a>          <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">2</span>), <span class="fu">rpois</span>(<span class="dv">20</span>,<span class="dv">3</span>)))</span></code></pre></div>
 <p>For simplicity, we apply an iETS(M,Md,N) model with odds ratio occurrence:</p>
-<div class="sourceCode" id="cb420"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb420-1"><a href="forecastingADAMOther.html#cb420-1" tabindex="-1"></a>adamiETSy <span class="ot">&lt;-</span> <span class="fu">adam</span>(y, <span class="st">&quot;MMdN&quot;</span>, <span class="at">occurrence=</span><span class="st">&quot;odds-ratio&quot;</span>,</span>
-<span id="cb420-2"><a href="forecastingADAMOther.html#cb420-2" tabindex="-1"></a>                  <span class="at">h=</span><span class="dv">7</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
-<span id="cb420-3"><a href="forecastingADAMOther.html#cb420-3" tabindex="-1"></a><span class="fu">plot</span>(adamiETSy, <span class="dv">7</span>, <span class="at">xlab=</span><span class="st">&quot;Time&quot;</span>, <span class="at">ylab=</span><span class="st">&quot;Sales&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb419"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb419-1"><a href="forecastingADAMOther.html#cb419-1" tabindex="-1"></a>adamiETSy <span class="ot">&lt;-</span> <span class="fu">adam</span>(y, <span class="st">&quot;MMdN&quot;</span>, <span class="at">occurrence=</span><span class="st">&quot;odds-ratio&quot;</span>,</span>
+<span id="cb419-2"><a href="forecastingADAMOther.html#cb419-2" tabindex="-1"></a>                  <span class="at">h=</span><span class="dv">7</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span>
+<span id="cb419-3"><a href="forecastingADAMOther.html#cb419-3" tabindex="-1"></a><span class="fu">plot</span>(adamiETSy, <span class="dv">7</span>, <span class="at">xlab=</span><span class="st">&quot;Time&quot;</span>, <span class="at">ylab=</span><span class="st">&quot;Sales&quot;</span>)</span></code></pre></div>
 <p><img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/unnamed-chunk-184-1.png" alt="" width="672" /></p>
 <p>To make this setting closer to a possible real life situation, we assume that the lead time is seven days, and we need to satisfy the 99% of demand for the last seven observations based on our model. Thus we produce the upper bound for the cumulative values for the confidence level of 99%:</p>
-<div class="sourceCode" id="cb421"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb421-1"><a href="forecastingADAMOther.html#cb421-1" tabindex="-1"></a>adamiETSyForecast <span class="ot">&lt;-</span> <span class="fu">forecast</span>(adamiETSy, <span class="at">h=</span><span class="dv">7</span>,</span>
-<span id="cb421-2"><a href="forecastingADAMOther.html#cb421-2" tabindex="-1"></a>                              <span class="at">cumulative=</span><span class="cn">TRUE</span>,</span>
-<span id="cb421-3"><a href="forecastingADAMOther.html#cb421-3" tabindex="-1"></a>                              <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>,</span>
-<span id="cb421-4"><a href="forecastingADAMOther.html#cb421-4" tabindex="-1"></a>                              <span class="at">side=</span><span class="st">&quot;upper&quot;</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb420"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb420-1"><a href="forecastingADAMOther.html#cb420-1" tabindex="-1"></a>adamiETSyForecast <span class="ot">&lt;-</span> <span class="fu">forecast</span>(adamiETSy, <span class="at">h=</span><span class="dv">7</span>,</span>
+<span id="cb420-2"><a href="forecastingADAMOther.html#cb420-2" tabindex="-1"></a>                              <span class="at">cumulative=</span><span class="cn">TRUE</span>,</span>
+<span id="cb420-3"><a href="forecastingADAMOther.html#cb420-3" tabindex="-1"></a>                              <span class="at">interval=</span><span class="st">&quot;prediction&quot;</span>,</span>
+<span id="cb420-4"><a href="forecastingADAMOther.html#cb420-4" tabindex="-1"></a>                              <span class="at">side=</span><span class="st">&quot;upper&quot;</span>)</span></code></pre></div>
 <p>Given that we deal with cumulative values, the basic plot will not be helpful, and we should produce something different. Luckily, the <code>plot()</code> method for the ADAM forecasts take care of it. In the case of cumulative forecasts, it will aggregate the data to the same frequency as the forecast horizon and will produce the following plot (see Figure <a href="forecastingADAMOther.html#fig:adamModeliETSCumulative">18.8</a>):</p>
-<div class="sourceCode" id="cb422"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb422-1"><a href="forecastingADAMOther.html#cb422-1" tabindex="-1"></a><span class="fu">plot</span>(adamiETSyForecast)</span></code></pre></div>
+<div class="sourceCode" id="cb421"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb421-1"><a href="forecastingADAMOther.html#cb421-1" tabindex="-1"></a><span class="fu">plot</span>(adamiETSyForecast)</span></code></pre></div>
 <div class="figure"><span style="display:block;" id="fig:adamModeliETSCumulative"></span>
 <img src="Svetunkov--2023----Forecasting-and-Analytics-with-the-Augmented-Dynamic-Adaptive-Model--ADAM-_files/figure-html/adamModeliETSCumulative-1.png" alt="The actual cumulative demand (black line), the expectation (blue dot), and the 95% quantile of the distribution of the cumulative demand (the grey x) based on the iETS model." width="672" />
 <p class="caption">
@@ -797,12 +835,12 @@ Figure 18.8: The actual cumulative demand (black line), the expectation (blue do
 <div id="example-in-r-2" class="section level4 hasAnchor" number="18.4.5.1">
 <h4><span class="header-section-number">18.4.5.1</span> Example in R<a href="forecastingADAMOther.html#example-in-r-2" class="anchor-section" aria-label="Anchor link to header"></a></h4>
 <p>The only way that the confidence interval can be constructed for ADAM is via the <code>reforecast()</code> function. Consider the example with ADAM ETS(A,Ad,N) on <code>BJSales</code> data as in Section <a href="ADAMForecastingPI.html#ADAMForecastingPIExample">18.3.8</a>:</p>
-<div class="sourceCode" id="cb423"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb423-1"><a href="forecastingADAMOther.html#cb423-1" tabindex="-1"></a>adamETSBJ <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
+<div class="sourceCode" id="cb422"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb422-1"><a href="forecastingADAMOther.html#cb422-1" tabindex="-1"></a>adamETSBJ <span class="ot">&lt;-</span> <span class="fu">adam</span>(BJsales, <span class="at">h=</span><span class="dv">10</span>, <span class="at">holdout=</span><span class="cn">TRUE</span>)</span></code></pre></div>
 <p>The confidence interval for this model can be produced either directly via <code>reforecast()</code> or via <code>forecast()</code>, which will call it for you:</p>
-<div class="sourceCode" id="cb424"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb424-1"><a href="forecastingADAMOther.html#cb424-1" tabindex="-1"></a><span class="fu">forecast</span>(adamETSBJ, <span class="at">h=</span><span class="dv">10</span>,</span>
-<span id="cb424-2"><a href="forecastingADAMOther.html#cb424-2" tabindex="-1"></a>         <span class="at">interval=</span><span class="st">&quot;confidence&quot;</span>,</span>
-<span id="cb424-3"><a href="forecastingADAMOther.html#cb424-3" tabindex="-1"></a>         <span class="at">nsim=</span><span class="dv">1000</span>, <span class="at">bootstrap=</span><span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb424-4"><a href="forecastingADAMOther.html#cb424-4" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
+<div class="sourceCode" id="cb423"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb423-1"><a href="forecastingADAMOther.html#cb423-1" tabindex="-1"></a><span class="fu">forecast</span>(adamETSBJ, <span class="at">h=</span><span class="dv">10</span>,</span>
+<span id="cb423-2"><a href="forecastingADAMOther.html#cb423-2" tabindex="-1"></a>         <span class="at">interval=</span><span class="st">&quot;confidence&quot;</span>,</span>
+<span id="cb423-3"><a href="forecastingADAMOther.html#cb423-3" tabindex="-1"></a>         <span class="at">nsim=</span><span class="dv">1000</span>, <span class="at">bootstrap=</span><span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb423-4"><a href="forecastingADAMOther.html#cb423-4" tabindex="-1"></a>    <span class="fu">plot</span>()</span></code></pre></div>
 <div class="remark">
 <p><span id="unlabeled-div-69" class="remark"><em>Remark</em>. </span>I have increased the number of iterations for the simulation to get a more accurate confidence interval around the conditional expectation. This will consume more memory, as the operation involves creating 1000 sample paths for the fitted values and another 1000 for the holdout sample forecasts.</p>
 </div>
@@ -851,17 +889,7 @@ Figure 18.9: Confidence interval for the point forecast from an ADAM ETS(A,Ad,N)
 <script>
 gitbook.require(["gitbook"], function(gitbook) {
 gitbook.start({
-  "sharing": {
-    "github": false,
-    "facebook": true,
-    "twitter": true,
-    "linkedin": false,
-    "weibo": false,
-    "instapaper": false,
-    "vk": false,
-    "whatsapp": false,
-    "all": ["facebook", "twitter", "linkedin", "weibo", "instapaper"]
-  },
+  "sharing": false,
   "fontsettings": {
     "theme": "white",
     "family": "sans",
